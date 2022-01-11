@@ -59,7 +59,7 @@ USE MOD_TestCase            ,ONLY: AnalyzeTestCase,CalcForcing
 USE MOD_TimeDisc_Functions  ,ONLY: InitTimeStep,UpdateTimeStep,AnalyzeTimeStep
 USE MOD_TestCase_Vars       ,ONLY: doTCSource
 USE MOD_TimeDisc_Vars       ,ONLY: iter,iter_analyze,maxIter
-USE MOD_TimeDisc_Vars       ,ONLY: TEnd,t,dt,tAnalyze,Timestep
+USE MOD_TimeDisc_Vars       ,ONLY: t,tStart,tEnd,dt,tAnalyze,Timestep
 USE MOD_TimeDisc_Vars       ,ONLY: TimeDiscType
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
@@ -77,7 +77,6 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                         :: tStart
 INTEGER                      :: nCalcTimestep,writeCounter
 !==================================================================================================================================
 
@@ -190,10 +189,10 @@ DO
   IF(doCalcTimeAverage) CALL CalcTimeAverage(.FALSE.,dt,t)
   IF(doTCSource)        CALL CalcForcing(t,dt)
 
-  CALL PrintStatusLine(t,dt,tStart,tEnd)
-
   ! Perform analysis at the end of the RK loop
   CALL AnalyzeTimeStep(writeCounter)
+
+  CALL PrintStatusLine(t,dt,tStart,tEnd)
 
   IF(doFinalize) EXIT
 END DO

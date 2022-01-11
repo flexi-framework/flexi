@@ -81,13 +81,12 @@ DO iStage = 1,nRKStages
   ! Call DG operator to fill face data, fluxes, gradients for analyze
   IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
-    CALL FV_Switch(U,Ut_temp,AllowToDG=FV_toDGinRK)
+  CALL FV_Switch(U,Ut_temp,AllowToDG=FV_toDGinRK)
 #endif
 #if PP_LIMITER
-    IF(DoPPLimiter) CALL PPLimiter()
+  IF(DoPPLimiter) CALL PPLimiter()
 #endif
-    CALL DGTimeDerivative_weakForm(tStage)
-  END IF
+  CALL DGTimeDerivative_weakForm(tStage)
   IF (iStage.EQ.1) THEN
     CALL VCopy(nTotalU,Ut_temp,Ut)                        !Ut_temp = Ut
   ELSE
@@ -114,6 +113,7 @@ USE MOD_PreProc
 USE MOD_Vector
 USE MOD_DG           ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars      ,ONLY: U,Ut,nTotalU
+USE MOD_Indicator     ,ONLY: doCalcIndicator,CalcIndicator
 USE MOD_Mesh_Vars    ,ONLY: nElems
 USE MOD_Sponge_Vars  ,ONLY: CalcPruettDamping
 USE MOD_TimeDisc_Vars,ONLY: dt,b_dt,UPrev,S2,RKdelta,RKg1,RKg2,RKg3,RKb,RKc,nRKStages,CurrentStage

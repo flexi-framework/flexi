@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -204,15 +204,15 @@ END SUBROUTINE InitOutput
 !==================================================================================================================================
 !> Displays the actual status of the simulation and counts the amount of FV elements
 !==================================================================================================================================
-SUBROUTINE PrintStatusLine(t,dt,tStart,tEnd)
+SUBROUTINE PrintStatusLine(t,dt,tStart,tEnd,doETA)
 ! MODULES                                                                                                                          !
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Output_Vars , ONLY: doPrintStatusLine
-USE MOD_Mesh_Vars   , ONLY: nGlobalElems
+USE MOD_Output_Vars   ,ONLY: doPrintStatusLine
 #if FV_ENABLED
-USE MOD_FV_Vars     , ONLY: FV_Elems
-USE MOD_Analyze_Vars, ONLY: totalFV_nElems
+USE MOD_Analyze_Vars  ,ONLY: totalFV_nElems
+USE MOD_FV_Vars       ,ONLY: FV_Elems
+USE MOD_Mesh_Vars     ,ONLY: nGlobalElems
 #endif
 #if PP_LIMITER
 USE MOD_Filter_Vars , ONLY: PP_Elems
@@ -225,21 +225,26 @@ USE MOD_Analyze_Vars, ONLY: totalPP_nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN) :: t      !< current simulation time
-REAL,INTENT(IN) :: dt     !< current time step
-REAL,INTENT(IN) :: tStart !< start time of simulation
-REAL,INTENT(IN) :: tEnd   !< end time of simulation
+REAL,INTENT(IN)             :: t      !< current simulation time
+REAL,INTENT(IN)             :: dt     !< current time step
+REAL,INTENT(IN)             :: tStart !< start time of simulation
+REAL,INTENT(IN)             :: tEnd   !< end time of simulation
+LOGICAL,INTENT(IN),OPTIONAL :: doETA !< flag to print ETA without carriage return
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+REAL         :: percent,time_remaining,mins,secs,hours,days
+CHARACTER(3) :: tmpString
 #if FV_ENABLED
-INTEGER :: FVcounter
-REAL    :: FV_percent
+INTEGER      :: FVcounter
+REAL         :: FV_percent
+INTEGER,PARAMETER :: barWidth = 38
+#else
+INTEGER,PARAMETER :: barWidth = 50
 #endif
 #if PP_LIMITER
 INTEGER :: PPcounter
 REAL    :: PP_percent
 #endif
-REAL    :: percent,time_remaining,mins,secs,hours
 !==================================================================================================================================
 #if FV_ENABLED
 FVcounter = SUM(FV_Elems)
@@ -273,6 +278,7 @@ IF(MPIroot)THEN
   mins = MOD(time_remaining,60.)
   time_remaining = time_remaining / 60
   hours = MOD(time_remaining,24.)
+  days = time_remaining / 24
 #if FV_ENABLED
   FV_percent = REAL(FVcounter) / nGlobalElems * 100.
   WRITE(UNIT_stdOut,'(F5.2,A5)',ADVANCE='NO') FV_percent, '% FV,'
@@ -281,8 +287,12 @@ IF(MPIroot)THEN
   PP_percent = REAL(PPcounter) / nGlobalElems * 100.
   WRITE(UNIT_stdOut,'(F5.2,A5)',ADVANCE='NO') PP_percent, '% PP,'
 #endif
-  WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,F6.2,A,I4,A1,I0.2,A1,I0.2,A1)',ADVANCE='NO') ' Time = ', t, &
-      ' dt = ', dt, '  ', percent, '% complete, est. Time Remaining = ',INT(hours),':',INT(mins),':',INT(secs), ACHAR(13)
+  tmpString = MERGE('YES','NO ',PRESENT(doETA))
+
+  WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A12,A,A1,A,A3,F6.2,A3,A1)',ADVANCE=tmpString)    &
+    '   Time = ', t,'  dt = ', dt, ' ', ' ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),' |',     &
+    REPEAT('=',MAX(CEILING(percent*barWidth/100.)-1,0)),'>',REPEAT(' ',barWidth-MAX(CEILING(percent*barWidth/100.)-1,0)),'| [',percent,'%] ',&
+    ACHAR(13) ! ACHAR(13) is carriage return
 #ifdef INTEL
   CLOSE(UNIT_stdOut)
 #endif

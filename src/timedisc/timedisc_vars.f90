@@ -44,7 +44,8 @@ REAL             :: dt_Min(3)                     !< dt_Min(DT_MIN)       = dt_M
                                                   !< dt_Min(DT_END)       = dt_Min(3) = tEndDiff
 REAL             :: dt_minOld                     !< dt_min in last timestep
 REAL,ALLOCATABLE :: b_dt(:)                       !< timestep of each RK stage
-REAL             :: TEnd                          !< End time of simulation
+REAL             :: tStart                        !< Start time of simulation
+REAL             :: tEnd                          !< End time of simulation
 REAL             :: tAnalyze                      !< Analyze time intervall
 REAL             :: CFLScale(0:FV_ENABLED)        !< Convective CFL number
 REAL             :: CFLScale_Readin(0:FV_ENABLED) !< Convective CFL number (value from parameter file)

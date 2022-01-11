@@ -355,6 +355,8 @@ IF(doAnalyze)THEN
   iter_analyze  = 0
   CalcTimeStart = FLEXITIME()
   tAnalyze      = MIN(tAnalyze+analyze_dt,tEnd)
+
+  ! Disable analyze for next time step
   doAnalyze     = .FALSE.
 END IF
 

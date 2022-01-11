@@ -274,10 +274,12 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Analyze_Vars
 USE MOD_AnalyzeEquation,    ONLY: AnalyzeEquation
-USE MOD_Output,             ONLY: OutputToFile
-USE MOD_Output_Vars,        ONLY: ProjectName
-USE MOD_Mesh_Vars,          ONLY: nGlobalElems
 USE MOD_Benchmarking,       ONLY: Benchmarking
+USE MOD_Mesh_Vars,          ONLY: nGlobalElems
+USE MOD_Output,             ONLY: OutputToFile,PrintStatusLine
+USE MOD_Output_Vars,        ONLY: ProjectName
+USE MOD_TimeDisc_Vars,      ONLY: dt,tStart,tEnd
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -313,6 +315,8 @@ CALL AnalyzeEquation(Time)
 CALL Benchmarking()
 
 IF(MPIRoot .AND. (Time.GT.0.)) THEN
+  WRITE(UNIT_stdOut,'(132("-"))')
+  CALL PrintStatusLine(time,dt,tStart,tEnd,doETA=.TRUE.)
   WRITE(UNIT_stdOut,'(132("."))')
   WRITE(UNIT_stdOut,'(A,A,A,F8.2,A)') ' FLEXI RUNNING ',TRIM(ProjectName),'... [',RunTime,' sec ]'
   WRITE(UNIT_stdOut,'(132("-"))')
