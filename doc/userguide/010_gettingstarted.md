@@ -117,9 +117,9 @@ For a list of all compiler options see Section \ref{sec:compileroptions}.
 
 #### Directory paths
 
-In the following, we write `$FLEXIROOT` as a substitute for the path to the **FLEXI** repository. Please replace `$FLEXIROOT` in all following commands with the path to your **FLEXI** repository *or* add an environment variable `$FLEXIROOT`. 
+In the following, we write `$FLEXIROOT` as a substitute for the path to the **FLEXI** repository. Please replace `$FLEXIROOT` in all following commands with the path to your **FLEXI** repository *or* add an environment variable `$FLEXIROOT`.
 
-Furthermore, the path to executables is omitted in the following, so for example, we write `flexi` instead of `$FLEXIROOT/build/bin/flexi`. 
+Furthermore, the path to executables is omitted in the following, so for example, we write `flexi` instead of `$FLEXIROOT/build/bin/flexi`.
 
 Here is some explanation for Linux beginners:
 
@@ -151,7 +151,7 @@ to the bottom of the file `~/.bashrc` and sourcing your `~/.bashrc` afterwards.
 For a first minimal **FLEXI** run, do the following:
 
 * Open a terminal
-* Navigate to a directory, in this case *temp* 
+* Navigate to a directory, in this case *temp*
 
         cd temp
 

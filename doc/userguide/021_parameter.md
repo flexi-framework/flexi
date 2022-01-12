@@ -14,7 +14,7 @@ REAL    = 1.23456
 LOGICAL = T         ! True
 LOGICAL = F         ! False
 STRING  = FLEXI
-VECTOR  = (/1.0,2.0,3.0/)  
+VECTOR  = (/1.0,2.0,3.0/)
 ~~~~~~~
 
 The concept of the parameter file is described as followed:
@@ -53,508 +53,508 @@ COMMENT: THIS TABLE CAN BE CREATED WITH flexi --markdown.
 **MPI**
 ----------------------- ------------------ --------------------------------------------------
 **Variable**            **Default**        **Description**
-                                                                                
-GroupSize                                0 Define size of MPI subgroups, used to e.g. perform  
-                                           grouped IO, where group master  
-                                           collects and outputs data.  
-                                            
+
+GroupSize                                0 Define size of MPI subgroups, used to e.g. perform
+                                           grouped IO, where group master
+                                           collects and outputs data.
+
 ---------------------------------------------------------------------------------------------
- 
+
 ---------------------------------------------------------------------------------------------
 **IO_HDF5**
 ----------------------- ------------------ --------------------------------------------------
 **Variable**            **Default**        **Description**
-                                                                                
-gatheredWrite                            F Set true to activate gathered HDF5 IO for parallel  
-                                           computations. Only local group masters will write  
-                                           data after gathering from local slaves.  
-                                            
+
+gatheredWrite                            F Set true to activate gathered HDF5 IO for parallel
+                                           computations. Only local group masters will write
+                                           data after gathering from local slaves.
+
 ---------------------------------------------------------------------------------------------
- 
+
 ---------------------------------------------------------------------------------------------
 **Interpolation**
 ----------------------- ------------------ --------------------------------------------------
 **Variable**            **Default**        **Description**
-                                                                                
-N                                          Polynomial degree of computation to represent to  
-                                           solution  
-                                            
+
+N                                          Polynomial degree of computation to represent to
+                                           solution
+
 ---------------------------------------------------------------------------------------------
- 
+
 ---------------------------------------------------------------------------------------------
 **Restart**
 ----------------------- ------------------ --------------------------------------------------
 **Variable**            **Default**        **Description**
-                                                                                
-ResetTime                                F Override solution time to t=0 on restart.  
-                                            
+
+ResetTime                                F Override solution time to t=0 on restart.
+
 ---------------------------------------------------------------------------------------------
- 
+
 ---------------------------------------------------------------------------------------------
 **Output**
 ----------------------- ------------------ --------------------------------------------------
 **Variable**            **Default**        **Description**
-                                                                                
-NVisu                                      Polynomial degree at which solution is sampled for  
-                                           visualization.  
-                                            
-NOut                                    -1 Polynomial degree at which solution is written.  
-                                           -1: NOut=N, >0: NOut  
-                                            
-ProjectName                                Name of the current simulation (mandatory).  
-                                            
-Logging                                  F Write log files containing debug output.  
-                                            
-ErrorFiles                               T Write error files containing error output.  
-                                            
-OutputFormat                          None File format for visualization: None, Tecplot,  
-                                           TecplotASCII, ParaView.  Note: Tecplot output is  
-                                           currently unavailable due to licensing issues.  
-                                            
-ASCIIOutputFormat                      CSV File format for ASCII files, e.g. body forces:  
-                                           CSV, Tecplot.  
-                                            
-doPrintStatusLine                        F Print: percentage of time, ...  
-                                            
-WriteStateFiles                          T Write HDF5 state files. Disable this only for  
-                                           debugging issues.  
-                                           NO SOLUTION WILL BE WRITTEN!  
-                                            
+
+NVisu                                      Polynomial degree at which solution is sampled for
+                                           visualization.
+
+NOut                                    -1 Polynomial degree at which solution is written.
+                                           -1: NOut=N, >0: NOut
+
+ProjectName                                Name of the current simulation (mandatory).
+
+Logging                                  F Write log files containing debug output.
+
+ErrorFiles                               T Write error files containing error output.
+
+OutputFormat                          None File format for visualization: None, Tecplot,
+                                           TecplotASCII, ParaView.  Note: Tecplot output is
+                                           currently unavailable due to licensing issues.
+
+ASCIIOutputFormat                      CSV File format for ASCII files, e.g. body forces:
+                                           CSV, Tecplot.
+
+doPrintStatusLine                        F Print: percentage of time, ...
+
+WriteStateFiles                          T Write HDF5 state files. Disable this only for
+                                           debugging issues.
+                                           NO SOLUTION WILL BE WRITTEN!
+
 ---------------------------------------------------------------------------------------------
- 
+
 ---------------------------------------------------------------------------------------------
 **Mesh**
 ----------------------- ------------------ --------------------------------------------------
 **Variable**            **Default**        **Description**
-                                                                                
-MeshFile                                   (relative) path to meshfile (mandatory).  
-                                            
-useCurveds                               T Controls usage of high-order information in mesh.  
-                                           Turn off to discard high-order data and treat  
-                                           curved meshes as linear meshes.  
-                                            
-interpolateFromTree                      T For non-conforming meshes, built by refinement  
-                                           from a tree structure, the metrics can be built  
-                                           from the tree geometry if it is contained in the  
-                                           mesh. Can improve free-stream preservation.  
-                                            
-meshScale                              1.0 Scale the mesh by this factor (shrink/enlarge).  
-                                            
-meshdeform                               F Apply simple sine-shaped deformation on cartesion  
-                                           mesh (for testing).  
-                                            
-crossProductMetrics                      F Compute mesh metrics using cross product form.  
-                                           Caution: in this case free-stream preservation is  
-                                           only guaranteed for N=3*NGeo.  
-                                            
-debugmesh                                0 Output file with visualization and debug  
-                                           information for the mesh. 0: no visualization, 3:  
-                                           Paraview binary  
-                                            
-BoundaryName                               Names of boundary conditions to be set (must be  
-                                           present in the mesh!).For each BoundaryName a  
-                                           BoundaryType needs to be specified.  
-                                            
-BoundaryType                               Type of boundary conditions to be set. Format:  
-                                           (BC_TYPE,BC_STATE)  
-                                            
-writePartitionInfo                       F Write information about MPI partitions into a  
-                                           file.  
-                                            
+
+MeshFile                                   (relative) path to meshfile (mandatory).
+
+useCurveds                               T Controls usage of high-order information in mesh.
+                                           Turn off to discard high-order data and treat
+                                           curved meshes as linear meshes.
+
+interpolateFromTree                      T For non-conforming meshes, built by refinement
+                                           from a tree structure, the metrics can be built
+                                           from the tree geometry if it is contained in the
+                                           mesh. Can improve free-stream preservation.
+
+meshScale                              1.0 Scale the mesh by this factor (shrink/enlarge).
+
+meshdeform                               F Apply simple sine-shaped deformation on cartesion
+                                           mesh (for testing).
+
+crossProductMetrics                      F Compute mesh metrics using cross product form.
+                                           Caution: in this case free-stream preservation is
+                                           only guaranteed for N=3*NGeo.
+
+debugmesh                                0 Output file with visualization and debug
+                                           information for the mesh. 0: no visualization, 3:
+                                           Paraview binary
+
+BoundaryName                               Names of boundary conditions to be set (must be
+                                           present in the mesh!).For each BoundaryName a
+                                           BoundaryType needs to be specified.
+
+BoundaryType                               Type of boundary conditions to be set. Format:
+                                           (BC_TYPE,BC_STATE)
+
+writePartitionInfo                       F Write information about MPI partitions into a
+                                           file.
+
 ---------------------------------------------------------------------------------------------
- 
+
 ---------------------------------------------------------------------------------------------
 **Equation of State**
 ----------------------- ------------------ --------------------------------------------------
 **Variable**            **Default**        **Description**
-                                                                                
-UseNonDimensionalEqn                     F Set true to compute R and mu from bulk Mach  
-                                           Reynolds (nondimensional form.  
-                                            
-BulkMach                                   Bulk Mach     (UseNonDimensionEqn=T)  
-                                            
-BulkReynolds                               Bulk Reynolds (UseNonDimensionEqn=T)  
-                                            
-kappa                                  1.4 Heat capacity ratio / isentropic exponent  
-                                            
-R                                  287.058 Specific gas constant  
-                                            
-Pr                                    0.72 Prandtl number  
-                                            
-mu0                                    0.0 Dynamic Viscosity  
-                                            
-Ts                                   110.4 Sutherland's law for variable viscosity: Ts  
-                                            
-Tref                                 280.0 Sutherland's law for variable viscosity: Tref  
-                                            
-ExpoSuth                               1.5 Sutherland's law for variable viscosity: Exponent  
-                                            
+
+UseNonDimensionalEqn                     F Set true to compute R and mu from bulk Mach
+                                           Reynolds (nondimensional form.
+
+BulkMach                                   Bulk Mach     (UseNonDimensionEqn=T)
+
+BulkReynolds                               Bulk Reynolds (UseNonDimensionEqn=T)
+
+kappa                                  1.4 Heat capacity ratio / isentropic exponent
+
+R                                  287.058 Specific gas constant
+
+Pr                                    0.72 Prandtl number
+
+mu0                                    0.0 Dynamic Viscosity
+
+Ts                                   110.4 Sutherland's law for variable viscosity: Ts
+
+Tref                                 280.0 Sutherland's law for variable viscosity: Tref
+
+ExpoSuth                               1.5 Sutherland's law for variable viscosity: Exponent
+
 ---------------------------------------------------------------------------------------------
- 
+
 ---------------------------------------------------------------------------------------------
 **Equation**
 ----------------------- ------------------ --------------------------------------------------
 **Variable**            **Default**        **Description**
-                                                                                
-IniRefState                                Refstate required for initialization.  
-                                            
-RefState                                   State(s) in primitive variables (density, velx,  
-                                           vely, velz, pressure).  
-                                            
-BCStateFile                                File containing the reference solution on the  
-                                           boundary to be used as BC.  
-                                            
+
+IniRefState                                Refstate required for initialization.
+
+RefState                                   State(s) in primitive variables (density, velx,
+                                           vely, velz, pressure).
+
+BCStateFile                                File containing the reference solution on the
+                                           boundary to be used as BC.
+
 ---------------------------------------------------------------------------------------------
- 
+
 ---------------------------------------------------------------------------------------------
 **Riemann**
 ----------------------- ------------------ --------------------------------------------------
 **Variable**            **Default**        **Description**
-                                                                                
-Riemann                      RoeEntropyFix Riemann solver to be used: LF, HLLC, Roe,  
-                                           RoeEntropyFix, HLL, HLLE, HLLEM  
-                                            
-RiemannBC                             Same Riemann solver used for boundary conditions: Same,  
-                                           LF, Roe, RoeEntropyFix, HLL, HLLE, HLLEM  
-                                            
+
+Riemann                      RoeEntropyFix Riemann solver to be used: LF, HLLC, Roe,
+                                           RoeEntropyFix, HLL, HLLE, HLLEM
+
+RiemannBC                             Same Riemann solver used for boundary conditions: Same,
+                                           LF, Roe, RoeEntropyFix, HLL, HLLE, HLLEM
+
 ---------------------------------------------------------------------------------------------
- 
+
 ---------------------------------------------------------------------------------------------
 **SplitDG**
 ----------------------- ------------------ --------------------------------------------------
 **Variable**            **Default**        **Description**
-                                                                                
-SplitDG                                 PI SplitDG formulation to be used: SD, MO, DU, KG, PI  
-                                            
+
+SplitDG                                 PI SplitDG formulation to be used: SD, MO, DU, KG, PI
+
 ---------------------------------------------------------------------------------------------
- 
+
 ---------------------------------------------------------------------------------------------
 **Exactfunc**
 ----------------------- ------------------ --------------------------------------------------
 **Variable**            **Default**        **Description**
-                                                                                
-IniExactFunc                               Exact function to be used for computing initial  
-                                           solution.  
-                                            
-AdvVel                                     Advection velocity (v1,v2,v3) required for  
-                                           exactfunction CASE(2,21,4,8)  
-                                            
-MachShock                              1.5 Parameter required for CASE(10)  
-                                            
-PreShockDens                           1.0 Parameter required for CASE(10)  
-                                            
-IniCenter                                  Shu Vortex CASE(7) (x,y,z)  
-                                            
-IniAxis                                    Shu Vortex CASE(7) (x,y,z)  
-                                            
-IniAmplitude                           0.2 Shu Vortex CASE(7)  
-                                            
-IniHalfwidth                           0.2 Shu Vortex CASE(7)  
-                                            
-delta99_in                                 Blasius boundary layer CASE(1338)  
-                                            
-x_in                                       Blasius boundary layer CASE(1338)  
-                                            
+
+IniExactFunc                               Exact function to be used for computing initial
+                                           solution.
+
+AdvVel                                     Advection velocity (v1,v2,v3) required for
+                                           exactfunction CASE(2,21,4,8)
+
+MachShock                              1.5 Parameter required for CASE(10)
+
+PreShockDens                           1.0 Parameter required for CASE(10)
+
+IniCenter                                  Shu Vortex CASE(7) (x,y,z)
+
+IniAxis                                    Shu Vortex CASE(7) (x,y,z)
+
+IniAmplitude                           0.2 Shu Vortex CASE(7)
+
+IniHalfwidth                           0.2 Shu Vortex CASE(7)
+
+delta99_in                                 Blasius boundary layer CASE(1338)
+
+x_in                                       Blasius boundary layer CASE(1338)
+
 ---------------------------------------------------------------------------------------------
- 
+
 ---------------------------------------------------------------------------------------------
 **Filter**
 ----------------------- ------------------ --------------------------------------------------
 **Variable**            **Default**        **Description**
-                                                                                
-FilterType                            None Type of filter to be applied. None, CutOff, Modal,  
-                                           LAF  
-                                            
-NFilter                                    Cut-off mode (FilterType==CutOff or LAF)  
-                                            
-LAF_alpha                                  Relaxation factor for LAF, see Flad et al. JCP  
-                                           2016  
-                                            
-HestFilterParam                            Parameters for Hesthaven filter  
-                                           (FilterType==Modal)  
-                                            
+
+FilterType                            None Type of filter to be applied. None, CutOff, Modal,
+                                           LAF
+
+NFilter                                    Cut-off mode (FilterType==CutOff or LAF)
+
+LAF_alpha                                  Relaxation factor for LAF, see Flad et al. JCP
+                                           2016
+
+HestFilterParam                            Parameters for Hesthaven filter
+                                           (FilterType==Modal)
+
 ---------------------------------------------------------------------------------------------
- 
+
 ---------------------------------------------------------------------------------------------
 **Overintegration**
 ----------------------- ------------------ --------------------------------------------------
 **Variable**            **Default**        **Description**
-                                                                                
-OverintegrationType                   none Type of overintegration. None, CutOff, ConsCutOff  
-                                            
-NUnder                                     Polynomial degree to which solution is filtered  
-                                           (OverintegrationType == 1 or 2  
-                                            
+
+OverintegrationType                   none Type of overintegration. None, CutOff, ConsCutOff
+
+NUnder                                     Polynomial degree to which solution is filtered
+                                           (OverintegrationType == 1 or 2
+
 ---------------------------------------------------------------------------------------------
- 
+
 ---------------------------------------------------------------------------------------------
 **Indicator**
 ----------------------- ------------------ --------------------------------------------------
 **Variable**            **Default**        **Description**
-                                                                                
-IndicatorType                           DG Specify type of indicator to be used: DG, FV,  
-                                           Persson,Ducros, halfhalf, checkerboard  
-                                            
-IndVar                                   1 Specify variable upon which indicator is applied,  
-                                           for general indicators.  
-                                            
-IndStartTime                           0.0 Specify physical time when indicator evalution  
-                                           starts. Before this timea high indicator value is  
-                                           returned from indicator calculation.(Idea: FV  
-                                           everywhere at begin of computation to smooth  
-                                           solution)  
-                                            
-nModes                                   2 Number of highest modes to be checked for Persson  
-                                           modal indicator.  
-                                            
-FVBoundaries                             F Use FV discretization in element that contains a  
-                                           side of a certain BC_TYPE  
-                                            
-FVBoundaryType                             BC_TYPE that should be discretized with FV.Set it  
-                                           to BC_TYPE, setting 0 will apply FV to all BC  
-                                           Sides  
-                                            
+
+IndicatorType                           DG Specify type of indicator to be used: DG, FV,
+                                           Persson,Ducros, halfhalf, checkerboard
+
+IndVar                                   1 Specify variable upon which indicator is applied,
+                                           for general indicators.
+
+IndStartTime                           0.0 Specify physical time when indicator evalution
+                                           starts. Before this timea high indicator value is
+                                           returned from indicator calculation.(Idea: FV
+                                           everywhere at begin of computation to smooth
+                                           solution)
+
+nModes                                   2 Number of highest modes to be checked for Persson
+                                           modal indicator.
+
+FVBoundaries                             F Use FV discretization in element that contains a
+                                           side of a certain BC_TYPE
+
+FVBoundaryType                             BC_TYPE that should be discretized with FV.Set it
+                                           to BC_TYPE, setting 0 will apply FV to all BC
+                                           Sides
+
 ---------------------------------------------------------------------------------------------
- 
+
 ---------------------------------------------------------------------------------------------
 **FV**
 ----------------------- ------------------ --------------------------------------------------
 **Variable**            **Default**        **Description**
-                                                                                
-FV_IndUpperThreshold                       Upper threshold: Element is switched from DG to FV  
-                                           if indicator  
-                                           rises above this value  
-                                            
-FV_IndLowerThreshold                       Lower threshold: Element is switched from FV to DG  
-                                           if indicator  
-                                           falls below this value  
-                                            
-FV_toDG_indicator                        F Apply additional Persson indicator to check if DG  
-                                           solution after switch  
-                                           from FV to DG is valid.  
-                                            
-FV_toDG_limit                              Threshold for FV_toDG_indicator  
-                                            
-FV_toDGinRK                              F Allow switching of FV elements to DG during Runge  
-                                           Kutta stages.  
-                                           This may violated the DG timestep restriction of  
-                                           the element.  
-                                            
-FV_IniSupersample                        T Supersample initial solution inside each sub-cell  
-                                           and take mean value  
-                                           as average sub-cell value.  
-                                            
-FV_IniSharp                              F Maintain a sharp interface in the initial solution  
-                                           in the FV region  
-                                            
-FV_LimiterType                           1 Type of slope limiter of second order  
-                                           reconstruction  
-                                            
-swebyb                                     beta parameter for Sweby limiter  
-                                            
+
+FV_IndUpperThreshold                       Upper threshold: Element is switched from DG to FV
+                                           if indicator
+                                           rises above this value
+
+FV_IndLowerThreshold                       Lower threshold: Element is switched from FV to DG
+                                           if indicator
+                                           falls below this value
+
+FV_toDG_indicator                        F Apply additional Persson indicator to check if DG
+                                           solution after switch
+                                           from FV to DG is valid.
+
+FV_toDG_limit                              Threshold for FV_toDG_indicator
+
+FV_toDGinRK                              F Allow switching of FV elements to DG during Runge
+                                           Kutta stages.
+                                           This may violated the DG timestep restriction of
+                                           the element.
+
+FV_IniSupersample                        T Supersample initial solution inside each sub-cell
+                                           and take mean value
+                                           as average sub-cell value.
+
+FV_IniSharp                              F Maintain a sharp interface in the initial solution
+                                           in the FV region
+
+FV_LimiterType                           1 Type of slope limiter of second order
+                                           reconstruction
+
+swebyb                                     beta parameter for Sweby limiter
+
 ---------------------------------------------------------------------------------------------
- 
+
 ---------------------------------------------------------------------------------------------
 **Lifting**
 ----------------------- ------------------ --------------------------------------------------
 **Variable**            **Default**        **Description**
-                                                                                
-doWeakLifting                            F Set true to perform lifting in weak form.  
-                                            
-doConservativeLifting                    F Set true to compute the volume contribution to the  
-                                           gradients in conservative form, i.e. deriving the  
-                                           solution multiplied by the metric terms instead of  
-                                           deriving the solution and multiplying by the  
-                                           metrics. Only available for doWeakLifting=.FALSE.  
-                                            
+
+doWeakLifting                            F Set true to perform lifting in weak form.
+
+doConservativeLifting                    F Set true to compute the volume contribution to the
+                                           gradients in conservative form, i.e. deriving the
+                                           solution multiplied by the metric terms instead of
+                                           deriving the solution and multiplying by the
+                                           metrics. Only available for doWeakLifting=.FALSE.
+
 ---------------------------------------------------------------------------------------------
- 
+
 ---------------------------------------------------------------------------------------------
 **EddyViscParameters**
 ----------------------- ------------------ --------------------------------------------------
 **Variable**            **Default**        **Description**
-                                                                                
-eddyViscType                          none (0) none: No eddy viscosity, (1) Smagorinsky  
-                                            
-CS                                         EddyViscParameters constant  
-                                            
-PrSGS                                  0.7 Turbulent Prandtl number  
-                                            
-VanDriest                                F Van Driest damping, only for channel flow!  
-                                            
+
+eddyViscType                          none (0) none: No eddy viscosity, (1) Smagorinsky
+
+CS                                         EddyViscParameters constant
+
+PrSGS                                  0.7 Turbulent Prandtl number
+
+VanDriest                                F Van Driest damping, only for channel flow!
+
 ---------------------------------------------------------------------------------------------
- 
+
 ---------------------------------------------------------------------------------------------
 **Sponge**
 ----------------------- ------------------ --------------------------------------------------
 **Variable**            **Default**        **Description**
-                                                                                
-SpongeLayer                              F Turn on to use sponge regions for reducing  
-                                           reflections at boundaries.  
-                                            
-damping                                1.0 Damping factor of sponge.  
-                                           U_t=U_t-damping*(U-U_base) in fully damped  
-                                           regions.  
-                                            
-SpongeShape                                Set shape of sponge: (1) ramp : cartesian /  
-                                           vector-aligned, (2)  cylindrical  
-                                            
-SpongeDistance                             Length of sponge ramp. The sponge will have  
-                                           maximum strength at the end of the ramp and after  
-                                           that point.  
-                                            
-xStart                                     Coordinates of start postion of sponge ramp  
-                                           (SpongeShape=ramp) or center  
-                                           (SpongeShape=cylindrical).  
-                                            
-SpongeDir                                  Direction vector of the sponge ramp  
-                                           (SpongeShape=ramp)  
-                                            
-SpongeRadius                               Radius of the sponge zone  
-                                           (SpongeShape=cylindrical)  
-                                            
-SpongeAxis                                 Axis vector of cylindrical sponge  
-                                           (SpongeShape=cylindrical)  
-                                            
-SpongeViz                                F Turn on to write a visualization file of sponge  
-                                           region and strength.  
-                                            
-SpongeBaseFlow                           1 Type of baseflow to be used for sponge. (1)  
-                                           constant: fixed state,(2) exactfunction: exact  
-                                           function, (3) file: read baseflow file, (4)  
-                                           pruett: temporally varying, solution adaptive  
-                                           Pruett baseflow  
-                                            
-SpongeRefState                             Index of refstate in ini-file  
-                                           (SpongeBaseFlow=constant)  
-                                            
-SpongeExactFunc                            Index of exactfunction  
-                                           (SpongeBaseFlow=exactfunction)  
-                                            
-SpongeBaseFlowFile                         FLEXI solution (e.g. TimeAvg) file from which  
-                                           baseflow is read.  
-                                            
-tempFilterWidth                            Temporal filter width used to advance Pruett  
-                                           baseflow in time.)  
-                                            
+
+SpongeLayer                              F Turn on to use sponge regions for reducing
+                                           reflections at boundaries.
+
+damping                                1.0 Damping factor of sponge.
+                                           U_t=U_t-damping*(U-U_base) in fully damped
+                                           regions.
+
+SpongeShape                                Set shape of sponge: (1) ramp : cartesian /
+                                           vector-aligned, (2)  cylindrical
+
+SpongeDistance                             Length of sponge ramp. The sponge will have
+                                           maximum strength at the end of the ramp and after
+                                           that point.
+
+xStart                                     Coordinates of start postion of sponge ramp
+                                           (SpongeShape=ramp) or center
+                                           (SpongeShape=cylindrical).
+
+SpongeDir                                  Direction vector of the sponge ramp
+                                           (SpongeShape=ramp)
+
+SpongeRadius                               Radius of the sponge zone
+                                           (SpongeShape=cylindrical)
+
+SpongeAxis                                 Axis vector of cylindrical sponge
+                                           (SpongeShape=cylindrical)
+
+SpongeViz                                F Turn on to write a visualization file of sponge
+                                           region and strength.
+
+SpongeBaseFlow                           1 Type of baseflow to be used for sponge. (1)
+                                           constant: fixed state,(2) exactfunction: exact
+                                           function, (3) file: read baseflow file, (4)
+                                           pruett: temporally varying, solution adaptive
+                                           Pruett baseflow
+
+SpongeRefState                             Index of refstate in ini-file
+                                           (SpongeBaseFlow=constant)
+
+SpongeExactFunc                            Index of exactfunction
+                                           (SpongeBaseFlow=exactfunction)
+
+SpongeBaseFlowFile                         FLEXI solution (e.g. TimeAvg) file from which
+                                           baseflow is read.
+
+tempFilterWidth                            Temporal filter width used to advance Pruett
+                                           baseflow in time.)
+
 ---------------------------------------------------------------------------------------------
- 
+
 ---------------------------------------------------------------------------------------------
 **TimeDisc**
 ----------------------- ------------------ --------------------------------------------------
 **Variable**            **Default**        **Description**
-                                                                                
-TimeDiscMethod              CarpenterRK4-5 Specifies the type of time-discretization to be  
-                                           used, e.g. the name of a specific Runge-Kutta  
-                                           scheme. Possible values:  
-                                             * standardrk3-3  
-                                             * carpenterrk4-5  
-                                             * niegemannrk4-14  
-                                             * toulorgerk4-8c  
-                                             * toulorgerk3-7c  
-                                             * toulorgerk4-8f  
-                                             * ketchesonrk4-20  
-                                             * ketchesonrk4-18  
-                                            
-TEnd                                       End time of the simulation (mandatory).  
-                                            
-CFLScale                                   Scaling factor for the theoretical CFL number,  
-                                           typical range 0.1..1.0 (mandatory)  
-                                            
-DFLScale                                   Scaling factor for the theoretical DFL number,  
-                                           typical range 0.1..1.0 (mandatory)  
-                                            
-maxIter                                 -1 Stop simulation when specified number of timesteps  
-                                           has been performed.  
-                                            
-NCalcTimeStepMax                         1 Compute dt at least after every Nth timestep.  
-                                            
+
+TimeDiscMethod              CarpenterRK4-5 Specifies the type of time-discretization to be
+                                           used, e.g. the name of a specific Runge-Kutta
+                                           scheme. Possible values:
+                                             * standardrk3-3
+                                             * carpenterrk4-5
+                                             * niegemannrk4-14
+                                             * toulorgerk4-8c
+                                             * toulorgerk3-7c
+                                             * toulorgerk4-8f
+                                             * ketchesonrk4-20
+                                             * ketchesonrk4-18
+
+TEnd                                       End time of the simulation (mandatory).
+
+CFLScale                                   Scaling factor for the theoretical CFL number,
+                                           typical range 0.1..1.0 (mandatory)
+
+DFLScale                                   Scaling factor for the theoretical DFL number,
+                                           typical range 0.1..1.0 (mandatory)
+
+maxIter                                 -1 Stop simulation when specified number of timesteps
+                                           has been performed.
+
+NCalcTimeStepMax                         1 Compute dt at least after every Nth timestep.
+
 ---------------------------------------------------------------------------------------------
- 
+
 ---------------------------------------------------------------------------------------------
 **Analyze**
 ----------------------- ------------------ --------------------------------------------------
 **Variable**            **Default**        **Description**
-                                                                                
-CalcErrorNorms                           T Set true to compute L2 and LInf error norms at  
-                                           analyze step.  
-                                            
-AnalyzeToFile                            F Set true to output result of error norms to a file  
-                                           (CalcErrorNorms=T)  
-                                            
-Analyze_dt                             0.0 Specifies time intervall at which analysis  
-                                           routines are called.  
-                                            
-nWriteData                               1 Intervall as multiple of Analyze_dt at which HDF5  
-                                           files (e.g. State,TimeAvg,Fluc) are written.  
-                                            
-NAnalyze                                   Polynomial degree at which analysis is performed  
-                                           (e.g. for L2 errors). Default: 2*N.  
-                                            
-AnalyzeExactFunc                           Define exact function used for analyze (e.g. for  
-                                           computing L2 errors). Default: Same as  
-                                           IniExactFunc  
-                                            
-AnalyzeRefState                            Define state used for analyze (e.g. for computing  
-                                           L2 errors). Default: Same as IniRefState  
-                                            
-doMeasureFlops                           T Set true to measure flop count, if compiled with  
-                                           PAPI.  
-                                            
+
+CalcErrorNorms                           T Set true to compute L2 and LInf error norms at
+                                           analyze step.
+
+AnalyzeToFile                            F Set true to output result of error norms to a file
+                                           (CalcErrorNorms=T)
+
+Analyze_dt                             0.0 Specifies time intervall at which analysis
+                                           routines are called.
+
+nWriteData                               1 Intervall as multiple of Analyze_dt at which HDF5
+                                           files (e.g. State,TimeAvg,Fluc) are written.
+
+NAnalyze                                   Polynomial degree at which analysis is performed
+                                           (e.g. for L2 errors). Default: 2*N.
+
+AnalyzeExactFunc                           Define exact function used for analyze (e.g. for
+                                           computing L2 errors). Default: Same as
+                                           IniExactFunc
+
+AnalyzeRefState                            Define state used for analyze (e.g. for computing
+                                           L2 errors). Default: Same as IniRefState
+
+doMeasureFlops                           T Set true to measure flop count, if compiled with
+                                           PAPI.
+
 ---------------------------------------------------------------------------------------------
- 
+
 ---------------------------------------------------------------------------------------------
 **AnalyzeEquation**
 ----------------------- ------------------ --------------------------------------------------
 **Variable**            **Default**        **Description**
-                                                                                
-CalcBodyForces                           F Set true to compute body forces at walls  
-                                            
-CalcBulkState                            F Set true to compute the flows bulk quantities  
-                                            
-CalcMeanFlux                             F Set true to compute mean flux through boundaries  
-                                            
-CalcWallVelocity                         F Set true to compute velocities at wall boundaries  
-                                            
-CalcTotalStates                          F Set true to compute total states (e.g. Tt,pt)  
-                                            
-CalcTimeAverage                          F Set true to compute time averages  
-                                            
-WriteBodyForces                          T Set true to write bodyforces to file  
-                                            
-WriteBulkState                           T Set true to write bulk state to file  
-                                            
-WriteMeanFlux                            T Set true to write mean flux to file  
-                                            
-WriteWallVelocity                        T Set true to write wall velolcities file  
-                                            
-WriteTotalStates                         T Set true to write total states to file  
-                                            
-VarNameAvg                                 Names of variables to be time-averaged  
-                                            
-VarNameFluc                                Names of variables for which Flucs (time-averaged  
-                                           square of the variable) should be computed.  
-                                           Required for computing actual fluctuations.  
-                                            
+
+CalcBodyForces                           F Set true to compute body forces at walls
+
+CalcBulkState                            F Set true to compute the flows bulk quantities
+
+CalcMeanFlux                             F Set true to compute mean flux through boundaries
+
+CalcWallVelocity                         F Set true to compute velocities at wall boundaries
+
+CalcTotalStates                          F Set true to compute total states (e.g. Tt,pt)
+
+CalcTimeAverage                          F Set true to compute time averages
+
+WriteBodyForces                          T Set true to write bodyforces to file
+
+WriteBulkState                           T Set true to write bulk state to file
+
+WriteMeanFlux                            T Set true to write mean flux to file
+
+WriteWallVelocity                        T Set true to write wall velolcities file
+
+WriteTotalStates                         T Set true to write total states to file
+
+VarNameAvg                                 Names of variables to be time-averaged
+
+VarNameFluc                                Names of variables for which Flucs (time-averaged
+                                           square of the variable) should be computed.
+                                           Required for computing actual fluctuations.
+
 ---------------------------------------------------------------------------------------------
- 
+
 ---------------------------------------------------------------------------------------------
 **RecordPoints**
 ----------------------- ------------------ --------------------------------------------------
 **Variable**            **Default**        **Description**
-                                                                                
-RP_inUse                                 F Set true to compute solution history at points  
-                                           defined in recordpoints file.  
-                                            
-RP_DefFile                                 File containing element-local parametric  
-                                           recordpoint coordinates and structure.  
-                                            
-RP_MaxMemory                           100 Maximum memory in MiB to be used for storing  
-                                           recordpoint state history. If memory is exceeded  
-                                           before regular IO level states are written to  
-                                           file.  
-                                            
-RP_SamplingOffset                        1 Multiple of timestep at which recordpoints are  
-                                           evaluated.  
+
+RP_inUse                                 F Set true to compute solution history at points
+                                           defined in recordpoints file.
+
+RP_DefFile                                 File containing element-local parametric
+                                           recordpoint coordinates and structure.
+
+RP_MaxMemory                           100 Maximum memory in MiB to be used for storing
+                                           recordpoint state history. If memory is exceeded
+                                           before regular IO level states are written to
+                                           file.
+
+RP_SamplingOffset                        1 Multiple of timestep at which recordpoints are
+                                           evaluated.
 
 ---------------------------------------------------------------------------------------------

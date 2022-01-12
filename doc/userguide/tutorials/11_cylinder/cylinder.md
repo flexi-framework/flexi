@@ -5,7 +5,7 @@ $Ma=0.2$ is considered. The goal of this tutorial is to introduce the usage of a
 functionality of the **posti_visualizerecordpoints** tool and the new tool **posti_dmd**.
 
 ### Compiler options
-        
+
 Make sure that **FLEXI** is compiled with the CMake options listed in the following table.
 
 
@@ -21,7 +21,7 @@ Make sure that **FLEXI** is compiled with the CMake options listed in the follow
 
 Table: Cmake options for the cylinder simulation. \label{tab:cylinder_cmakeoptions}
 
-To check whether they are set, change to your ``build`` folder and open the CMake GUI 
+To check whether they are set, change to your ``build`` folder and open the CMake GUI
 
 ~~~~~~~~~~~
 ccmake [flexi root directory]
@@ -42,12 +42,12 @@ The mesh file used by **FLEXI** is created by **HOPR**
 
     ./hopr parameter_hopr.ini
 
-This creates the mesh file *Cylinder_Re200_mesh.h5* in HDF5 format. If **HOPR** is not available, the mesh file is supplied in this tutorial. 
+This creates the mesh file *Cylinder_Re200_mesh.h5* in HDF5 format. If **HOPR** is not available, the mesh file is supplied in this tutorial.
 
 
 ### Flow Simulation with FLEXI
 
-The simulation setup is defined in ``parameter_flexi.ini``. The initial condition is selected via the variable vector ``RefState=(/1.,1.0,0.,0.,17.857/)`` which represents the vector of primitive solution variables $(\rho, u, v, w, p)^T$. 
+The simulation setup is defined in ``parameter_flexi.ini``. The initial condition is selected via the variable vector ``RefState=(/1.,1.0,0.,0.,17.857/)`` which represents the vector of primitive solution variables $(\rho, u, v, w, p)^T$.
 
 
 Material properties are given in table \ref{tab:cylinder_materialproperties}. Based on the ideal gas law, we get
@@ -72,7 +72,7 @@ Table: Material properties set in the parameter file \label{tab:cylinder_materia
 
 The DG solution on the mesh is represented by piecewise polynomials and the polynomial degree in this tutorial is chosen as $N=4$.
 
-The main code settings are shown in table \ref{tab:cylinder_num_set}. 
+The main code settings are shown in table \ref{tab:cylinder_num_set}.
 
 
 | Variable        | Description                            | Value         |
@@ -89,7 +89,7 @@ Table: Numerical settings \label{tab:cylinder_num_set}
 
 ### Boundary conditions
 
-The boundary conditions were already set in the mesh file by **HOPR**. Thus, the simulation runs without specifying the boundary conditions in the **FLEXI** parameter file. The freestream boundaries of the mesh are Dirichlet boundaries using the same state as the initialization, the wall is modeled as an adiabatic wall. The boundary conditions in $z$ direction are not relevant for this 2D example, but would be realized as periodic boundaries for a 3D simulation. All boundary conditions used are listed below.  
+The boundary conditions were already set in the mesh file by **HOPR**. Thus, the simulation runs without specifying the boundary conditions in the **FLEXI** parameter file. The freestream boundaries of the mesh are Dirichlet boundaries using the same state as the initialization, the wall is modeled as an adiabatic wall. The boundary conditions in $z$ direction are not relevant for this 2D example, but would be realized as periodic boundaries for a 3D simulation. All boundary conditions used are listed below.
 
 ~~~~~~~
          Name      Type     State     Alpha
@@ -98,7 +98,7 @@ The boundary conditions were already set in the mesh file by **HOPR**. Thus, the
 ~~~~~~~
 
 
-### Running the code 
+### Running the code
 We proceed by running the code in parallel. For example, using 4 processors, use the following command
 
 ~~~~~~~
@@ -117,10 +117,10 @@ CalcBodyForces=T
 WriteBodyForces=T
 ~~~~~~~~~~~~
 
-The first line activates the calculation of the forces at each ``Analyze_dt``, the second line enforces output of the forces to a file.  In figure \ref{fig:cylinder_bodyforce} the force in y-direction is plotted. By measuring the time from peak to peak over several periods the Strouhal number can be estimated to $0.1959$ which is close to the expected value from literature. 
+The first line activates the calculation of the forces at each ``Analyze_dt``, the second line enforces output of the forces to a file.  In figure \ref{fig:cylinder_bodyforce} the force in y-direction is plotted. By measuring the time from peak to peak over several periods the Strouhal number can be estimated to $0.1959$ which is close to the expected value from literature.
 
 
-![Resulting forces on the airfoil up to $t=10$.\label{fig:cylinder_bodyforce}](tutorials/11_cylinder/cylinder_fy.png) 
+![Resulting forces on the airfoil up to $t=10$.\label{fig:cylinder_bodyforce}](tutorials/11_cylinder/cylinder_fy.png)
 
 
 ### Evaluation of the separation angle
@@ -176,10 +176,10 @@ posti_dmd parameter_dmd.ini Cylinder_Re200_State_00003*
 ~~~~~~~
 
 Depending on the available memory you might have to decrease the number of input
-state files. 
+state files.
 After execution you will see two additional files **Cylinder_Re200_DMD_0000300.000000000.h5** and **Cylinder_Re200_DMD_Spec_0000300.000000000.dat**.
 The first file contains the field representation of the different modes and the
-second file contains the ritz spectrum of the modes. 
+second file contains the ritz spectrum of the modes.
 
 To visualize the field run the following command:
 

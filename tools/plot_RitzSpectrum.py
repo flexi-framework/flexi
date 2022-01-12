@@ -17,7 +17,7 @@ args = parser.parse_args()
 # -------------------------------------------------------------------------------------
 # Data ReadIn
 # -------------------------------------------------------------------------------------
-dmdFile = open(args.dmdFile, "r") 
+dmdFile = open(args.dmdFile, "r")
 dmdData = dmdFile.readlines()
 values = []
 for line in dmdData[12:]:
@@ -30,7 +30,7 @@ sigmaDMD  = [[float(i[4]) for i in values],[float(i[5]) for i in values]]
 
 amplog = [np.log10(np.sqrt(alphaDMD[0][i]*alphaDMD[0][i]+alphaDMD[1][i]*alphaDMD[1][i])) for i in range(len(alphaDMD[0]))]
 maxA=max(amplog[2:])
-minA=maxA-3               
+minA=maxA-3
 for i in range(len(amplog)):
     amplog[i]=max(0.,min(1.,(amplog[i]-minA)/(maxA-minA)))
 
@@ -95,9 +95,9 @@ def computeNRoomFreqs(n,c,geo):
             for k in range(n):
                 freqtmp=c/2.*np.sqrt((i/geo.x)**2.+((j+1)/(2*geo.y))**2.+(k/geo.z)**2.)
                 freq.append([freqtmp,i,j+1,k])
-    
+
     freq=sorted(freq, key=lambda x : x[0])
-    
+
     return freq
 
 # # def computeNRossiterModes(n,c,geo):

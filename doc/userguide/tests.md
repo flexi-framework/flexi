@@ -3,7 +3,7 @@
 [one with a title](http://fsf.org "click here for a good time!"). Unclear how to enforce new window.
 
 ## Code environment
-Either use fenced style (tildes) 
+Either use fenced style (tildes)
 
 ~~~~~~~
 if (a > 3) {
@@ -39,7 +39,7 @@ See figure \ref{mylabel}.
 
 ## tables
 ## unnumbered section headings
-  just add 
+  just add
 
     {-}
 

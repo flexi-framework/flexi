@@ -8,7 +8,7 @@ MODULE MOD_EquationDMD
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTERFACE InitEquationDMD
   MODULE PROCEDURE InitEquationDMD
@@ -82,7 +82,7 @@ END SUBROUTINE InitEquationDMD
 
 
 !===================================================================================================================================
-!> This routine computes the state on the visualization grid 
+!> This routine computes the state on the visualization grid
 !===================================================================================================================================
 SUBROUTINE CalcEquationDMD(DMDData,DMDData_out)
 ! MODULES
@@ -170,7 +170,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
-DEALLOCATE(TransMap,is2D) 
+DEALLOCATE(TransMap,is2D)
 WRITE(UNIT_stdOut,'(A)') '  EquationDMD FINALIZED'
 END SUBROUTINE FinalizeEquationDMD
 
@@ -181,7 +181,7 @@ END MODULE MOD_EquationDMD
 !> and visualization variables.
 !>  1. Read 'VarName' options from the parameter file. This are the quantities that will be visualized.
 !>  2. Initialize the dependecy table
-!>  3. check wether gradients are needed for any quantity. If this is the case, remove the conservative quantities from the 
+!>  3. check wether gradients are needed for any quantity. If this is the case, remove the conservative quantities from the
 !>     dependecies of the primitive quantities (the primitive quantities are available directly, since the DGTimeDerivative_weakForm
 !>     will be executed.
 !>  4. build the 'mapCalc' that holds for each quantity that will be calculated the index in 'UCalc' array (0 if not calculated)

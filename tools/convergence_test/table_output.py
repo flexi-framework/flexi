@@ -22,6 +22,6 @@ def print_header(columns) :
 
 def print_values(columns, formats) :
     for col,form in zip(columns,formats) :
-        sys.stdout.write(form % col) 
+        sys.stdout.write(form % col)
         sys.stdout.write("║")
     sys.stdout.write('\n')

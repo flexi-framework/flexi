@@ -1,19 +1,19 @@
 ## Double Mach Reflection
 \label{sec:tut_dmr}
 
-The Double Mach Reflection is a classical test case to investigate the abilities of a numerical scheme to represent shock and contact discontinuities. 
+The Double Mach Reflection is a classical test case to investigate the abilities of a numerical scheme to represent shock and contact discontinuities.
 It was invented by Woodward and Colella [@Woodward1984].
 A Mach 10 oblique shock wave hits a reflecting wall and the initial conditions are given by the Rankine-Hugoniot conditions
 \begin{equation}
-(\rho, v_1, v_2, p) =\\ \begin{cases} 
+(\rho, v_1, v_2, p) =\\ \begin{cases}
    \left(8.0, 8.25\cdot cos(30^\circ), -8.25 \cdot sin(30^\circ), 116.5 \right) & x < x_0 + \sqrt{\frac{1}{3}} y \\
-   \left(1.4, 0.0, 0.0, 1.0\right) & x \ge x_0 + \sqrt{\frac{1}{3}} y 
+   \left(1.4, 0.0, 0.0, 1.0\right) & x \ge x_0 + \sqrt{\frac{1}{3}} y
 \end{cases},
 \end{equation}
 where $x_0= \frac{1}{6}$ is the start of the wall and the computational domain is $\Omega = [0,4] \times [0,1]$, which is discretized by an equidistant cartesian mesh.
 
 
-Copy the ``dmr`` tutorial folder 
+Copy the ``dmr`` tutorial folder
 
         cp -r $FLEXI_TUTORIALS/dmr .
 
@@ -29,7 +29,7 @@ This creates the mesh file *DMR_mesh.h5* in HDF5 format.
 \label{sec:tut_dmr_simulation}
 
 This example requires the Finite Volume shock capturing. Therefore turn the option ``FLEXI_FV`` in the cmake configuration on. Additionally you should switch ``FLEXI_PARABOLIC`` off and recompile the **FLEXI** code.
-The simulation setup is defined in *parameter_flexi.ini* and includes options for the Finite Volume shock capturing.  
+The simulation setup is defined in *parameter_flexi.ini* and includes options for the Finite Volume shock capturing.
 
 
 | Option                        | Value       | Description                                                  |
@@ -55,17 +55,17 @@ Explanation of the Finite Volume specific options (read also the explanations fo
 The command
 
 ~~~~~~~
-flexi parameter_flexi.ini 
+flexi parameter_flexi.ini
 ~~~~~~~
 
 runs the code and generates 11 state files **dmr_State_TIMESTAMP.h5** for $t=0.0, 0.02, \ldots, 0.20$.
-To visualize the solution, the *State*-files must be converted into a format suitable for **ParaView**. Execute the command 
+To visualize the solution, the *State*-files must be converted into a format suitable for **ParaView**. Execute the command
 
 ~~~~~~~
 posti_visu parameter_postiVisu.ini parameter_flexi.ini dmr_State_0000000.0*
 ~~~~~~~
-to generate the corresponding *vtu*- and *vtm*-files, which can then be loaded into **ParaView**. 
-There are two types of *vtu*-files, which contain either the DG or the FV part of the solution. 
+to generate the corresponding *vtu*- and *vtm*-files, which can then be loaded into **ParaView**.
+There are two types of *vtu*-files, which contain either the DG or the FV part of the solution.
 The *vtm*-files combine the DG and FV *vtu*-file of every timestamp. Load the *vtm*-files into **ParaView**.
 
 The result at $t=0.2$ should look like in figure \ref{fig:dmr_result}.

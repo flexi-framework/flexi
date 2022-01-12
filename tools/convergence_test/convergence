@@ -32,7 +32,7 @@ parser.add_argument('prm',   help='path to parameter file')
 args = parser.parse_args()
 
 if not os.path.exists(args.prm) :
-    print "parameter-file '%s' not found" % args.prm 
+    print "parameter-file '%s' not found" % args.prm
     sys.exit(1)
 
 
@@ -78,7 +78,7 @@ for N in range(1,args.Nmax+1) :
         exit(1)
     end_time = time.time()
 
-    if i == 1: 
+    if i == 1:
         # output header of output-table
         print_header([' N '] + len(L2)*['L2 err   EOC     '] + len(Linf)*['Linf err  EOC    '])
 
@@ -112,7 +112,7 @@ for N in range(1,args.Nmax+1) :
             vals.append(convLinf[j])
         print_values(vals, ["%3d"] + (len(L2)+len(Linf)) * ["%8.2e","%8.4f"])
         csvwriter.writerow([N]+L2+Linf)
-    
+
     x_array.append(i)
     L2_array.append(L2[1]) # x- Momentum
 
@@ -144,5 +144,5 @@ if args.gnuplot :
         g.plot(gnuplot_data,'exact(x)')
     except ImportError:
         print "No 'python-gnuplot' package found!"
- 
+
 shutil.rmtree(tmp_dir)

@@ -63,7 +63,7 @@
                </RequiredProperties>
             </StringListDomain>
             <Documentation>
-               User-defined NodeType at which to visualize. 
+               User-defined NodeType at which to visualize.
             </Documentation>
          </StringVectorProperty>
 #if PP_dim == 3
@@ -79,7 +79,7 @@
            Average solution in z-direction.
            </Documentation>
          </IntVectorProperty>
-#endif         
+#endif
          <IntVectorProperty command="SetDGonly"
            default_values="0"
            animateable="0"

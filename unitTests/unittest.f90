@@ -23,7 +23,7 @@ PUBLIC::GenerateUnittestReferenceData,ReadInReferenceElementData
 CONTAINS
 
 !==================================================================================================================================
-!> Writes several arrays to a binary file, that are used for the unittest. Therewith the unittest do not have to compute 
+!> Writes several arrays to a binary file, that are used for the unittest. Therewith the unittest do not have to compute
 !> geometrical quantities, index arrays, ...
 !==================================================================================================================================
 SUBROUTINE GenerateUnittestReferenceData()
@@ -33,7 +33,7 @@ USE MOD_Interpolation_Vars
 USE MOD_DG_Vars
 !----------------------------------------------------------------------------------------------------------------------------------
 ! Local Variables
-CHARACTER(LEN=255)             :: Filename 
+CHARACTER(LEN=255)             :: Filename
 !==================================================================================================================================
 #if FV_ENABLED == 0
 WRITE(*,*) 'To generate reference data for the unit tests, please compile FLEXI with FV activated.'
@@ -63,7 +63,7 @@ USE MOD_Interpolation_Vars,    ONLY: L_Minus,L_Plus
 USE MOD_DG_Vars,               ONLY: L_HatPlus,L_HatMinus
 !----------------------------------------------------------------------------------------------------------------------------------
 ! Local Variables
-CHARACTER(LEN=255)             :: Filename 
+CHARACTER(LEN=255)             :: Filename
 INTEGER                        :: Flip_lower,Flip_upper,locSide_lower,locSide_upper
 !==================================================================================================================================
 ! Dimensions for mappings

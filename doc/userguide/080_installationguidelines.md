@@ -14,17 +14,17 @@ The following instructions to access the GitHub repositories on HLRS machines is
 
 Unfortunately, just using a SSH tunnel as with the SSH and git protocols is not sufficient in this case. Instead, one has to connect via an additional SOCKS proxy on a machine that has unlimited access to the internet, e.g. your local machine.
 
-In order to do so, establish a proxy by using a special feature of OpenSSH: 
+In order to do so, establish a proxy by using a special feature of OpenSSH:
 
        ssh -N -D 1080 localhost
 
 This will establish some kind of a "loopback" SSH connection from your local machine to itself which will not execute any command (-N) but act as an SOCKS proxy on port 1080 (-D 1080).
 
-On a second shell, now login to the desired HWW-system and forward a port on the remote machine (e.g. 7777) to the port on your local machine where the newly established SOCKS proxy is listening on (1080): 
+On a second shell, now login to the desired HWW-system and forward a port on the remote machine (e.g. 7777) to the port on your local machine where the newly established SOCKS proxy is listening on (1080):
 
        ssh -R 7777:localhost:1080 <system-name>.hww.de
 
-By doing so, you have a SOCKS proxy listening on port 7777 of the HWW-system. Hence you can use this proxy for accessing remote git repositories. Unfortunately, the default versions of git installed on the HWW-systems are not capable of doing this. You hence have to load an appropriate version first: 
+By doing so, you have a SOCKS proxy listening on port 7777 of the HWW-system. Hence you can use this proxy for accessing remote git repositories. Unfortunately, the default versions of git installed on the HWW-systems are not capable of doing this. You hence have to load an appropriate version first:
 
        module load tools/git
 

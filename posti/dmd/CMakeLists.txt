@@ -5,7 +5,7 @@ SET(TOOL_NAME "dmd")
 SET(TOOL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/posti/dmd")
 
 MESSAGE(STATUS "Posti: building ${TOOL_NAME} tool.")
-INCLUDE_DIRECTORIES( ${TOOL_DIR}) 
+INCLUDE_DIRECTORIES( ${TOOL_DIR})
 
 FILE(GLOB ${TOOL_NAME}F90 ${TOOL_DIR}/dmd.f90
                           ${TOOL_DIR}/dmd_vars.f90

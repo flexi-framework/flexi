@@ -64,7 +64,7 @@ IF (doGenerateReference) THEN
 ELSE
   ! Check if binary results file exists
   INQUIRE(FILE=TRIM(BinaryString),EXIST=binaryExists)
-  
+
   IF (binaryExists) THEN
     ! Read the reference solution
     OPEN(UNIT = 10, STATUS='old',FILE=TRIM(BinaryString),FORM='unformatted')  ! open an existing file

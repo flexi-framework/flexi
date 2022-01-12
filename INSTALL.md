@@ -7,7 +7,7 @@ Flexi has been tested for various Linux distributions. This includes Ubuntu 14.0
 The required packages for the Ubuntu Linux distributions are listed in the tables below. Under Ubuntu, they can be obtained using the apt environment:
 
     sudo apt-get install git
-    
+
 
 | Package          | Ubuntu 14.04    | Ubuntu 16.04    |
 |:----------------:|:---------------:|:---------------:|
@@ -26,12 +26,12 @@ Table: Required debian packages under Ubuntu.
 
 Under OpenSUSE, packages are installed by the following comand.
 
-    sudo zypper install git   
+    sudo zypper install git
 
 The `PATH` variable must be extended by the openmpi path
 
     export PATH=$PATH:/usr/lib64/mpi/gcc/openmpi/bin
-    
+
 Under CentOS, packages are installed by the following comand.
 
     sudo yum install git
@@ -40,7 +40,7 @@ Additionally, the `PATH` variable must be extended by the openmpi path
 
     export PATH=$PATH:/usr/lib64/openmpi/bin
 
-| Package          | OpenSUSE 13.2 | CentOS 7 | 
+| Package          | OpenSUSE 13.2 | CentOS 7 |
 |:----------------:|:-------------:|:--------:|
 | git              |      x        |    x     |
 | cmake            |      x        |    x     |
@@ -73,7 +73,7 @@ Custom configuration of compiler options may be done using
 ## Running the code
 
 * Open a terminal
-* Navigate to a directory and copy a case folder 
+* Navigate to a directory and copy a case folder
 
         cd temp
 

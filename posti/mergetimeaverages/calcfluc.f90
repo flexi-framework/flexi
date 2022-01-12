@@ -7,9 +7,9 @@
 !> We can then make usage of the following equality to calculate fluctuations (=mean of the square of the fluctuations):
 !> _____   _____________   _____   ______   ____         ___
 !> (U*U) = (u+u')*(u+u') = (u*u) + 2*u*u' + u'u' = u*u + u'u'                                                      ___       _
-!> where we split the total value of a variable U in the mean u and the fluctuating part u'. Thus, with the stored U*U and u=U we 
+!> where we split the total value of a variable U in the mean u and the fluctuating part u'. Thus, with the stored U*U and u=U we
 !> then calculate the fluctuations in here as:
-!> ____   ___  
+!> ____   ___
 !> u'u' = U*U - u*u
 !===================================================================================================================================
 PROGRAM CalcFluc
@@ -234,7 +234,7 @@ CONTAINS
 
 
 !===================================================================================================================================
-!> Read in the mean and mean square data sets from the TimeAvg file 
+!> Read in the mean and mean square data sets from the TimeAvg file
 !===================================================================================================================================
 SUBROUTINE Readin()
 IMPLICIT NONE

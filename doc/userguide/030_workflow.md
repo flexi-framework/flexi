@@ -17,7 +17,7 @@ Provided the mesh file has been set up, its location must be specified in the pa
 
     MeshFile=[path to mesh file.h5]
 
-    
+
 ## Solver settings
 
 Before setting up a simulation, the code must be compiled with the desired parameters. The most important compiler options to be set are
@@ -31,29 +31,29 @@ All other options are set in the parameter file. The most important steps are
 
     Defines the polynomial degree of the solution. The order of convergence follows as $N+1$. Each grid cell contains $(N+1)^3$ collocation points to represent the solution.
 * **Choose a de-aliasing approach.**
-    
-    For under-resolved Navier-Stokes simulations, e.g. in an LES setting, de-aliasing is important for numerical stability. Various choices are available and set using ``OverintegrationType``. 
-    
+
+    For under-resolved Navier-Stokes simulations, e.g. in an LES setting, de-aliasing is important for numerical stability. Various choices are available and set using ``OverintegrationType``.
+
     * ``OverintegrationType=1``
-    
+
          The first option is a filtering strategy. The complete operator is first evaluated at ``N`` ($U_t^{N}$) and then filtered to a lower effective degree ``NUnder`` ($U_t^{Nunder}$).
-    
+
          To use this variant, specify ``Nunder`` to a value smaller than ``N``.
-        
+
     * ``OverintegrationType=2``
-    
+
          In this variant of the first option, the operator in reference space, e.g. $JU_t$, is first projected to the ``NUnder`` node set before converting it to physical space $U^{Nunder}_t=JU^{Nunder}_t/J^{Nunder}$. This implementation enforces conservation.
-    
+
          To use this variant, specify ``Nunder`` to a value smaller than ``N``.
 
     An alternative approach to guaranteeing non-linear stability is to use split form DG methods. This needs to be specified during compile time using the ``FLEXI_SPLIT_DG`` option, and the specific split flux
     formulation must be set using the parameter ``SplitDG``.
-        
+
 * **Choose a Riemann solver**
 
-    The Riemann solver defines how inter-element coupling is accomplished. The available variants are listed in Section \ref{sec:parameterfile}. Use the ``Riemann`` and the ``RiemannBC`` options to specify which Riemann solver is to be used at internal interfaces and at Dirichlet boundary conditions, respectively. The default Riemann solver is "Roe with entropy fix". 
+    The Riemann solver defines how inter-element coupling is accomplished. The available variants are listed in Section \ref{sec:parameterfile}. Use the ``Riemann`` and the ``RiemannBC`` options to specify which Riemann solver is to be used at internal interfaces and at Dirichlet boundary conditions, respectively. The default Riemann solver is "Roe with entropy fix".
 
-* **Choose a time discretization method** 
+* **Choose a time discretization method**
 
     The time discretization method is set using the option ``TimeDiscMethod``. Various explicit Runge-Kutta variants are available and listed in Section \ref{sec:parameterfile}. By default, the low-storage fourth order Runge-Kutta scheme by [@Carpenter1994] is employed.
 
@@ -68,7 +68,7 @@ The ``RefState`` basically specifies a state vector in primitive form $(\rho,u,v
     RefState=(/1,0.3,0,0,0.71428571/)
 
 In this example, the first state would result in a parallel flow in $x$ direction at $Ma=1$, the second state at $Ma=0.3$.
-    
+
 
 
 ### Initial conditions
@@ -81,7 +81,7 @@ The associated state vector to be used is determined by
 
     IniRefState=1
 
-This implies that the first of the two available ``RefState``s is used for initialization. 
+This implies that the first of the two available ``RefState``s is used for initialization.
 
 Note: currently, the ExactFunctions contained in the code are not documented yet. They can be looked up in the source file ``src/equations/navierstokes/equation.f90``.
 
@@ -108,11 +108,11 @@ Suppose, we wish to apply a Dirichlet boundary condition with ``RefState`` 2 at 
     BoundaryType=(/2,2/)
     BoundaryName=BC_periodicy+
     BoundaryType=(/2,2/)
-    
+
 Note that the first index within brackets specifies ``BC_TYPE``, while the second one specifies ``BC_STATE``, in this case the number of the ``RefState`` to be used. In general, ``BC_STATE`` identifies either a ``RefState``, an ``ExactFunction`` or remains empty, dependent on the ``BC_TYPE``. Currently implemented boundary types for *Navier-Stokes* are listed in table \ref{tab:boundaryconditions}.
 
 
- Boundary Condition |BC_TYPE          |BC_STATE           |Comment                   
+ Boundary Condition |BC_TYPE          |BC_STATE           |Comment
 |:-----------------:|:---------------:|:-----------------:|:-------------------------------|
 |  Periodic BC      |  1              |       -           | Can only be defined in HOPR    |
 |  Weak Dirichlet   |  2              | ``RefState``      |                                |
@@ -141,7 +141,7 @@ At present, the only available equation of state in the *Navier-Stokes* solver o
 
 ## Output time interval
 
-Set the end time of the simulation using ``TEnd`` and the interval in which the solution is dumped to the hard drive with ``Analyze_dt``. 
+Set the end time of the simulation using ``TEnd`` and the interval in which the solution is dumped to the hard drive with ``Analyze_dt``.
 
 Note that evaluation of body forces and other runtime analysis routines are also invoked once in every analyze interval determined by ``Analyze_dt``. Set e.g. ``nWriteData=10`` to a value greater one to restrict the solution output to every 10th ``Analyze_dt``.
 
@@ -150,7 +150,7 @@ Note that evaluation of body forces and other runtime analysis routines are also
 The simulation may be restarted from an existing state file
 
     flexi parameter.ini [restart_file.h5]
-    
+
 **Note: when restarting from an earlier time (or zero), all later state files possibly contained in your directory are deleted!**
 
 ## Evaluation during runtime
@@ -171,7 +171,7 @@ The simulation code is specifically designed for (massively) parallel execution 
 Parallel execution is then controlled using `mpirun`
 
     mpirun -np [no. processors] flexi parameter.ini
-    
+
 ### Domain decomposition
 
 The grid elements are organized along a space-filling curved, which gives a unique one-dimensional element list. In a parallel run, the mesh is simply divided into parts along the space filling curve. Thus, domain decomposition is done *fully automatic* and is not limited by e.g. an integer factor between the number of cores and elements. The only limitation is that the number of cores may not exceed the number of elements.
@@ -195,7 +195,7 @@ and the polynomial degree $N$. Load values for optimal performance lie in the ra
 
 ## Test case environment \label{sec:testcases}
 
-The test case environment can be used as to add test case-specific code for e.g. custom source terms or diagnostics to be invoked during runtime. 
+The test case environment can be used as to add test case-specific code for e.g. custom source terms or diagnostics to be invoked during runtime.
 
 The compiler option `FLEXI_TESTCASE` sets the current test case. The test cases are contained in the *src/testcase/* folder.
 
@@ -216,11 +216,11 @@ Standardized interfaces are defined for initialization, source terms and analysi
 * **CalcForcing**
 
     Impose test case specific source terms, e.g. the pressure gradient in test case `channel`.
- 
+
 * **AnalyzeTestCase**
 
     Perform test case specific diagnostics.
-    
+
 Currently supplied test cases are
 
 * **default**
@@ -249,13 +249,13 @@ Multiple HDF5 files can be passed to the posti_visu tool at once.
 The runtime parameters to be set in `parameter_postiVisu.ini` are
 
 -------------   ---- --------------------------------------------------
-NodeTypeVisu    VISU Node type of the visualization basis:  
-                     VISU,GAUSS,GAUSS-LOBATTO,CHEBYSHEV-GAUSS-LOBATTO  
-                      
-NVisu                Polynomial degree at which solution is sampled for  
-                     visualization.  
-                      
-VarName              Names of variables, which should be visualized. 
+NodeTypeVisu    VISU Node type of the visualization basis:
+                     VISU,GAUSS,GAUSS-LOBATTO,CHEBYSHEV-GAUSS-LOBATTO
+
+NVisu                Polynomial degree at which solution is sampled for
+                     visualization.
+
+VarName              Names of variables, which should be visualized.
 -------------   ---- --------------------------------------------------
 
 Table: Runtime parameters for the posti_visu tool.

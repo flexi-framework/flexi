@@ -113,7 +113,7 @@ Further info / usage example       No tutorials so far
 ---------------------------------------------------------------------------------------------
 **posti_channel_fft**
 --------------------------------- ------------------------------------------------------------
-Brief description                  Calculates the mean velocity and Reynolds stress profiles of the turbulent channel flow test case by averaging both in the direction parallel to the wall and by averaging the upper and lower half of the channel. Furthermore, kinetic energy spectra dependent on the distance to the wall are computed.  
+Brief description                  Calculates the mean velocity and Reynolds stress profiles of the turbulent channel flow test case by averaging both in the direction parallel to the wall and by averaging the upper and lower half of the channel. Furthermore, kinetic energy spectra dependent on the distance to the wall are computed.
 
 Basic usage                        `posti_channel_fft [parameter_channelfft.ini] [statefile1.h5 statefile2.h5 ...]`
 

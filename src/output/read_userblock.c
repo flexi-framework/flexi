@@ -4,7 +4,7 @@ extern char userblock_start;
 extern char userblock_end;
 extern char userblock_size;
 
-long get_userblock_size_(void) 
+long get_userblock_size_(void)
 {
    //return (unsigned long)(&userblock_size);
    // Fixes mysterious bug occurring on some systems potentially due to the new GCC 7.3
@@ -14,7 +14,7 @@ long get_userblock_size_(void)
 }
 
 
-void insert_userblock(char* filename, char* inifilename) 
+void insert_userblock(char* filename, char* inifilename)
 {
    FILE* fp = fopen(filename, "w");
    rewind(fp);

@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -40,7 +40,7 @@ PUBLIC::Jac_FD
 CONTAINS
 
 !===================================================================================================================================
-!> Computes the Finite Difference-Derivative dRdU for the Calculation of Preconditioner P 
+!> Computes the Finite Difference-Derivative dRdU for the Calculation of Preconditioner P
 !> Attention: dRdU = 0 (in precond.f90)
 !===================================================================================================================================
 SUBROUTINE Jac_FD(t,iElem,dRdU)
@@ -60,7 +60,7 @@ INTEGER,INTENT(IN)                 :: iElem    !< element counter
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)                   :: dRdU(1:nDOFVarElem,1:nDOFVarElem) !< Jacobian of the DG operator, computed using FD approach
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER                            :: iVar,r,s,ii,jj,kk,iiVar,i,j,k
 INTEGER                            :: iProc
 !===================================================================================================================================
@@ -85,7 +85,7 @@ iProc = 0
           END IF
           CALL DGTimeDerivative_WeakForm(t)
           IF (iProc.EQ.myRank) THEN
-            U(iVar,i,j,k,iElem) = Xk(iVar,i,j,k,iElem) 
+            U(iVar,i,j,k,iElem) = Xk(iVar,i,j,k,iElem)
           END IF
           IF (iProc.EQ.myRank) THEN
             r=1

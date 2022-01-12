@@ -63,12 +63,12 @@ set(MKL_LIBRARY ${LIB_MKL1} ${LIB_MKL2} ${LIB_MKL3}  ${LIB_MKL4})
 
 include(FindPackageHandleStandardArgs)
 
-find_package_handle_standard_args(MKL DEFAULT_MSG 
+find_package_handle_standard_args(MKL DEFAULT_MSG
     MKL_LIBRARY_DIR
     LIB_MKL1
     LIB_MKL2
     LIB_MKL3
     LIB_MKL4
     MKL_INCLUDE_DIR)
-    
+
 mark_as_advanced(LIB_MKL_RT LIB_PTHREAD LIB_IMF MKL_INCLUDE_DIR)

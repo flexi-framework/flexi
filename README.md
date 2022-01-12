@@ -5,7 +5,7 @@
 FLEXI is a high-order numerical framework for solving PDEs,
 with a focus on Computational Fluid Dynamics.
 FLEXI based on the Discontinuous Galerkin Spectral Element
-Method (DGSEM), which allows for high-order of accuracy 
+Method (DGSEM), which allows for high-order of accuracy
 and fully unstructured hexahedral meshes.
 The solver is parallelized very efficiently and scales up
 to hundreds of thousand cores.
@@ -24,14 +24,14 @@ For installation instruction see [install](INSTALL.md).
 
 See the full documentation including usage instructions and
 turorial for FLEXI [here][flexi].
- 
+
 In case you have question regarding FLEXI, want to report bugs
 or contribute to the project you can use the mailing list
 <flexi@listserv.uni-stuttgart.de>.
 You can also subscribe to the mailing list [here][list].
 
 ## License
-FLEXI is Copyright (C) 2016, Prof. Claus-Dieter Munz and is 
+FLEXI is Copyright (C) 2016, Prof. Claus-Dieter Munz and is
 released under the terms of the
 GNU General Public License v3.0. For the full license terms see
 the included license file [license](LICENSE.md).
