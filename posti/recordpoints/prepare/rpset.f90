@@ -74,6 +74,11 @@ CALL prms%CreateIntOption(      'Plane_GroupID'     ,"ID of a plane group, defin
                                                       & both directions, used to allocate the definition to a specific group",multiple=.TRUE.)
 CALL prms%CreateIntArrayOption( 'Plane_nRP'         ,"Number of points in the plane",multiple=.TRUE.)
 CALL prms%CreateRealArrayOption('Plane_CornerX'     ,"Coordinates of the 4 corner points (x1,y1,z1,x2,y2,z2,...)",multiple=.TRUE.)
+!Box
+CALL prms%CreateIntOption(      'Box_GroupID'       ,"ID of a box group, defined by the corner points and the number of points in&
+                                                      & both directions, used to allocate the definition to a specific group",multiple=.TRUE.)
+CALL prms%CreateIntArrayOption( 'Box_nRP'           ,"Number of points in the box",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('Box_CornerX'       ,"Coordinates of the 8 corner points (x1,y1,z1,x2,y2,z2,...)",multiple=.TRUE.)
 !Sphere
 CALL prms%CreateIntOption(      'Sphere_GroupID'    ,"ID of a spherical group, with points on the circumference, used to allocate&
                                                      & the definition to a specific group",multiple=.TRUE.)
@@ -93,6 +98,17 @@ CALL prms%CreateIntOption(      'BLPlane_nCP'       ,"Number of control points d
 CALL prms%CreateRealArrayOption('BLPlane_CP'        ,"Coordinates of the spline control points",multiple=.TRUE.)
 CALL prms%CreateRealOption(     'BLPlane_fac'       ,"Factor of geometrical stretching in wall-normal direction",multiple=.TRUE.)
 CALL prms%CreateRealOption(     'BLPlane_height'    ,"Wall-normal extend of the plane for each control point",multiple=.TRUE.)
+!Boundary Layer Box
+CALL prms%CreateIntOption(      'BLBox_GroupID'     ,"ID of a boundary layer group - works like a box group, but the box is&
+                                                     & created by projecting the points of a spline to the nearest boundary and&
+                                                     & extruding the box along the normal with a stretching factor&
+                                                     &, used to allocate the definition to a specific group",multiple=.TRUE.)
+CALL prms%CreateIntArrayOption( 'BLBox_nRP'         ,"Number of RPs along and normal to the boundary",multiple=.TRUE.)
+CALL prms%CreateIntOption(      'BLBox_nCP'         ,"Number of control points defining the spline (at least two)",multiple=.TRUE.)
+CALL prms%CreateIntOption(      'BLBox_nSP'         ,"Number of splines in z direction (at least one)",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('BLBox_CP'          ,"Coordinates of the spline control points",multiple=.TRUE.)
+CALL prms%CreateRealOption(     'BLBox_fac'         ,"Factor of geometrical stretching in wall-normal direction",multiple=.TRUE.)
+CALL prms%CreateRealOption(     'BLBox_height'      ,"Wall-normal extend of the box for each control point",multiple=.TRUE.)
 END SUBROUTINE DefineParametersRPSet
 
 !===================================================================================================================================
@@ -104,25 +120,27 @@ SUBROUTINE InitRPSet()
 USE MOD_Globals
 USE MOD_Mathtools     ,ONLY:CROSS
 USE MOD_Readintools   ,ONLY:GETINT,GETREAL,GETLOGICAL,GETSTR,GETREALARRAY,GETINTARRAY,CountOption
-USE MOD_BLProjection  ,ONLY:GetBLPlane
+USE MOD_BLProjection  ,ONLY:GetBLPlane,GetBLBox
 USE MOD_RPSet_Vars
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                      :: anythingThere
-INTEGER                      :: iGr,iLine,iP,iRP,iRP_gr,iPlane,i,j
+INTEGER                      :: iGr,iLine,iP,iRP,iRP_gr,iPlane,iBox,i,j,k
 REAL                         :: x(3),x_dummy(12)
-REAL                         :: xi,eta
+REAL                         :: xi,eta,zeta
 INTEGER                      :: nlinLines,nCircles,nCustomLines
 INTEGER                      :: nflatPlanes,nSphericPlanes,nBLPlanes
+INTEGER                      :: nFlatBoxes,nBLBoxes
 REAL                         :: Circle_Center(3),Circle_Radius,Circle_Angle,Circle_Axis(3),Circle_dir(3),RotMat(3,3),dphi,phi,pi
 REAL                         :: Sphere_Center(3),Sphere_Radius,Sphere_Angle,Sphere_Axis(3),Sphere_dir(3),theta,dtheta
-INTEGER                      :: iCP,nCP
+INTEGER                      :: iCP,nCP,iSP,nSP
 REAL                         :: fac
-REAL,ALLOCATABLE             :: xCP(:,:),height(:)
+REAL,ALLOCATABLE             :: xCP(:,:,:),height(:,:)
 TYPE(tRP),POINTER            :: aRP
 TYPE(tLine),POINTER          :: aLine
 TYPE(tPlane),POINTER         :: Plane
+TYPE(tBox),POINTER           :: Box
 !===================================================================================================================================
 IF(RPSetInitIsDone)THEN
    CALL abort(__STAMP__, &
@@ -323,18 +341,85 @@ IF(nPlanes.GT.0) THEN
     Plane%nRP(1:2)   =GETINTARRAY('BLPlane_nRP',2)
     ALLOCATE(Plane%RP_ptr(1:Plane%nRP(1),1:Plane%nRP(2)))
     nCP   =GETINT('BLPlane_nCP') ! points to define spline, at least two
-    fac              =GETREAL('BLPlane_fac','1.')  ! growth factor of the BL mesh
-    ALLOCATE(xCP(3,nCP))
-    ALLOCATE(height(nCP))
+    fac   =GETREAL('BLPlane_fac','1.')  ! growth factor of the BL mesh
+    ALLOCATE(xCP(3,nCP,1))
+    ALLOCATE(height(nCP,1))
     DO iCP=1,nCP
-       xCP(:,iCP) =GETREALARRAY('BLPlane_CP',3)
-       height(iCP)=GETREAL('BLPlane_height') ! height of the BL mesh
+       xCP(:,iCP,1) =GETREALARRAY('BLPlane_CP',3)
+       height(iCP,1)=GETREAL('BLPlane_height') ! height of the BL mesh
     END DO! iCP=1,nCP
     ! get coordinates of the rps and allocate pointers
-    CALL GetBLPlane(Plane,nCP,height,fac,xCP)
+    CALL GetBLPlane(Plane,nCP,height(:,1),fac,xCP(:,:,1))
     DEALLOCATE(xCP,height)
   END DO! iPlane
 END IF
+
+! ----------------------------------------------------------------------------------------------------
+! Boxes
+! ----------------------------------------------------------------------------------------------------
+nFlatBoxes    =CountOption('Box_GroupID')
+nBLBoxes      =CountOption('BLBox_GroupID')
+nBoxes=nFlatBoxes+nBLBoxes
+IF(nBoxes.GT.0) THEN
+  anythingThere=.TRUE.
+  ALLOCATE(Boxes(1:nBoxes))
+! flat boxes
+  DO iBox=1,nFlatBoxes
+    Box=>Boxes(iBox)
+    Box%GroupID=GETINT('Box_GroupID')
+    WRITE(Box%Name,'(A5,I6.6)')'Box_',iBox
+    x_dummy(1:12) = GETREALARRAY('Box_CornerX',24)
+    DO iP=1,8
+      Box%x(1:3,iP)=x_dummy(1+3*(iP-1):3+3*(iP-1))
+    END DO ! iPoint
+    Box%nRP(1:3)   =GETINTARRAY('Plane_nRP',3)
+    ALLOCATE(Box%RP_ptr(1:Box%nRP(1),1:Box%nRP(2),1:Box%nRP(3)))
+    DO k=1,Box%nRP(3)
+      DO j=1,Box%nRP(2)
+        DO i=1,Box%nRP(1)
+          ! bilinear mapping
+          xi  = REAL(i-1)/REAL(Box%nRP(1)-1)
+          eta = REAL(j-1)/REAL(Box%nRP(2)-1)
+          zeta= REAL(k-1)/REAL(Box%nRP(3)-1)
+          x(1:3)=   Box%x(1:3,1) * (1.-xi) * (1.-eta) * (1.-zeta)&
+                 +  Box%x(1:3,2) * (   xi) * (1.-eta) * (1.-zeta)&
+                 +  Box%x(1:3,3) * (   xi) * (   eta) * (1.-zeta)&
+                 +  Box%x(1:3,4) * (1.-xi) * (   eta) * (1.-zeta)&
+                 +  Box%x(1:3,5) * (1.-xi) * (1.-eta) * (   zeta)&
+                 +  Box%x(1:3,6) * (   xi) * (1.-eta) * (   zeta)&
+                 +  Box%x(1:3,7) * (   xi) * (   eta) * (   zeta)&
+                 +  Box%x(1:3,8) * (1.-xi) * (   eta) * (   zeta)
+          CALL GetNewRP(Box%RP_ptr(i,j,k)%RP,Box%GroupID,x)
+        END DO ! i
+      END DO ! j
+    END DO
+  END DO ! iBox
+
+! BL Box
+  DO iBox=nFlatBoxes+1,nFlatBoxes+nBLBoxes
+    Box=>Boxes(iBox)
+    Box%GroupID=GETINT('BLBox_GroupID')
+    WRITE(Box%Name,'(A5,I6.6)')'BLBox_',iBox
+    Box%nRP(1:3)   =GETINTARRAY('BLBox_nRP',3)
+    ALLOCATE(Box%RP_ptr(1:Box%nRP(1),1:Box%nRP(2),1:Box%nRP(3)))
+    nCP   =GETINT('BLBox_nCP') ! points to define spline, at least two
+    nSP   =GETINT('BLBox_nSP') ! number of splines in z
+    fac   =GETREAL('BLBox_fac','1.')  ! growth factor of the BL mesh
+    ALLOCATE(xCP(3,nCP,nSP))
+    ALLOCATE(height(nCP,nSP))
+    DO iSP=1,nSP
+      DO iCP=1,nCP
+        xCP(:,iCP,iSP) =GETREALARRAY('BLBox_CP',3)
+        height(iCP,iSP)=GETREAL('BLBox_height') ! height of the BL mesh
+      END DO! iCP=1,nCP
+    END DO! iSP=1,nSP
+    ! get coordinates of the rps and allocate pointers
+    CALL GetBLBox(Box,nCP,nSP,height,fac,xCP)
+    DEALLOCATE(xCP,height)
+  END DO! iBox
+
+END IF
+
 
 IF(.NOT.anythingThere) THEN
   SWRITE(UNIT_StdOut,*) 'No RP infos specified in parameter file, exiting...'

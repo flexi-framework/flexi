@@ -29,6 +29,7 @@ CHARACTER(LEN=255),ALLOCATABLE  :: GroupNames(:)           !< Names of all group
 INTEGER                         :: nLines                  !< Number of lines for output
 INTEGER                         :: nPoints                 !< Number of points for output
 INTEGER                         :: nPlanes                 !< Number of planes for output
+INTEGER                         :: nBoxes                  !< Number of boxes for output
 LOGICAL,ALLOCATABLE             :: OutputGroup(:)          !< Indicating groups for output
 INTEGER,ALLOCATABLE             :: Points_IDlist(:)        !< IDs of all points for output
 INTEGER,ALLOCATABLE             :: Points_GroupIDlist(:)   !< List of group IDs of all points for output
@@ -47,19 +48,33 @@ TYPE tLine !< Type used to organize a line set
 END TYPE tLine
 
 TYPE tPlane !< Type used to organize a plane set
-  CHARACTER(LEN=255)            :: Name                    !< Name of the line
-  INTEGER                       :: GroupID                 !< ID of the group the line belongs to
+  CHARACTER(LEN=255)            :: Name                    !< Name of the plane
+  INTEGER                       :: GroupID                 !< ID of the group the plane belongs to
   INTEGER                       :: Type=0                  !< 0 - standard, 1 - sphere, 2 - BLPlane
   INTEGER                       :: nRP(2)                  !< Number of RPs in the two plane directions
-  INTEGER,ALLOCATABLE           :: IDlist(:,:)             !< List of IDs of the RPs that make up the line
+  INTEGER,ALLOCATABLE           :: IDlist(:,:)             !< List of IDs of the RPs that make up the plane
   REAL,ALLOCATABLE              :: NormVec(:,:)            !< Normal vector
   REAL,ALLOCATABLE              :: TangVec(:,:)            !< Tangential vector
   REAL,ALLOCATABLE              :: LocalCoord(:,:,:)       !< Local coordinates of the RPs
   REAL,ALLOCATABLE              :: BLProps(:,:)            !< Boundary layer properties for BLPlanes
 END TYPE tPlane
 
+TYPE tBox  !< Type used to organize a box set
+  CHARACTER(LEN=255)            :: Name                    !< Name of the box
+  INTEGER                       :: GroupID                 !< ID of the group the box belongs to
+  INTEGER                       :: Type=0                  !< 0 - standard, 1 - sphere, 2 - BLPlane
+  LOGICAL                       :: Ortho=.FALSE.           !< BLPlane is orthogonal to flow velocity
+  INTEGER                       :: nRP(2)                  !< Number of RPs in the two plane directions
+  INTEGER,ALLOCATABLE           :: IDlist(:,:)             !< List of IDs of the RPs that make up the box
+  REAL,ALLOCATABLE              :: NormVec(:,:)            !< Normal vector
+  REAL,ALLOCATABLE              :: TangVec(:,:)            !< Tangential vector
+  REAL,ALLOCATABLE              :: LocalCoord(:,:,:)       !< Local coordinates of the RPs
+  REAL,ALLOCATABLE              :: BLProps(:,:)            !< Boundary layer properties for BLPlanes
+END TYPE tBox
+
 TYPE(tLine),POINTER             :: Lines(:)                !< Pointer to all output lines
 TYPE(tPlane),POINTER            :: Planes(:)               !< Pointer to all output planes
+TYPE(tPlane),POINTER            :: Boxes(:)                !< Pointer to all output planes
 
 LOGICAL                         :: RPSetInitIsDone = .FALSE.
 !===================================================================================================================================

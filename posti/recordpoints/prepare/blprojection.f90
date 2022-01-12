@@ -27,8 +27,11 @@ INTERFACE GetBLPlane
   MODULE PROCEDURE GetBLPlane
 END INTERFACE
 
+INTERFACE GetBLBox
+  MODULE PROCEDURE GetBLBox
+END INTERFACE
 
-PUBLIC :: GetBLPlane
+PUBLIC :: GetBLPlane,GetBLBox
 !===================================================================================================================================
 
 CONTAINS
@@ -157,6 +160,137 @@ Plane%TangVec=TangVecRP
 DEALLOCATE(RPlist_tmp,NormVecRP,TangVecRP,coeff,s)
 END SUBROUTINE GetBLPlane
 
+!===================================================================================================================================
+!> Define a spline from control points, create equidistant parametrization along that spline, project it on
+!> the closest boundary and create a box along the boundary normals
+!===================================================================================================================================
+SUBROUTINE GetBLBox(Box,nCP,nSP,height,fac,xCP)
+! MODULES
+USE MOD_Globals
+USE MOD_RPSet_Vars,ONLY:tBox,tRPlist
+USE MOD_RPSet_Vars,ONLY:GetNewRP
+USE MOD_Spline    ,ONLY:GetSpline,GetEquiPoints,EvalSpline,EvalSplineDeriv,EvalEquiError
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+TYPE(tBox),POINTER              :: Box
+INTEGER,INTENT(IN)              :: nCP
+INTEGER,INTENT(IN)              :: nSP
+REAL,INTENT(IN)                 :: height(nCP,nSP),fac
+REAL,INTENT(IN)                 :: xCP(3,nCP,nSP)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                         :: nRP(3),i,j,k,iCP,iSP,iter
+REAL                            :: x_loc(3),s_loc,dx_loc(3)
+TYPE(tRPlist),POINTER           :: RPlist_tmp(:,:)
+REAL,ALLOCATABLE                :: xRP(:,:,:),xRP_tmp(:,:,:),NormVecRP(:,:,:),TangVecRP(:,:,:),dh(:)
+REAL,ALLOCATABLE                :: s(:,:),s_mod(:),s_equi(:,:),coeff(:,:,:,:)
+REAL                            :: h,t,height_loc,EquiErr
+!===================================================================================================================================
+nRP=Box%nRP(1:3)
+ALLOCATE(RPlist_tmp(nRP(1),nRP(3)))
+ALLOCATE(NormVecRP(3,nRP(1),nRP(3)))
+ALLOCATE(TangVecRP(3,nRP(1),nRP(3)))
+ALLOCATE(xRP(3,nRP(1),nRP(3)))
+ALLOCATE(xRP_tmp(3,nRP(1),nRP(3)))
+ALLOCATE(s_equi(nRP(1),nRP(3)))
+ALLOCATE(coeff(3,4,nCP-1,nSP),s(nCP,nSP))
+
+DO iSP=1,nSP ! Iterate along each point in z direction
+  CALL GetSpline(3,nCP,xCP(:,:,iSP),coeff(:,:,:,iSP),s(:,iSP)) ! get spline coefficients and arclength variable s
+END DO
+
+! Sampling of the spline to nRP(1) and allocate first row of RPs
+DO k=1,nRP(3)
+  DO i=1,nRP(1)
+    ! check where piont is located based on nearest neighbot approach
+    ! TODO
+    s_loc=s(nCP,iSP)*(i-1)/(nRP(1)-1)
+    CALL EvalSpline(3,nCP,s_loc,s(:,iSP),coeff(:,:,:,iSP),x_loc)
+    CALL GetNewRP(Box%RP_ptr(i,1,k)%RP,Box%GroupID,x_loc)
+    RPlist_tmp(i,k)%RP=>Box%RP_ptr(i,1,k)%RP
+  END DO
+END DO
+
+  ! projection of the supersampled points on the closest boundary
+
+  CALL ProjectRPtoBC(nRP(1),RPlist_tmp,NormVecRP)
+  DO i=1,nRP(1)
+    RPlist_tmp(i,k)%RP%x=RPlist_tmp(i,k)%RP%xF
+    xRP(:,i,k)=RPlist_tmp(i,k)%RP%xF
+  END DO
+
+  !iterate between projection and equidistant partitioning
+  DO iter=1,10
+    ! get equidistant distribution along projected spline
+    xRP_tmp = xRP
+    CALL GetEquiPoints(3,nRP(1),nRP(1),xRP_tmp(:,:,k),xRP(:,:,k),s_equi(:,k))
+    DO i=1,nRP(1)
+      RPlist_tmp(i,k)%RP%x=xRP(:,i,k)
+    END DO
+    ! evaluate deviation from equidistancy
+    CALL EvalEquiError(3,nRP(1),xRP(:,:,k),EquiErr)
+    WRITE(*,*) 'After partitioning',EquiErr
+    ! project the equidistant points again to get their normal vector
+    CALL ProjectRPtoBC(nRP(1),RPlist_tmp,NormVecRP)
+    DO i=1,nRP(1)
+      RPlist_tmp(i,k)%RP%x=RPlist_tmp(i,k)%RP%xF
+      xRP(:,i,k)=RPlist_tmp(i,k)%RP%xF
+    END DO
+    ! evaluate deviation from equidistancy
+    CALL EvalEquiError(3,nRP(1),xRP(:,:,k),EquiErr)
+    WRITE(*,*) 'After projection',iter, EquiErr
+  END DO
+
+! calculate the tangent vector
+DEALLOCATE(coeff)
+ALLOCATE(s_mod(nRP(1)),coeff(3,4,nRP(1)-1,nSP))
+CALL GetSpline(3,nRP(1),xRP(:,:,k),coeff(:,:,:,k),s_mod) ! get the spline through the projected points
+! get the tangent vector in each point
+DO i=1,nRP(1)
+  !derivative of the spline
+  CALL EvalSplineDeriv(3,nRP(1),s_mod(i),s_mod,coeff(:,:,:,k),dx_loc)
+  !project it on the local surface
+  tangVecRP(:,i,k)=dx_loc - SUM(dx_loc(1:3)*NormVecRP(1:3,i,k))*NormVecRP(:,i,k)
+  tangVecRP(:,i,k)=tangVecRP(:,i,k)/SQRT(DOT_PRODUCT(tangVecRP(:,i,k),tangVecRP(:,i,k)))
+END DO
+
+! extrapolation of the BL mesh along the boundary normals to height
+ALLOCATE(dh(2:nRP(2)))
+dh(2)=1.
+DO i=3,nRP(2)
+  dh(i)=dh(i-1)*fac
+END DO
+dh(:)=dh(:)/SUM(dh(:))
+iCP=2
+DO i=1,nRP(1)
+  s_loc=s(nCP,iSP)*(i-1)/(nRP(1)-1)
+  ! linear interpolation of the height between control points
+  DO WHILE(s(iCP,iSP).LT.s_loc)
+    iCP=iCP+1
+  END DO
+  iCP=MIN(iCP,nCP)
+!  IF(s_loc.GE.s(iCP)) iCP=MAX(iCP+1,nCP)
+  t=(s_loc-s(iCP-1,iSP))/(s(iCP,iSP)-s(iCP-1,iSP))
+  height_loc=height(iCP-1,iSP)*(1-t)+height(iCP,iSP)*t
+  h=0.
+  DO j=2,nRP(2)
+    h=h+dh(j)
+    x_loc=Box%RP_ptr(i,1,k)%RP%x+NormVecRP(:,i,k)*h*height_loc
+    CALL GetNewRP(Box%RP_ptr(i,j,k)%RP,Box%GroupID,x_loc)
+  END DO
+END DO
+
+ALLOCATE(Box%NormVec(3,nRP(1),nRP(3)))
+ALLOCATE(Box%TangVec(3,nRP(1),nRP(3)))
+Box%NormVec=NormVecRP
+Box%TangVec=TangVecRP
+
+
+DEALLOCATE(RPlist_tmp,NormVecRP,TangVecRP,coeff,s)
+END SUBROUTINE GetBLBox
 
 
 !===================================================================================================================================
