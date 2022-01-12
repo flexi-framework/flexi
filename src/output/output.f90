@@ -213,14 +213,13 @@ USE MOD_Mesh_Vars     ,ONLY: nGlobalElems
 #if FV_ENABLED
 USE MOD_Analyze_Vars  ,ONLY: totalFV_nElems
 USE MOD_FV_Vars       ,ONLY: FV_Elems
-#endif
+USE MOD_Mesh_Vars     ,ONLY: nGlobalElems
+#endif /*FV_ENABLED*/
 #if PP_LIMITER
 USE MOD_Analyze_Vars, ONLY: totalPP_nElems
 USE MOD_Filter_Vars , ONLY: PP_Elems
-#endif
-!----------------------------------------------------------------------------------------------------------------------------------!
-! insert modules here
-!----------------------------------------------------------------------------------------------------------------------------------!
+USE MOD_Mesh_Vars   , ONLY: nGlobalElems
+#endif /*PP_LIMITER*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!

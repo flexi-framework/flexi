@@ -94,10 +94,14 @@ USE MOD_Overintegration_Vars,ONLY: NUnder
 USE MOD_Predictor           ,ONLY: InitPredictor
 USE MOD_ReadInTools         ,ONLY: GETREAL,GETINT,GETSTR
 USE MOD_StringTools         ,ONLY: LowCase,StripSpaces
-USE MOD_TimeDisc_Vars       ,ONLY: CFLScale,DFLScale,dtElem,dt,tend
+USE MOD_TimeDisc_Vars       ,ONLY: CFLScale,dtElem,dt,tend
 USE MOD_TimeDisc_Vars       ,ONLY: maxIter,nCalcTimeStepMax
 USE MOD_TimeDisc_Vars       ,ONLY: SetTimeDiscCoefs,TimeStep,TimeDiscName,TimeDiscType,TimeDiscInitIsDone
 USE MOD_TimeStep            ,ONLY: TimeStepByLSERKW2,TimeStepByLSERKK3,TimeStepByESDIRK
+#if PARABOLIC
+USE MOD_TimeDisc_Vars       ,ONLY: DFLScale
+#endif /*PARABOLIC*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -123,7 +127,6 @@ CALL LowCase(TimeDiscMethod)
 CALL SetTimeDiscCoefs(TimeDiscMethod)
 
 SWRITE(UNIT_stdOut,'(A)') ' Method of time integration: '//TRIM(TimeDiscName)
-
 SELECT CASE(TimeDiscType)
   CASE('LSERKW2')
     TimeStep=>TimeStepByLSERKW2

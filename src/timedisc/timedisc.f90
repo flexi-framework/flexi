@@ -65,12 +65,11 @@ USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
 #if FV_ENABLED
 USE MOD_FV
 USE MOD_Indicator           ,ONLY: CalcIndicator
-#endif
-use MOD_IO_HDF5
+#endif /*FV_ENABLED*/
 #if PP_LIMITER
 USE MOD_PPLimiter           ,ONLY: PPLimiter,PPLimiter_Info
 USE MOD_Filter_Vars         ,ONLY: DoPPLimiter
-#endif
+#endif /*PP_LIMITER*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -117,13 +116,11 @@ CALL DGTimeDerivative_weakForm(t)
 #if FV_ENABLED
 ! initial switch to FV sub-cells (must be called after DGTimeDerivative_weakForm, since indicator may require gradients)
 CALL CalcIndicator(U,t)
-IF(.NOT.DoRestart)THEN
-  CALL FV_FillIni()
-END IF
-#endif
+IF(.NOT.DoRestart)  CALL FV_FillIni()
+#endif /*FV_ENABLED*/
 #if PP_LIMITER
 IF(DoPPLimiter) CALL PPLimiter()
-#endif
+#endif /*PP_LIMITER*/
 
 IF(.NOT.DoRestart) THEN
   SWRITE(UNIT_stdOut,'(A)') ' WRITING INITIAL SOLUTION:'
@@ -154,10 +151,10 @@ CALL InitTimeStep()
 
 #if FV_ENABLED
 CALL FV_Info(1_8)
-#endif
+#endif /*FV_ENABLED*/
 #if PP_LIMITER
 CALL PPLimiter_Info(1_8)
-#endif
+#endif /*PP_LIMITER*/
 
 SWRITE(UNIT_stdOut,'(A)') ' CALCULATION RUNNING...'
 
@@ -165,10 +162,10 @@ IF(TimeDiscType.EQ.'ESDIRK') CALL FillInitPredictor(t)
 
 #if FV_ENABLED
 CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
-#endif
+#endif /*FV_ENABLED*/
 #if PP_LIMITER
 IF(DoPPLimiter) CALL PPLimiter()
-#endif
+#endif /*PP_LIMITER*/
 CALL DGTimeDerivative_weakForm(t)
 
 ! Run computation
