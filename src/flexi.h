@@ -49,6 +49,7 @@
 #endif
 
 ! Time Step Minimum: dt_Min
+#define DT_NVAR       3
 #define DT_MIN        1
 #define DT_ANALYZE    2
 #define DT_END        3

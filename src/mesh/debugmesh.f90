@@ -54,7 +54,8 @@ INTEGER,INTENT(IN):: debugMesh !< file type to be used: 1-2: Tecplot format (dep
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                  :: iElem,iLocSide,SideID,bcindex_loc
-CHARACTER(LEN=32)        :: VarNames(6)
+INTEGER,PARAMETER        :: nVarNames=6
+CHARACTER(LEN=32)        :: VarNames(nVarNames)
 REAL,ALLOCATABLE,TARGET  :: debugVisu(:,:,:,:,:)
 REAL,POINTER             :: debugVisu_p(:,:,:,:,:)
 REAL,ALLOCATABLE,TARGET  :: X_NVisu(:,:,:,:,:)
@@ -76,7 +77,7 @@ VarNames(3)='FLIP'
 VarNames(4)='iLocSide'
 VarNames(5)='BCIndex'
 VarNames(6)='Rank'
-ALLOCATE(debugVisu(6,0:NVisu,0:NVisu,0:ZDIM(NVisu),nElems))
+ALLOCATE(debugVisu(1:nVarNames,0:NVisu,0:NVisu,0:ZDIM(NVisu),nElems))
 debugVisu=-1.
 DO iElem=1,nElems
   debugVisu(1,:,:,:,iElem)=REAL(iElem)
@@ -133,7 +134,7 @@ CASE(2)
 CASE(3)
   X_NVisu_p => X_NVisu
   debugVisu_p => debugVisu
-  CALL WriteDataToVTK(6,NVisu,nElems,VarNames,X_NVisu_p,debugVisu_p,'Debugmesh.vtu',dim=PP_dim)
+  CALL WriteDataToVTK(nVarNames,NVisu,nElems,VarNames,X_NVisu_p,debugVisu_p,'Debugmesh',dim=PP_dim)
 END SELECT
 
 DEALLOCATE(X_NVisu)
