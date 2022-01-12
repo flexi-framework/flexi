@@ -260,6 +260,7 @@ REAL,ALLOCATABLE  :: Geo(:,:,:,:,:)
 
 ! Output
 REAL              :: percent
+CHARACTER(LEN=20) :: fmtName
 !==================================================================================================================================
 ! Prerequisites
 Metrics_fTilde=0.
@@ -537,8 +538,9 @@ DO iElem=1,nElems
   ! Print CalcMetrics progress
   IF (doPrintStatusLine .AND. MPIRoot) THEN
     percent = REAL(iElem)/REAL(nElems)*100.
-    WRITE(UNIT_stdOut,'(A,A4,A,A1,A,A3,F6.2,A3,A1)',ADVANCE='NO')    &
-    ' | Calculating Metrics',' |',     &
+    WRITE(fmtName,*) prms%maxNameLen
+    WRITE(UNIT_stdOut,'(A3,A'//ADJUSTL(fmtName)//',A2,A,A1,A,A3,F6.2,A3,A1)',ADVANCE='NO')    &
+    ' | ','Calculating Metrics',' |',     &
       REPEAT('=',MAX(CEILING(percent*(prms%maxValueLen+2)/100.)-1,0)),'>',&
       REPEAT(' ',(prms%maxValueLen+2)-MAX(CEILING(percent*(prms%maxValueLen+2)/100.),0)),'| [',percent,'%] ',&
     ACHAR(13) ! ACHAR(13) is carriage return
