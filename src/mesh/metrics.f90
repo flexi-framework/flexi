@@ -183,6 +183,7 @@ USE MOD_Mesh_Vars          ,ONLY: NodeCoords,TreeCoords,Elem_xGP
 USE MOD_Mesh_Vars          ,ONLY: ElemToTree,xiMinMax,interpolateFromTree
 USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP
 USE MOD_Mesh_Vars          ,ONLY: scaledJac
+USE MOD_Output_Vars        ,ONLY: doPrintStatusLine
 #if PP_dim == 3
 USE MOD_Mesh_Vars          ,ONLY: crossProductMetrics
 #endif
@@ -255,6 +256,10 @@ REAL    :: xi0(3),dxi(3),length(3)
 INTEGER           :: MPIRequest_Geo(nNbProcs,2)
 REAL,ALLOCATABLE  :: Geo(:,:,:,:,:)
 #endif
+
+! Output
+REAL              :: percent
+INTEGER,PARAMETER :: barWidth = 37
 !==================================================================================================================================
 ! Prerequisites
 Metrics_fTilde=0.
@@ -528,7 +533,20 @@ DO iElem=1,nElems
     CALL CalcSurfMetrics(PP_N,FV_ENABLED,JaCL_N,XCL_N,Vdm_CLN_N,iElem,&
                          NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
   END IF
+
+  ! Print CalcMetrics progress
+  IF (doPrintStatusLine .AND. MPIRoot) THEN
+    percent = REAL(iElem)/REAL(nElems)*100.
+    WRITE(UNIT_stdOut,'(A,A4,A,A1,A,A3,F6.2,A3,A1)',ADVANCE='NO')    &
+    ' | Calculating Metrics',' |',     &
+      REPEAT('=',MAX(CEILING(percent*barWidth/100.)-1,0)),'>',&
+      REPEAT(' ',barWidth-MAX(CEILING(percent*barWidth/100.)-1,0)),'| [',percent,'%] ',&
+    ACHAR(13) ! ACHAR(13) is carriage return
+  END IF
 END DO !iElem=1,nElems
+
+! Terminate with empty line to remove leftovers
+IF (doPrintStatusLine .AND. MPIRoot) WRITE(UNIT_stdOut,'(A)',ADVANCE='NO') ''
 
 #if USE_MPI
 ! Send surface geomtry informations from mpi master to mpi slave
