@@ -465,7 +465,7 @@ END SUBROUTINE FillPressureTimeDeriv
 !==================================================================================================================================
 !> Calculate vorticity in direction dir.
 !==================================================================================================================================
-FUNCTION FillVorticity(dir,nVal,gradUx,gradUy,gradUz) RESULT(Vorticity)
+PURE FUNCTION FillVorticity(dir,nVal,gradUx,gradUy,gradUz) RESULT(Vorticity)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -527,7 +527,7 @@ END FUNCTION FillLambda2
 !==================================================================================================================================
 !> Calculate the Q criterion, which is the second invariant of the velocity gradient tensor.
 !==================================================================================================================================
-FUNCTION FillQcriterion(nVal,gradUx,gradUy,gradUz) RESULT(Qcriterion)
+PURE FUNCTION FillQcriterion(nVal,gradUx,gradUy,gradUz) RESULT(Qcriterion)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
