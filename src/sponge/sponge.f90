@@ -141,6 +141,11 @@ END IF
 
 SpongeViz=GETLOGICAL('SpongeViz','.FALSE.')
 
+! create visu dir, where all vtu files are placed
+#if USE_MPI
+IF(nProcessors.GT.1) CALL SYSTEM('mkdir -p visu')
+#endif
+
 CALL CalcSpongeRamp()
 
 CalcPruettDamping=.FALSE.
@@ -394,7 +399,7 @@ DEALLOCATE(SpRadius)
 
 ! Visualize the Sponge Ramp - until now only 3D visualization!
 IF(SpongeViz) THEN
-  FileString=TRIM(INTSTAMP(TRIM(ProjectName),myRank))//'_SpongeRamp.vtu'
+  FileString=TRIM(ProjectName)//'_SpongeRamp'
   ALLOCATE(Coords_NVisu(1:3, 0:NVisu,0:NVisu,0:ZDIM(NVisu),nElems))
   ALLOCATE(SpongeMat_NVisu(1,0:NVisu,0:NVisu,0:ZDIM(NVisu),nElems))
   ALLOCATE(SpDummy(1,0:PP_N,0:PP_N,0:PP_NZ))
@@ -412,7 +417,7 @@ IF(SpongeViz) THEN
   VarNameSponge(1)='dSponge'
   Coords_NVisu_p => Coords_NVisu
   SpongeMat_NVisu_p => SpongeMat_NVisu
-  CALL WriteDataToVTK(1,NVisu,nElems,VarNameSponge,Coords_NVisu_p,SpongeMat_NVisu_p,TRIM(FileString),dim=PP_dim)
+  CALL WriteDataToVTK(1,NVisu,nElems,VarNameSponge,Coords_NVisu_p,SpongeMat_NVisu_p,TRIM(FileString),dim=PP_dim,PostiParallel=.TRUE.)
   DEALLOCATE(Coords_NVisu)
   DEALLOCATE(SpongeMat_NVisu)
   DEALLOCATE(SpDummy)

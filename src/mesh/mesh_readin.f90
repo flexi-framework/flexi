@@ -194,7 +194,6 @@ END SUBROUTINE ReadBCs
 SUBROUTINE ReadMesh(FileString)
 ! MODULES
 USE MOD_Globals
-USE MOD_Globals_Vars,       ONLY:ReadMeshWallTime
 USE MOD_Mesh_Vars,          ONLY:tElem,tSide
 USE MOD_Mesh_Vars,          ONLY:NGeo,NGeoTree
 USE MOD_Mesh_Vars,          ONLY:NodeCoords,TreeCoords
@@ -709,8 +708,7 @@ IF(MPIRoot)THEN
 END IF
 
 EndT             = FLEXITIME()
-ReadMeshWallTime = EndT-StartT
-SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES') ' READ MESH FROM DATA FILE "'//TRIM(FileString)//'" ... DONE  [',ReadMeshWallTime,'s]'
+SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES') ' READ MESH FROM DATA FILE "'//TRIM(FileString)//'" ... DONE  [',EndT-StartT,'s]'
 SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE ReadMesh
