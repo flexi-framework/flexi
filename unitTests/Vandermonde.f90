@@ -14,13 +14,14 @@ USE MOD_Interpolation_Vars,  ONLY: NodeTypeG,NodeTypeGL,NodeTypeCL,NodeTypeVISU
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                           :: Vdm_In_Out(0:6,0:5,1:512),Vdm_Out_In(0:5,0:6,1:512)
-REAL                           :: Vdm_In_Out_ref(0:6,0:5,1:512),Vdm_Out_In_ref(0:5,0:6,1:512)
+REAL,ALLOCATABLE               :: Vdm_In_Out(:,:,:),Vdm_Out_In(:,:,:)
+REAL,ALLOCATABLE               :: Vdm_In_Out_ref(:,:,:),Vdm_Out_In_ref(:,:,:)
 INTEGER                        :: iIn,iOut,iNodeTypeIn,iNodeTypeOut,iModal,nArgs,k
 CHARACTER(LEN=*),PARAMETER     :: BinaryString='Vandermonde.bin'
 LOGICAL                        :: binaryExists,doGenerateReference=.FALSE.,modal,equal
 CHARACTER(LEN=255)             :: argument,NodeTypeIn,NodeTypeOut
 !==================================================================================================================================
+
 ! Check for command line arguments to generate the reference solution
 nArgs=COMMAND_ARGUMENT_COUNT()
 IF (nArgs.GT.0) THEN
@@ -34,6 +35,11 @@ IF (nArgs.GT.0) THEN
 END IF
 
 ! Generate Vandermondes from source
+ALLOCATE(Vdm_In_Out(0:6,0:5,1:512))
+ALLOCATE(Vdm_Out_In(0:5,0:6,1:512))
+ALLOCATE(Vdm_In_Out_ref(0:6,0:5,1:512))
+ALLOCATE(Vdm_Out_In_ref(0:5,0:6,1:512))
+
 Vdm_In_Out = 0.
 Vdm_Out_In = 0.
 ! All combinations of input and output polynomial degrees
@@ -108,6 +114,11 @@ ELSE
     STOP -1
   END IF
 END IF
+
+DEALLOCATE(Vdm_In_Out)
+DEALLOCATE(Vdm_Out_In)
+DEALLOCATE(Vdm_In_Out_ref)
+DEALLOCATE(Vdm_Out_In_ref)
 
 END PROGRAM Vandermonde
 
