@@ -155,4 +155,3 @@ SWRITE(UNIT_stdOut,'(A)') ' Channel_FFT TOOL FINISHED! '
 SWRITE(UNIT_stdOut,'(132("="))')
 
 END PROGRAM channel_fft
-

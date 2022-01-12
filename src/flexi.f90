@@ -36,8 +36,8 @@ CALL FinalizeFlexi()
 
 #if USE_MPI
 ! free the communicator
-CALL MPI_BARRIER  (MPI_COMM_FLEXI,IERROR)
-CALL MPI_COMM_FREE(MPI_COMM_FLEXI,IERROR)
+CALL MPI_BARRIER  (MPI_COMM_FLEXI,iError)
+CALL MPI_COMM_FREE(MPI_COMM_FLEXI,iError)
 ! we also have to finalize MPI itself here
 CALL MPI_FINALIZE(iError)
 IF(iError .NE. 0) STOP 'MPI finalize error'

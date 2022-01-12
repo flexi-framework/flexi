@@ -222,4 +222,3 @@ CALL MPI_FINALIZE(iError)
 IF(iError .NE. 0) STOP 'MPI finalize error'
 #endif
 END PROGRAM
-

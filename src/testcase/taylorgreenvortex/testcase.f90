@@ -540,4 +540,3 @@ REAL,INTENT(OUT)   :: Flux(     PP_nVarLifting,0:PP_N,0:PP_NZ) !< lifting bounda
 END SUBROUTINE Lifting_GetBoundaryFluxTestcase
 
 END MODULE MOD_TestCase
-

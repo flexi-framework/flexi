@@ -482,4 +482,3 @@ WRITE (*,'(A,'//format//'I3)') "mapCalc ",mapCalc
 WRITE (*,'(A,'//format//'I3)') "mapVisu ",mapVisu
 
 END SUBROUTINE Build_mapCalc_mapVisu
-

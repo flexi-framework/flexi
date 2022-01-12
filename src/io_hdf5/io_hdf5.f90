@@ -190,7 +190,7 @@ CALL MPI_Info_Create(MPIInfo, iError)
 MPIInfo=MPI_INFO_NULL
 
 ! Large block IO extremely slow on Juqeen cluster (only available on IBM clusters)
-!CALL MPI_Info_set(MPIInfo, "IBM_largeblock_io", "true", ierror)
+!CALL MPI_Info_set(MPIInfo, "IBM_largeblock_io", "true", iError)
 #ifdef LUSTRE
 CALL MPI_Info_Create(MPIInfo, iError)
 ! For lustre file system:
@@ -458,10 +458,10 @@ CHARACTER(LEN=255),ALLOCATABLE :: names(:) !< names of datasets
 ! LOCAL VARIABLES
 INTEGER                        :: nMembers,i,type
 !===================================================================================================================================
-CALL H5GN_MEMBERS_F(File_ID, TRIM(group), nMembers, ierror)
+CALL H5GN_MEMBERS_F(File_ID, TRIM(group), nMembers, iError)
 ALLOCATE(names(nMembers))
 DO i=1,nMembers
-  CALL h5gget_obj_info_idx_f(File_ID, TRIM(group), i-1, names(i), type, ierror)
+  CALL h5gget_obj_info_idx_f(File_ID, TRIM(group), i-1, names(i), type, iError)
   IF (type.NE.H5G_DATASET_F) names(i) = ''
 END DO
 END SUBROUTINE GetDatasetNamesInGroup
