@@ -172,35 +172,35 @@ SUBROUTINE CalcMetrics()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_Basis              ,ONLY: LagrangeInterpolationPolys
+USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume
+USE MOD_Interpolation_Vars
+USE MOD_Interpolation      ,ONLY: GetVandermonde,GetNodesAndWeights,GetDerivativeMatrix
 USE MOD_Mesh_Vars          ,ONLY: NGeo,NGeoRef,nElems,offsetElem
-#if PP_dim == 3
-USE MOD_Mesh_Vars          ,ONLY: crossProductMetrics
-#endif
 USE MOD_Mesh_Vars          ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,dXCL_N
 USE MOD_Mesh_Vars          ,ONLY: sJ,detJac_Ref,Ja_Face
 USE MOD_Mesh_Vars          ,ONLY: NodeCoords,TreeCoords,Elem_xGP
 USE MOD_Mesh_Vars          ,ONLY: ElemToTree,xiMinMax,interpolateFromTree
 USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP
 USE MOD_Mesh_Vars          ,ONLY: scaledJac
+#if PP_dim == 3
+USE MOD_Mesh_Vars          ,ONLY: crossProductMetrics
+#endif
 #if FV_ENABLED
 USE MOD_Mesh_Vars          ,ONLY: sJ_master,sJ_slave
 USE MOD_ProlongToFace1     ,ONLY: ProlongToFace1
 USE MOD_FillMortar1        ,ONLY: U_Mortar1
-#endif
-USE MOD_Interpolation_Vars
-USE MOD_Interpolation      ,ONLY: GetVandermonde,GetNodesAndWeights,GetDerivativeMatrix
+#endif /*FV_ENABLED*/
 #if (PP_dim == 3)
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D_XYZ
 #else
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis2D_XYZ
 #endif
-USE MOD_Basis              ,ONLY: LagrangeInterpolationPolys
-USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume
 #if USE_MPI
 USE MOD_Mesh_Vars          ,ONLY: firstMPISide_MINE,firstMPISide_YOUR,lastMPISide_YOUR,nSides
 USE MOD_MPI_Vars           ,ONLY: nNbProcs
 USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
-#endif
+#endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
