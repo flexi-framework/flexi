@@ -289,8 +289,8 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)    :: VarName                 !< string to be compared
-CHARACTER(LEN=*),INTENT(IN)    :: VarNameList(nVarList)   !< list of strings to be searched
 INTEGER,INTENT(IN)             :: nVarList                !< length of list
+CHARACTER(LEN=*),INTENT(IN)    :: VarNameList(nVarList)   !< list of strings to be searched
 INTEGER                        :: GETMAPBYNAME            !< index of VarName in VarNameList
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

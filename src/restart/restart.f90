@@ -323,7 +323,7 @@ USE MOD_FV,                 ONLY: FV_ProlongFVElemsToFace
 USE MOD_FV_Vars,            ONLY: FV_Elems
 USE MOD_Indicator_Vars,     ONLY: IndValue
 USE MOD_StringTools,        ONLY: STRICMP
-#endif
+#endif /*FV_ENABLED*/
 #if PP_dim == 3
 USE MOD_2D,                 ONLY: ExpandArrayTo3D
 #else
@@ -349,7 +349,7 @@ LOGICAL            :: doFlushFiles_loc
 INTEGER             :: nVal(15)
 REAL,ALLOCATABLE    :: ElemData(:,:),tmp(:)
 CHARACTER(LEN=255),ALLOCATABLE :: VarNamesElemData(:)
-#endif
+#endif /*FV_ENABLED*/
 !==================================================================================================================================
 
 doFlushFiles_loc = MERGE(doFlushFiles,.TRUE.,PRESENT(doFlushFiles))

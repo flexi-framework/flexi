@@ -73,7 +73,9 @@ CONTAINS
 SUBROUTINE CreateConnectivity(NVisu,nElems,nodeids,dim,DGFV,HighOrder)
 USE ISO_C_BINDING
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                       :: NVisu
 INTEGER,INTENT(IN)                       :: nElems

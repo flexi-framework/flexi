@@ -146,8 +146,8 @@ REAL,OPTIONAL                     :: RealInfo        !< Error info (real)
 ! LOCAL VARIABLES
 CHARACTER(LEN=50)                 :: IntString,RealString
 !==================================================================================================================================
-IntString = ""
-RealString = ""
+IntString  = ''
+RealString = ''
 
 IF (PRESENT(IntInfo))  WRITE(IntString,"(A,I0)")  "\nIntInfo:  ", IntInfo
 IF (PRESENT(RealInfo)) WRITE(RealString,"(A,F24.19)") "\nRealInfo: ", RealInfo

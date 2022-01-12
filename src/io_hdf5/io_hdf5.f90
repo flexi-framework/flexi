@@ -131,6 +131,7 @@ CONTAINS
 SUBROUTINE DefineParametersIO_HDF5()
 ! MODULES
 USE MOD_ReadInTools ,ONLY: prms
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("IO_HDF5")
@@ -149,6 +150,7 @@ SUBROUTINE InitIOHDF5()
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadInTools,ONLY:GETLOGICAL
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -173,6 +175,7 @@ END SUBROUTINE InitIOHDF5
 SUBROUTINE InitMPIInfo()
 ! MODULES
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -208,6 +211,7 @@ END SUBROUTINE InitMPIInfo
 SUBROUTINE OpenDataFile(FileString,create,single,readOnly,communicatorOpt,userblockSize)
 ! MODULES
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -281,6 +285,7 @@ END SUBROUTINE OpenDataFile
 SUBROUTINE CloseDataFile()
 ! MODULES
 USE MOD_Globals,ONLY:UNIT_logOut,Logging
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -305,6 +310,7 @@ SUBROUTINE AddToElemData(ElementOut_In,VarName,RealArray,RealScalar,IntArray,Int
 ! MODULES
 USE MOD_Globals
 USE MOD_Mesh_Vars,ONLY:nElems
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -374,6 +380,7 @@ SUBROUTINE AddToFieldData(FieldOut_In,nVal,DataSetName,VarNames,RealArray,Eval,d
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Mesh_Vars,ONLY:nElems
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -440,7 +447,10 @@ END SUBROUTINE AddToFieldData
 !> Takes a group and reads the names of the datasets
 !==================================================================================================================================
 SUBROUTINE GetDatasetNamesInGroup(group,names)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*)               :: group    !< name of group
 CHARACTER(LEN=255),ALLOCATABLE :: names(:) !< names of datasets
@@ -462,6 +472,7 @@ END SUBROUTINE GetDatasetNamesInGroup
 !==================================================================================================================================
 SUBROUTINE FinalizeIOHDF5()
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -479,6 +490,7 @@ END SUBROUTINE FinalizeIOHDF5
 !==================================================================================================================================
 SUBROUTINE FinalizeElemData(ElementOut_In)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -514,6 +526,7 @@ END SUBROUTINE FinalizeElemData
 !==================================================================================================================================
 SUBROUTINE FinalizeFieldData(FieldOut_In)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

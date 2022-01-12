@@ -64,7 +64,7 @@ USE MOD_Precond,           ONLY:DefineParametersPrecond
 USE MOD_MPI,               ONLY:DefineParametersMPI,InitMPI
 #if USE_MPI
 USE MOD_MPI,               ONLY:InitMPIvars
-#endif
+#endif /*USE_MPI*/
 USE MOD_Sponge,            ONLY:DefineParametersSponge,InitSponge
 #if FV_ENABLED
 USE MOD_FV,                ONLY:DefineParametersFV,InitFV

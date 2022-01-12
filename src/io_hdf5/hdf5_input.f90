@@ -76,6 +76,7 @@ CONTAINS
 FUNCTION ISVALIDHDF5FILE(FileName,ProgramName,FileType,FileVersion)
 ! MODULES
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -158,12 +159,14 @@ END IF
 
 END FUNCTION ISVALIDHDF5FILE
 
+
 !==================================================================================================================================
 !> Subroutine to check if a file is a valid mesh file
 !==================================================================================================================================
 FUNCTION ISVALIDMESHFILE(MeshFileName)
 ! MODULES
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -217,11 +220,13 @@ ELSE
 END IF
 END FUNCTION ISVALIDMESHFILE
 
+
 !==================================================================================================================================
 !> Subroutine to determine HDF5 datasize
 !==================================================================================================================================
 SUBROUTINE GetDataSize(Loc_ID,DSetName,nDims,Size)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -253,6 +258,7 @@ END SUBROUTINE GetDataSize
 !==================================================================================================================================
 SUBROUTINE GetAttributeSize(Loc_ID,AttribName,nDims,Size)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -279,6 +285,7 @@ CALL H5ACLOSE_F(Attr_ID, iError)
 DEALLOCATE(SizeMax)
 END SUBROUTINE GetAttributeSize
 
+
 !==================================================================================================================================
 !> @brief Subroutine to check wheter a dataset in the hdf5 file exists
 !>
@@ -289,6 +296,7 @@ END SUBROUTINE GetAttributeSize
 !==================================================================================================================================
 SUBROUTINE DatasetExists(Loc_ID,DSetName,Exists,attrib)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -317,13 +325,13 @@ END IF
 END SUBROUTINE DatasetExists
 
 
-
 !==================================================================================================================================
 !> Subroutine to determine HDF5 dataset properties in Flexi terminology
 !==================================================================================================================================
 SUBROUTINE GetDataProps(nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5,ArrayName_opt)
 ! MODULES
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -387,11 +395,17 @@ SWRITE(UNIT_stdOut,'(A3,A30,A3,I33,A13)')' | ','GeometricnElems',' | ',nElems_HD
 
 SWRITE(UNIT_stdOut,'(A)')' DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
+
 END SUBROUTINE GetDataProps
 
 
+!===================================================================================================================================
+!
+!===================================================================================================================================
 SUBROUTINE GetVarNames(AttribName,VarNames,AttribExists)
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)                :: AttribName
 CHARACTER(LEN=255),ALLOCATABLE,INTENT(OUT) :: VarNames(:)
@@ -400,6 +414,7 @@ LOGICAL,INTENT(OUT)                        :: AttribExists
 ! LOCAL VARIABLES
 INTEGER  :: dims, nVal
 !===================================================================================================================================
+
 SDEALLOCATE(VarNames)
 CALL DatasetExists(File_ID,AttribName,AttribExists,attrib=.TRUE.)
 IF (AttribExists) THEN
@@ -412,7 +427,9 @@ IF (AttribExists) THEN
   ! read variable names
   CALL ReadAttribute(File_ID,TRIM(AttribName),nVal,StrArray=VarNames)
 END IF
+
 END SUBROUTINE GetVarNames
+
 
 !===================================================================================================================================
 !> High level wrapper to ReadArray and ReadAttrib. Check if array exists and directly
@@ -424,6 +441,7 @@ SUBROUTINE GetArrayAndName(ArrayName,AttribName,nVal,Array,VarNames)
 ! MODULES
 USE MOD_Globals
 USE MOD_Mesh_Vars    ,ONLY: nElems,nGlobalElems,OffsetElem
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -535,8 +553,8 @@ CALL H5DCLOSE_F(DSet_ID, iError)
 CALL H5SCLOSE_F(MemSpace,iError)
 
 LOGWRITE(*,*)'...DONE!'
-END SUBROUTINE ReadArray
 
+END SUBROUTINE ReadArray
 
 
 !==================================================================================================================================
@@ -569,6 +587,7 @@ INTEGER,TARGET                 :: IntToLog
 CHARACTER(LEN=255),TARGET      :: StrTmp(1)
 TYPE(C_PTR)                    :: buf
 !==================================================================================================================================
+
 LOGWRITE(*,*)' READ ATTRIBUTE "',TRIM(AttribName),'" FROM HDF5 FILE...'
 Dimsf(1)=nVal
 Loc_ID=Loc_ID_in

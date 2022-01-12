@@ -860,7 +860,7 @@ CHARACTER(LEN=255)       :: FileName,InputFile,NextFile
 !==================================================================================================================================
 IF(.NOT.MPIRoot) RETURN
 
-WRITE(UNIT_stdOut,'(a)')' DELETING OLD HDF5 FILES...'
+SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' DELETING OLD HDF5 FILES...'
 IF (.NOT.PRESENT(FlushTime_In)) THEN
   FlushTime=0.0
 ELSE

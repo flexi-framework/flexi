@@ -651,10 +651,10 @@ SUBROUTINE CalcSource(Ut,t)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Equation_Vars    ,ONLY: IniExactFunc,doCalcSource
+USE MOD_Equation_Vars    ,ONLY: IniExactFunc!,doCalcSource
 USE MOD_Equation_Vars    ,ONLY: SAKappa,SAd,cw1,cb1,cb2,sigma
 USE MOD_Equation_Vars    ,ONLY: fv2,fw,STilde,fn,ct1,ct2,ct3,ct4,includeTrip,omegaT,dXt,SAdt,SADebug,doSADebug
-USE MOD_Eos_Vars         ,ONLY: Kappa,KappaM1,cp
+USE MOD_Eos_Vars         ,ONLY: Kappa,KappaM1!,cp
 USE MOD_Exactfunc_Vars   ,ONLY: AdvVel
 USE MOD_DG_Vars          ,ONLY: U
 USE MOD_EOS              ,ONLY: ConsToPrim

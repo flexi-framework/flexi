@@ -97,21 +97,21 @@ FUNCTION CALCTIMESTEP(errType)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_DG_Vars      ,ONLY:U
+USE MOD_EOS_Vars
+USE MOD_Mesh_Vars    ,ONLY:sJ,Metrics_fTilde,Metrics_gTilde,Elem_xGP,nElems
+USE MOD_TimeDisc_Vars,ONLY:CFLScale,ViscousTimeStep,dtElem
 #ifndef GNU
 USE, INTRINSIC :: IEEE_ARITHMETIC,ONLY:IEEE_IS_NAN
 #endif
-USE MOD_DG_Vars      ,ONLY:U
-USE MOD_Mesh_Vars    ,ONLY:sJ,Metrics_fTilde,Metrics_gTilde,Elem_xGP,nElems
 #if PP_dim==3
 USE MOD_Mesh_Vars    ,ONLY:Metrics_hTilde
 #endif
-USE MOD_EOS_Vars
 #if PARABOLIC
 USE MOD_Equation_Vars,ONLY:fv1
 USE MOD_TimeDisc_Vars,ONLY:DFLScale
 USE MOD_Viscosity
 #endif /*PARABOLIC*/
-USE MOD_TimeDisc_Vars,ONLY:CFLScale,ViscousTimeStep,dtElem
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems
 #endif

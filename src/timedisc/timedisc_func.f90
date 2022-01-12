@@ -190,7 +190,7 @@ IF (dt.EQ.dt_min(DT_ANALYZE))       doAnalyze  = .TRUE.
 IF (dt.EQ.dt_min(DT_END    )) THEN; doAnalyze  = .TRUE.; doFinalize = .TRUE.; END IF
 dt                 = MINVAL(dt_min,MASK=dt_min.GT.0)
 
-nCalcTimestep = 0
+nCalcTimeStep = 0
 dt_minOld     = -999.
 IF (errType.NE.0) CALL Abort(__STAMP__,&
 #if EQNSYSNR == 3
@@ -231,8 +231,8 @@ INTEGER                      :: errType
 !===================================================================================================================================
 
 ! Return if no timestep update requested in this iteration
-IF (nCalcTimestep.GE.1) THEN
-  nCalcTimestep = nCalcTimestep-1
+IF (nCalcTimeStep.GE.1) THEN
+  nCalcTimeStep = nCalcTimeStep-1
   RETURN
 END IF
 
@@ -245,7 +245,7 @@ IF (dt.EQ.dt_min(DT_ANALYZE))       doAnalyze  = .TRUE.
 IF (dt.EQ.dt_min(DT_END    )) THEN; doAnalyze  = .TRUE.; doFinalize = .TRUE.; END IF
 dt                 = MINVAL(dt_min,MASK=dt_min.GT.0)
 
-nCalcTimestep = MIN(FLOOR(ABS(LOG10(ABS(dt_minOld/dt-1.)**2.*100.+EPSILON(0.)))),nCalcTimeStepMax) - 1
+nCalcTimeStep = MIN(FLOOR(ABS(LOG10(ABS(dt_minOld/dt-1.)**2.*100.+EPSILON(0.)))),nCalcTimeStepMax) - 1
 dt_minOld     = dt
 IF (errType.NE.0) THEN
   CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData,isErrorFile=.TRUE.)
@@ -314,10 +314,10 @@ IMPLICIT NONE
 #if FV_ENABLED
 CALL CalcIndicator(U,t)
 CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
-#endif
+#endif /*FV_ENABLED*/
 #if PP_LIMITER
 IF(DoPPLimiter) CALL PPLimiter()
-#endif
+#endif /*PP_LIMITER*/
 ! Call DG operator to fill face data, fluxes, gradients for analyze
 CALL DGTimeDerivative_weakForm(t)
 
@@ -369,7 +369,6 @@ IF(doAnalyze)THEN
 END IF
 
 END SUBROUTINE AnalyzeTimeStep
-
 
 
 !===================================================================================================================================

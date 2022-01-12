@@ -169,7 +169,7 @@ ELSE
   Riemann_loc => Riemann_pointer
 END IF
 
-! Momentum has to be rotatet using the normal system individual for each
+! Momentum has to be rotated using the normal system individual for each
 DO j=0,ZDIM(Nloc); DO i=0,Nloc
   ! left state: U_L
   U_LL(EXT_DENS)=U_L(DENS,i,j)

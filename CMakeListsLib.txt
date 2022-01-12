@@ -18,7 +18,7 @@ EXECUTE_PROCESS(COMMAND git ls-remote --get-url OUTPUT_VARIABLE GIT_ORIGIN)
 
 # Origin pointing to IAG
 IF("${GIT_ORIGIN}" MATCHES ".iag.uni-stuttgart.de")
-# Strip lead and trailing white space
+# Strip leading and trailing white space
 STRING(STRIP ${GIT_ORIGIN} GIT_ORIGIN)
 MESSAGE(STATUS "Checking git origin: " ${GIT_ORIGIN})
   # Checked out using SSH

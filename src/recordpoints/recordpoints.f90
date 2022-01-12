@@ -45,13 +45,13 @@ PUBLIC::InitRecordPoints,RecordPoints,FinalizeRecordPoints,WriteRP
 PUBLIC::DefineParametersRecordPoints
 CONTAINS
 
-
 !==================================================================================================================================
 !> Define parameters
 !==================================================================================================================================
 SUBROUTINE DefineParametersRecordPoints()
 ! MODULES
 USE MOD_ReadInTools ,ONLY: prms
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("RecordPoints")
@@ -76,6 +76,7 @@ USE MOD_Preproc
 USE MOD_ReadInTools         ,ONLY: GETSTR,GETINT,GETLOGICAL,GETREAL
 USE MOD_Interpolation_Vars  ,ONLY: InterpolationInitIsDone
 USE MOD_RecordPoints_Vars
+! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -90,10 +91,9 @@ INTEGER               :: nVar_loc
 RP_inUse=GETLOGICAL('RP_inUse','.FALSE.')
 IF(.NOT.RP_inUse) RETURN
 
-IF((.NOT.InterpolationInitIsDone) .OR. RecordPointsInitIsDone)THEN
-   CALL Abort(__STAMP__,&
-     "InitRecordPoints not ready to be called or already called.")
-END IF
+IF((.NOT.InterpolationInitIsDone) .OR. RecordPointsInitIsDone) &
+   CALL Abort(__STAMP__,"InitRecordPoints not ready to be called or already called.")
+
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT RECORDPOINTS...'
 
@@ -125,6 +125,7 @@ END IF
 RecordPointsInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT RECORDPOINTS DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
+
 END SUBROUTINE InitRecordPoints
 
 
@@ -136,6 +137,7 @@ SUBROUTINE InitRPCommunicator()
 ! MODULES
 USE MOD_Globals
 USE MOD_RecordPoints_Vars   ,ONLY: RP_onProc,myRPrank,RP_COMM,nRP_Procs
+! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -241,14 +243,15 @@ CALL ReadArray('OffsetRP',2,(/2,nElems/),OffsetElem,2,IntArray=OffsetRPArray)
 ! If these offsets are equal, no RP on elem.
 nRP=OffsetRPArray(2,nElems)-OffsetRPArray(1,1)
 offsetRP = OffsetRPArray(1,1)
+
 ! Read in RP reference coordinates
 CALL GetDataSize(File_ID,'xi_RP',nDims,HSize)
 CHECKSAFEINT(HSize(2),4)
 nGlobalRP=INT(HSize(2),4) !global number of RecordPoints
 DEALLOCATE(HSize)
+
 ALLOCATE(xi_RP(3,nRP))
 CALL ReadArray('xi_RP',2,(/3,nRP/),offsetRP,2,RealArray=xi_RP)
-
 
 IF(nRP.LT.1) THEN
   RP_onProc=.FALSE.
@@ -264,6 +267,7 @@ ELSE
     END DO
   END DO
 END IF
+
 CALL CloseDataFile()
 
 IF(RP_onProc)THEN
@@ -311,6 +315,7 @@ SUBROUTINE InitRPBasis(nRP,xi_RP,L_xi_RP,L_eta_RP,L_zeta_RP)
 USE MOD_PreProc
 USE MOD_Interpolation_Vars    ,ONLY: xGP,wBary
 USE MOD_Basis                 ,ONLY: LagrangeInterpolationPolys
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -342,19 +347,20 @@ SUBROUTINE RecordPoints(nVar,StrVarNames,iter,t,forceSampling)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_DG_Vars          ,ONLY: U
-USE MOD_Timedisc_Vars,    ONLY: dt
 USE MOD_Analyze_Vars,     ONLY: WriteData_dt,tWriteData
+USE MOD_DG_Vars          ,ONLY: U
 USE MOD_RecordPoints_Vars,ONLY: RP_Data,RP_ElemID
-USE MOD_RecordPoints_Vars,ONLY: RP_Buffersize,RP_MaxBuffersize,RP_SamplingOffset,iSample
+USE MOD_RecordPoints_Vars,ONLY: RP_Buffersize,RP_MaxBufferSize,RP_SamplingOffset,iSample
 USE MOD_RecordPoints_Vars,ONLY: l_xi_RP,l_eta_RP,nRP
+USE MOD_Timedisc_Vars,    ONLY: dt
 #if PP_dim==3
 USE MOD_RecordPoints_Vars,ONLY: l_zeta_RP
 #endif
 #if FV_ENABLED
-USE MOD_RecordPoints_Vars,ONLY: FV_RP_ijk
 USE MOD_FV_Vars          ,ONLY: FV_Elems
+USE MOD_RecordPoints_Vars,ONLY: FV_RP_ijk
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -373,23 +379,24 @@ IF(MOD(iter,INT(RP_SamplingOffset,KIND=8)).NE.0 .AND. .NOT. forceSampling) RETUR
 IF(.NOT.ALLOCATED(RP_Data))THEN
   ! Compute required buffersize from timestep and add 20% tolerance
   ! +1 is added to ensure a minimum buffersize of 2
-  RP_Buffersize = MIN(CEILING((1.2*WriteData_dt)/(dt*RP_SamplingOffset))+1,RP_MaxBuffersize)
+  RP_Buffersize = MIN(CEILING((1.2*WriteData_dt)/(dt*RP_SamplingOffset))+1,RP_MaxBufferSize)
   ALLOCATE(RP_Data(0:nVar,nRP,RP_Buffersize))
 END IF
 
 ! evaluate state at RP
 iSample=iSample+1
 U_RP=0.
+
 DO iRP=1,nRP
 #if FV_ENABLED
   IF (FV_Elems(RP_ElemID(iRP)).EQ.0)THEN ! DG
-#endif
+#endif /*FV_ENABLED*/
     DO k=0,PP_NZ; DO j=0,PP_N
 #if PP_dim==3
       l_eta_zeta_RP=l_eta_RP(j,iRP)*l_zeta_RP(k,iRP)
 #else
       l_eta_zeta_RP=l_eta_RP(j,iRP)
-#endif
+#endif /*FV_ENABLED*/
       DO i=0,PP_N
         U_RP(:,iRP)=U_RP(:,iRP) + U(:,i,j,k,RP_ElemID(iRP))*l_xi_RP(i,iRP)*l_eta_zeta_RP
       END DO !i
@@ -401,13 +408,15 @@ DO iRP=1,nRP
                     FV_RP_ijk(2,iRP),&
                     FV_RP_ijk(3,iRP),RP_ElemID(iRP))
   END IF
-#endif
+#endif /*FV_ENABLED*/
+
 END DO ! iRP
 RP_Data(1:nVar,:,iSample)=U_RP
 RP_Data(0,     :,iSample)=t
 
 ! dataset is full, write data and reset
 IF(iSample.EQ.RP_Buffersize) CALL WriteRP(nVar,StrVarNames,tWriteData,.FALSE.)
+
 END SUBROUTINE RecordPoints
 
 
@@ -522,6 +531,7 @@ END SUBROUTINE WriteRP
 SUBROUTINE FinalizeRecordPoints()
 ! MODULES
 USE MOD_RecordPoints_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 SDEALLOCATE(RP_Data)

@@ -341,7 +341,7 @@ IF (meshMode.GT.1) THEN
   ALLOCATE(            sJ(  0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_ENABLED))
   ALLOCATE(     scaledJac(  0:PP_N,0:PP_N,0:PP_NZ,nElems))
   NGeoRef=3*NGeo ! build jacobian at higher degree
-  ALLOCATE(    DetJac_Ref(1,0:NgeoRef,0:NgeoRef,0:ZDIM(NGeoRef),nElems))
+  ALLOCATE(    DetJac_Ref(1,0:NGeoRef,0:NGeoRef,0:ZDIM(NGeoRef),nElems))
 
   ! surface data
   ALLOCATE(      Face_xGP(3,0:PP_N,0:PP_NZ,0:FV_ENABLED,1:nSides))
@@ -428,12 +428,10 @@ SDEALLOCATE(AnalyzeSide)
 SDEALLOCATE(MortarType)
 SDEALLOCATE(MortarInfo)
 
-
 ! allocated during ReadMesh
 SDEALLOCATE(NodeCoords)
 SDEALLOCATE(BoundaryName)
 SDEALLOCATE(BoundaryType)
-
 
 ! Volume
 SDEALLOCATE(Elem_xGP)

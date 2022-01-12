@@ -580,8 +580,7 @@ ELSE
     CALL ViscousFlux(Nloc,Fd_Face_loc,UPrim_master,UPrim_boundary,&
          gradUx_master,gradUy_master,gradUz_master,&
          gradUx_master,gradUy_master,gradUz_master,&
-         NormVec&
-    )
+         NormVec)
     Flux = Flux + Fd_Face_loc
 #endif /*PARABOLIC*/
 
@@ -955,7 +954,7 @@ INTEGER                       :: p,q,SideID,ElemID,locSide
 CHARACTER(LEN=255)            :: NodeType_HDF5
 LOGICAL                       :: InterpolateSolution
 !==================================================================================================================================
-SWRITE(UNIT_stdOut,'(A,A)')'  Read BC state from file "',FileName
+SWRITE(UNIT_stdOut,'(A,A)')'  Read BC state from file "',TRIM(FileName)
 CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL GetDataProps(nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5)
 

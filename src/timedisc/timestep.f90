@@ -59,11 +59,11 @@ USE MOD_TimeDisc_Vars ,ONLY: dt,RKA,RKb,RKc,nRKStages,CurrentStage
 USE MOD_FV            ,ONLY: FV_Switch
 USE MOD_FV_Vars       ,ONLY: FV_toDGinRK
 USE MOD_Indicator     ,ONLY: CalcIndicator
-#endif
+#endif /*FV_ENABLED*/
 #if PP_LIMITER
 USE MOD_PPLimiter     ,ONLY: PPLimiter
 USE MOD_Filter_Vars   ,ONLY: DoPPLimiter
-#endif
+#endif /*PP_LIMITER*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -129,11 +129,11 @@ USE MOD_TimeDisc_Vars,ONLY: dt,RKdelta,RKg1,RKg2,RKg3,RKb,RKc,nRKStages,CurrentS
 USE MOD_FV           ,ONLY: FV_Switch
 USE MOD_FV_Vars      ,ONLY: FV_toDGinRK
 USE MOD_Indicator    ,ONLY: CalcIndicator
-#endif
+#endif /*FV_ENABLED*/
 #if PP_LIMITER
 USE MOD_PPLimiter    ,ONLY: PPLimiter
 USE MOD_Filter_Vars  ,ONLY: DoPPLimiter
-#endif
+#endif /*PP_LIMITER*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -169,10 +169,10 @@ DO iStage = 1,nRKStages
 #if FV_ENABLED
   CALL CalcIndicator(U,t)
   CALL FV_Switch(U,Uprev,S2,AllowToDG=FV_toDGinRK)
-#endif
+#endif /*FV_ENABLED*/
 #if PP_LIMITER
   IF(DoPPLimiter) CALL PPLimiter()
-#endif
+#endif /*PP_LIMITER*/
   ! Call DG operator to fill face data, fluxes, gradients for analyze
   CALL DGTimeDerivative_weakForm(tStage)
 
@@ -188,7 +188,7 @@ DO iStage = 1,nRKStages
   CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(iStage))                         !U = U + Ut*b_dt(iStage)
 #if PP_LIMITER
   IF(DoPPLimiter) CALL PPLimiter()
-#endif
+#endif /*PP_LIMITER*/
 END DO
 
 END SUBROUTINE TimeStepByLSERKK3

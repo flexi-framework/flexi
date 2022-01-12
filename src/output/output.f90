@@ -131,10 +131,9 @@ CHARACTER(LEN=8)               :: StrDate
 CHARACTER(LEN=10)              :: StrTime
 CHARACTER(LEN=255)             :: LogFile
 !==================================================================================================================================
-IF ((.NOT.InterpolationInitIsDone).OR.OutputInitIsDone) THEN
-  CALL CollectiveStop(__STAMP__,&
-    'InitOutput not ready to be called or already called.')
-END IF
+IF ((.NOT.InterpolationInitIsDone).OR.OutputInitIsDone) &
+  CALL CollectiveStop(__STAMP__,'InitOutput not ready to be called or already called.')
+
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT OUTPUT...'
 
@@ -245,11 +244,11 @@ INTEGER,PARAMETER :: barWidth = 50
 #if FV_ENABLED
 INTEGER      :: FVcounter
 REAL         :: FV_percent
-#endif
+#endif /*FV_ENABLED*/
 #if PP_LIMITER
 INTEGER :: PPcounter
 REAL    :: PP_percent
-#endif
+#endif /*PP_LIMITER*/
 !==================================================================================================================================
 #if FV_ENABLED
 FVcounter = SUM(FV_Elems)
@@ -292,6 +291,7 @@ IF(MPIRoot)THEN
   time_remaining = time_remaining / 60
   hours = MOD(time_remaining,24.)
   days = time_remaining / 24
+
 #if FV_ENABLED
   FV_percent = REAL(FVcounter) / nGlobalElems * 100.
   WRITE(UNIT_stdOut,'(F5.2,A5)',ADVANCE='NO') FV_percent, '% FV,'
@@ -308,8 +308,9 @@ IF(MPIRoot)THEN
     ACHAR(13) ! ACHAR(13) is carriage return
 #ifdef INTEL
   CLOSE(UNIT_stdOut)
-#endif
+#endif /*INTEL*/
 END IF
+
 END SUBROUTINE PrintStatusLine
 
 

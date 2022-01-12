@@ -520,7 +520,7 @@ CALL FV_DGtoFV(PP_nVarPrim,UPrim_master ,UPrim_slave )
 
 ! 10.2)
 CALL GetConservativeStateSurface(UPrim_master, UPrim_slave, U_master, U_slave, FV_Elems_master, FV_Elems_slave, 1)
-#endif
+#endif /*FV_ENABLED*/
 
 #if USE_MPI
 ! 10.3)

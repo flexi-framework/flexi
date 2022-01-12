@@ -15,7 +15,7 @@
 #include "eos.h"
 
 !==================================================================================================================================
-!> Soubroutines providing exactly evaluated functions used in initialization or boundary conditions.
+!> Subroutines providing exactly evaluated functions used in initialization or boundary conditions.
 !==================================================================================================================================
 MODULE MOD_Exactfunc
 ! MODULES
