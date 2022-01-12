@@ -314,15 +314,17 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !===================================================================================================================================
 
+! Call DG operator to fill face data, fluxes, gradients for analyze
+IF (doAnalyze) THEN
 #if FV_ENABLED
-CALL CalcIndicator(U,t)
-CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
+  CALL CalcIndicator(U,t)
+  CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
 #endif /*FV_ENABLED*/
 #if PP_LIMITER
-IF(DoPPLimiter) CALL PPLimiter()
+  IF(DoPPLimiter) CALL PPLimiter()
 #endif /*PP_LIMITER*/
-! Call DG operator to fill face data, fluxes, gradients for analyze
-CALL DGTimeDerivative_weakForm(t)
+  CALL DGTimeDerivative_weakForm(t)
+END IF
 
 ! Call your analysis routine for your testcase here.
 IF((MOD(iter,INT(nAnalyzeTestCase,KIND=8)).EQ.0).OR.doAnalyze) CALL AnalyzeTestCase(t)

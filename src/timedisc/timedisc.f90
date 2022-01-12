@@ -160,14 +160,6 @@ SWRITE(UNIT_stdOut,'(A)') ' CALCULATION RUNNING...'
 
 IF(TimeDiscType.EQ.'ESDIRK') CALL FillInitPredictor(t)
 
-#if FV_ENABLED
-CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
-#endif /*FV_ENABLED*/
-#if PP_LIMITER
-IF(DoPPLimiter) CALL PPLimiter()
-#endif /*PP_LIMITER*/
-CALL DGTimeDerivative_weakForm(t)
-
 ! Run computation
 DO
   ! Update time step
