@@ -234,11 +234,11 @@ LOGICAL,INTENT(IN),OPTIONAL :: doETA !< flag to print ETA without carriage retur
 REAL         :: percent,time_remaining,mins,secs,hours,days
 CHARACTER(3) :: tmpString
 #if FV_ENABLED && PP_LIMITER
-INTEGER,PARAMETER :: barWidth = 30
+INTEGER,PARAMETER :: barWidth = 31
 #elif FV_ENABLED || PP_LIMITER
-INTEGER,PARAMETER :: barWidth = 40
+INTEGER,PARAMETER :: barWidth = 41
 #else
-INTEGER,PARAMETER :: barWidth = 50
+INTEGER,PARAMETER :: barWidth = 51
 #endif
 #if FV_ENABLED
 INTEGER      :: FVcounter
@@ -303,7 +303,7 @@ IF(MPIRoot)THEN
 
   WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A12,A,A1,A,A3,F6.2,A3,A1)',ADVANCE=tmpString)    &
     '   Time = ', t,'  dt = ', dt, ' ', ' ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),' |',     &
-    REPEAT('=',MAX(CEILING(percent*barWidth/100.)-1,0)),'>',REPEAT(' ',barWidth-MAX(CEILING(percent*barWidth/100.)-1,0)),'| [',percent,'%] ',&
+    REPEAT('=',MAX(CEILING(percent*barWidth/100.)-1,0)),'>',REPEAT(' ',barWidth-MAX(CEILING(percent*barWidth/100.),0)),'| [',percent,'%] ',&
     ACHAR(13) ! ACHAR(13) is carriage return
 #ifdef INTEL
   CLOSE(UNIT_stdOut)
