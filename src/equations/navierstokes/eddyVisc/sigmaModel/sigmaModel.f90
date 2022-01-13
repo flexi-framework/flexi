@@ -15,7 +15,9 @@
 #include "eos.h"
 
 !===================================================================================================================================
-!> Subroutines necessary for calculating SigmaModel Eddy-Viscosity
+!> Subroutines for the sigma-model proposed in
+!>  - Nicoud, Franck, et al. "Using singular values to build a subgrid-scale model for large eddy simulations."
+!>    Physics of fluids 23.8 (2011): 085106. 
 !===================================================================================================================================
 MODULE MOD_SigmaModel
 ! MODULES
@@ -41,7 +43,7 @@ PUBLIC::InitSigmaModel,SigmaModel_Volume,FinalizeSigmaModel
 CONTAINS
 
 !===================================================================================================================================
-!> Get some parameters needed by SigmaModel modules and initialize SigmaModel
+!> Get model parameters and initialize sigma-model
 !===================================================================================================================================
 SUBROUTINE InitSigmaModel()
 ! MODULES
@@ -51,7 +53,6 @@ USE MOD_EddyVisc_Vars
 USE MOD_ReadInTools        ,ONLY: GETREAL,GETLOGICAL
 USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone,wGP
 USE MOD_Mesh_Vars          ,ONLY: MeshInitIsDone,nElems,sJ
-USE MOD_Testcase_Vars      ,ONLY: testcase
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -65,34 +66,27 @@ IF(((.NOT.InterpolationInitIsDone).AND.(.NOT.MeshInitIsDone)).OR.SigmaModelInitI
     "InitSigmaModel not ready to be called or already called.")
 END IF
 SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT SigmaModel...'
+SWRITE(UNIT_stdOut,'(A)') ' INIT SIGMA-MODEL...'
 
-! Read the variables used for LES model
-! SigmaModel model
-CS     = GETREAL('CS')
-! Do Van Driest style damping or not
-VanDriest = GETLOGICAL('VanDriest','.FALSE.')
+! Read model coefficient
+CS = GETREAL('CS')
 
 ! Calculate the filter width deltaS: deltaS=( Cell volume )^(1/3) / ( PP_N+1 )
 DO iElem=1,nElems
   CellVol = 0.
-  DO i=0,PP_N
-    DO j=0,PP_N
-      DO k=0,PP_N
-        CellVol = CellVol +wGP(i)*wGP(j)*wGP(k)/sJ(i,j,k,iElem,0)
-      END DO
-    END DO
-  END DO
-  DeltaS(iElem) = ( CellVol)**(1./3.)  / (REAL(PP_N)+1.)
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+    CellVol = CellVol +wGP(i)*wGP(j)*wGP(k)/sJ(i,j,k,iElem,0)
+  END DO; END DO; END DO
+  DeltaS(iElem) = CellVol**(1./3.)  / (REAL(PP_N)+1.)
 END DO
 
 SigmaModelInitIsDone=.TRUE.
-SWRITE(UNIT_stdOut,'(A)')' INIT SigmaModel DONE!'
+SWRITE(UNIT_stdOut,'(A)')' INIT SIGMA-MODEL DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitSigmaModel
 
 !===================================================================================================================================
-!> Compute SigmaModel Eddy-Visosity
+!> Compute sigma-Model Eddy-Visosity
 !===================================================================================================================================
 SUBROUTINE SigmaModel_Point(gradUx,gradUy,gradUz,dens,deltaS,muSGS)
 ! MODULES
@@ -100,19 +94,19 @@ USE MOD_EddyVisc_Vars,     ONLY:CS
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-!> Gradients in x,y,z directions
-REAL,DIMENSION(PP_nVarLifting),INTENT(IN)  :: gradUx, gradUy, gradUz
-REAL                          ,INTENT(IN)  :: dens, deltaS
-REAL                          ,INTENT(OUT) :: muSGS
+REAL,DIMENSION(PP_nVarLifting),INTENT(IN)  :: gradUx, gradUy, gradUz   !> Gradients in x,y,z directions
+REAL                          ,INTENT(IN)  :: dens    !> pointwise density
+REAL                          ,INTENT(IN)  :: deltaS  !> filter width
+REAL                          ,INTENT(OUT) :: muSGS   !> pointwise eddyviscosity
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! External procedures defined in LAPACK
 EXTERNAL DSYEV
 ! LOCAL VARIABLES
-REAL               :: sigma(3), lambda(3)
-REAL               :: G_mat(3,3)
-REAL               :: work(9)  !lapack work array
 INTEGER            :: info
 REAL               :: d_model
+REAL               :: sigma(3), lambda(3)
+REAL               :: G_mat(3,3)
+REAL               :: work(9)  ! lapack work array
 !===================================================================================================================================
 G_Mat(1,1) = gradUx(LIFT_VEL1)*gradUx(LIFT_VEL1) + gradUx(LIFT_VEL2)*gradUx(LIFT_VEL2) + gradUx(LIFT_VEL3)*gradUx(LIFT_VEL3)
 G_Mat(1,2) = gradUx(LIFT_VEL1)*gradUy(LIFT_VEL1) + gradUx(LIFT_VEL2)*gradUy(LIFT_VEL2) + gradUx(LIFT_VEL3)*gradUy(LIFT_VEL3)
@@ -133,7 +127,7 @@ ELSE
   sigma = SQRT(MAX(0.,lambda)) ! ensure were not negative
   d_model = (sigma(3)*(sigma(1)-sigma(2))*(sigma(2)-sigma(3)))/(sigma(1)**2)
 END IF
-! SigmaModel model
+! Sigma-Model
 muSGS = (CS*deltaS)**2. * d_model * dens
 END SUBROUTINE SigmaModel_Point
 
@@ -155,9 +149,9 @@ IMPLICIT NONE
 INTEGER             :: i,j,k,iElem
 !===================================================================================================================================
 DO iElem = 1,nElems
-  DO k = 0,PP_NZ; DO j = 0,PP_N; DO i = 0,PP_N
-    CALL SigmaModel_Point(gradUx(:,i,j,k,iElem), gradUy(:,i,j,k,iElem), gradUz(:,i,j,k,iElem), &
-                                 U(DENS,i,j,k,iElem),        deltaS(iElem),  muSGS(1,i,j,k,iElem))
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+    CALL SigmaModel_Point(gradUx(    :,i,j,k,iElem), gradUy(:,i,j,k,iElem), gradUz(:,i,j,k,iElem), &
+                               U(DENS,i,j,k,iElem),          deltaS(iElem),  muSGS(1,i,j,k,iElem))
   END DO; END DO; END DO ! i,j,k
 END DO
 END SUBROUTINE SigmaModel_Volume
@@ -169,6 +163,10 @@ SUBROUTINE FinalizeSigmaModel()
 ! MODULES
 USE MOD_EddyVisc_Vars
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
 !===============================================================================================================================
 SigmaModelInitIsDone = .FALSE.
 END SUBROUTINE FinalizeSigmaModel

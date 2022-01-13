@@ -15,7 +15,13 @@
 #include "eos.h"
 
 !===================================================================================================================================
-!> Subroutines necessary for calculating Smagorinsky Eddy-Viscosity
+!> Subroutines necessary for calculating Smagorinsky Eddy-Viscosity, originally derived in
+!>   - Smagorinsky, Joseph. "General circulation experiments with the primitive equations: I. The basic experiment."
+!>     Monthly weather review 91.3 (1963): 99-164.
+!>
+!> The Van-Driest damping for the Smagorinsky model for channel flow is originally used in
+!>   - Moin, Parviz, and John Kim. "Numerical investigation of turbulent channel flow." 
+!>     Journal of fluid mechanics 118 (1982): 341-377.
 !===================================================================================================================================
 MODULE MOD_Smagorinsky
 ! MODULES
@@ -41,7 +47,7 @@ PUBLIC::InitSmagorinsky, Smagorinsky_Volume, FinalizeSmagorinsky
 CONTAINS
 
 !===================================================================================================================================
-!> Get some parameters needed by Smagorinsky modules and initialize Smagorinsky
+!> Get model parameters and initialize Smagorinsky model
 !===================================================================================================================================
 SUBROUTINE InitSmagorinsky()
 ! MODULES
@@ -57,8 +63,8 @@ USE MOD_EOS_Vars           ,ONLY: mu0
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: i,iElem,j,k
-REAL    :: CellVol, yPlus
+INTEGER :: i,j,k,iElem
+REAL    :: CellVol,yPlus
 !===================================================================================================================================
 IF(((.NOT.InterpolationInitIsDone).AND.(.NOT.MeshInitIsDone)).OR.SmagorinskyInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,&
@@ -67,9 +73,8 @@ END IF
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT SMAGORINSKY...'
 
-! Read the variables used for LES model
-! Smagorinsky model
-CS        = GETREAL('CS')
+! Read model coefficient
+CS = GETREAL('CS')
 ! Do Van Driest style damping or not (only for channel!)
 VanDriest = GETLOGICAL('VanDriest','.FALSE.')
 
@@ -82,13 +87,13 @@ damp = 1.
 DO iElem=1,nElems
   CellVol = 0.
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    CellVol = CellVol +wGP(i)*wGP(j)*wGP(k)/sJ(i,j,k,iElem,0)
+    CellVol = CellVol + wGP(i)*wGP(j)*wGP(k)/sJ(i,j,k,iElem,0)
     IF (VanDriest)THEN
       yPlus = (1. - ABS(Elem_xGP(2,i,j,k,iElem))) / mu0   ! y-dir
       damp(1,i,j,k,iElem) = 1. - EXP(-yPlus/26.) ! Van Driest damping factor
     END IF
   END DO; END DO; END DO
-  DeltaS(iElem) = ( CellVol)**(1./3.)  / (REAL(PP_N)+1.)
+  DeltaS(iElem) = CellVol**(1./3.)  / (REAL(PP_N)+1.)
 
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     damp(1,i,j,k,iElem) = (damp(1,i,j,k,iElem) * CS * deltaS(iElem))**2
@@ -108,10 +113,10 @@ PPURE SUBROUTINE Smagorinsky_Point(gradUx,gradUy,gradUz,dens,damp,muSGS)
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-!> Gradients in x,y,z directions
-REAL,DIMENSION(PP_nVarLifting),INTENT(IN)  :: gradUx, gradUy, gradUz
-REAL                          ,INTENT(IN)  :: dens, damp
-REAL                          ,INTENT(OUT) :: muSGS
+REAL,DIMENSION(PP_nVarLifting),INTENT(IN)  :: gradUx, gradUy, gradUz   !> Gradients in x,y,z directions
+REAL                          ,INTENT(IN)  :: dens    !> pointwise density
+REAL                          ,INTENT(IN)  :: damp    !> constant factor (damp*CS*deltaS)**2
+REAL                          ,INTENT(OUT) :: muSGS   !> pointwise eddyviscosity
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                    :: S_eN
@@ -121,8 +126,7 @@ S_eN = SQRT ( 2.*(gradUx(LIFT_VEL1)**2 + gradUy(LIFT_VEL2)**2 + gradUz(LIFT_VEL3
               + ( gradUy(LIFT_VEL1) + gradUx(LIFT_VEL2) )**2                    &
               + ( gradUz(LIFT_VEL1) + gradUx(LIFT_VEL3) )**2                    &
               + ( gradUz(LIFT_VEL2) + gradUy(LIFT_VEL3) )**2 )
-! Smagorinsky model
-! Smago: (damp * CS * deltaS)**2 * S_eN * rho
+! Smagorinsky model: (damp * CS * deltaS)**2 * S_eN * rho
 ! we store the first constant term in damp
 muSGS = damp * S_eN * dens
 END SUBROUTINE Smagorinsky_Point
@@ -145,9 +149,9 @@ IMPLICIT NONE
 INTEGER             :: i,j,k,iElem
 !===================================================================================================================================
 DO iElem = 1,nElems
-  DO k = 0,PP_NZ; DO j = 0,PP_N; DO i = 0,PP_N
-    CALL Smagorinsky_Point(gradUx(:,i,j,k,iElem), gradUy(:,i,j,k,iElem), gradUz(:,i,j,k,iElem), &
-                                 U(DENS,i,j,k,iElem),   damp(1,i,j,k,iElem),  muSGS(1,i,j,k,iElem))
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+    CALL Smagorinsky_Point(gradUx(:   ,i,j,k,iElem), gradUy(:,i,j,k,iElem), gradUz(:,i,j,k,iElem), &
+                                U(DENS,i,j,k,iElem),   damp(1,i,j,k,iElem),  muSGS(1,i,j,k,iElem))
   END DO; END DO; END DO ! i,j,k
 END DO
 END SUBROUTINE Smagorinsky_Volume
@@ -159,6 +163,10 @@ SUBROUTINE FinalizeSmagorinsky()
 ! MODULES
 USE MOD_EddyVisc_Vars
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
 !===============================================================================================================================
 SmagorinskyInitIsDone = .FALSE.
 END SUBROUTINE FinalizeSmagorinsky
