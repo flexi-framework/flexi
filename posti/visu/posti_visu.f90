@@ -39,7 +39,7 @@ USE MOD_VTK                   ,ONLY: WriteParallelVTK
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: iArg, iVar
+INTEGER                        :: iArg,iVar,iExt
 CHARACTER(LEN=255),TARGET      :: prmfile
 CHARACTER(LEN=255),TARGET      :: postifile
 CHARACTER(LEN=255),TARGET      :: statefile
@@ -105,12 +105,15 @@ IF(nProcessors.GT.1 .AND. MPIRoot) CALL SYSTEM('mkdir -p visu')
 
 DO iArg=1+skipArgs,nArgs
   statefile = TRIM(Args(iArg))
-  SWRITE(*,*) "Processing state-file: ",TRIM(statefile)
+  SWRITE(UNIT_stdOut,'(A,A)') 'Processing state-file: ',TRIM(statefile)
 
   CALL visu(MPI_COMM_WORLD, prmfile, postifile, statefile)
 
   IF (MeshFileMode) THEN
-    FileString_DG=TRIM(MeshFile)//'_visu'
+    ! Remove file extension
+    iExt = INDEX(MeshFile,'.',BACK = .TRUE.) ! Position of file extension
+    FileString_DG=MeshFile(:iExt-1)
+    FileString_DG=TRIM(FileString_DG)//'_visu'
   ELSE
 #if FV_ENABLED
     FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))
