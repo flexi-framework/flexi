@@ -496,6 +496,7 @@ USE MOD_Interpolation_Vars,ONLY: NodeType,NodeTypeVISUInner
 USE MOD_Mesh_Vars         ,ONLY: nElems
 USE MOD_Mesh_Vars         ,ONLY: Elem_xGP
 USE MOD_ReadInTools       ,ONLY: GETLOGICAL
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -571,6 +572,7 @@ ELSE
     END DO !k
   END DO ! iElem=1,nElems
 END IF
+
 END SUBROUTINE FV_FillIni
 
 !==================================================================================================================================

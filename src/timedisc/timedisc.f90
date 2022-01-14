@@ -117,6 +117,9 @@ CALL DGTimeDerivative_weakForm(t)
 ! initial switch to FV sub-cells (must be called after DGTimeDerivative_weakForm, since indicator may require gradients)
 CALL CalcIndicator(U,t)
 IF(.NOT.DoRestart)  CALL FV_FillIni()
+! FV_FillIni might still give invalid cells, switch again ...
+CALL CalcIndicator(U,t)
+CALL FV_Switch(U,AllowToDG=.FALSE.)
 #endif /*FV_ENABLED*/
 #if PP_LIMITER
 IF(DoPPLimiter) CALL PPLimiter()

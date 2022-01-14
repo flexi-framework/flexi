@@ -95,6 +95,7 @@ USE MOD_Predictor           ,ONLY: InitPredictor
 USE MOD_ReadInTools         ,ONLY: GETREAL,GETINT,GETSTR
 USE MOD_StringTools         ,ONLY: LowCase,StripSpaces
 USE MOD_TimeDisc_Vars       ,ONLY: CFLScale,dtElem,dt,tend
+USE MOD_TimeDisc_Vars       ,ONLY: Ut_tmp,UPrev,S2
 USE MOD_TimeDisc_Vars       ,ONLY: maxIter,nCalcTimeStepMax
 USE MOD_TimeDisc_Vars       ,ONLY: SetTimeDiscCoefs,TimeStep,TimeDiscName,TimeDiscType,TimeDiscInitIsDone
 USE MOD_TimeStep            ,ONLY: TimeStepByLSERKW2,TimeStepByLSERKK3,TimeStepByESDIRK
@@ -130,8 +131,11 @@ SWRITE(UNIT_stdOut,'(A)') ' Method of time integration: '//TRIM(TimeDiscName)
 SELECT CASE(TimeDiscType)
   CASE('LSERKW2')
     TimeStep=>TimeStepByLSERKW2
+    ALLOCATE(Ut_tmp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
   CASE('LSERKK3')
     TimeStep=>TimeStepByLSERKK3
+    ALLOCATE(S2   (1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) &
+            ,UPrev(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
   CASE('ESDIRK')
     ! Implicit time integration
     TimeStep=>TimeStepByESDIRK
@@ -316,13 +320,6 @@ IMPLICIT NONE
 
 ! Call DG operator to fill face data, fluxes, gradients for analyze
 IF (doAnalyze) THEN
-#if FV_ENABLED
-  CALL CalcIndicator(U,t)
-  CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
-#endif /*FV_ENABLED*/
-#if PP_LIMITER
-  IF(DoPPLimiter) CALL PPLimiter()
-#endif /*PP_LIMITER*/
   CALL DGTimeDerivative_weakForm(t)
 END IF
 
@@ -458,6 +455,9 @@ IMPLICIT NONE
 !==================================================================================================================================
 TimeDiscInitIsDone = .FALSE.
 SDEALLOCATE(dtElem)
+SDEALLOCATE(Ut_tmp)
+SDEALLOCATE(S2)
+SDEALLOCATE(UPrev)
 SDEALLOCATE(RKA)
 SDEALLOCATE(RKb)
 SDEALLOCATE(RKc)
