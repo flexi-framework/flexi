@@ -73,7 +73,6 @@ CALL prms%CreateStringOption('TimeDiscMethod', "Specifies the type of time-discr
 CALL prms%CreateRealOption(  'TEnd',           "End time of the simulation (mandatory).")
 CALL prms%CreateRealOption(  'CFLScale',       "Scaling factor for the theoretical CFL number, typical range 0.1..1.0 (mandatory for dynamic and initial)")
 CALL prms%CreateRealOption(  'DFLScale',       "Scaling factor for the theoretical DFL number, typical range 0.1..1.0 (mandatory for dynamic and initial)")
-CALL prms%CreateRealOption(  'DFLScale',       "Scaling factor for the theoretical DFL number, typical range 0.1..1.0 (mandatory for dynamic and initial)")
 CALL prms%CreateRealOption(  'dt',             "Custom timestep (mandatory for static)")
 CALL prms%CreateRealOption(  'dtmin',          "Minimal allowed timestep (optional)","-1.0")
 CALL prms%CreateRealOption(  'dtkill',         "Kill FLEXI if dt gets below this value (optional)","-1.0")
