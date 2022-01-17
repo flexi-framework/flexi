@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -20,8 +20,8 @@
 !> procedure, additional dependencies would arise, but they are ignored to keep the sparsity pattern.
 !> Dependencies of fluxes at big mortar sides (B), with associated small mortars (L and U):
 !> dF^B/dU^B = dF^B/dF_U * dF_U/dU_U * dU_U/dU_B + dF^B/dF_L * dF_L/dU_L * dU_L/dU_B
-!>               proj.     Riemann_FD  interpol.
-!> Projection and interpolation procedures are implemented using the M matrices.
+!>               proj.     Riemann_FD  interpol.   
+!> Projection and interpolation procedures are implemented using the M matrices. 
 !===================================================================================================================================
 SUBROUTINE Jacobian_Mortar(FVSide,MortarType,S2V2,DfMortar_DVar,Df_DVar)
 ! MODULES

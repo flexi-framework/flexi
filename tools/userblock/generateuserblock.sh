@@ -10,7 +10,7 @@
 #               of the simulation code, which was used to generate those results.
 #               A patch to the remote Git branch of the current code is generated
 #               or to the master, if the branch does not exist on the remote.
-#
+# 
 #************************************************************************************
 
 # $1: CMAKE_RUNTIME_OUTPUT_DIRECTORY
@@ -35,16 +35,16 @@ if [ -z "$PARENTCOMMIT" ]; then
   FOUND=0
   while [ $FOUND -eq 0 ]; do
     # get commit on server, where branch started
-    COLUMN=$((    $(git show-branch | grep '^[^\[]*\*'  | head -1 | cut -d* -f1 | wc -c) - 1 ))
-    START_ROW=$(( $(git show-branch | grep -n "^[\-]*$" | cut -d: -f1) + 1 ))
+    COLUMN=$((    $(git show-branch | grep '^[^\[]*\*'  | head -1 | cut -d* -f1 | wc -c) - 1 )) 
+    START_ROW=$(( $(git show-branch | grep -n "^[\-]*$" | cut -d: -f1) + 1 )) 
     PARENTNAME=$(   git show-branch | tail -n +$START_ROW | grep -v "^[^\[]*\[$LOCBRANCHNAME" | grep "^.\{$COLUMN\}[^ ]" | head -n1 | sed 's/.*\[\(.*\)\].*/\1/' | sed 's/[\^~].*//')
     if [ -z "$PARENTNAME" ]; then
       break
     fi
-
+  
     PARENTCOMMIT=$(git show-ref | grep "origin/$PARENTNAME$" | cut -b -40)
     if [ -z "$PARENTCOMMIT" ]; then
-      LOCBRANCHNAME=$PARENTNAME
+      LOCBRANCHNAME=$PARENTNAME 
     else
       FOUND=1
       break

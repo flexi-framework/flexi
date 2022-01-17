@@ -24,7 +24,7 @@ def modify_prm(path, properties) :
                lines[i] = "%s= %s\n" % (prop, str(value))
    # write parameter file
    f = open(path, 'w')
-   for line in lines :
+   for line in lines : 
       f.write(line)
    f.close()
 

@@ -134,7 +134,7 @@ IF (stateFileMode) THEN
   ALLOCATE(StrVarNames_loc(PP_nVar))
   StrVarNames_loc = StrVarNames
 ELSE
-  ! We need to specify the name of the dataset to evaluate for non-state files.
+  ! We need to specify the name of the dataset to evaluate for non-state files. 
   DataSetName = GETSTR('RecordpointsDataSetName','DG_Solution')
   ! Determine the size of the data set
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)

@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2016  Prof. Claus-Dieter Munz 
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -14,11 +14,11 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Tool used to pre-calculate the distance to the closest solid wall for each volume gauss point when needed e.g. for the
+!> Tool used to pre-calculate the distance to the closest solid wall for each volume gauss point when needed e.g. for the 
 !> RANS SA turbulence model.
 !> General process is as follows:
 !>   * Read in of mesh (global, only single execution)
-!>   * For each volume gauss points:
+!>   * For each volume gauss points: 
 !>       * Coarse search. Super-sampling of all solid wall surfaces to find the closest surface.
 !>       * Minimization of the square of the distance function using a simple conjugate gradient algorithm on that specific surface.
 !>         The coarse search is used as a starting point.

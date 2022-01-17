@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -17,7 +17,7 @@
 !> This module contains routines required for the Jacobian of the br2 lifting scheme assuming non-conservative lifting.
 !> Attention:
 !> If br1 lifting scheme is chosen, etabr2 is set to 1. In br1 lifting the surface gradient at a specific side is depending on
-!> UPrim in the volume and UPrim_face on all sides. For br2 it is depending only on UPrim in the volume and UPrim_face of the
+!> UPrim in the volume and UPrim_face on all sides. For br2 it is depending only on UPrim in the volume and UPrim_face of the 
 !> current face itself. For the preconditioner this additional dependency is neglected: No additional fillin
 !> (in comparison to br2) is done. For Gauss-Lobatto nodes this approach gives correct results except for for the DOFs at the
 !> corners as here the dependency of the DOF on multiple surfaces is done seperately.
@@ -82,7 +82,7 @@ INTEGER,INTENT(IN) :: iElem
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
+! LOCAL VARIABLES 
 INTEGER :: iVar,iLocSide,SideID,flip,p,q,pq(2),dir,flip_small
 REAL    :: mp
 INTEGER :: nMortars,iMortarSide,iMortar
@@ -96,7 +96,7 @@ REAL    :: ConsPrimJac(PP_nVar,PP_nVarPrim)
 DO iLocSide=1,6
 #else
 DO iLocSide=2,5
-#endif
+#endif 
   SideID=ElemToSide(E2S_SIDE_ID,ilocSide,iElem)
   flip  =ElemToSide(E2S_FLIP   ,ilocSide,iElem)
   IF (SideID.LE.nBCSides) THEN !BCSides
@@ -192,7 +192,7 @@ SUBROUTINE JacLifting_VolGrad(dir,iElem,JacLifting)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Jac_Ex_Vars        ,ONLY: LL_minus,LL_plus
-USE MOD_Jac_Ex_Vars        ,ONLY: JacLiftingFlux
+USE MOD_Jac_Ex_Vars        ,ONLY: JacLiftingFlux 
 USE MOD_DG_Vars            ,ONLY: D
 #if (PP_NodeType==1)
 USE MOD_DG_Vars            ,ONLY: UPrim
@@ -338,7 +338,7 @@ END SUBROUTINE JacLifting_VolGrad
 
 
 !===================================================================================================================================
-!> used for BR2: normal vectors, outward pointing and sorted in ijk element fashion!!!
+!> used for BR2: normal vectors, outward pointing and sorted in ijk element fashion!!! 
 !===================================================================================================================================
 SUBROUTINE Build_BR2_SurfTerms()
 ! MODULES
@@ -363,7 +363,7 @@ REAL    :: RFace(0:PP_N,0:PP_NZ)
 #if USE_MPI
 INTEGER :: MPIRequest_RPlus(nNbProcs,2)
 INTEGER :: MPIRequest_RMinus(nNbProcs,2)
-#endif
+#endif 
 !===================================================================================================================================
 ALLOCATE(R_Minus(0:PP_N,0:PP_NZ,1:nSides))
 ALLOCATE(R_Plus( 0:PP_N,0:PP_NZ,1:nSides))
@@ -374,7 +374,7 @@ DO iElem=1,nElems
   DO iLocSide=1,6
 #else
   DO iLocSide=2,5
-#endif
+#endif 
     RFace=0.
     SideID=ElemToSide(E2S_SIDE_ID,iLocSide,iElem)
     Flip  =ElemToSide(E2S_FLIP,iLocSide,iElem)
@@ -498,11 +498,11 @@ MPIRequest_RPlus=0
 MPIRequest_RMinus=0
 CALL StartReceiveMPIData(R_Plus,(PP_N+1)**(PP_dim-1),1,nSides,MPIRequest_RPlus(:,RECV),SendID=2)   ! Recv MINE/Geo: slave->master
 CALL StartSendMPIData(   R_Plus,(PP_N+1)**(PP_dim-1),1,nSides,MPIRequest_RPlus(:,SEND),SendID=2)   ! SEND YOUR/Geo: slave->master
-CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_RPlus)
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_RPlus) 
 
 CALL StartReceiveMPIData(R_Minus,(PP_N+1)**(PP_dim-1),1,nSides,MPIRequest_RMinus(:,RECV),SendID=1) ! Recv YOUR/Geo: master->slave
 CALL StartSendMPIData(   R_Minus,(PP_N+1)**(PP_dim-1),1,nSides,MPIRequest_RMinus(:,SEND),SendID=1)    ! SEND MINE/Geo: master->slave
-CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_RMinus)
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_RMinus) 
 #endif
 
 END SUBROUTINE Build_BR2_SurfTerms
@@ -520,7 +520,7 @@ USE MOD_PreProc
 USE MOD_Mesh_Vars                 ,ONLY: ElemToSide,S2V2
 USE MOD_Jac_Ex_Vars               ,ONLY: l_mp
 USE MOD_Jac_Ex_Vars               ,ONLY: R_Minus,R_Plus
-USE MOD_Jac_Ex_Vars               ,ONLY: JacLiftingFlux
+USE MOD_Jac_Ex_Vars               ,ONLY: JacLiftingFlux 
 USE MOD_Mesh_Vars                 ,ONLY: Metrics_fTilde,Metrics_gTilde,sJ
 #if PP_dim==3
 USE MOD_Mesh_Vars                 ,ONLY: Metrics_hTilde
@@ -583,9 +583,9 @@ END DO !ll
 ! Computation of the derivative of the surface integral part
 #if PP_dim == 3
 DO iLocSide=1,6
-#else
+#else    
 DO iLocSide=2,5
-#endif
+#endif    
   ! Flip either slave or master solution into my own volume system, mp considers that master and slave fluxes have opposing signs
   ! r considers the metric terms on the surface and the integration => this gives us the actual surface integral.
   SideID=ElemToSide(E2S_SIDE_ID,iLocSide,iElem)
@@ -719,9 +719,9 @@ dQOuter_dUVol=0.
 ! Computation of the derivative of the surface integral part
 #if PP_dim == 3
 DO iLocSide=1,6
-#else
+#else    
 DO iLocSide=2,5
-#endif
+#endif    
   SideID=ElemToSide(E2S_SIDE_ID,iLocSide,iElem)
   IF(SideID.LE.nBCSides) CYCLE  !for boundary conditions, dQ_dUVol=0.
   IF ((SideID.LT.firstInnerSide).OR.((SideID.GE.firstMortarMPISide).AND.(SideID.LE.lastMortarMPISide))) THEN
@@ -789,7 +789,7 @@ DO iLocSide=2,5
     CALL Jacobian_MortarScalar(0,MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
                                DQOuterMortar_DUSurf,dQOuter_dUSurf)
 
-  ELSEIF (MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)).LT.0) THEN
+  ELSEIF (MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)).LT.0) THEN 
     ! This is a small mortar. Since the neighbouring element thus is a big mortar, the surface integral in the BR2 scheme has a
     ! different derivative than a conforming element. We can't compute that influence at the moment, thus set it to zero.
     ! We would need to know which small mortar we are (1,2,3,4 and in what mortar type) to select the right dependencies, but this

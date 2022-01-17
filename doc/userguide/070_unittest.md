@@ -47,7 +47,7 @@ ctest
 in your build directory. The manual page of CTest can give you an overview of all available options.
 
 If you don't want to run the test after each build there is a CMake option called FLEXI_UNITTESTS that can be used to turn the tests on and off.
-This is an advanced option that CCMake will only show if you enter the advanced mode by pressing the t key.
+This is an advanced option that CCMake will only show if you enter the advanced mode by pressing the t key. 
 
 ## Implementation of unit tests
 
@@ -71,16 +71,16 @@ The general structure of the unit tests is the same in all cases. They are imple
 The output of this call will then be compared to some precomputed reference results (also stored as binary files) with a certain tolerance to account for differences in e.g. compiler versions and system architecture. If the results are within the given tolerance,
 the test will be passed, otherwise it will fail by returning a value other than 0.
 
-The programs usually also contain a command line option that can be uses to generate the reference solution from a code version that is known to work correctly.
+The programs usually also contain a command line option that can be uses to generate the reference solution from a code version that is known to work correctly. 
 
 Have a look at the source code of one of the already implemented unit tests if you want to have a more detailed idea about how to implement your own tests.
 
 ### Generation of reference mesh data
 
 Some of the unit tests require parts of the mesh data structure to be able to call the funtions to be tested. For this purpose, a curved single element is created and all the mesh data stored as a binary file called ``UnittestElementData.bin``. This binary file can then be read during runtime
-by the unit test programs.
+by the unit test programs. 
 
-To generate the curved single element mesh, run **HOPR** with the parameter file provided in the ``unitTest`` subdirectory of **FLEXI**. To generate the binary file, run **FLEXI** with the following command line argument and the parameter file
+To generate the curved single element mesh, run **HOPR** with the parameter file provided in the ``unitTest`` subdirectory of **FLEXI**. To generate the binary file, run **FLEXI** with the following command line argument and the parameter file 
 provided in the ``unitTest`` subdirectory:
 
 

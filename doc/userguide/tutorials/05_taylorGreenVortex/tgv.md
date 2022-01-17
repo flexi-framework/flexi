@@ -1,4 +1,4 @@
-## Taylor Green Vortex
+## Taylor Green Vortex 
 \label{sec:tut_tgv}
 
 This tutorial describes how to set up and run the basic test case for turbulent flows, the Taylor-Green-Vortex (TGV) - see e.g. [@gassner2013accuracy]. We will learn how to avoid catastrophic failure of the code due to non-linear instabilities. This is done by using
@@ -12,7 +12,7 @@ we solve it here in a compressible setting. The chosen Mach number with respect 
 ![](tutorials/05_taylorGreenVortex/dns_reference.png)
 
 ### Compiler options
-
+        
 Make sure that **FLEXI** is compiled with the cmake options listed in the following table.
 
 
@@ -39,20 +39,20 @@ the default mesh is included. Using 4 cells with a polynomial degree of $N=7$, m
 Copy the ``tgv`` tutorial folder to your working directory
 
         cp -r $FLEXI_TUTORIALS/taylorgreenvortex .
-
-
-Step into the folder. In case you do not want to generate the mesh files yourselves, the meshes have already been provided.
+        
+        
+Step into the folder. In case you do not want to generate the mesh files yourselves, the meshes have already been provided. 
 
 #### Preparing the Flow Simulation with FLEXI
 
 The simulation setup is defined in *parameter_flexi.ini*. To get help on any of the parameters listed therein, you can run **FLEXI** from the command line by typing
 
      flexi --help
+     
 
+The parameters in the file are grouped thematically, however, this is not mandatory. All lines starting with a "!" are comments. 
 
-The parameters in the file are grouped thematically, however, this is not mandatory. All lines starting with a "!" are comments.
-
-##### Output
+##### Output 
 
 The test case has its own analyze output (PROJECTNAME_TGVAnalysis.csv), that we will use. We don't look at flow visualization in this tutorial. Besides other interesting quantities, the file contains the incompressible dissipation rate. This is the resolved dissipation of the gradient field, computed as the integral over the domain of the strain rate tensor norm $S_{ij}S_{ij}$, times viscosity times $2$. It is stored in the second column of the file. We will use this quantity in the tutorial to verify your results.
 
@@ -63,7 +63,7 @@ The test case has its own analyze output (PROJECTNAME_TGVAnalysis.csv), that we 
     ! ================================================ !
     ! INTERPOLATION
     ! ================================================ !
-    N             = 7
+    N             = 7  
 
 ~~~~~~~
 
@@ -76,9 +76,9 @@ To apply polynomial de-aliasing there are the following options:
     ! ================================================ !
     ! OVERINTEGRATION (ADVECTION PART ONLY)
     ! ================================================ !
-    OverintegrationType=0  ! 0:off 1:cut-off filter
-                           ! 2: conservative cut-off
-    NUnder        = 7      ! specifies effective polydeg
+    OverintegrationType=0  ! 0:off 1:cut-off filter 
+                           ! 2: conservative cut-off 
+    NUnder        = 7      ! specifies effective polydeg 
                            ! (modes > NUnder are thrown away)
                            ! for types 1 and 2
 
@@ -92,11 +92,11 @@ For **FLEXI** we can run under-resolved computations without sub grid scale mode
     ! ================================================ !
     ! Riemann
     ! ================================================ !
-    Riemann=  RoeEntropyFix ! Riemann solver to be used:
-                            ! LF, HLLC, Roe,
-                            ! RoeEntropyFix, HLL, HLLE, HLLEM
+    Riemann=  RoeEntropyFix ! Riemann solver to be used: 
+                            ! LF, HLLC, Roe,  
+                            ! RoeEntropyFix, HLL, HLLE, HLLEM  
 ~~~~~~~
-To add Smagorinsky's model set the following parameter to $1$, here CS is the Smagorinsky constant usually chosen around $0.1$ for isotropic turbulence (such as TGV).
+To add Smagorinsky's model set the following parameter to $1$, here CS is the Smagorinsky constant usually chosen around $0.1$ for isotropic turbulence (such as TGV). 
 
 ~~~~~~~
     ! ================================================ !
@@ -121,7 +121,7 @@ runs the code and dumps all output into the file *std.out*. If you wish to run t
 mpirun -np XX flexi parameter_flexi.ini > std.out
 ~~~~~~~
 
-where $XX$ is an integer denoting the number of processes to be used in parallel. Note that **FLEXI** uses an element-based parallelization strategy, so the minimum load per process/core is *one* grid element, i.e. do not use more cores than cells in the grid!
+where $XX$ is an integer denoting the number of processes to be used in parallel. Note that **FLEXI** uses an element-based parallelization strategy, so the minimum load per process/core is *one* grid element, i.e. do not use more cores than cells in the grid! 
 **FLEXI** writes a TGV analyze file (PROJECTNAME_TGVAnalysis.csv). You can use yor favorite plotting programm to visualize the ASCII data. Using gnuplot you can create plots with the following syntax:
 
 ~~~~~~
@@ -134,10 +134,10 @@ Where you replace PROJECTNAME with the projectname you defined in the parameter_
 
 #### Part I: crashing simulation
 
-First we run **FLEXI** without overintegration/de-aliasing. We will find that the code crashes, once scale production becomes relevant. You can compare your result to the plot in the tutorial folder
+First we run **FLEXI** without overintegration/de-aliasing. We will find that the code crashes, once scale production becomes relevant. You can compare your result to the plot in the tutorial folder 
 
 ![](tutorials/05_taylorGreenVortex/crash_no_dealiasing.png)
-
+      
 
 
 #### Part II: Overintegration

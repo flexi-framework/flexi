@@ -7,7 +7,7 @@ IMPLICIT NONE
 PUBLIC
 SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
+! GLOBAL VARIABLES 
 ! OUTPUT ---------------------------------------------------------------------------------------------------------------------------
 LOGICAL                            :: EquationDMInitIsDone      =.FALSE.
 LOGICAL                            :: ConsAvail     =.TRUE.
@@ -18,7 +18,7 @@ LOGICAL,ALLOCATABLE                :: is2D(:)
 
 INTEGER,ALLOCATABLE               :: DepTable(:,:)
 CHARACTER(LEN=255),ALLOCATABLE,TARGET :: VarNamesAll(:)
-INTEGER                           :: nVarDep                 !
+INTEGER                           :: nVarDep                 ! 
 INTEGER                           :: nVarCalc
 INTEGER                           :: nVarVisuTotal
 INTEGER,ALLOCATABLE               :: mapCalc(:)

@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -23,7 +23,7 @@ MODULE MOD_GetBoundaryFlux_FD
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
+! GLOBAL VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! Private Part ---------------------------------------------------------------------------------------------------------------------
 INTERFACE GetBoundaryFlux_FD
@@ -43,7 +43,7 @@ CONTAINS
 !===================================================================================================================================
 !> Computes the Jacobian of the boundary flux for a given face (defined by SideID). Uses the finite difference approach to be able
 !> to compute the derivatives for all the different BC types.
-!> We compute both the Jacobian of the flux w.r.t. the conservative solution, and the Jacobians  w.r.t. the gradients in each
+!> We compute both the Jacobian of the flux w.r.t. the conservative solution, and the Jacobians  w.r.t. the gradients in each 
 !> direction. We always pre-multiply the Jacobians with the surface element.
 !===================================================================================================================================
 SUBROUTINE GetBoundaryFlux_FD(SideID,t,DfDU,U_master,UPrim_master,    &
@@ -57,7 +57,7 @@ SUBROUTINE GetBoundaryFlux_FD(SideID,t,DfDU,U_master,UPrim_master,    &
 #endif /*PARABOLIC*/
                               surfElem,xGP_Face,normal,tangent1,tangent2,jk)
 ! MODULES
-USE MOD_Globals
+USE MOD_Globals      
 USE MOD_PreProc
 USE MOD_Implicit_Vars           ,ONLY: reps0_O1
 #if PARABOLIC
@@ -76,7 +76,7 @@ REAL,INTENT(IN)      :: normal  (3,0:PP_N,0:PP_NZ)                  !< normal ve
 REAL,INTENT(IN)      :: tangent1(3,0:PP_N,0:PP_NZ)                  !< first tangential vector
 REAL,INTENT(IN)      :: tangent2(3,0:PP_N,0:PP_NZ)                  !< second tangential vector
 REAL,INTENT(IN)      :: surfElem(0:PP_N,0:PP_NZ)                    !< surface integration element
-REAL, INTENT(IN)     :: U_master(PP_nVar,0:PP_N,0:PP_NZ)            !< conservative inner solution
+REAL, INTENT(IN)     :: U_master(PP_nVar,0:PP_N,0:PP_NZ)            !< conservative inner solution 
 REAL, INTENT(IN)     :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ)    !< primitive inner solution
 INTEGER, INTENT(IN)  :: jk(2,0:PP_N,0:PP_NZ)                        !< S2V2 mapping
 #if PARABOLIC
@@ -90,7 +90,7 @@ REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2)   :: DfDU         !
 #if PARABOLIC
 REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVarPrim,0:PP_N,0:PP_NZ) :: Df_DQxInner  !< Jacobian w.r.t. x gradients inc SurfInt
 REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVarPrim,0:PP_N,0:PP_NZ) :: Df_DQyInner  !< Jacobian w.r.t. y gradients inc SurfInt
-#if PP_dim==3
+#if PP_dim==3                                 
 REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVarPrim,0:PP_N,0:PP_N)  :: Df_DQzInner  !< Jacobian w.r.t. z gradients inc SurfInt
 #endif
 #endif /*PARABOLIC*/
@@ -128,7 +128,7 @@ DO jVar=1,PP_nVar
   sreps0_loc = 1./reps0_loc
   U_master_Tilde(jVar,:,:) = U_master_Tilde(jVar,:,:) + reps0_loc
   ! We pertubate the conservative state, but boundary flux takes the primitive state: Call ConsToPrim
-  CALL ConsToPrim(PP_N,UPrim_master_Tilde,U_master_Tilde)
+  CALL ConsToPrim(PP_N,UPrim_master_Tilde,U_master_Tilde) 
   CALL GetBoundaryFlux(SideID,t,PP_N,F_Face_Tilde,UPrim_master_Tilde, &
 #if PARABOLIC
                        gradUx_Face,gradUy_Face,gradUz_Face,           &
@@ -141,7 +141,7 @@ DO jVar=1,PP_nVar
       END DO !p
     END DO !q
   END DO ! iVar
-  U_master_Tilde(jVar,:,:) = U_master(jVar,:,:)
+  U_master_Tilde(jVar,:,:) = U_master(jVar,:,:) 
 END DO !jVar
 
 #if FV_ENABLED && FV_RECONSTRUCT
@@ -187,10 +187,10 @@ DO jVar=1,PP_nVarLifting
       END DO !p
     END DO !q
   END DO ! iVar
-  gradUx_Face_Tilde(jVar,:,:) = gradUx_Face(jVar,:,:)
-  gradUy_Face_Tilde(jVar,:,:) = gradUy_Face(jVar,:,:)
+  gradUx_Face_Tilde(jVar,:,:) = gradUx_Face(jVar,:,:) 
+  gradUy_Face_Tilde(jVar,:,:) = gradUy_Face(jVar,:,:) 
 #if PP_dim==3
-  gradUz_Face_Tilde(jVar,:,:) = gradUz_Face(jVar,:,:)
+  gradUz_Face_Tilde(jVar,:,:) = gradUz_Face(jVar,:,:) 
 #endif
 END DO !jVar
 #endif /*PARABOLIC*/
@@ -214,7 +214,7 @@ USE MOD_Implicit_Vars           ,ONLY: reps0_O1,sreps0_O1
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)                   :: SideID
+INTEGER,INTENT(IN)                   :: SideID  
 REAL,INTENT(IN)                      :: t
 REAL, INTENT(IN)                     :: UPrim_master( PP_nVarPrim,0:PP_N,0:PP_NZ)
 REAL,INTENT(IN)                      :: xGP_Face(3,0:PP_N,0:PP_NZ,0:FV_ENABLED)

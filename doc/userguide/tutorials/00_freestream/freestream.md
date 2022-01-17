@@ -24,8 +24,8 @@ Figure: Mesh and flow field solution with velocity vector plot of the velocity f
 ### Flow Simulation with FLEXI
 
 The simulation setup is defined in *parameter_flexi.ini*. The initial condition is selected via the variable vector
-**RefState=(/1.225,1.,1.,1.,101325./)** which represents the solution vector $(\rho, u, v, w, p)^T$. **FLEXI** allows for multiple
-**RefState** vectors and numerates them respectively for them to be used by different functions. In this example a single **RefState** is
+**RefState=(/1.225,1.,1.,1.,101325./)** which represents the solution vector $(\rho, u, v, w, p)^T$. **FLEXI** allows for multiple 
+**RefState** vectors and numerates them respectively for them to be used by different functions. In this example a single **RefState** is 
 supplied and therefore is given the number **1**.
 
 
@@ -33,7 +33,7 @@ supplied and therefore is given the number **1**.
 
 **IniExactFunc = 1** : the used exact function routine uses **RefState 1**, e.g., for the calculation of the $L_2$ error norm.
 
-Constant flow properties like the gas constant are given in table \ref{tab:freestream_flow_prop}
+Constant flow properties like the gas constant are given in table \ref{tab:freestream_flow_prop} 
 and define the gas behavior in combination with the ideal gas law $p=\rho R T$.
 
 Table: Numerical settings \label{tab:freestream_flow_prop}
@@ -49,7 +49,7 @@ Table: Numerical settings \label{tab:freestream_flow_prop}
 
 The DG solution on the mesh is represented by piecewise polynomials and the polynomial degree in this tutorial is chosen as $N=3$.
 
-The default settings for these properties are displayed in table \ref{tab:freestream_num_set}.
+The default settings for these properties are displayed in table \ref{tab:freestream_num_set}. 
 
 Table: Numerical settings \label{tab:freestream_num_set}
 
@@ -70,20 +70,20 @@ The command
 flexi parameter_flexi.ini > std.out
 ~~~~~~~
 
-runs the code and dumps all output into the file *std.out*.
+runs the code and dumps all output into the file *std.out*. 
 If the run has completed successfully, which should take only a brief moment, the contents of the working folder should look like in figure \ref{fig:freestream_folder}
 
 ![The folder contents after a successful run\label{fig:freestream_folder}](tutorials/00_freestream/freestream_folder.png)
 
-Two additional files have been created, which are are named  **Projectname_State_Timestamp.h5**. They contain the solution vector of the conserved variables at each interpolation node at the given time, which corresponds to multiplies of **Analyze_dt**. If these files are not present, something went wrong during the execution of **FLEXI**. In that case, check the _std.out_ file for an error message.
+Two additional files have been created, which are are named  **Projectname_State_Timestamp.h5**. They contain the solution vector of the conserved variables at each interpolation node at the given time, which corresponds to multiplies of **Analyze_dt**. If these files are not present, something went wrong during the execution of **FLEXI**. In that case, check the _std.out_ file for an error message. 
 
 After a successful completion, the last lines in this files should look like in figure \ref{fig:freestream_stdout}
 
 ![The _std.out_ file after a successful run\label{fig:freestream_stdout}](tutorials/00_freestream/freestream_stdout.png)
 
-To visualize the solution, the *State*-files must be converted into a format suitable for **ParaView**. Issue the command
+To visualize the solution, the *State*-files must be converted into a format suitable for **ParaView**. Issue the command 
 
 ~~~~~~~
 posti_visu parameter_postiVisu.ini parameter_flexi.ini cartbox_State_0000000.00000*
 ~~~~~~~
-to generate the corresponding *vtu*-files, which can then be loaded into **ParaView**.
+to generate the corresponding *vtu*-files, which can then be loaded into **ParaView**. 

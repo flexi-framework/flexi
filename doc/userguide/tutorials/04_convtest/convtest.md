@@ -1,7 +1,7 @@
 ## Convergence Test
 \label{sec:tut_convtest}
 
-In this tutorial the order of convergence for **FLEXI** is computed. The procedure is fully scripted, such that in the end a number of runs have been performed on a variation of grids or a variation of polynomial degrees and the order of convergence is computed automatically. A plot of the corresponding L2 error norms is produced and copied into the directory where the convergence test is executed from. Note, the script is written in *Python 2.7*.
+In this tutorial the order of convergence for **FLEXI** is computed. The procedure is fully scripted, such that in the end a number of runs have been performed on a variation of grids or a variation of polynomial degrees and the order of convergence is computed automatically. A plot of the corresponding L2 error norms is produced and copied into the directory where the convergence test is executed from. Note, the script is written in *Python 2.7*. 
 
 The convergence test is separated into two parts, first an inviscid test where the order of convergence for the advective part, i.e. the Euler equation without viscous fluxes, is computed. Then a viscous convergence test calculates the order of convergence with consideration of the viscosity.
 
@@ -65,7 +65,7 @@ The advantage is that for the Euler equation, the resulting source term is zero,
 
 As mesh, a Cartesian box is used with periodic boundaries. The mesh and the corresponding solution are shown in  following figure:
 
-![](tutorials/04_convtest/convtest_mesh.png)   ![](tutorials/04_convtest/convtest_result.png)
+![](tutorials/04_convtest/convtest_mesh.png)   ![](tutorials/04_convtest/convtest_result.png) 
 Figure: Mesh and flow field solution of the density. View in $x$-$y$-plane.\label{fig:convtest_mesh_and_result}
 
 To investigate the order of convergence of a given polynomial degree $N$, the mesh resolution has to increase. We provide meshes with 1, 2, 4 and 8 elements in each spatial direction. They are provided in the tutorial directory with an according parameter file for the preprocessing tool **HOPR**.
@@ -74,7 +74,7 @@ To investigate the order of convergence of a given polynomial degree $N$, the me
 
 The inviscid convergence test is run from the parameter file *parameter_convtest_flexi.ini*. Essentially, any valid parameter file can be used, as a manufactured solution is simulated. This allows to test the various methods and features of the code and investigate their order of convergence. However, for this tutorial we restrict the parameter file to a very simple baseline test case.  The following entries have to be made
 
-**IniExactFunc = 2** : The manufactured solution is applied by means of the exact function. This function is used to initialize **FLEXI** and can in general be used for Dirichlet boundary conditions. Here, we apply only periodic boundary conditions.
+**IniExactFunc = 2** : The manufactured solution is applied by means of the exact function. This function is used to initialize **FLEXI** and can in general be used for Dirichlet boundary conditions. Here, we apply only periodic boundary conditions. 
 
 **N\_Analyze = 10** : The number of interpolation nodes for the analyze routines, needed for calculating the error norms. We suggest at least $N\_Analyze = 2N$.
 
@@ -100,7 +100,7 @@ Table: Numerical settings for time integration \label{tab:convtest_num_set}
 | DFLscale        |                                        | 0.9           |
 
 
-The remaining numerical settings necessary, e.g. the polynomial degree and the mesh filename are set via the script file. The script can be found in the directory
+The remaining numerical settings necessary, e.g. the polynomial degree and the mesh filename are set via the script file. The script can be found in the directory 
 
        $FLEXIROOT/tools/convergence_test
 
@@ -126,7 +126,7 @@ Corresponding files are produced, where *\_grid* is replaced by *\_N*. Figure \r
 
 Figure \ref{fig:convtest_convergence_N} shows the result for spectral convergence.
 
-![Plot of spectral convergence \label{fig:convtest_convergence_N}](tutorials/04_convtest/ConvTest_convtest_N.pdf)
+![Plot of spectral convergence \label{fig:convtest_convergence_N}](tutorials/04_convtest/ConvTest_convtest_N.pdf) 
 
 
 ### Viscous Convergence Test
@@ -152,7 +152,7 @@ For this case, another manufactured solution is chosen
 \end{equation}
 
 The same function is applied to the momentum in all spatial directions. The mass specific total energy in this case is $\rho e = \rho \rho$.
-This manufactured solution has a non-zero source term. In **FLEXI**, this source term is added in the routine *CalcSource* in the file
+This manufactured solution has a non-zero source term. In **FLEXI**, this source term is added in the routine *CalcSource* in the file 
 
          $FLEXIROOT/src/equations/navierstokes/idealgas/exactfunc.f90
 

@@ -22,7 +22,7 @@ IMPLICIT NONE
 PUBLIC
 SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
+! GLOBAL VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 REAL,ALLOCATABLE        :: Ploc(:,:)         !< Non-inverted preconditioner matrix
 REAL,ALLOCATABLE        :: Ploc1(:,:)        !< Additional non-inverted matrix for comparision between AD and FD

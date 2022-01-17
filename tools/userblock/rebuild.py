@@ -6,9 +6,9 @@
 # Institution:  Inst. of Aero- and Gasdynamics, University of Stuttgart
 # Date:         14.07.2016
 #
-# Description:  This script will rebuild a specific code configuration from
+# Description:  This script will rebuild a specific code configuration from 
 #               useblock data contained in an HDF5 file.
-#
+# 
 # Input:        1: directory to place build, 2: HDF5 file with userblock data
 #
 #************************************************************************************
@@ -29,7 +29,7 @@ parser.add_argument('state',help='HDF5 state file containing userblock')
 args = parser.parse_args()
 
 if not os.path.exists(args.dir) :
-   os.mkdir(args.dir)
+   os.mkdir(args.dir) 
 else :
    if os.listdir(args.dir) != []: # is dir empty?
       print os.listdir(args.dir)

@@ -25,7 +25,7 @@ SAVE
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 CHARACTER(LEN=255)    :: MeshFile                  !< Mesh File on which flow field is generated
-INTEGER               :: InitSpec                  !< Specifies which energy distribution is generated
+INTEGER               :: InitSpec                  !< Specifies which energy distribution is generated 
 INTEGER               :: Seed                      !< Seed for random number generator for Rogallo procedure (Debug only)
 COMPLEX,ALLOCATABLE   :: U_FFT(:,:,:,:)            !< Global solution in Fourier space
 REAL                  :: rho0                      !< Constant density set for initial flow field.

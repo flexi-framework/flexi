@@ -17,7 +17,7 @@ if [ "$DOXYDIR" != "doxygen" ]; then
    echo "Security exit:"
    echo "builddoxy.sh must be placed in a directory with name 'doxygen'!"
    exit 1
-fi
+fi   
 
 function deletesrc {
    cd $CURDIR

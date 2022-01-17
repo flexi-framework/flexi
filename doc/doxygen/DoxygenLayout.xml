@@ -11,7 +11,7 @@
     </tab>
     <tab type="classmembers" visible="yes" title="">
       <tab type="classlist" visible="no" title="" intro=""/>
-      <tab type="classindex" visible="no" title=""/>
+      <tab type="classindex" visible="no" title=""/> 
       <tab type="hierarchy" visible="no" title="" intro=""/>
       <tab type="classmembers" visible="no" title="" intro=""/>
     </tab>
@@ -19,7 +19,7 @@
       <tab type="filelist" visible="no" title="" intro=""/>
       <tab type="globals" visible="no" title="" intro=""/>
     </tab>
-    <tab type="examples" visible="yes" title="" intro=""/>
+    <tab type="examples" visible="yes" title="" intro=""/>  
   </navindex>
 
   <!-- Layout definition for a class page -->

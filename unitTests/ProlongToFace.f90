@@ -64,7 +64,7 @@ END IF
 
 IF (doGenerateUvol) THEN
   ! Generate a random volume solution
-  CALL RANDOM_NUMBER(Uvol)
+  CALL RANDOM_NUMBER(Uvol) 
   ! Save the calculated volume solution to a binary file for later input
   OPEN(UNIT = 10, STATUS='replace',FILE=TRIM(BinaryUvolString),FORM='unformatted')  ! replace an existing file or create a new one
   WRITE(10) Uvol
@@ -85,7 +85,7 @@ ELSE
   END DO
 END IF
 
-! Read in data from single curved element
+! Read in data from single curved element 
 CALL ReadInReferenceElementData()
 
 ! Call ProlongToFace
@@ -118,7 +118,7 @@ IF (doGenerateReference) THEN
 ELSE
   ! Check if binary results file exists
   INQUIRE(FILE=TRIM(BinaryString),EXIST=binaryExists)
-
+  
   IF (binaryExists) THEN
     ! Read the reference solution
     OPEN(UNIT = 10, STATUS='old',FILE=TRIM(BinaryString),FORM='unformatted')  ! open an existing file
@@ -133,7 +133,7 @@ ELSE
       equal = ALMOSTEQUALABSORREL(Uface_master(i,j,k,l),Uface_master_ref(j,k,l),100.*PP_RealTolerance) .AND. equal
 #if FV_ENABLED
       equal = ALMOSTEQUALABSORREL(FV_Uface_master(i,j,k,l),FV_Uface_master_ref(j,k,l),100.*PP_RealTolerance) .AND. equal
-#endif
+#endif      
     END DO; END DO; END DO; END DO
     ! Plus sides not needed in single element case
     !DO i=1,PP_nVar; DO j=0,9; DO k=0,9; DO l=7,6

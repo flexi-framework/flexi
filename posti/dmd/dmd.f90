@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2016  Prof. Claus-Dieter Munz 
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -29,7 +29,7 @@ END INTERFACE
 INTERFACE DefineParametersDMD
   MODULE PROCEDURE DefineParametersDMD
 END INTERFACE
-
+  
 INTERFACE performDMD
   MODULE PROCEDURE performDMD
 END INTERFACE
@@ -45,7 +45,7 @@ END INTERFACE
 PUBLIC::InitDMD,DefineParametersDMD,performDMD,WriteDMDStateFile,FinalizeDMD
 CONTAINS
 
-SUBROUTINE DefineParametersDMD()
+SUBROUTINE DefineParametersDMD() 
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -55,7 +55,7 @@ USE MOD_ReadInTools,             ONLY: prms
 USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension,INTTOSTR
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
+! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
@@ -71,9 +71,9 @@ CALL prms%CreateStringOption( "Baseflow"           , "Name of the Baseflow-File"
 CALL prms%CreateLogicalOption("use2D"              , "Calculate DMD on 2D-Data",'.FALSE.')
 CALL prms%CreateLogicalOption('output2D'           , "Set true to activate hdf5 data output with flat third dimension.",'.FALSE.')
 
-END SUBROUTINE DefineParametersDMD
+END SUBROUTINE DefineParametersDMD 
 
-SUBROUTINE InitDMD()
+SUBROUTINE InitDMD() 
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -94,7 +94,7 @@ USE MOD_EquationDMD,             ONLY: InitEquationDMD,CalcEquationDMD
 USE MOD_Interpolation_Vars ,     ONLY: NodeType
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
+! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                          :: iFile,iVar,offset,nDim,i,j
@@ -123,7 +123,7 @@ use2D        = GETLOGICAL('use2D','.FALSE.')
 output2D     = GETLOGICAL('output2D','.FALSE.')
 
 IF (nModes .GT. (nFiles-1)) THEN
-  nModes = nFiles - 1
+  nModes = nFiles - 1  
 END IF ! nModes .GT. (nFiles-1)
 
 ! Open the first statefile to read necessary attributes
@@ -203,7 +203,7 @@ DO iFile = 2, nFiles+1
 
   CALL CalcEquationDMD(Utmp,K(:,iFile-1))
 
-END DO ! iFile = 1,nFiles
+END DO ! iFile = 1,nFiles 
 TimeEnd_State = time
 
 IF (useBaseflow) THEN
@@ -215,9 +215,9 @@ IF (useBaseflow) THEN
     CALL ReadAttribute(File_ID,'Time',    1,RealScalar=time)
     CALL ReadArray('DG_Solution',5,&
                   (/nVar_State,N_State+1,N_State+1,N_StateZ+1,nElems_State/),0,5,RealArray=Utmp)
-
+    
     CALL CloseDataFile()
-
+    
     CALL CalcEquationDMD(Utmp,Ktmp(:))
     DO iFile = 2,nFiles+1
       K(:,iFile-1) = K(:,iFile-1) - Ktmp
@@ -233,26 +233,26 @@ IF (useBaseflow) THEN
         IF (TRIM(VarNameDMD(j)) .EQ. TRIM(VarNames_TimeAvg(i))) THEN
           VarSortTimeAvg(i)=j
           EXIT
-        ELSE IF(i .EQ. INT(HSize(1))) THEN
+        ELSE IF(i .EQ. INT(HSize(1))) THEN 
           CALL Abort(__STAMP__,'Required DMD-Var not provided by TimeAvg-File')
-        END IF
+        END IF 
       END DO
     END DO
 
     ALLOCATE(Ktmp(nDoFs*nVarDMD))
     DEALLOCATE(Utmp)
     ALLOCATE(Utmp (HSize(1),0:N_State,0:N_State,0:N_StateZ,nElems_State))
-
+    
     CALL ReadArray('Mean',5,&
                   (/INT(HSize(1)),N_State+1,N_State+1,N_StateZ+1,nElems_State/),0,5,RealArray=Utmp)
     CALL CloseDataFile()
 
     ktmp(:) = RESHAPE(Utmp(VarSortTimeAvg,:,:,:,:), (/nDoFs*nVarDMD/))
-
+    
     DO iFile = 2,nFiles+1
       K(:,iFile-1) = K(:,iFile-1) - Ktmp
     END DO
-
+      
     DEALLOCATE(ktmp)
   END SELECT
 
@@ -260,9 +260,9 @@ END IF
 
 DEALLOCATE(Utmp)
 
-END SUBROUTINE InitDMD
+END SUBROUTINE InitDMD 
 
-SUBROUTINE performDMD()
+SUBROUTINE performDMD() 
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! description
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -273,7 +273,7 @@ USE MOD_DMD_Vars,                ONLY: K,nDoFs,nFiles,Phi,lambda,freq,dt,alpha,s
 ! insert modules here
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
+! INPUT / OUTPUT VARIABLES 
 ! Space-separated list of input and output types. Use: (int|real|logical|...)_(in|out|inout)_dim(n)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! External Subroutines from LAPACK
@@ -289,7 +289,7 @@ DOUBLE PRECISION,ALLOCATABLE     :: USVDTmp(:,:),WSVDTmp(:,:),SigmaSVDTmp(:)
 COMPLEX,ALLOCATABLE              :: WORKC(:)
 REAL,ALLOCATABLE                 :: RWORK(:),SortVar(:,:)
 DOUBLE PRECISION,ALLOCATABLE     :: KTmp(:,:),RGlobMat(:,:),Rglob,Rsnap1,Rsnap2
-COMPLEX,ALLOCATABLE              :: STilde(:,:),STildeWork(:,:),eigSTilde(:),VL(:,:),VR(:,:)
+COMPLEX,ALLOCATABLE              :: STilde(:,:),STildeWork(:,:),eigSTilde(:),VL(:,:),VR(:,:)                
 COMPLEX,ALLOCATABLE              :: Vand(:,:),qTmp(:,:)
 COMPLEX,ALLOCATABLE              :: P(:,:),PhiTmp(:,:),alphaTmp(:)
 REAL                             :: pi = acos(-1.)
@@ -297,7 +297,7 @@ REAL                             :: pi = acos(-1.)
 M = nDoFs*nVarDMD
 N = nFiles-1
 LDA  = M
-LDU  = M
+LDU  = M 
 LDVT = N
 LWORK = -1
 LWMAX = 3*MIN(M,N)*MIN(M,N) + MAX(MAX(M,N),4*MIN(M,N)*MIN(M,N)+4*MIN(M,N))
@@ -339,7 +339,7 @@ IF( SvdThreshold .GT. 0.) THEN
   DEALLOCATE(WSVD)
   DEALLOCATE(SigmaSVD)
   ALLOCATE(WSVD(nFilter,N))
-
+  
   N=nFilter
   ALLOCATE(USVD(M,N))
   ALLOCATE(SigmaSVD(min(N,M)))
@@ -351,8 +351,8 @@ IF( SvdThreshold .GT. 0.) THEN
   DEALLOCATE(SigmaSVDTmp)
   DEALLOCATE(filter)
   IF (nModes .GT. nFilter) THEN
-    nModes = nFilter
-  END IF
+    nModes = nFilter  
+  END IF 
 END IF
 
 ALLOCATE(SigmaInv(N,N))
@@ -364,7 +364,7 @@ SigmaMat=0.
 DO i = 1, N
   SigmaInv(i,i)=1./SigmaSVD(i)
   SigmaMat(i,i)=SigmaSVD(i)
-END DO
+END DO 
 
 STilde=dcmplx(MATMUL(MATMUL(MATMUL(TRANSPOSE(USVD),K(:,2:nFiles)),TRANSPOSE(WSVD)),SigmaInv))
 DEALLOCATE(SigmaInv)
@@ -381,7 +381,7 @@ STildeWork = STilde
 CALL ZGEEV('V','V',N,STildeWork,N,eigSTilde,VL,N,VR,N,WORKC,LWORK,RWORK,INFO)
 LWORK=MIN( LWMAX, INT( WORKC( 1 ) ) )
 CALL ZGEEV('V','V',N,STildeWork,N,eigSTilde,VL,N,VR,N,WORKC,LWORK,RWORK,INFO)
-DEALLOCATE(VL)
+DEALLOCATE(VL)              
 DEALLOCATE(STildeWork)
 DEALLOCATE(WORKC)
 DEALLOCATE(RWORK)
@@ -451,7 +451,7 @@ freq   = aimag(lambda)/(2*PI)
 ALLOCATE(RGlobMat(M,nFiles-1))
 RglobMat = K(:,2:nFiles)-DBLE(MATMUL(MATMUL(MATMUL(USVD,STilde),SigmaMat),WSVD))
 LDA  = M
-LDU  = M
+LDU  = M 
 LDVT = N
 LWMAX = nDoFs*nVarDMD*5
 ALLOCATE(WORK(LWMAX))
@@ -482,24 +482,24 @@ DEALLOCATE(STilde)
 DEALLOCATE(SigmaMat)
 DEALLOCATE(USVD)
 DEALLOCATE(WSVD)
-DEALLOCATE(VR)
-DEALLOCATE(eigSTilde)
+DEALLOCATE(VR)              
+DEALLOCATE(eigSTilde)          
 END SUBROUTINE performDMD
 
-SUBROUTINE WriteDmdStateFile()
+SUBROUTINE WriteDmdStateFile() 
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_IO_HDF5
 USE MOD_HDF5_Output,        ONLY: WriteState,WriteTimeAverage,GenerateFileSkeleton,WriteAttribute,WriteArray
 USE MOD_Output,             ONLY: InitOutput
-USE MOD_Output_Vars
+USE MOD_Output_Vars          
 USE MOD_DMD_Vars,           ONLY: Phi,N_State,N_StateZ,nElems_State,nModes,freq,alpha,lambda,sigmaSort,Time_State,VarNameDMD
 USE MOD_DMD_Vars,           ONLY: dt,TimeEnd_State,ModeFreq,PlotSingleMode,nVarDMD,nDofs,N_StateZ_out
 USE MOD_Mesh_Vars,          ONLY: offsetElem,MeshFile
 USE MOD_2D                 ,ONLY: ExpandArrayTo3D
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
+! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)   :: DataSetName
@@ -583,8 +583,8 @@ ELSE
       k=k-1
       CYCLE
     END IF
-
-
+  
+    
     WRITE(iMode,'(I0.3)')k
     WRITE(varFreq,'(F12.5)')freq(i)
     ! Replace spaces with 0's
@@ -605,7 +605,7 @@ ELSE
                               nVal=      (/1,N_State+1,N_State+1,N_StateZ_out+1,nElems_State/),&
                               offset=    (/0,      0,     0,     0,     offsetElem/),&
                               collective=.TRUE.,RealArray=PhiGlobal_out(1,:,:,:,:))
-
+    
       PhiGlobal(j,:,:,:,:) = aimag(RESHAPE( Phi_out(:,j,i), (/N_State+1,N_State+1,N_StateZ+1,nElems_State/)))
       IF(output2D) THEN
         PhiGlobal_out=>PhiGlobal
@@ -671,25 +671,25 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !===================================================================================================================================
 DEALLOCATE(VarNames_State)
-DEALLOCATE(Phi)
+DEALLOCATE(Phi)             
 DEALLOCATE(freq)
-DEALLOCATE(lambda)
-DEALLOCATE(alpha)
-DEALLOCATE(sigmaSort)
+DEALLOCATE(lambda)            
+DEALLOCATE(alpha)            
+DEALLOCATE(sigmaSort)            
 DEALLOCATE(K)
 DEALLOCATE(VarNameDMD)
 WRITE(UNIT_stdOut,'(A)') '  DMD FINALIZED'
 END SUBROUTINE FinalizeDMD
 
-RECURSIVE SUBROUTINE quicksort(a, first, last, icolumn, columns)
+RECURSIVE SUBROUTINE quicksort(a, first, last, icolumn, columns) 
 !----------------------------------------------------------------------------------------------------------------------------------!
-! Quicksort algorythm: sorts a from first to last entry by the icolumn,
+! Quicksort algorythm: sorts a from first to last entry by the icolumn,  
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
+! INPUT / OUTPUT VARIABLES 
 INTEGER,INTENT(IN)    :: first, last, icolumn,columns
 REAL,INTENT(INOUT)    :: a(:,:)
 !-----------------------------------------------------------------------------------------------------------------------------------

@@ -39,7 +39,7 @@ def execute_flexi(flexi_path, prm_path, projectname, analyze_fcts = None, log = 
 
    if analyze_fcts :
       results = []
-      if type(analyze_fcts) != list :
+      if type(analyze_fcts) != list : 
          return analyze_fcts(lines)
       for analyze_fct in analyze_fcts :
          results.append(analyze_fct(lines))

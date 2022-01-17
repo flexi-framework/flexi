@@ -43,10 +43,10 @@ for file in $BASEFLOW; do mv --backup=simple $file $DIR/baseflow/.    ; done
 for file in $TIMEAVG;  do mv --backup=simple $file $DIR/timeavg/. ; done
 for file in $RP;       do mv --backup=simple $file $DIR/rp/.  ; done
 # copy last file to keep last set
-cp --backup=simple "$PROJECTNAME"_State_[0-9]*.[0-9]*.h5    $DIR/state/.
-cp --backup=simple "$PROJECTNAME"_BaseFlow_[0-9]*.[0-9]*.h5 $DIR/baseflow/.
+cp --backup=simple "$PROJECTNAME"_State_[0-9]*.[0-9]*.h5    $DIR/state/.   
+cp --backup=simple "$PROJECTNAME"_BaseFlow_[0-9]*.[0-9]*.h5 $DIR/baseflow/.   
 cp --backup=simple "$PROJECTNAME"_TimeAvg_[0-9]*.[0-9]*.h5  $DIR/timeavg/.
-cp --backup=simple "$PROJECTNAME"_RP_[0-9]*.[0-9]*.h5       $DIR/rp/.
+cp --backup=simple "$PROJECTNAME"_RP_[0-9]*.[0-9]*.h5       $DIR/rp/. 
 
 
 # copy data to files to logdir

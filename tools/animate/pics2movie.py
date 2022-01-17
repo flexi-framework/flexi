@@ -34,7 +34,7 @@ p.wait()
 dimension = p.stdout.read().strip()
 
 i = 0
-for p in args.pictures :
+for p in args.pictures : 
    i = i+1
    sys.stdout.write('\r%05.2f %% Process: %s' % (100.0 * i / len(args.pictures), p))
    sys.stdout.flush()
@@ -51,7 +51,7 @@ for p in args.pictures :
    p.wait()
 
 sys.stdout.write('\n')
-
+    
 
 print 'Generate movie ....'
 cmd = ['mencoder']

@@ -69,9 +69,9 @@ DO iElem=1,nElems
     END DO
   END DO; END DO; END DO! i,j,k=0,NIn
 END DO
-
+ 
 z=1
-! Fill Uout for mode with add to Uout
+! Fill Uout for mode with add to Uout 
 DO iElem=1,nElems
   DO k=0,NOut; DO j=0,NOut; DO i=0,NOut
     DO iVar=1,nVar
@@ -101,7 +101,7 @@ IF (doGenerateReference) THEN
 ELSE
   ! Check if binary results file exists
   INQUIRE(FILE=TRIM(BinaryString),EXIST=binaryExists)
-
+  
   IF (binaryExists) THEN
     ! Read the reference solution
     OPEN(UNIT = 10, STATUS='old',FILE=TRIM(BinaryString),FORM='unformatted')  ! open an existing file

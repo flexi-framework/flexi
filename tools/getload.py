@@ -6,10 +6,10 @@
 # Date:         07.07.2016
 #
 # Description:  This script will compute a the number of cores for a
-#               given number of elements, polynomial degree and desired load/core
+#               given number of elements, polynomial degree and desired load/core 
 #               in a sense that for equal element distribution there will be no
 #               single cores having more elements then the average, only less.
-#
+# 
 #************************************************************************************
 
 from numpy import *
