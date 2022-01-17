@@ -44,6 +44,7 @@ REAL             :: dt_old                        !< last timestep
 REAL             :: dt_static                     !< static timestep
 REAL             :: dt_dynmin                     !< minimal allowed timestep
 REAL             :: dt_kill                       !< Kill timestep for FLEXI
+REAL             :: dt_analmin                    !< global dt min for analyze
 REAL             :: TEnd                          !< End time of simulation
 REAL             :: TAnalyze                      !< Analyze time intervall
 REAL             :: CFLScale(0:FV_ENABLED)        !< Convective CFL number
