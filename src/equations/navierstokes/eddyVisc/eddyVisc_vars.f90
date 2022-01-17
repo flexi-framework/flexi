@@ -40,6 +40,7 @@ PROCEDURE(FinalizeEddyViscosityInt),POINTER  :: FinalizeEddyViscosity !< pointer
 
 REAL,ALLOCATABLE  :: damp(:,:,:,:,:)       !< damping factor
 REAL,ALLOCATABLE  :: DeltaS(:)             !< filter width
+REAL,ALLOCATABLE  :: CSdeltaS2(:)          !< precomputed (model constant*filter width)**2 => Vreman,Sigma model
 REAL,ALLOCATABLE  :: muSGS(:,:,:,:,:)      !< Sub-grid eddy viscosity
 REAL,ALLOCATABLE  :: muSGS_master(:,:,:,:) !< Sub-grid eddy viscosity on master sides
 REAL,ALLOCATABLE  :: muSGS_slave (:,:,:,:) !< Sub-grid eddy viscosity on slave sides

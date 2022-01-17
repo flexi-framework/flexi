@@ -20,7 +20,7 @@
 !>     Monthly weather review 91.3 (1963): 99-164.
 !>
 !> The Van-Driest damping for the Smagorinsky model for channel flow is originally used in
-!>   - Moin, Parviz, and John Kim. "Numerical investigation of turbulent channel flow." 
+!>   - Moin, Parviz, and John Kim. "Numerical investigation of turbulent channel flow."
 !>     Journal of fluid mechanics 118 (1982): 341-377.
 !===================================================================================================================================
 MODULE MOD_Smagorinsky

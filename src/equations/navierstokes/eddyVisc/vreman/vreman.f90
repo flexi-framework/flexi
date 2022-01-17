@@ -73,6 +73,9 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT VREMAN...'
 ! Vreman model, paper CS=Smagorinsky constant for FLEXI: 0.11
 CS        = GETREAL('CS')
 
+! Allocate precomputed (model constant*filter width)**2
+ALLOCATE(CSdeltaS2(nElems))
+
 ! Vreman: (CS*deltaS)**2 * SQRT(B/A) * dens
 ! Precompute first term and store in damp
 ! Calculate the filter width deltaS: deltaS=( Cell volume )^(1/3) / ( PP_N+1 )
@@ -81,7 +84,8 @@ DO iElem=1,nElems
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     CellVol = CellVol + wGP(i)*wGP(j)*wGP(k)/sJ(i,j,k,iElem,0)
   END DO; END DO; END DO
-  DeltaS(iElem) = CellVol**(1./3.)  / (REAL(PP_N)+1.)
+  DeltaS(iElem)    = CellVol**(1./3.)  / (REAL(PP_N)+1.)
+  CSdeltaS2(iElem) = 2.5*(CS * DeltaS(iElem))**2
 END DO
 
 VremanInitIsDone=.TRUE.
@@ -92,16 +96,16 @@ END SUBROUTINE InitVreman
 !===================================================================================================================================
 !> Compute Vreman Eddy-Visosity
 !===================================================================================================================================
-PPURE SUBROUTINE Vreman_Point(gradUx,gradUy,gradUz,dens,deltaS,muSGS)
+PPURE SUBROUTINE Vreman_Point(gradUx,gradUy,gradUz,dens,CSdeltaS2,muSGS)
 ! MODULES
 USE MOD_EddyVisc_Vars,     ONLY:CS
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL,DIMENSION(PP_nVarLifting),INTENT(IN)  :: gradUx, gradUy, gradUz   !> Gradients in x,y,z directions
-REAL                          ,INTENT(IN)  :: dens    !> pointwise density
-REAL                          ,INTENT(IN)  :: deltaS  !> filter width
-REAL                          ,INTENT(OUT) :: muSGS   !> pointwise eddyviscosity
+REAL                          ,INTENT(IN)  :: dens       !> pointwise density
+REAL                          ,INTENT(IN)  :: CSdeltaS2  !> filter width
+REAL                          ,INTENT(OUT) :: muSGS      !> pointwise eddyviscosity
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER      :: i,j,k
@@ -126,7 +130,7 @@ END DO; END DO! i,j=1,3
 IF (B .LT. 1d-12 .OR. A .LT. 1d-5) THEN
   muSGS = 0.
 ELSE
-  muSGS = 2.5*(CS * deltaS)**2 * SQRT(B/A) * dens
+  muSGS = CSdeltaS2 * SQRT(B/A) * dens
 END IF
 END SUBROUTINE Vreman_Point
 
@@ -137,7 +141,7 @@ SUBROUTINE Vreman_Volume()
 ! MODULES
 USE MOD_PreProc
 USE MOD_Mesh_Vars,         ONLY: nElems
-USE MOD_EddyVisc_Vars,     ONLY: deltaS, muSGS
+USE MOD_EddyVisc_Vars,     ONLY: CSdeltaS2, muSGS
 USE MOD_Lifting_Vars,      ONLY: gradUx, gradUy, gradUz
 USE MOD_DG_Vars,           ONLY: U
 IMPLICIT NONE
@@ -150,7 +154,7 @@ INTEGER             :: i,j,k,iElem
 DO iElem = 1,nElems
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     CALL Vreman_Point(gradUx(   :,i,j,k,iElem), gradUy(:,i,j,k,iElem), gradUz(:,i,j,k,iElem), &
-                           U(DENS,i,j,k,iElem),         deltaS(iElem),  muSGS(1,i,j,k,iElem))
+                           U(DENS,i,j,k,iElem),      CSdeltaS2(iElem),  muSGS(1,i,j,k,iElem))
   END DO; END DO; END DO ! i,j,k
 END DO
 END SUBROUTINE Vreman_Volume

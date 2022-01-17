@@ -134,6 +134,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !===================================================================================================================================
 SDEALLOCATE(DeltaS)
+SDEALLOCATE(CSdeltaS2)
 SDEALLOCATE(muSGS)
 SDEALLOCATE(muSGS_master)
 SDEALLOCATE(muSGS_slave)
