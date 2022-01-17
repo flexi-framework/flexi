@@ -58,7 +58,6 @@ USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("TimeDisc")
-CALL prms%CreateLogicalOption('TimeDiscAdvanced',        "Specifies if custom time disc features should be used.",".FALSE.")
 CALL prms%CreateIntFromStringOption('TimeDiscAlgorithm', "Specifies how timestep is calculated.","dynamic")
 CALL addStrListEntry('TimeDiscAlgorithm','dynamic',     TIMEDISC_DYNAMIC)
 CALL addStrListEntry('TimeDiscAlgorithm','static',      TIMEDISC_STATIC)
@@ -104,12 +103,13 @@ CHARACTER(LEN=255):: TimeDiscMethod
 INTEGER           :: NEff
 !==================================================================================================================================
 
-! Is Advanced
-TimeDiscAdvanced  = GETLOGICAL('TimeDiscAdvanced','.FALSE.')
+! Get nCalcTimeStepMax: check if advanced settings should be used!
+nCalcTimeStepMax = GETINT('nCalcTimeStepMax','1')
 
 ! Get TimeDisc Algorithm
-IF (TimeDiscAdvanced) THEN
+IF (nCalcTimeStepMax.LT.0) THEN
   TimeDiscAlgorithm = GETINTFROMSTR('TimeDiscAlgorithm')
+  nCalcTimeStepMax = 1
 ELSE
   TimeDiscAlgorithm = TIMEDISC_DYNAMIC
 END IF
@@ -143,7 +143,6 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT TIMEDISC...'
 TEnd     = GETREAL('TEnd')
 SELECT CASE(TimeDiscAlgorithm)
 CASE(TIMEDISC_DYNAMIC,TIMEDISC_INITIAL)
-  nCalcTimeStepMax = GETINT('nCalcTimeStepMax','1')
   ! Read the normalized CFL number
   CFLScale = GETREAL('CFLScale')
 #if PARABOLIC

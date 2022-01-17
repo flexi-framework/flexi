@@ -36,8 +36,6 @@ END INTERFACE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-LOGICAL          :: TimeDiscAdvanced              !< Specifies if advacnced TimeDisc settings should be used
-
 INTEGER          :: TimeDiscAlgorithm             !< Specifies TimeDisc Algorithm
 
 REAL             :: t=0.                          !< current physical time
