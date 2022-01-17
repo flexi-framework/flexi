@@ -97,9 +97,12 @@ DO iStage = 1,nRKStages
   CALL VAXPBY(nTotalU,U,Ut_tmp,   ConstIn =b_dt(iStage)) !U       = U + Ut_tmp*b_dt(iStage)
 
 #if FV_ENABLED
-  CALL CalcIndicator(U,t)
+  ! Time needs to be evaluated at the next step because time integration was already performed
+  ASSOCIATE(tFV => MERGE(t+dt,t,iStage.EQ.nRKStages))
+  CALL CalcIndicator(U,tFV)
   ! NOTE: Apply switch and update FV_Elems
   CALL FV_Switch(U,Ut_tmp,AllowToDG=(iStage.EQ.nRKStages .OR. FV_toDGinRK))
+  END ASSOCIATE
 #endif /*FV_ENABLED*/
 #if PP_LIMITER
   IF(DoPPLimiter) CALL PPLimiter()
@@ -171,10 +174,12 @@ DO iStage = 1,nRKStages
   CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(iStage))                         !U = U + Ut*b_dt(iStage)
 
 #if FV_ENABLED
-  ! If UpdateTimeStep is called in next loop, FV_SWITCH is performed after t = t + dt
+  ! Time needs to be evaluated at the next step because time integration was already performed
+  ASSOCIATE(tFV => MERGE(t+dt,t,iStage.EQ.nRKStages))
   CALL CalcIndicator(U,t)
   ! NOTE: Apply switch and update FV_Elems
   CALL FV_Switch(U,Uprev,S2,AllowToDG=(iStage.EQ.nRKStages .OR. FV_toDGinRK))
+  END ASSOCIATE
 #endif /*FV_ENABLED*/
 #if PP_LIMITER
   IF(DoPPLimiter) CALL PPLimiter()
