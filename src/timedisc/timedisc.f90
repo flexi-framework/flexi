@@ -762,9 +762,9 @@ SELECT CASE(TimeDiscAlgorithm)
 CASE (TIMEDISC_DYNAMIC,TIMEDISC_INITIAL)
   dt=CALCTIMESTEP(errType)
   IF (dt.LT.dt_kill) &
-    CALL CollectiveStop(__STAMP__,"TimeDisc ERROR - Critical Kill timestep reached!")
+    CALL Abort(__STAMP__,"TimeDisc ERROR - Initial timestep blow critical kill timestep!")
   IF (dt.LT.dt_dynmin) THEN
-    SWRITE(UNIT_stdOut,'(A)') "Limiting timestep!"
+    CALL PrintWarning("TimeDisc Info - Timestep dropped below predefined minimum! - LIMITING!")
     dt = dt_dynmin
   END IF
 CASE (TIMEDISC_STATIC)
@@ -778,8 +778,11 @@ END FUNCTION EVALINITIALTIMESTEP
 FUNCTION EVALTIMESTEP(errType) RESULT(dt_Min)
 ! MODULES
 USE MOD_Globals
-USE MOD_TimeDisc_Vars       ,ONLY: TimeDiscAlgorithm,dt_static,dt_kill,dt_dynmin,dt
+USE MOD_Analyze_Vars        ,ONLY: tWriteData
 USE MOD_CalcTimeStep        ,ONLY: CalcTimeStep
+USE MOD_HDF5_Output         ,ONLY: WriteState
+USE MOD_Mesh_Vars           ,ONLY: MeshFile
+USE MOD_TimeDisc_Vars       ,ONLY: TimeDiscAlgorithm,dt_static,dt_kill,dt_dynmin,dt,t
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -792,10 +795,14 @@ INTEGER,INTENT(OUT)          :: errType
 SELECT CASE(TimeDiscAlgorithm)
 CASE(TIMEDISC_DYNAMIC)
   dt_Min=CALCTIMESTEP(errType)
-  IF (dt_Min.LT.dt_kill) &
-    CALL CollectiveStop(__STAMP__,"TimeDisc ERROR - Critical Kill timestep reached!")
+  IF (dt_Min.LT.dt_kill) THEN
+    CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
+                    FutureTime=tWriteData,isErrorFile=.TRUE.)
+    CALL Abort(__STAMP__,&
+     'TimeDisc ERROR - Critical Kill timestep reached! Time: ',RealInfo=t)
+  END IF
   IF (dt_Min.LT.dt_dynmin) THEN
-    SWRITE(UNIT_stdOut,'(A)') "Limiting timestep!"
+    CALL PrintWarning("TimeDisc Info - Timestep dropped below predefined minimum! - LIMITING!")
     dt_Min = dt_dynmin
   END IF
 CASE(TIMEDISC_INITIAL)
