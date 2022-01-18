@@ -146,11 +146,11 @@ SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' Errors of initial solution:'
 CALL Analyze(t,iter)
 
-! Fill recordpoints buffer (initialization/restart)
-IF(RP_onProc) CALL RecordPoints(PP_nVar,StrVarNames,iter,t,.TRUE.)
-
 ! compute initial timestep
 CALL InitTimeStep()
+
+! Fill recordpoints buffer (initialization/restart)
+IF(RP_onProc) CALL RecordPoints(PP_nVar,StrVarNames,iter,t,.TRUE.)
 
 #if FV_ENABLED
 CALL FV_Info(1_8)
