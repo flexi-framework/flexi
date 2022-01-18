@@ -107,6 +107,15 @@ IMPLICIT NONE
 CHARACTER(LEN=255):: TimeDiscMethod
 INTEGER           :: NEff
 !==================================================================================================================================
+IF(TimeDiscInitIsDone)THEN
+  SWRITE(*,*) "InitTimeDisc already called."
+  RETURN
+END IF
+SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(A)') ' INIT TIMEDISC...'
+
+! Read max number of iterations to perform
+maxIter = GETINT('maxIter','-1')
 
 ! Get nCalcTimeStepMax: check if advanced settings should be used!
 nCalcTimeStepMax = GETINT('nCalcTimeStepMax','1')
@@ -137,13 +146,6 @@ CASE('ESDIRK')
   CALL InitPredictor(TimeDiscMethod)
 END SELECT
 
-IF(TimeDiscInitIsDone)THEN
-   SWRITE(*,*) "InitTimeDisc already called."
-   RETURN
-END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT TIMEDISC...'
-
 ! Read the end time TEnd from ini file
 TEnd     = GETREAL('TEnd')
 SELECT CASE(TimeDiscAlgorithm)
@@ -170,16 +172,13 @@ END SELECT
 ! Set timestep to a large number
 dt=HUGE(1.)
 
-! Read max number of iterations to perform
-maxIter = GETINT('maxIter','-1')
-SWRITE(UNIT_stdOut,'(A)') ' Method of time integration: '//TRIM(TimeDiscName)
-
 ! Allocate and Initialize elementwise dt array
 ALLOCATE(dtElem(nElems))
 dtElem=0.
 
 CALL AddToElemData(ElementOut,'dt',dtElem)
 
+SWRITE(UNIT_stdOut,'(A)') ' Method of time integration: '//TRIM(TimeDiscName)
 TimediscInitIsDone = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT TIMEDISC DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -763,19 +762,19 @@ INTEGER,INTENT(OUT)          :: errType
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-! Initially set dt_globmin
+! Initially set dt_analmin
 dt_analmin = HUGE(1.)
 
 SELECT CASE(TimeDiscAlgorithm)
 CASE (TIMEDISC_DYNAMIC,TIMEDISC_INITIAL)
   dt=CALCTIMESTEP(errType)
   dt_analmin = MIN(dt_analmin,dt)
-  IF (dt.LT.dt_kill) &
-    CALL Abort(__STAMP__,"TimeDisc ERROR - Initial timestep blow critical kill timestep!")
   IF (dt.LT.dt_dynmin) THEN
     CALL PrintWarning("TimeDisc INFO - Timestep dropped below predefined minimum! - LIMITING!")
     dt = dt_dynmin;   dtElem = dt_dynmin
   END IF
+  IF (dt.LT.dt_kill) &
+    CALL Abort(__STAMP__,"TimeDisc ERROR - Initial timestep blow critical kill timestep!")
 CASE (TIMEDISC_STATIC)
   dt = dt_static;   dtElem = dt_static
 END SELECT
@@ -801,19 +800,18 @@ INTEGER,INTENT(OUT)          :: errType
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-
 SELECT CASE(TimeDiscAlgorithm)
 CASE(TIMEDISC_DYNAMIC)
   dt_Min=CALCTIMESTEP(errType)
   dt_analmin = MIN(dt_analmin,dt_Min)
-  IF (dt_Min.LT.dt_kill) THEN
+  IF (dt_Min.LT.dt_dynmin) THEN
+    dt_Min = dt_dynmin;   dtElem = dt_dynmin
+  END IF
+  IF (dt_Min.LT.dt_kill.AND.t.GT.0.1) THEN
     CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
                     FutureTime=tWriteData,isErrorFile=.TRUE.)
     CALL Abort(__STAMP__,&
      'TimeDisc ERROR - Critical Kill timestep reached! Time: ',RealInfo=t)
-  END IF
-  IF (dt_Min.LT.dt_dynmin) THEN
-    dt_Min = dt_dynmin;   dtElem = dt_dynmin
   END IF
 CASE(TIMEDISC_INITIAL)
   dt_Min = dt;          dtElem = dt
@@ -924,10 +922,18 @@ CASE(TIMEDISC_INITIAL,TIMEDISC_STATIC)
   ! get current dynamic dt
   dt_anal    = CALCTIMESTEP(errType)
   dt_analmin = MIN(dt_analmin,dt_anal)
+END SELECT
 
+IF ((dt_analmin.LT.dt_dynmin)) THEN
+    CALL PrintWarning("TimeDisc INFO - Timestep dropped below predefined minimum! - LIMITING!")
+    SWRITE(UNIT_stdOut,'(A,ES16.7,A)')' TimeDisc   : min_dt (CFL/DFL):', dt_analmin
+END IF
+
+SELECT CASE(TimeDiscAlgorithm)
+CASE(TIMEDISC_INITIAL,TIMEDISC_STATIC)
   ! Find maximum of CFL/DFL
   scaling = 0.
-  DO iElem=iElem,nElems
+  DO iElem=1,nElems
     FVE = FV_Elems(iElem)
     IF (ViscousTimeStep) THEN
       scaling = MAX(scaling,dtElem(iElem)/DFLScale(FVE))
@@ -943,21 +949,16 @@ CASE(TIMEDISC_INITIAL,TIMEDISC_STATIC)
   END IF
 #endif /*USE_MPI*/
 
-  IF ((dt_analmin.LT.dt_dynmin).AND.(TimeDiscAlgorithm.EQ.TIMEDISC_INITIAL)) THEN
-    CALL PrintWarning("TimeDisc INFO - Timestep dropped below predefined minimum! - LIMITING!")
-    SWRITE(UNIT_stdOut,'(A,F8.3,A)')' Theoretical minimal dt according to CFL/DFL since last analyze: ', dt_analmin
-  END IF
-  IF (TimeDiscAlgorithm.EQ.TIMEDISC_STATIC) THEN
-    SWRITE(UNIT_stdOut,'(A,F8.3,A)')' Theoretical dt according to CFL/DFL: ', dt_analmin
-  END IF
   IF (ViscousTimeStep) THEN
-    SWRITE(UNIT_stdOut,*)' TimeDisc INFO - Current DFL: ', scaling,' , Current Timestep: ', dt_anal
+    SWRITE(UNIT_stdOut,'(A,ES16.7,A,ES16.7)')' TimeDisc   : Current DFL    : ', scaling,' , Current Timestep: ', dt_anal
   ELSE
-    SWRITE(UNIT_stdOut,*)' TimeDisc INFO - Current CFL: ', scaling,' , Current Timestep: ', dt_anal
+    SWRITE(UNIT_stdOut,'(A,ES16.7,A,ES16.7)')' TimeDisc   : Current CFL    : ', scaling,' , Current Timestep: ', dt_anal
   END IF
-  ! reset dt_analmin
-  dt_analmin = HUGE(1.)
 END SELECT
+
+! reset dt_analmin
+dt_analmin = HUGE(1.)
+
 END SUBROUTINE TimeDisc_Info
 
 !==================================================================================================================================

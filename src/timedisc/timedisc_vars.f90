@@ -36,34 +36,34 @@ END INTERFACE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-INTEGER          :: TimeDiscAlgorithm             !< Specifies TimeDisc Algorithm
+INTEGER          :: TimeDiscAlgorithm                  !< Specifies TimeDisc Algorithm
 
-REAL             :: t=0.                          !< current physical time
-REAL             :: dt                            !< current timestep
-REAL             :: dt_old                        !< last timestep
-REAL             :: dt_static                     !< static timestep
-REAL             :: dt_dynmin                     !< minimal allowed timestep
-REAL             :: dt_kill                       !< Kill timestep for FLEXI
-REAL             :: dt_analmin                    !< global dt min for analyze
-REAL             :: TEnd                          !< End time of simulation
-REAL             :: TAnalyze                      !< Analyze time intervall
-REAL             :: CFLScale(0:FV_ENABLED)        !< Convective CFL number
-REAL             :: CFLScale_Readin(0:FV_ENABLED) !< Convective CFL number (value from parameter file)
+REAL             :: t=0.                               !< current physical time
+REAL             :: dt                                 !< current timestep
+REAL             :: dt_old                             !< last timestep
+REAL             :: dt_static                          !< static timestep
+REAL             :: dt_dynmin                          !< minimal allowed timestep
+REAL             :: dt_kill                            !< Kill timestep for FLEXI
+REAL             :: dt_analmin                         !< global dt min for analyze
+REAL             :: TEnd                               !< End time of simulation
+REAL             :: TAnalyze                           !< Analyze time intervall
+REAL             :: CFLScale(0:FV_ENABLED)        = 1. !< Convective CFL number
+REAL             :: CFLScale_Readin(0:FV_ENABLED)      !< Convective CFL number (value from parameter file)
 #if FV_ENABLED
-REAL             :: CFLScaleFV                    !< For FV, this is always set to the CFLScale for Gauss and N=1
+REAL             :: CFLScaleFV                         !< For FV, this is always set to the CFLScale for Gauss and N=1
 #endif /*FV*/
-REAL             :: DFLScale(0:FV_ENABLED)        !< Viscous CFL number (only if PARABOLIC)
-REAL             :: DFLScale_Readin(0:FV_ENABLED) !< Viscous CFL number (only if PARABOLIC, value from parameter file)
-REAL,ALLOCATABLE :: dtElem(:)                     !< Timestep for each element
-INTEGER          :: CurrentStage=1                !< Current Runge-Kutta stage within timestep
-INTEGER          :: nCalcTimeStepMax              !< Compute dt at least after every Nth timestep
-INTEGER(KIND=8)  :: iter                          !< Indicate actual number of timestep
-INTEGER(KIND=8)  :: maxIter                       !< Maximum permitted number of timesteps
-LOGICAL          :: fullBoundaryOrder=.FALSE.     !< temporal order degradation, occuring for
-                                                  !< time-dependant BCs, can easily be fixed when
-                                                  !< using 3 stage 3rd order RK schemes (no others!)
-LOGICAL          :: ViscousTimeStep=.FALSE.       !< Info wether we have convection of viscous dominated timestep
-LOGICAL          :: TimediscInitIsDone=.FALSE.    !< Indicate wheter InitTimeDisc routine has been run
+REAL             :: DFLScale(0:FV_ENABLED)        = 1. !< Viscous CFL number (only if PARABOLIC)
+REAL             :: DFLScale_Readin(0:FV_ENABLED)      !< Viscous CFL number (only if PARABOLIC, value from parameter file)
+REAL,ALLOCATABLE :: dtElem(:)                          !< Timestep for each element
+INTEGER          :: CurrentStage=1                     !< Current Runge-Kutta stage within timestep
+INTEGER          :: nCalcTimeStepMax                   !< Compute dt at least after every Nth timestep
+INTEGER(KIND=8)  :: iter                               !< Indicate actual number of timestep
+INTEGER(KIND=8)  :: maxIter                            !< Maximum permitted number of timesteps
+LOGICAL          :: fullBoundaryOrder=.FALSE.          !< temporal order degradation, occuring for
+                                                       !< time-dependant BCs, can easily be fixed when
+                                                       !< using 3 stage 3rd order RK schemes (no others!)
+LOGICAL          :: ViscousTimeStep=.FALSE.            !< Info wether we have convection of viscous dominated timestep
+LOGICAL          :: TimediscInitIsDone=.FALSE.         !< Indicate wheter InitTimeDisc routine has been run
 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! TIME INTEGRATION: RUNGE_KUTTA COEFFICIENTS AND STABILITY NUMBERS
