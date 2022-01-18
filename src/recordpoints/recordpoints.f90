@@ -115,9 +115,9 @@ ELSE
   nVar_loc = PP_nVar
 END IF
 
+RP_maxMemory      = GETINT('RP_MaxMemory','100')      ! Max buffer (100MB)
+RP_SamplingOffset = GETINT('RP_SamplingOffset','1')   ! Sampling offset (iteration)
 IF(RP_onProc)THEN
-  RP_maxMemory=GETINT('RP_MaxMemory','100')           ! Max buffer (100MB)
-  RP_SamplingOffset=GETINT('RP_SamplingOffset','1')   ! Sampling offset (iteration)
   maxRP=nGlobalRP
 #if USE_MPI
   CALL MPI_ALLREDUCE(nRP,maxRP,1,MPI_INTEGER,MPI_MAX,RP_COMM,iError)
@@ -186,6 +186,7 @@ USE MOD_RecordPoints_Vars     ,ONLY:offsetRP,RP_ElemID,nRP,nGlobalRP
 #if FV_ENABLED
 USE MOD_RecordPoints_Vars     ,ONLY:FV_RP_ijk
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -436,6 +437,8 @@ USE MOD_Recordpoints_Vars ,ONLY: RP_Buffersize,RP_Maxbuffersize,RP_fileExists,ch
 USE MOD_Recordpoints_Vars ,ONLY: RP_COMM
 USE MOD_RecordPoints_Vars ,ONLY: myRPrank
 #endif
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)             :: nVar                  !< Number of variables to write
