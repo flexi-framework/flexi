@@ -1,7 +1,8 @@
 # =========================================================================
-# Detect machine environements
+# Detect machine environments
 # =========================================================================
-
+CMAKE_HOST_SYSTEM_INFORMATION(RESULT CMAKE_FQDN_HOST QUERY FQDN)
+MARK_AS_ADVANCED(FORCE CMAKE_FQDN_HOST)
 MARK_AS_ADVANCED(FORCE CMAKE_HOSTNAME)
 SITE_NAME(CMAKE_HOSTNAME)
 
@@ -134,6 +135,11 @@ ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^xenon")
   # Work around MPI-IO issue 4446 on machines mountng storage via NFS
   ADD_DEFINITIONS(-DNFS)
 
+ELSEIF ("${CMAKE_FQDN_HOST}" MATCHES "gitlab.ila.uni-stuttgart.de")
+  MESSAGE(STATUS "Compiling on ILA Gitlab")
+  ADD_DEFINITIONS(-DVDM_ANALYTICAL)
+  SET(FLEXI_INSTRUCTION "-march=native")
+
 ELSE()
   MESSAGE(STATUS "Compiling on a generic machine")
   # Set compiler target architecture
@@ -144,7 +150,7 @@ ELSE()
   ENDIF()
 ENDIF()
 
-MESSAGE(STATUS "Compiling using [${FLEXI_INSTRUCTION}] instruction")
+MESSAGE(STATUS "Compiling with [${CMAKE_Fortran_COMPILER_ID}] fortran compiler using [${FLEXI_INSTRUCTION}] instruction")
 
 # =========================================================================
 # COMPILER FLAGS
@@ -161,6 +167,7 @@ IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
     SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -fdefault-double-8 -fbackslash -ffree-line-length-0 -finit-real=snan -finit-integer=snan -Wno-lto-type-mismatch -DGNU")
   ENDIF()
   # initialize all variables as signalling NaNs to force the user to correctly initialize these data types
+  SET (CMAKE_Fortran_FLAGS           "${CMAKE_Fortran_FLAGS} -finit-real=snan -finit-integer=snan")
   SET (CMAKE_Fortran_FLAGS_RELEASE   "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
   SET (CMAKE_Fortran_FLAGS_PROFILE   "${CMAKE_Fortran_FLAGS} -pg -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
   SET (CMAKE_Fortran_FLAGS_DEBUG     "${CMAKE_Fortran_FLAGS} -g  -Og -ggdb3 -ffpe-trap=invalid -fbounds-check -fbacktrace  -Wall")
