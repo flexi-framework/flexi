@@ -31,8 +31,8 @@ END INTERFACE
 PUBLIC::InitMPI
 
 #if USE_MPI
-INTERFACE InitMPIvars
-  MODULE PROCEDURE InitMPIvars
+INTERFACE InitMPIVars
+  MODULE PROCEDURE InitMPIVars
 END INTERFACE
 
 !INTERFACE StartReceiveMPIData
@@ -56,7 +56,10 @@ END INTERFACE
 INTERFACE FinalizeMPI
   MODULE PROCEDURE FinalizeMPI
 END INTERFACE
+#endif /*USE_MPI*/
 
+PUBLIC::DefineParametersMPI
+#if USE_MPI
 PUBLIC::InitMPIvars
 PUBLIC::StartReceiveMPIData
 PUBLIC::StartSendMPIData
@@ -68,7 +71,6 @@ PUBLIC::FinalizeMPI
 #endif
 !==================================================================================================================================
 
-PUBLIC::DefineParametersMPI
 CONTAINS
 
 !==================================================================================================================================
@@ -114,7 +116,8 @@ ELSE
   IF(.NOT.initDone) CALL MPI_INIT(iError)
   IF(iError .NE. 0) &
     CALL Abort(__STAMP__,'Error in MPI_INIT',iError)
-  MPI_COMM_FLEXI = MPI_COMM_WORLD
+  ! Duplicate communicator instead of just copying it. Creates a clean copy with all the cached information intact
+  CALL MPI_COMM_DUP(MPI_COMM_WORLD,MPI_COMM_FLEXI,iError)
 END IF
 
 CALL MPI_COMM_RANK(MPI_COMM_FLEXI, myRank     , iError)
@@ -193,10 +196,10 @@ DataSizeSideGrad  =PP_nVarLifting*(PP_N+1)*(PP_NZ+1)
 ! split communicator into smaller groups (e.g. for local nodes)
 GroupSize=GETINT('GroupSize','0')
 IF(GroupSize.LT.1)THEN ! group procs by node
-  CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,myRank,myRank,MPI_COMM_NODE,iError)
+  CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,myRank,0,MPI_COMM_NODE,iError)
 ELSE ! use groupsize
   color=myRank/GroupSize
-  CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,color,myRank,MPI_COMM_NODE,iError)
+  CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,color,0,MPI_COMM_NODE,iError)
 END IF
 CALL MPI_COMM_RANK(MPI_COMM_NODE,myLocalRank,iError)
 CALL MPI_COMM_SIZE(MPI_COMM_NODE,nLocalProcs,iError)
@@ -208,12 +211,12 @@ MPI_COMM_WORKERS=MPI_COMM_NULL
 myLeaderRank=-1
 myWorkerRank=-1
 IF(myLocalRank.EQ.0)THEN
-  CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,0,myRank,MPI_COMM_LEADERS,iError)
+  CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,0,0,MPI_COMM_LEADERS,iError)
   CALL MPI_COMM_RANK( MPI_COMM_LEADERS,myLeaderRank,iError)
   CALL MPI_COMM_SIZE( MPI_COMM_LEADERS,nLeaderProcs,iError)
   nWorkerProcs=nProcessors-nLeaderProcs
 ELSE
-  CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,1,myRank,MPI_COMM_WORKERS,iError)
+  CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,1,0,MPI_COMM_WORKERS,iError)
   CALL MPI_COMM_RANK( MPI_COMM_WORKERS,myWorkerRank,iError)
   CALL MPI_COMM_SIZE( MPI_COMM_WORKERS,nWorkerProcs,iError)
   nLeaderProcs=nProcessors-nWorkerProcs
@@ -372,6 +375,7 @@ END SUBROUTINE FinishExchangeMPIData
 !==================================================================================================================================
 SUBROUTINE FinalizeMPI()
 ! MODULES
+USE MOD_Globals
 USE MOD_MPI_Vars
 IMPLICIT NONE
 !==================================================================================================================================
@@ -402,8 +406,12 @@ SDEALLOCATE(nMPISides_send)
 SDEALLOCATE(nMPISides_rec)
 SDEALLOCATE(OffsetMPISides_send)
 SDEALLOCATE(OffsetMPISides_rec)
-END SUBROUTINE FinalizeMPI
 
+! Free MPI communicators
+IF(MPI_COMM_WORKERS.NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(MPI_COMM_WORKERS,iError)
+IF(MPI_COMM_LEADERS.NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(MPI_COMM_LEADERS,iError)
+
+END SUBROUTINE FinalizeMPI
 #endif /*USE_MPI*/
 
 END MODULE MOD_MPI

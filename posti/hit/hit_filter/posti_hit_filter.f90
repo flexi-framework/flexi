@@ -144,10 +144,10 @@ DO iArg=2,nArgs
     ! Only take the mesh file deposited in the state file if it is a valid mesh file.
     ! Otherwise try the mesh from the input parameter file
     IF(FILEEXISTS(MeshFile).AND.ISVALIDMESHFILE(MeshFile)) THEN
-      SWRITE(UNIT_stdOUT,*) "INITIALIZING MESH FROM FILE """,TRIM(MeshFile),""""
+      SWRITE(UNIT_stdOut,*) "INITIALIZING MESH FROM FILE """,TRIM(MeshFile),""""
       CALL InitMesh(MeshMode=0,MeshFile_In=MeshFile)
     ELSE
-      SWRITE(UNIT_stdOUT,*) "WARNING: No valid mesh file is given in HDF5 attributes of current state file! &
+      SWRITE(UNIT_stdOut,*) "WARNING: No valid mesh file is given in HDF5 attributes of current state file! &
                                     & Reading mesh from parameter file instead..."
       CALL InitMesh(MeshMode=0,MeshFile_In=MeshFile_prm)
     END IF
@@ -155,12 +155,12 @@ DO iArg=2,nArgs
 
     ! Check if found
     IF(.NOT.ALLOCATED(Elem_IJK)) THEN
-      CALL ABORT(__STAMP__,'Mesh does not contain IJK sorting which is however mandatory!')
+      CALL Abort(__STAMP__,'Mesh does not contain IJK sorting which is however mandatory!')
     END IF
 
     ! Currently only cubic meshes are allowed!
     IF(.NOT.((nElems_IJK(1).EQ.nElems_IJK(2)).AND.(nElems_IJK(1).EQ.nElems_IJK(3)))) THEN
-      CALL ABORT(__STAMP__,'Mesh does not have the same amount of elements in x,y and z!')
+      CALL Abort(__STAMP__,'Mesh does not have the same amount of elements in x,y and z!')
     END IF
 
     ! Get new number of points for fourier analysis
@@ -211,7 +211,7 @@ CALL FinalizeIOHDF5
 #if USE_MPI
 CALL MPI_FINALIZE(iError)
 IF(iError .NE. 0) &
-  CALL abort(__STAMP__,'MPI finalize error',iError)
+  CALL Abort(__STAMP__,'MPI finalize error',iError)
 CALL FinalizeMPI()
 #endif
 

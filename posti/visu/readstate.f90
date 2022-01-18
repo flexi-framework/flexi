@@ -101,8 +101,8 @@ USE MOD_IO_HDF5       ,ONLY: DefineParametersIO_HDF5,InitIOHDF5
 USE MOD_Interpolation ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
 USE MOD_Restart       ,ONLY: DefineParametersRestart,InitRestart,Restart,FinalizeRestart
 USE MOD_Mesh          ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
-USE MOD_Indicator     ,ONLY: DefineParametersIndicator,InitIndicator,FinalizeIndicator
 #if FV_ENABLED
+USE MOD_Indicator     ,ONLY: DefineParametersIndicator,InitIndicator,FinalizeIndicator
 USE MOD_FV            ,ONLY: DefineParametersFV,InitFV,FinalizeFV
 USE MOD_FV_Basis      ,ONLY: InitFV_Basis,FinalizeFV_Basis
 #endif
@@ -129,6 +129,7 @@ CHARACTER(LEN=255),INTENT(IN):: statefile     !< HDF5 state file
 !===================================================================================================================================
 CALL FinalizeInterpolation()
 #if FV_ENABLED
+CALL FinalizeIndicator()
 CALL FinalizeFV_Basis()
 CALL FinalizeFV()
 #endif
@@ -139,7 +140,6 @@ IF (changedMeshFile.OR.changedWithDGOperator) THEN
   CALL FinalizeMPI()
 END IF
 #endif
-CALL FinalizeIndicator()
 CALL FinalizeEquation()
 CALL FinalizeDG()
 CALL FinalizeOverintegration()
@@ -157,8 +157,8 @@ CALL DefineParametersRestart()
 CALL DefineParametersMesh()
 CALL DefineParametersFilter()
 CALL DefineParametersOverintegration()
-CALL DefineParametersIndicator()
 #if FV_ENABLED
+CALL DefineParametersIndicator()
 CALL DefineParametersFV()
 #endif
 CALL DefineParametersEos()
@@ -188,7 +188,6 @@ END IF
 
 CALL InitFilter()
 CALL InitOverintegration()
-CALL InitIndicator()
 #if USE_MPI
 IF (changedMeshFile.OR.changedWithDGOperator) THEN
   CALL InitMPIvars()
@@ -198,6 +197,7 @@ CALL InitEquation()
 
 CALL InitDG()
 #if FV_ENABLED
+CALL InitIndicator()
 CALL InitFV()
 #endif
 #if PARABOLIC

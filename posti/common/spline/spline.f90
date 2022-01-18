@@ -215,7 +215,7 @@ DO iter=1,10
     CALL EvalSpline(3,nP_in,t_loc,t_ini,coeff,xP_out(:,iP)) ! x(t(s)) at the equidistant point
   END DO! i=1,nP_out
 END DO !iter
-WRITE(UNIT_StdOut,'(A,F12.5)')' Warning: equidistant routine did not converge! , error = ',EquiErr
+WRITE(UNIT_stdOut,'(A,F12.5)')' Warning: equidistant routine did not converge! , error = ',EquiErr
 END SUBROUTINE GetEquiPoints
 
 

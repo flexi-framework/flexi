@@ -113,7 +113,7 @@ IF (InterpolationInitIsDone) THEN
   CALL CollectiveStop(__STAMP__,&
     'InitInterpolation already called.')
 END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT INTERPOLATION...'
 
 ! Access ini-file
@@ -137,12 +137,12 @@ END IF
 #endif
 
 ! Compute Nodes and weights for Gauss or GaussLobatto-Nodes
-SWRITE(UNIT_stdOut,'(A)') ' NodeType: '//NodeType
+SWRITE(UNIT_stdOut,'(A,A)') ' NodeType: ',TRIM(NodeType)
 CALL InitInterpolationBasis(PP_N, xGP ,wGP ,wBary ,L_Minus ,L_Plus ,Vdm_Leg ,sVdm_Leg)
 
 InterpolationInitIsDone = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT INTERPOLATION DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitInterpolation
 
 

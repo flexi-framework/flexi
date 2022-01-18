@@ -100,7 +100,7 @@ CALL PAPIF_FLOPS(realtime,proctime,flpops,mflops,err)
 #if USE_MPI
 IF(MPIRoot)THEN
   CALL MPI_REDUCE(MPI_IN_PLACE,mflops,1,MPI_FLOAT,MPI_SUM,0,MPI_COMM_FLEXI,iError)
-  WRITE(UNIT_StdOut,'(A14,ES18.9)')' Sim-MFLOPS : ',mflops
+  WRITE(UNIT_stdOut,'(A14,ES18.9)')' Sim-MFLOPS : ',mflops
 ELSE
   CALL MPI_REDUCE(mflops,0           ,1,MPI_FLOAT,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF

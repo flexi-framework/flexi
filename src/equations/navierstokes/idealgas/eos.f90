@@ -32,12 +32,14 @@ END INTERFACE
 INTERFACE ConsToPrim
   MODULE PROCEDURE ConsToPrim
   MODULE PROCEDURE ConsToPrim_Side
+  MODULE PROCEDURE ConsToPrim_Elem
   MODULE PROCEDURE ConsToPrim_Volume
 END INTERFACE
 
 INTERFACE PrimToCons
   MODULE PROCEDURE PrimToCons
   MODULE PROCEDURE PrimToCons_Side
+  MODULE PROCEDURE PrimToCons_Elem
   MODULE PROCEDURE PrimToCons_Volume
 END INTERFACE
 
@@ -112,7 +114,7 @@ USE MOD_EOS_Vars      ,ONLY: Tref,ExpoSuth
 REAL    :: BulkMach,BulkReynolds
 LOGICAL :: UseNonDimensionalEqn=.FALSE.
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT IDEAL GAS...'
 
 
@@ -177,7 +179,7 @@ mu0     =mu0/Tref**ExpoSuth
 #endif /*PARABOLIC*/
 
 SWRITE(UNIT_stdOut,'(A)')' INIT IDEAL-GAS DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitEos
 
 !==================================================================================================================================
@@ -230,6 +232,26 @@ DO q=0,ZDIM(Nloc); DO p=0,Nloc
   CALL ConsToPrim(prim(:,p,q),cons(:,p,q))
 END DO; END DO
 END SUBROUTINE ConsToPrim_Side
+
+!==================================================================================================================================
+!> Transformation from conservative variables to primitive variables in the whole volume
+!==================================================================================================================================
+PPURE SUBROUTINE ConsToPrim_Elem(Nloc,prim,cons)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: Nloc                                         !< local polynomial degree of solution representation
+REAL,INTENT(IN)    :: cons(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc)) !< vector of conservative variables
+REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc)) !< vector of primitive variables
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: i,j,k
+!==================================================================================================================================
+DO k=0,ZDIM(Nloc); DO j=0,Nloc; DO i=0,Nloc
+  CALL ConsToPrim(prim(:,i,j,k),cons(:,i,j,k))
+END DO; END DO; END DO! i,j,k=0,Nloc
+END SUBROUTINE ConsToPrim_Elem
 
 !==================================================================================================================================
 !> Transformation from conservative variables to primitive variables in the whole volume
@@ -300,6 +322,26 @@ DO q=0,ZDIM(Nloc); DO p=0,Nloc
   CALL PrimToCons(prim(:,p,q),cons(:,p,q))
 END DO; END DO ! p,q=0,Nloc
 END SUBROUTINE PrimToCons_Side
+
+!==================================================================================================================================
+!> Transformation from primitive to conservative variables in the whole volume
+!==================================================================================================================================
+PPURE SUBROUTINE PrimToCons_Elem(Nloc,prim,cons)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: Nloc                                             !< local polynomial degree of solution representation
+REAL,INTENT(IN)    :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc))     !< vector of primitive variables
+REAL,INTENT(OUT)   :: cons(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc))     !< vector of conservative variables
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: i,j,k
+!==================================================================================================================================
+DO k=0,ZDIM(Nloc); DO j=0,Nloc; DO i=0,Nloc
+  CALL PrimToCons(prim(:,i,j,k),cons(:,i,j,k))
+END DO; END DO; END DO
+END SUBROUTINE PrimToCons_Elem
 
 !==================================================================================================================================
 !> Transformation from primitive to conservative variables in the whole volume

@@ -121,7 +121,7 @@ CALL FinalizeFV_Basis()
 #if USE_MPI
 CALL MPI_FINALIZE(iError)
 IF(iError .NE. 0) &
-  CALL abort(__STAMP__,'MPI finalize error',iError)
+  CALL Abort(__STAMP__,'MPI finalize error',iError)
 CALL FinalizeMPI()
 #endif
 WRITE(UNIT_stdOut,'(132("="))')

@@ -70,7 +70,7 @@ END IF
 
 ! Make BlockSize even
 IF(MOD(Blocksize,2).NE.0) THEN
-  WRITE(UNIT_StdOut,'(A)')'   WARNING: Blocksize should be even!!! Equalizing...'
+  WRITE(UNIT_stdOut,'(A)')'   WARNING: Blocksize should be even!!! Equalizing...'
   BlockSize=BlockSize+1
 END IF
 
@@ -95,12 +95,12 @@ END IF
 dt_out = (TEnd-RPTime(1))/REAL(nSamples_out-1)
 
 WRITE(UNIT_stdOut,'(A)')'  Equidistant time grid:'
-WRITE(UNIT_StdOut,'(A18,ES16.7)')'             dt = ',dt_out
-WRITE(UNIT_StdOut,'(A18,I8    )')'      Blocksize = ',Blocksize
-WRITE(UNIT_StdOut,'(A18,I8    )')'        nBlocks = ',nBlocks
-WRITE(UNIT_StdOut,'(A18,I8    )')'       nSamples = ',nSamples_out
-WRITE(UNIT_StdOut,'(A18,ES16.7)')'       new TEnd = ',TEnd
-WRITE(UNIT_StdOut,'(A18,ES16.7)')'TEnd next block = ',TEnd+REAL(BlockSize)*0.5*dt_out
+WRITE(UNIT_stdOut,'(A18,ES16.7)')'             dt = ',dt_out
+WRITE(UNIT_stdOut,'(A18,I8    )')'      Blocksize = ',Blocksize
+WRITE(UNIT_stdOut,'(A18,I8    )')'        nBlocks = ',nBlocks
+WRITE(UNIT_stdOut,'(A18,I8    )')'       nSamples = ',nSamples_out
+WRITE(UNIT_stdOut,'(A18,ES16.7)')'       new TEnd = ',TEnd
+WRITE(UNIT_stdOut,'(A18,ES16.7)')'TEnd next block = ',TEnd+REAL(BlockSize)*0.5*dt_out
 WRITE(UNIT_stdOut,'(A)')' DONE.'
 WRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitSpec

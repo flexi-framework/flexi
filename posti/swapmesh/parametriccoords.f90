@@ -168,7 +168,7 @@ IF(NgeoOld.EQ.NGeoNew) THEN
   END DO! iElemOld=1,nElemsOld
 !$OMP END DO
 !$OMP END PARALLEL
-  WRITE(UNIT_StdOut,*)nEqualElems,' equal elements, ',nElemsOld-nEqualElems,' remaining.'
+  WRITE(UNIT_stdOut,*)nEqualElems,' equal elements, ',nElemsOld-nEqualElems,' remaining.'
 END IF ! (NgeoOld.EQ.NGeoNew)
 
 
@@ -330,7 +330,7 @@ DO iElemNew=1,nElemsNew
         END IF
         !abort if severly broken and no refstate present (with refstate present abortTol=HUGE)
         IF(MAXVAL(ABS(xiInter(1:PP_dim,ii,jj,kk,iElemNew))).GT.abortTol)&
-          CALL abort(__STAMP__, 'IP not found.')
+          CALL Abort(__STAMP__, 'IP not found.')
         nNotFound=nNotFound+1
       ELSE
         IPDone(ii,jj,kk,iElemNew)=.TRUE.

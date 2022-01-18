@@ -81,7 +81,7 @@ INTEGER  :: i,j,k
 INTEGER  :: void
 #endif
 !===================================================================================================================================
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT FFT...'
 
 #if USE_OPENMP
@@ -128,7 +128,7 @@ END DO
 !$OMP END PARALLEL
 
 SWRITE(UNIT_stdOut,'(A)')' INIT FFT DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitFFT
 

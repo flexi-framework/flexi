@@ -60,11 +60,11 @@ WRITE(UNIT_stdOut,'(A)')' PERFORMING ENSEMBLE AVERAGING ...'
 
 ! Abort if the frequency is too low for the period
 !IF(EnsemblePeriod.LT.(1./EnsembleFreq)) &
-!  CALL ABORT(__STAMP__,' EnsemblePeriod less than 1./EnsembleFreq')
+!  CALL Abort(__STAMP__,' EnsemblePeriod less than 1./EnsembleFreq')
 
 ! Abort if we do not have a full period
 IF (EnsemblePeriod.GT.(RPTime(nSamples_out)-RPTime(1))) &
-  CALL ABORT(__STAMP__,' EnsemblePeriod longer than available RP data!')
+  CALL Abort(__STAMP__,' EnsemblePeriod longer than available RP data!')
 
 ! Number of turbulent variables. Hardcoded for now
 nVar_ensTurb = 6

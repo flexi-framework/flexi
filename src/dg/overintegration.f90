@@ -101,7 +101,7 @@ IF(OverintegrationInitIsDone.OR.(.NOT.InterpolationInitIsDone))THEN
   CALL CollectiveStop(__STAMP__,&
     'InitOverintegration not ready to be called or already called.')
 END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT OVERINTEGRATION...'
 
 !Set default values
@@ -158,7 +158,7 @@ END SELECT
 
 OverintegrationInitIsDone = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT OVERINTEGRATION DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitOverintegration
 
 

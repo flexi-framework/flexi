@@ -1,7 +1,6 @@
 *.s
 *.o
 *.i90
-*.mod
 *.swp
 *.pyc
 src/deplist.mk

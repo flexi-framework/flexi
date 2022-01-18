@@ -284,16 +284,16 @@ WRITE(FileUnit,'(12(E20.12,1X))') Time_hdf5,Ekin,IntE_k,Eps,Eta,Eta_k,lambda,lam
 CLOSE(FILEUnit)
 
 ! Also dump data to stdout
-WRITE(UNIT_StdOut,'(132("-"))')
-WRITE(Unit_StdOut,'(A50)')'Turbulence Statistics'
-WRITE(UNIT_StdOut,'(A14,E20.10)')           '  Epsilon   = ',Eps
-WRITE(UNIT_StdOut,'(A14,E20.10,A13,E20.10)')'  E_kin     = ',Ekin,  '  E_kin_K  = ',IntE_k
-WRITE(UNIT_StdOut,'(A14,E20.10,A13,E20.10)')'  Eta       = ',Eta,   '  Eta_K    = ',Eta_K
-WRITE(UNIT_StdOut,'(A14,E20.10,A13,E20.10)')'  Lambda    = ',Lambda,'  Lambda_K = ',Lambda_K
-WRITE(UNIT_StdOut,'(A14,E20.10,A13,E20.10)')'  L_Int     = ',L_int, '  L_Int_K  = ',L_int_K
-WRITE(UNIT_StdOut,'(A14,E20.10)')           '  U_RMS     = ',U_RMS
-WRITE(UNIT_StdOut,'(A14,E20.10)')           '  Re_Lambda = ',Re_Lambda
-WRITE(UNIT_StdOut,'(132("-"))')
+WRITE(UNIT_stdOut,'(132("-"))')
+WRITE(UNIT_stdOut,'(A50)')'Turbulence Statistics'
+WRITE(UNIT_stdOut,'(A14,E20.10)')           '  Epsilon   = ',Eps
+WRITE(UNIT_stdOut,'(A14,E20.10,A13,E20.10)')'  E_kin     = ',Ekin,  '  E_kin_K  = ',IntE_k
+WRITE(UNIT_stdOut,'(A14,E20.10,A13,E20.10)')'  Eta       = ',Eta,   '  Eta_K    = ',Eta_K
+WRITE(UNIT_stdOut,'(A14,E20.10,A13,E20.10)')'  Lambda    = ',Lambda,'  Lambda_K = ',Lambda_K
+WRITE(UNIT_stdOut,'(A14,E20.10,A13,E20.10)')'  L_Int     = ',L_int, '  L_Int_K  = ',L_int_K
+WRITE(UNIT_stdOut,'(A14,E20.10)')           '  U_RMS     = ',U_RMS
+WRITE(UNIT_stdOut,'(A14,E20.10)')           '  Re_Lambda = ',Re_Lambda
+WRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE WriteTurbulenceData
 
 
@@ -325,7 +325,7 @@ LOGICAL                          :: userblockFound
 CHARACTER(LEN=255)               :: prmfile=".parameter.ini"
 INTEGER                          :: iElem
 !===================================================================================================================================
-SWRITE(Unit_StdOut,('(3A)')) "READING SOLUTION FROM STATE FILE """,TRIM(StateFile), """"
+SWRITE(UNIT_stdOut,('(3A)')) "READING SOLUTION FROM STATE FILE """,TRIM(StateFile), """"
 
 ! Get start index of file extension to check if it is a h5 file
 IF (.NOT.STRICMP(GetFileExtension(StateFile), 'h5')) &
@@ -362,7 +362,7 @@ INQUIRE(FILE=TRIM(UserBlockTmpFile),SIZE=userblock_total_len)
 ! Close the data file
 CALL CloseDataFile()
 
-SWRITE(Unit_StdOut,'(A)') "READING SOLUTION DONE!"
+SWRITE(UNIT_stdOut,'(A)') "READING SOLUTION DONE!"
 END SUBROUTINE ReadOldStateFile
 
 END MODULE MOD_HIT_Analyze

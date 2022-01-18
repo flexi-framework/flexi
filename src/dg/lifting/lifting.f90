@@ -131,7 +131,7 @@ IF((.NOT.DGInitIsDone).OR.LiftingInitIsDone)THEN
    RETURN
 END IF
 
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 #if PP_Lifting==1
 SWRITE(UNIT_stdOut,'(A)') ' INIT LIFTING WITH BR1...'
 doWeakLifting=GETLOGICAL('doWeakLifting','.FALSE.')
@@ -191,7 +191,7 @@ diffFluxZ_R=0.
 
 LiftingInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT LIFTING DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitLifting
 
 !==================================================================================================================================

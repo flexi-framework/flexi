@@ -162,4 +162,3 @@ NSuper     =GETINT('NSuper','0')
 maxTol     =1.+ABS(GETREAL('maxTolerance','1.e-3'))
 doVisuRP   =GETLOGICAL('doVisuRP','T')
 END SUBROUTINE InitParameters
-

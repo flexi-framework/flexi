@@ -51,7 +51,7 @@ USE MOD_EddyVisc_Vars
 USE MOD_ReadInTools        ,ONLY: GETREAL,GETLOGICAL
 USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone,wGP
 USE MOD_Mesh_Vars          ,ONLY: MeshInitIsDone,nElems,sJ
-USE MOD_Testcase_Vars      ,ONLY: testcase
+USE MOD_TestCase_Vars      ,ONLY: testcase
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -64,7 +64,7 @@ IF(((.NOT.InterpolationInitIsDone).AND.(.NOT.MeshInitIsDone)).OR.SigmaModelInitI
   CALL CollectiveStop(__STAMP__,&
     "InitSigmaModel not ready to be called or already called.")
 END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT SigmaModel...'
 
 ! Read the variables used for LES model
@@ -88,7 +88,7 @@ END DO
 
 SigmaModelInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT SigmaModel DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitSigmaModel
 
 !===================================================================================================================================

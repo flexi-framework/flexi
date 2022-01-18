@@ -234,7 +234,7 @@ IF (useBaseflow) THEN
           VarSortTimeAvg(i)=j
           EXIT
         ELSE IF(i .EQ. INT(HSize(1))) THEN 
-          CALL abort(__STAMP__,'Required DMD-Var not provided by TimeAvg-File')
+          CALL Abort(__STAMP__,'Required DMD-Var not provided by TimeAvg-File')
         END IF 
       END DO
     END DO

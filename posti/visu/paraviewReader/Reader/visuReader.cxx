@@ -142,7 +142,7 @@ int visuReader::RequestInformation(vtkInformation *,
    // convert the MPI communicator to a Fortran communicator
    int fcomm;
    fcomm = MPI_Comm_c2f(mpiComm);
-   MPI_Barrier(mpiComm);
+   MPI_BARRIER(mpiComm);
 
    struct CharARRAY varnames;
    struct CharARRAY bcnames;
@@ -157,7 +157,7 @@ int visuReader::RequestInformation(vtkInformation *,
    }
    __mod_visu_cwrapper_MOD_visu_requestinformation(&fcomm, &strlen_state, FileNames[0].c_str(), &strlen_mesh, MeshFileOverwrite, &varnames, &bcnames);
 
-   MPI_Barrier(mpiComm);
+   MPI_BARRIER(mpiComm);
 
    // We copy the varnames to the corresponding DataArraySelection objects.
    // These objects are used to build the gui.
@@ -294,7 +294,7 @@ int visuReader::RequestData(
 
    // convert the MPI communicator to a fortran communicator
    int fcomm = MPI_Comm_c2f(mpiComm);
-   MPI_Barrier(mpiComm); // all processes should call the Fortran code at the same time
+   MPI_BARRIER(mpiComm); // all processes should call the Fortran code at the same time
 
    // get all variables selected for visualization
    // and check if they are the same as before (bug workaround, explanation see below)
@@ -367,7 +367,7 @@ int visuReader::RequestData(
    }
    close(posti_unit);
 
-   MPI_Barrier(mpiComm); // all processes should call the Fortran code at the same time
+   MPI_BARRIER(mpiComm); // all processes should call the Fortran code at the same time
 
    // call Posti tool (Fortran code)
    // the arrays coords_*, values_* and nodeids_* are allocated in the Posti tool
@@ -390,7 +390,7 @@ int visuReader::RequestData(
          &coordsSurf_DG,&valuesSurf_DG,&nodeidsSurf_DG,
          &coordsSurf_FV,&valuesSurf_FV,&nodeidsSurf_FV,&varnamesSurf);
 
-   MPI_Barrier(mpiComm); // wait until all processors returned from the Fortran Posti code
+   MPI_BARRIER(mpiComm); // wait until all processors returned from the Fortran Posti code
 
 
    // get the MultiBlockDataset
@@ -447,7 +447,7 @@ int visuReader::RequestData(
    // tell paraview to render data
    this -> Modified();
 
-   MPI_Barrier(mpiComm); // synchronize again (needed?)
+   MPI_BARRIER(mpiComm); // synchronize again (needed?)
    SWRITE("RequestData finished");
    return 1;
 }
