@@ -388,7 +388,7 @@ REAL                  :: G(2),Xi2(2),Jac2(2,2),sJac2(2,2),xWinner(3),NormVecWinn
 REAL                  :: F(1:3),eps_F
 
 !===================================================================================================================================
-SWRITE(UNIT_StdOut,'(A,I4,A)')' Project ',nRP,' RPs on the closest boundary...'
+SWRITE(UNIT_stdOut,'(A,I4,A)')' Project ',nRP,' RPs on the closest boundary...'
 iRP2=0
 dist2RP=HUGE(1.)
 NormVecRP=0.
@@ -557,13 +557,13 @@ DO SideID=1,nBCSides
       ! find the side with minimum distance
       dist2RP(iRP)=Winner_Dist2
       NormVecRP(:,iRP)=-NormVecWinner
-!       SWRITE(UNIT_StdOut,'(A,I4,A,3F8.4,A,3F8.4,A)')' Projected RP ',iRP,' with coordinates ',aRP%x,' to ',ARP%xF,'.'
+!       SWRITE(UNIT_stdOut,'(A,I4,A,3F8.4,A,3F8.4,A)')' Projected RP ',iRP,' with coordinates ',aRP%x,' to ',ARP%xF,'.'
     END IF
   END DO! iRP=1,nRP
 END DO! SideID=1,nBCSides
 
-SWRITE(UNIT_StdOut,'(A)')' done.'
-SWRITE(UNIT_StdOut,'(A,F15.8)')'  Max. distance: ',SQRT(MAXVAL(dist2RP))
+SWRITE(UNIT_stdOut,'(A)')' done.'
+SWRITE(UNIT_stdOut,'(A,F15.8)')'  Max. distance: ',SQRT(MAXVAL(dist2RP))
 END SUBROUTINE ProjectRPtoBC
 
 

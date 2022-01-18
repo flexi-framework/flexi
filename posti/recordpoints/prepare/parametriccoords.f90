@@ -51,16 +51,16 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !===================================================================================================================================
 IF(.NOT.RPSetInitIsDone.OR.(.NOT.MeshInitIsDone))THEN
-  CALL abort(__STAMP__, &
+  CALL Abort(__STAMP__, &
        'GetRecordPoints not ready to be called or already called.')
 END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' FIND RECORDPOINTS IN MESH...'
 CALL GetParametricCoordinates()
 CALL SortRP()
 
 SWRITE(UNIT_stdOut,'(A)')' FINDING RECORDPOINTS DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE GetRecordPoints
 
 
@@ -258,8 +258,8 @@ END DO
 ! Remaining points: If the point is close to a boundary, project the point on the boundary
 IF(ANY(.NOT.RPFound)) THEN
   nRP_notfound=nRP_global-COUNT(RPFound)
-  SWRITE(UNIT_StdOut,'(A,I4,A,I4,A)')' ',nRP_notfound,' of ',nRP_global,' RPs have not been found inside the mesh.'
-  SWRITE(UNIT_StdOut,'(A)')' Attempting to project them on the closest boundary...'
+  SWRITE(UNIT_stdOut,'(A,I4,A,I4,A)')' ',nRP_notfound,' of ',nRP_global,' RPs have not been found inside the mesh.'
+  SWRITE(UNIT_stdOut,'(A)')' Attempting to project them on the closest boundary...'
   ALLOCATE(dist2RP(nRP_notfound))
   ALLOCATE(mapRP(nRP_global))
   iRP2=0
@@ -440,8 +440,8 @@ IF(ANY(.NOT.RPFound)) THEN
       END IF
     END DO! iRP=1,nRP_Global
   END DO! SideID=1,nBCSides
-  SWRITE(UNIT_StdOut,'(A)')' done.'
-  SWRITE(UNIT_StdOut,'(A,F15.8)')'  Max. distance: ',SQRT(MAXVAL(dist2RP))
+  SWRITE(UNIT_stdOut,'(A)')' done.'
+  SWRITE(UNIT_stdOut,'(A,F15.8)')'  Max. distance: ',SQRT(MAXVAL(dist2RP))
 
   DEALLOCATE(mapRP,dist2RP)
 END IF!(.NOT.ANY(RPFound)
@@ -453,7 +453,7 @@ DO iRP=1,nRP_Global
     IF(MAXVAL(ABS(aRP%Xi)).GT.maxTol)THEN
       ! RP has not been found
       WRITE(*,*) 'Record Point with ID :',iRP,' and Coordinates ',aRP%x, ' is a troublemaker!'
-      CALL abort(__STAMP__, &
+      CALL Abort(__STAMP__, &
            'Newton has reached 50 Iter, Point not found')
     END IF
   END IF

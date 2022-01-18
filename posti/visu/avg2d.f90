@@ -98,9 +98,9 @@ ELSE
     Elem_IJK(2,iElem) = iElem
     Elem_IJK(3,iElem) = 1
   END DO ! iElem
-  SWRITE(UNIT_StdOut,'(132("-"))')
-  SWRITE(Unit_stdOut,'(A)') ' No IJK sorting available. Avg2D disabled ...'
-  SWRITE(UNIT_StdOut,'(132("-"))')
+  SWRITE(UNIT_stdOut,'(132("-"))')
+  SWRITE(UNIT_stdOut,'(A)') ' No IJK sorting available. Avg2D disabled ...'
+  SWRITE(UNIT_stdOut,'(132("-"))')
   Avg2D = .FALSE.
 END IF
 CALL CloseDataFile()

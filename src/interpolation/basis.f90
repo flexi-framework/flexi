@@ -121,7 +121,7 @@ END DO; END DO !j
 ! Alternative to matrix inversion: Compute inverse Vandermonde directly
 ! Direct inversion has an error around 4e-16 (Lapack: err=0) and is 2 orders of magnitude faster than Lapack
 ! see: Hindenlang: Mesh curving techniques for high order parallel simulations on unstructured meshes, 2014, p.27.
-CALL BarycentricWeights(N_In,xi_in,wBary_loc)
+CALL BarycentricWeights(N_In,xi_In,wBary_loc)
 ! Compute first the inverse (by projection)
 CALL LegendreGaussNodesAndWeights(N_In,xGauss,wGauss)
 !Vandermonde on xGauss
@@ -136,7 +136,7 @@ END DO
 CALL InitializeVandermonde(N_In,N_In,wBary_Loc,xi_In,xGauss,Vdm_Lag)
 sVdm_Leg=MATMUL(Vdm_Leg_Gauss,Vdm_Lag)
 dummy=ABS(SUM(ABS(MATMUL(sVdm_Leg,Vdm_Leg)))/(N_In+1.)-1.)
-IF(dummy.GT.15.*PP_RealTolerance) CALL abort(__STAMP__,&
+IF(dummy.GT.15.*PP_RealTolerance) CALL ABORT(__STAMP__,&
                                          'problems in MODAL<->NODAL Vandermonde ',999,dummy)
 #else
 ! Lapack
@@ -144,7 +144,7 @@ sVdm_Leg=INVERSE(Vdm_Leg)
 
 !check (Vdm_Leg)^(-1)*Vdm_Leg := I
 dummy=ABS(SUM(ABS(MATMUL(sVdm_Leg,Vdm_Leg)))/(N_In+1.)-1.)
-IF(dummy.GT.10.*PP_RealTolerance) CALL abort(__STAMP__,&
+IF(dummy.GT.10.*PP_RealTolerance) CALL ABORT(__STAMP__,&
                                          'problems in MODAL<->NODAL Vandermonde ',999,dummy)
 #endif
 END SUBROUTINE buildLegendreVdm
@@ -361,7 +361,7 @@ ELSEIF(N_in.EQ.1)THEN
 ELSE ! N_in>1
   cheb_tmp=2.*atan(1.)/REAL(N_in+1) ! pi/(2N+2)
   DO iGP=0,(N_in+1)/2-1 !since points are symmetric, only left side is computed
-    xGP(iGP)=-cos(cheb_tmp*REAL(2*iGP+1)) !initial guess
+    xGP(iGP)=-COS(cheb_tmp*REAL(2*iGP+1)) !initial guess
     ! Newton iteration
     DO iter=0,nIter
       CALL LegendrePolynomialAndDerivative(N_in+1,xGP(iGP),L_Np1,Lder_Np1)
@@ -380,7 +380,7 @@ ELSE ! N_in>1
         xGP(iGP)=xGP(iGP)+dx
         IF(abs(dx).LT.Tol*abs(xGP(iGP))) EXIT
       END DO !iter
-      CALL abort(__STAMP__,&
+      CALL Abort(__STAMP__,&
                  'ERROR: Legendre Gauss nodes could not be computed up to desired precision. Code stopped!')
     END IF ! (iter.GT.nIter)
     CALL LegendrePolynomialAndDerivative(N_in+1,xGP(iGP),L_Np1,Lder_Np1)
@@ -487,7 +487,7 @@ IF(N_in.GT.1)THEN
         xGP(iGP)=xGP(iGP)+dx
         IF(abs(dx).LT.Tol*abs(xGP(iGP))) EXIT
       END DO ! iter
-      CALL abort(__STAMP__,&
+      CALL Abort(__STAMP__,&
                  'ERROR: Legendre Gauss Lobatto nodes could not be computed up to desired precision. Code stopped!')
     END IF ! (iter.GT.nIter)
     CALL qAndLEvaluation(N_in,xGP(iGP),q,qder,L)

@@ -64,10 +64,10 @@ IMPLICIT NONE
 INTEGER :: offset
 !===================================================================================================================================
 IF (.NOT.EquationRPInitIsDone) THEN
-  CALL abort(__STAMP__,'InitEquationRP must be called before InitOutput!')
+  CALL Abort(__STAMP__,'InitEquationRP must be called before InitOutput!')
   ! since initequation defines nVarVisu, VarNameVisu
 END IF
-WRITE(UNIT_StdOut,'(132("-"))')
+WRITE(UNIT_stdOut,'(132("-"))')
 WRITE(UNIT_stdOut,'(A)') ' INIT OUTPUT...'
 
 IF(.NOT.equiTimeSpacing) nSamples_out  = nSamples_global
@@ -100,7 +100,7 @@ CoordNames(offset+2)='CoordinateY'
 CoordNames(offset+3)='CoordinateZ'
 
 WRITE(UNIT_stdOut,'(A)')' INIT OUTPUT DONE!'
-WRITE(UNIT_StdOut,'(132("-"))')
+WRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitOutput
 
 
@@ -142,7 +142,7 @@ REAL,ALLOCATABLE              :: TimeAvg_tmp(:,:,:)
 !===================================================================================================================================
 ! Output Time Signal
 IF(OutputTimeData) THEN
-WRITE(UNIT_StdOut,'(132("-"))')
+WRITE(UNIT_stdOut,'(132("-"))')
   Filename=TRIM(ProjectName)
   FileName=TRIM(FileName)//'_RP'
   IF(doFluctuations) FileName=TRIM(FileName)//'_Fluc'
@@ -171,13 +171,13 @@ WRITE(UNIT_StdOut,'(132("-"))')
        DEALLOCATE(TimeAvg_tmp)
     END SELECT
   END IF
-WRITE(UNIT_StdOut,'(132("-"))')
+WRITE(UNIT_stdOut,'(132("-"))')
 END IF !output time data
 
 ! Output spectra
 IF(doSpec) THEN
 CoordNames(1)='Frequency'
-WRITE(UNIT_StdOut,'(132("-"))')
+WRITE(UNIT_stdOut,'(132("-"))')
   Filename=TRIM(ProjectName)
   FileName=TRIM(FileName)//'_RP_spec'
   SELECT CASE(OutputFormat)
@@ -189,12 +189,12 @@ WRITE(UNIT_StdOut,'(132("-"))')
       WRITE(UNIT_stdOut,'(A,A)')' WRITING SPECTRA TO ',strOutputFile
       CALL WriteDataToHDF5(nSamples_spec,nRP_global,nVarVisu,VarNameVisu,RPData_freq,RPData_spec,strOutputFile)
   END SELECT
-WRITE(UNIT_StdOut,'(132("-"))')
+WRITE(UNIT_stdOut,'(132("-"))')
 END IF !output time data
 
 IF(ThirdOct) THEN
 CoordNames(1)='Frequency'
-WRITE(UNIT_StdOut,'(132("-"))')
+WRITE(UNIT_stdOut,'(132("-"))')
   Filename=TRIM(ProjectName)
   FileName=TRIM(FileName)//'_RP_Octspec'
   SELECT CASE(OutputFormat)
@@ -207,12 +207,12 @@ WRITE(UNIT_StdOut,'(132("-"))')
       WRITE(UNIT_stdOut,'(A,A)')' WRITING THIRD OCTAVE SPECTRA TO ',strOutputFile
       CALL WriteDataToHDF5(nSamples_Oct,nRP_global,nVarVisu,VarNameVisu,RPData_freqOct,RPData_Oct,strOutputFile)
   END SELECT
-WRITE(UNIT_StdOut,'(132("-"))')
+WRITE(UNIT_stdOut,'(132("-"))')
 END IF !output 1/3 Oct Spectra
 
 ! Output Time Average
 IF(OutputTimeAverage) THEN
-  WRITE(UNIT_StdOut,'(132("-"))')
+  WRITE(UNIT_stdOut,'(132("-"))')
   Filename=TRIM(ProjectName)
   FileName=TRIM(FileName)//'_RP_TimeAvg'
   SELECT CASE(OutputFormat)
@@ -227,7 +227,7 @@ IF(OutputTimeAverage) THEN
      CALL WriteDataToHDF5(1,nRP_global,nVarVisu,VarNameVisu,RPTime,TimeAvg_tmp,strOutputFile)
      DEALLOCATE(TimeAvg_tmp)
   END SELECT
-  WRITE(UNIT_StdOut,'(132("-"))')
+  WRITE(UNIT_stdOut,'(132("-"))')
 END IF
 
 IF(Plane_doBLProps.OR.Box_doBLProps)THEN !output the BL stuff along lines/planes
@@ -261,7 +261,7 @@ IF(doTurb) THEN
   RPData_OutTurb(5,:,:) = kk(:,:)
 
   CoordNames(1)='Frequency'
-  WRITE(UNIT_StdOut,'(132("-"))')
+  WRITE(UNIT_stdOut,'(132("-"))')
   Filename=TRIM(ProjectName)
   FileName=TRIM(FileName)//'_RP_turb'
   SELECT CASE(OutputFormat)
@@ -272,7 +272,7 @@ IF(doTurb) THEN
       strOutputFile=TRIM(FileName)//'_PP.h5'
       CALL WriteDataToHDF5(nSamples_spec,nRP_global,nVar_turb,VarNameTurb,RPData_freqTurb,RPData_OutTurb,strOutputFile)
   END SELECT
-  WRITE(UNIT_StdOut,'(132("-"))')
+  WRITE(UNIT_stdOut,'(132("-"))')
 
   DEALLOCATE(VarNameTurb)
   nVar_turb=2
@@ -285,7 +285,7 @@ IF(doTurb) THEN
   RPData_turbAvg(2,:) = epsilonMean(:,nSamples_spec)
 
   ! Output Time Average
-  WRITE(UNIT_StdOut,'(132("-"))')
+  WRITE(UNIT_stdOut,'(132("-"))')
   Filename=TRIM(ProjectName)
   FileName=TRIM(FileName)//'_RP_turbAvg'
   SELECT CASE(OutputFormat)
@@ -300,12 +300,12 @@ IF(doTurb) THEN
       CALL WriteDataToHDF5(    1,nRP_global,nVar_turb,VarNameTurb,RPTime,TimeAvg_tmp,strOutputFile)
      DEALLOCATE(TimeAvg_tmp)
   END SELECT
-  WRITE(UNIT_StdOut,'(132("-"))')
+  WRITE(UNIT_stdOut,'(132("-"))')
 END IF
 
 IF(doEnsemble)THEN
   ! Output of ensemble averages
-  WRITE(UNIT_StdOut,'(132("-"))')
+  WRITE(UNIT_stdOut,'(132("-"))')
   Filename=TRIM(ProjectName)
   FileName=TRIM(FileName)//'_RP_ensAvg'
   SELECT CASE(OutputFormat)
@@ -316,7 +316,7 @@ IF(doEnsemble)THEN
       strOutputFile=TRIM(FileName)//'_PP.h5'
       CALL WriteDataToHDF5(enSamples,nRP_global,nVarVisu,VarNameVisu,RPData_freqEns,RPData_ens,strOutputFile)
   END SELECT
-  WRITE(UNIT_StdOut,'(132("-"))')
+  WRITE(UNIT_stdOut,'(132("-"))')
 
   ! Output of turbulent quantities on the ensemble average
   ALLOCATE(VarNameTurb(nVar_ensTurb))
@@ -327,7 +327,7 @@ IF(doEnsemble)THEN
   VarNameTurb(5) = 'VelocityYRMS'
   VarNameTurb(6) = 'VelocityZRMS'
 
-  WRITE(UNIT_StdOut,'(132("-"))')
+  WRITE(UNIT_stdOut,'(132("-"))')
   Filename=TRIM(ProjectName)
   FileName=TRIM(FileName)//'_RP_ensTurb'
   SELECT CASE(OutputFormat)
@@ -340,7 +340,7 @@ IF(doEnsemble)THEN
   END SELECT
 
   DEALLOCATE(VarNameTurb)
-  WRITE(UNIT_StdOut,'(132("-"))')
+  WRITE(UNIT_stdOut,'(132("-"))')
 END IF
 
 END SUBROUTINE OutputRP

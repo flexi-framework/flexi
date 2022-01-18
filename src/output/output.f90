@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -106,6 +106,8 @@ CALL addStrListEntry('ASCIIOutputFormat','tecplot',ASCIIOUTPUTFORMAT_TECPLOT)
 CALL prms%CreateLogicalOption(      'doPrintStatusLine','Print: percentage of time, ...', '.FALSE.')
 CALL prms%CreateLogicalOption(      'WriteStateFiles','Write HDF5 state files. Disable this only for debugging issues. \n'// &
                                                       'NO SOLUTION WILL BE WRITTEN!', '.TRUE.')
+CALL prms%CreateLogicalOption(      'WriteTimeAvgFiles','Write HDF5 time average files. Disable this only for debugging. \n'// &
+                                                      'NO TIME AVERAGE FILES WILL BE WRITTEN!', '.TRUE.')
 END SUBROUTINE DefineParametersOutput
 
 !==================================================================================================================================
@@ -131,11 +133,10 @@ CHARACTER(LEN=8)               :: StrDate
 CHARACTER(LEN=10)              :: StrTime
 CHARACTER(LEN=255)             :: LogFile
 !==================================================================================================================================
-IF ((.NOT.InterpolationInitIsDone).OR.OutputInitIsDone) THEN
-  CALL CollectiveStop(__STAMP__,&
-    'InitOutput not ready to be called or already called.')
-END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
+IF ((.NOT.InterpolationInitIsDone).OR.OutputInitIsDone) &
+  CALL CollectiveStop(__STAMP__,'InitOutput not ready to be called or already called.')
+
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT OUTPUT...'
 
 NVisu=GETINT('NVisu',INTTOSTR(PP_N))
@@ -163,6 +164,8 @@ ErrorFiles =GETLOGICAL('ErrorFiles')
 doPrintStatusLine=GETLOGICAL("doPrintStatusLine")
 WriteStateFiles=GETLOGICAL("WriteStateFiles")
 IF (.NOT.WriteStateFiles) CALL PrintWarning("Write of state files disabled!")
+WriteTimeAvgFiles=GETLOGICAL("WriteTimeAvgFiles")
+IF (.NOT.WriteTimeAvgFiles) CALL PrintWarning("Write of time average files disabled!")
 
 
 IF (MPIRoot) THEN
@@ -197,49 +200,58 @@ END IF  ! Logging
 
 OutputInitIsDone =.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT OUTPUT DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitOutput
 
 !==================================================================================================================================
 !> Displays the actual status of the simulation and counts the amount of FV elements
 !==================================================================================================================================
-SUBROUTINE PrintStatusLine(t,dt,tStart,tEnd)
-!----------------------------------------------------------------------------------------------------------------------------------!
-! description
-!----------------------------------------------------------------------------------------------------------------------------------!
+SUBROUTINE PrintStatusLine(t,dt,tStart,tEnd,doETA)
 ! MODULES                                                                                                                          !
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Output_Vars , ONLY: doPrintStatusLine
-USE MOD_Mesh_Vars   , ONLY: nGlobalElems
+USE MOD_Output_Vars   ,ONLY: doPrintStatusLine
+#if FV_ENABLED || PP_LIMITER
+USE MOD_Mesh_Vars     ,ONLY: nGlobalElems
+#endif
 #if FV_ENABLED
-USE MOD_FV_Vars     , ONLY: FV_Elems
-USE MOD_Analyze_Vars, ONLY: totalFV_nElems
-#endif
+USE MOD_Analyze_Vars  ,ONLY: totalFV_nElems
+USE MOD_FV_Vars       ,ONLY: FV_Elems
+USE MOD_Mesh_Vars     ,ONLY: nGlobalElems
+#endif /*FV_ENABLED*/
 #if PP_LIMITER
-USE MOD_Filter_Vars , ONLY: PP_Elems
 USE MOD_Analyze_Vars, ONLY: totalPP_nElems
-#endif
-!----------------------------------------------------------------------------------------------------------------------------------!
-! insert modules here
-!----------------------------------------------------------------------------------------------------------------------------------!
+USE MOD_Filter_Vars , ONLY: PP_Elems
+USE MOD_Mesh_Vars   , ONLY: nGlobalElems
+#endif /*PP_LIMITER*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN) :: t      !< current simulation time
-REAL,INTENT(IN) :: dt     !< current time step
-REAL,INTENT(IN) :: tStart !< start time of simulation
-REAL,INTENT(IN) :: tEnd   !< end time of simulation
+REAL,INTENT(IN)             :: t      !< current simulation time
+REAL,INTENT(IN)             :: dt     !< current time step
+REAL,INTENT(IN)             :: tStart !< start time of simulation
+REAL,INTENT(IN)             :: tEnd   !< end time of simulation
+LOGICAL,INTENT(IN),OPTIONAL :: doETA !< flag to print ETA without carriage return
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-#if FV_ENABLED
-INTEGER :: FVcounter
-REAL    :: FV_percent
+REAL         :: percent,time_remaining,mins,secs,hours,days
+CHARACTER(3) :: tmpString
+#if FV_ENABLED && PP_LIMITER
+INTEGER,PARAMETER :: barWidth = 31
+#elif FV_ENABLED || PP_LIMITER
+INTEGER,PARAMETER :: barWidth = 41
+#else
+INTEGER,PARAMETER :: barWidth = 51
 #endif
+#if FV_ENABLED
+INTEGER      :: FVcounter
+REAL         :: FV_percent
+#endif /*FV_ENABLED*/
 #if PP_LIMITER
 INTEGER :: PPcounter
 REAL    :: PP_percent
-#endif
-REAL    :: percent,time_remaining,mins,secs,hours
+#endif /*PP_LIMITER*/
 !==================================================================================================================================
 #if FV_ENABLED
 FVcounter = SUM(FV_Elems)
@@ -253,14 +265,22 @@ totalPP_nElems = totalPP_nElems + PPcounter ! counter for output of FV amount du
 IF(.NOT.doPrintStatusLine) RETURN
 
 #if FV_ENABLED && USE_MPI
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,FVcounter,1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
+IF (MPIRoot) THEN
+  CALL MPI_REDUCE(MPI_IN_PLACE,FVcounter,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+ELSE
+  CALL MPI_REDUCE(FVcounter,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+END IF
 #endif
 
 #if PP_LIMITER && USE_MPI
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,PPcounter,1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
+IF (MPIRoot) THEN
+  CALL MPI_REDUCE(MPI_IN_PLACE,PPcounter,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+ELSE
+  CALL MPI_REDUCE(PPcounter,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+END IF
 #endif
 
-IF(MPIroot)THEN
+IF(MPIRoot)THEN
 #ifdef INTEL
   OPEN(UNIT_stdOut,CARRIAGECONTROL='fortran')
 #endif
@@ -273,6 +293,8 @@ IF(MPIroot)THEN
   mins = MOD(time_remaining,60.)
   time_remaining = time_remaining / 60
   hours = MOD(time_remaining,24.)
+  days = time_remaining / 24
+
 #if FV_ENABLED
   FV_percent = REAL(FVcounter) / nGlobalElems * 100.
   WRITE(UNIT_stdOut,'(F5.2,A5)',ADVANCE='NO') FV_percent, '% FV,'
@@ -281,13 +303,65 @@ IF(MPIroot)THEN
   PP_percent = REAL(PPcounter) / nGlobalElems * 100.
   WRITE(UNIT_stdOut,'(F5.2,A5)',ADVANCE='NO') PP_percent, '% PP,'
 #endif
-  WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,F6.2,A,I4,A1,I0.2,A1,I0.2,A1)',ADVANCE='NO') ' Time = ', t, &
-      ' dt = ', dt, '  ', percent, '% complete, est. Time Remaining = ',INT(hours),':',INT(mins),':',INT(secs), ACHAR(13)
+  tmpString = MERGE('YES','NO ',PRESENT(doETA))
+
+  WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A12,A,A1,A,A3,F6.2,A3,A1)',ADVANCE=tmpString)    &
+    '   Time = ', t,'  dt = ', dt, ' ', ' ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),' |',     &
+    REPEAT('=',MAX(CEILING(percent*barWidth/100.)-1,0)),'>',REPEAT(' ',barWidth-MAX(CEILING(percent*barWidth/100.),0)),'| [',percent,'%] ',&
+    ACHAR(13) ! ACHAR(13) is carriage return
 #ifdef INTEL
   CLOSE(UNIT_stdOut)
-#endif
+#endif /*INTEL*/
 END IF
+
 END SUBROUTINE PrintStatusLine
+
+
+!==================================================================================================================================
+!> Displays the analysis of the simulation
+!==================================================================================================================================
+SUBROUTINE PrintAnalyze(dt)
+! MODULES                                                                                                                          !
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Implicit_Vars       ,ONLY: nGMRESIterGlobal,nNewtonIterGlobal
+USE MOD_Mesh_Vars           ,ONLY: nGlobalElems
+USE MOD_TimeDisc_Vars       ,ONLY: CalcTimeStart,CalcTimeEnd,TimeDiscType,ViscousTimeStep
+USE MOD_TimeDisc_Vars       ,ONLY: iter,iter_analyze,nRKStages
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT / OUTPUT VARIABLES
+REAL,INTENT(IN) :: dt     !< current time step
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER :: TimeArray(8)              !< Array for system time
+!==================================================================================================================================
+
+! Get calculation time per DOF
+CalcTimeEnd = FLEXITIME()
+CalcTimeEnd = (CalcTimeEnd-CalcTimeStart)*REAL(nProcessors)/(REAL(nGlobalElems)*REAL((PP_N+1)**PP_dim)*REAL(iter_analyze))/nRKStages
+! Get system time
+CALL DATE_AND_TIME(values=TimeArray)
+
+IF (.NOT.MPIRoot) RETURN
+
+WRITE(UNIT_stdOut,'(132("-"))')
+WRITE(UNIT_stdOut,'(A,I2.2,A1,I2.2,A1,I4.4,A1,I2.2,A1,I2.2,A1,I2.2)') &
+  ' Sys date   :    ',timeArray(3),'.',timeArray(2),'.',timeArray(1),' ',timeArray(5),':',timeArray(6),':',timeArray(7)
+WRITE(UNIT_stdOut,'(A,ES12.5,A)')' CALCULATION TIME PER STAGE/DOF: [',CalcTimeEnd,' sec ]'
+WRITE(UNIT_stdOut,'(A,ES16.7)')  ' Timestep   : ',dt
+IF(ViscousTimeStep) WRITE(UNIT_stdOut,'(A)')' Viscous timestep dominates! '
+WRITE(UNIT_stdOut,'(A,ES16.7)')  '#Timesteps  : ',REAL(iter)
+IF(TimeDiscType.EQ.'ESDIRK') THEN
+  WRITE(UNIT_stdOut,'(A,ES16.7)')'#GMRES iter : ',REAL(nGMRESIterGlobal)
+  WRITE(UNIT_stdOut,'(A,ES16.7)')'#Newton iter: ',REAL(nNewtonIterGlobal)
+  nGMRESIterGlobal  = 0
+  nNewtonIterGlobal = 0
+END IF
+
+END SUBROUTINE PrintAnalyze
+
 
 !==================================================================================================================================
 !> Supersample DG dataset at (equidistant) visualization points and output to file.
@@ -567,7 +641,7 @@ IF(.NOT.file_exists)THEN ! No restart create new file
        ACCESS = 'SEQUENTIAL'       ,&
        IOSTAT = stat               )
   IF (stat.NE.0) THEN
-    CALL abort(__STAMP__, &
+    CALL Abort(__STAMP__, &
       'ERROR: cannot open '//TRIM(Filename_loc))
   END IF
   ! Create a new file with the CSV or Tecplot header
@@ -627,7 +701,7 @@ OPEN(NEWUNIT  = ioUnit             , &
      RECL     = 50000              , &
      IOSTAT = openStat             )
 IF(openStat.NE.0) THEN
-  CALL abort(__STAMP__, &
+  CALL Abort(__STAMP__, &
     'ERROR: cannot open '//TRIM(Filename_loc))
 END IF
 ! Choose between CSV and tecplot output format

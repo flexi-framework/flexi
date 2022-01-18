@@ -64,8 +64,6 @@ IF (nArgs.GT.0) THEN
   STOP -1
 END IF
 
-CALL prms%CreateLogicalOption('ColoredOutput',"dummy","F")
-
 CALL prms%SetSection("UnitTest")
 CALL prms%CreateIntOption('intOpt'        , "Description IntOpt")
 CALL prms%CreateIntOption('intOpt_def'    , "Description IntOpt with default value", '-1')
@@ -184,5 +182,13 @@ END DO
   !IF (strArrayOpt_mult(i).NE.strArrayOpt_mult_A(i)) CALL Abort(__STAMP__,"strArrayOpt_mult failed")
 !END DO
 
+#if USE_MPI
+! free the communicator
+CALL MPI_BARRIER  (MPI_COMM_FLEXI,IERROR)
+CALL MPI_COMM_FREE(MPI_COMM_FLEXI,IERROR)
+! we also have to finalize MPI itself here
+CALL MPI_FINALIZE(iError)
+IF(iError .NE. 0) STOP 'MPI finalize error'
+#endif
 
 END PROGRAM ReadInToolsUnitTest

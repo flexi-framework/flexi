@@ -18,17 +18,25 @@ INTEGER                        :: p,q,z,iVar,i,j,k,iElem
 REAL                           :: Vdm(0:NOut,0:NIn)
 REAL                           :: Vdm2(0:NOut,0:NIn)
 REAL                           :: Vdm3(0:NOut,0:NIn)
-REAL                           :: UIn(nVar,0:NIn,0:NIn,0:NIn,nElems)
-REAL                           :: UOut    (nVar,0:NOut,0:NOut,0:NOut,nElems,1:4)
-REAL                           :: UOut_ref(nVar,0:NOut,0:NOut,0:NOut,nElems,1:4)
-REAL                           :: UIn2D(nVar,0:NIn,0:NIn,nElems)
-REAL                           :: UOut2D    (nVar,0:NOut,0:NOut,nElems,1:3)
-REAL                           :: UOut2D_ref(nVar,0:NOut,0:NOut,nElems,1:3)
+REAL,ALLOCATABLE               :: UIn       (:,:,:,:,:)
+REAL,ALLOCATABLE               :: UOut      (:,:,:,:,:,:)
+REAL,ALLOCATABLE               :: UOut_ref  (:,:,:,:,:,:)
+REAL,ALLOCATABLE               :: UIn2D     (:,:,:,:)
+REAL,ALLOCATABLE               :: UOut2D    (:,:,:,:,:)
+REAL,ALLOCATABLE               :: UOut2D_ref(:,:,:,:,:)
 INTEGER                        :: nArgs
 CHARACTER(LEN=*),PARAMETER     :: BinaryString='ChangeBasis.bin'
 LOGICAL                        :: binaryExists,doGenerateReference=.FALSE.,equal
 CHARACTER(LEN=255)             :: argument
 !==================================================================================================================================
+
+ALLOCATE(UIn(       nVar,0:NIn ,0:NIn ,0:NIn ,nElems)    ,     &
+         UOut(      nVar,0:NOut,0:NOut,0:NOut,nElems,1:4),     &
+         UOut_ref(  nVar,0:NOut,0:NOut,0:NOut,nElems,1:4),     &
+         UIn2D(     nVar,0:NIn ,0:NIn        ,nElems)    ,     &
+         UOut2D    (nVar,0:NOut,0:NOut       ,nElems,1:3),     &
+         UOut2D_ref(nVar,0:NOut,0:NOut       ,nElems,1:3))
+
 ! Check for command line arguments to generate the reference solution
 nArgs=COMMAND_ARGUMENT_COUNT()
 IF (nArgs.GT.0) THEN
@@ -129,5 +137,12 @@ ELSE
     STOP -1
   END IF
 END IF
+
+DEALLOCATE(UIn)
+DEALLOCATE(UOut)
+DEALLOCATE(UOut_ref)
+DEALLOCATE(UIn2D)
+DEALLOCATE(UOut2D)
+DEALLOCATE(UOut2D_ref)
 
 END PROGRAM ChangeBasisUnitTest

@@ -54,13 +54,13 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT PruettDamping...'
 
 tempFilterWidth=GETREAL('tempFilterWidth')
 
 SWRITE(UNIT_stdOut,'(A)')' INIT PruettDamping DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitPruettDamping
 
 !==================================================================================================================================

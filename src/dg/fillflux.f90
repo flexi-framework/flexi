@@ -45,7 +45,7 @@ CONTAINS
 
 !==================================================================================================================================
 !> Computes the fluxes for inner sides, MPI sides where the local proc is "master"  and boundary conditions.
-!> The flux computation is performed seperately for advection and diffusion fluxes in case
+!> The flux computation is performed separately for advection and diffusion fluxes in case
 !> parabolic terms are considered.
 !==================================================================================================================================
 SUBROUTINE FillFlux(t,Flux_master,Flux_slave,U_master,U_slave,UPrim_master,UPrim_slave,doMPISides)

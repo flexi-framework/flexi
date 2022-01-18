@@ -81,7 +81,7 @@ IF((.NOT.InterpolationInitIsDone).OR.EquationInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,&
     "InitLinearScalarAdvection not ready to be called or already called.")
 END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT SCALAR LINADV...'
 
 ! Read the velocity vector from ini file
@@ -90,7 +90,7 @@ AdvVel = GETREALARRAY('AdvVel',3)
 ! Make sure advection velocity is 0 in third dimension for two-dimensional computations,
 ! computing wave speeds etc. will get easier.
 IF(AdvVel(3).NE.0.) THEN
-  SWRITE(UNIT_StdOut,'(A)')' You are computing in 2D! AdvVel(3) will be set to zero!'
+  SWRITE(UNIT_stdOut,'(A)')' You are computing in 2D! AdvVel(3) will be set to zero!'
   AdvVel(3) = 0.
 END IF
 #endif
@@ -105,7 +105,7 @@ doCalcSource=.TRUE.
 
 EquationInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT LINADV DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitEquation
 
 

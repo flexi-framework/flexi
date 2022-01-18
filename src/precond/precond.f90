@@ -98,7 +98,7 @@ IF(PrecondInitIsDone)THEN
    SWRITE(*,*) "InitPrecond already called."
    RETURN
 END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT PRECONDITIONER...'
 
 PrecondType       = GETINT(    'PrecondType',      '1' )
@@ -135,7 +135,7 @@ END IF
 
 PrecondInitIsDone = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT PRECONDITIONER DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitPrecond
 
 !===================================================================================================================================
@@ -207,7 +207,7 @@ IF(PrecondType.EQ.0) RETURN !NO PRECONDITIONER
 
 ! Output of building time for preconditioner
 IF(DoDisplayPrecond)THEN
-  SWRITE(UNIT_StdOut,'(132("-"))')
+  SWRITE(UNIT_stdOut,'(132("-"))')
   SWRITE(UNIT_stdOut,'(A)') ' BUILD PRECONDITIONER...'
 END IF
 
@@ -311,7 +311,7 @@ DO iElem=1,nElems
                 ' relative difference: ', MAXVAL(ABS(Ploc1))/MAX(ABS(Ploc(ind(1),ind(2))),1.E-16)
     IF(MAXVAL(ABS(Ploc1)).GT.1.0E-4) STOP
   CASE DEFAULT
-    CALL abort(__STAMP__,'No valid preconditioner chosen!')
+    CALL Abort(__STAMP__,'No valid preconditioner chosen!')
   END SELECT
 
   ! add contibution I-alpha*dt*dRdU
@@ -330,7 +330,7 @@ DO iElem=1,nElems
   CASE(1)
     CALL BuildILU0(Ploc,iElem)
   CASE DEFAULT
-    CALL abort(__STAMP__,'No valid linear solver for inverting preconditioner chosen!')
+    CALL Abort(__STAMP__,'No valid linear solver for inverting preconditioner chosen!')
   END SELECT
   IF(DebugMatrix.NE.0) CALL CheckBJPrecond(Ploc,invP(:,:,iElem),iElem)
 END DO !iElem
@@ -345,7 +345,7 @@ IF(DoDisplayPrecond)THEN
 #endif /*MPI*/
   SWRITE(UNIT_stdOut,'(A,F11.3,A)')' TOTAL DERIVATING & INVERTING TIME =[',Time,' ]'
   SWRITE(UNIT_stdOut,'(A)')' BUILD PRECONDITIONER DONE!'
-  SWRITE(UNIT_StdOut,'(132("-"))')
+  SWRITE(UNIT_stdOut,'(132("-"))')
 END IF
 
 END SUBROUTINE  BuildPrecond

@@ -88,7 +88,7 @@ USE MOD_Eos               ,ONLY: InitEos,PrimToCons
 USE MOD_EOS_Vars          ,ONLY: R
 USE MOD_Exactfunc         ,ONLY: InitExactFunc
 USE MOD_ReadInTools       ,ONLY: CountOption,GETREALARRAY,GETSTR
-USE MOD_Testcase          ,ONLY: InitTestcase
+USE MOD_TestCase          ,ONLY: InitTestcase
 USE MOD_Riemann           ,ONLY: InitRiemann
 USE MOD_GetBoundaryFlux,   ONLY: InitBC
 USE MOD_CalcTimeStep      ,ONLY: InitCalctimestep
@@ -110,7 +110,7 @@ IF(EquationInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,&
     "InitEquation not ready to be called or already called.")
 END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT NAVIER-STOKES...'
 
 s43=4./3.
@@ -139,7 +139,7 @@ IF(nRefState .GT. 0)THEN
     RefStatePrim(1:5,i)  = GETREALARRAY('RefState',5)
 #if PP_dim==2
     IF(RefStatePrim(VEL3,i).NE.0.) THEN
-      SWRITE(UNIT_StdOut,'(A)')' You are computing in 2D! RefStatePrim(4) will be set to zero!'
+      SWRITE(UNIT_stdOut,'(A)')' You are computing in 2D! RefStatePrim(4) will be set to zero!'
       RefStatePrim(VEL3,i)=0.
     END IF
 #endif
@@ -173,7 +173,7 @@ CALL InitBC()
 
 EquationInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT NAVIER-STOKES DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 ! Initialize current testcase
 CALL InitTestcase()
@@ -290,7 +290,7 @@ END SUBROUTINE
 SUBROUTINE FinalizeEquation()
 ! MODULES
 USE MOD_Equation_Vars
-USE MOD_Testcase        ,ONLY: FinalizeTestcase
+USE MOD_TestCase        ,ONLY: FinalizeTestcase
 USE MOD_Riemann         ,ONLY: FinalizeRiemann
 USE MOD_CalcTimeStep    ,ONLY: FinalizeCalctimestep
 #if EDDYVISCOSITY

@@ -151,7 +151,7 @@ DO iSample=1,nSamples_spec
 END DO
 
 WRITE(UNIT_stdOut,'(A)')' DONE.'
-WRITE(UNIT_StdOut,'(132("-"))')
+WRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE Turbulence
 

@@ -82,7 +82,7 @@ INTEGER                               :: iVar,iVar2,strlen,countCons
 INTEGER                               :: mapCand(3)
 CHARACTER(LEN=255)                    :: tmp255,tmp255_2
 !===================================================================================================================================
-WRITE(UNIT_StdOut,'(132("-"))')
+WRITE(UNIT_stdOut,'(132("-"))')
 WRITE(UNIT_stdOut,'(A)') ' INIT EquationRP ...'
 
 justVisualizeState=.FALSE.
@@ -162,10 +162,10 @@ DO iVar=1,nVarVisu
     END IF
   END IF
 END DO
-WRITE(UNIT_StdOut,'(A)')' Quantities to transform to local coordinate system:'
+WRITE(UNIT_stdOut,'(A)')' Quantities to transform to local coordinate system:'
 DO iVar=1,nVecTrans
   DO iVar2=1,3
-    WRITE(UNIT_StdOut,'(A,A)')'  ',TRIM(VarNameVisu(TransMap(iVar2,iVar)))
+    WRITE(UNIT_stdOut,'(A,A)')'  ',TRIM(VarNameVisu(TransMap(iVar2,iVar)))
     IF("VelocityX".EQ.TRIM(VarNameVisu(TransMap(iVar2,iVar))))THEN
       iVelocity = iVar
     END IF
@@ -197,7 +197,7 @@ IF(Plane_doBLProps.OR.Box_doBLProps) THEN
 END IF
 
 WRITE(UNIT_stdOut,'(A)')' INIT EquationRP DONE!'
-WRITE(UNIT_StdOut,'(132("-"))')
+WRITE(UNIT_stdOut,'(132("-"))')
 EquationRPInitIsDone=.TRUE.
 END SUBROUTINE InitEquationRP
 
@@ -228,7 +228,7 @@ INTEGER            :: maskCalc(nVarDep),nVal(2)
 INTEGER            :: iVarOut,iVarIn,iVar,iVarCalc,iVarVisu
 REAL,ALLOCATABLE   :: UCalc(:,:,:)
 !===================================================================================================================================
-WRITE(UNIT_StdOut,'(132("-"))')
+WRITE(UNIT_stdOut,'(132("-"))')
 WRITE(UNIT_stdOut,'(A)')" CONVERT DERIVED QUANTITIES..."
 ! CALCULATE DERIVED QUATITIES -----------------------------------------------------------------------------------------------------!
 IF(justVisualizeState)THEN

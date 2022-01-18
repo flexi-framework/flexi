@@ -16,6 +16,10 @@
 !==================================================================================================================================
 MODULE MOD_RecordPoints_Vars
 ! MODULES
+#if USE_MPI
+USE mpi
+#endif
+
 IMPLICIT NONE
 PUBLIC
 SAVE
@@ -46,11 +50,14 @@ REAL,ALLOCATABLE   :: L_zeta_RP(:,:)          !< Lagrange basis evaluated at RP 
 REAL,ALLOCATABLE   :: RP_Data(:,:,:)          !< solution evaluated at RPs (nvar,nRP,nSamples)
 REAL,ALLOCATABLE   :: lastSample(:,:)         !< solution evaluated at RPs (nvar,nRP,nSamples)
 CHARACTER(LEN=255) :: StrVarNames(PP_nVar)    !< RP variables names for output
+
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MPI Communicator for RPs
 !----------------------------------------------------------------------------------------------------------------------------------
+#if USE_MPI
 INTEGER            :: myRPrank                !< rank within RP communicator
-INTEGER            :: RP_COMM                 !< MPI RP communicator
+INTEGER            :: RP_COMM=MPI_COMM_NULL   !< MPI RP communicator
 INTEGER            :: nRP_Procs               !< number of procs with RPs
+#endif /* USE_MPI */
 
 END MODULE MOD_recordPoints_Vars

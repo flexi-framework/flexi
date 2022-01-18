@@ -148,11 +148,10 @@ CALL FinalizeMesh()
 #if USE_MPI
 CALL MPI_FINALIZE(iError)
 IF(iError .NE. 0) &
-  CALL abort(__STAMP__,'MPI finalize error',iError)
+  CALL Abort(__STAMP__,'MPI finalize error',iError)
 #endif
 SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A)') ' Channel_FFT TOOL FINISHED! '
 SWRITE(UNIT_stdOut,'(132("="))')
 
 END PROGRAM channel_fft
-
