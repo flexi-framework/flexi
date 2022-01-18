@@ -34,7 +34,7 @@
 !> file.
 !==================================================================================================================================
 MODULE MOD_ReadInTools
-
+! MODULES
 USE MOD_Globals
 USE MOD_ISO_VARYING_STRING
 USE MOD_Options
@@ -479,9 +479,9 @@ CHARACTER(LEN=1)      :: tmpChar=''
 !==================================================================================================================================
 CALL this%CreateLogicalOption('ColoredOutput','Colorize stdout, included for compatibility with FLEXI', '.TRUE.')
 
-IF(MPIROOT)THEN
+IF(MPIRoot)THEN
   ! Get name of ini file
-  WRITE(UNIT_StdOut,*)'| Reading from file "',TRIM(filename),'":'
+  WRITE(UNIT_stdOut,*)'| Reading from file "',TRIM(filename),'":'
   IF (.NOT.FILEEXISTS(filename)) THEN
     CALL Abort(__STAMP__,&
         "Ini file does not exist.")
@@ -501,7 +501,7 @@ IF(MPIROOT)THEN
        ACCESS = 'SEQUENTIAL',   &
        IOSTAT = stat)
   IF(stat.NE.0)THEN
-    CALL abort(__STAMP__,&
+    CALL Abort(__STAMP__,&
       "Could not open ini file.")
   END IF
 
@@ -521,12 +521,12 @@ CALL MPI_BCAST(nLines,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
 #endif
 ALLOCATE(FileContent(nLines))
 
-IF ((MPIROOT).AND.(nLines.GT.0)) THEN
+IF ((MPIRoot).AND.(nLines.GT.0)) THEN
   !read file
   REWIND(iniUnit)
   READ(iniUnit,'(A)') FileContent
 END IF
-IF (MPIROOT) CLOSE(iniUnit)
+IF (MPIRoot) CLOSE(iniUnit)
 #if USE_MPI
 CALL MPI_BCAST(FileContent,LEN(FileContent)*nLines,MPI_CHARACTER,0,MPI_COMM_FLEXI,iError)
 #endif
@@ -556,15 +556,15 @@ DO i=1,nLines
     IF (.NOT.this%read_option(HelpStr)) THEN
       IF (firstWarn) THEN
         firstWarn=.FALSE.
-        SWRITE(UNIT_StdOut,'(100("!"))')
-        SWRITE(UNIT_StdOut, *) "WARNING: The following options are unknown!"
+        SWRITE(UNIT_stdOut,'(100("!"))')
+        SWRITE(UNIT_stdOut, *) "WARNING: The following options are unknown!"
       END IF
-      SWRITE(UNIT_StdOut,*) "   ", TRIM(HelpStr)
+      SWRITE(UNIT_stdOut,*) "   ", TRIM(HelpStr)
     END IF
   END IF
 END DO
 IF (.NOT.firstWarn) THEN
-  SWRITE(UNIT_StdOut,'(100("!"))')
+  SWRITE(UNIT_stdOut,'(100("!"))')
 END IF
 DEALLOCATE(FileContent)
 
@@ -619,7 +619,7 @@ DO WHILE (associated(current))
     IF (current%opt%isSet) THEN
       IF (.NOT.(current%opt%multiple)) THEN
         ! option already set, but is not a multiple option
-        SWRITE(UNIT_StdOut,*) 'Option "', TRIM(name), '" is already set, but is not a multiple option!'
+        SWRITE(UNIT_stdOut,*) 'Option "', TRIM(name), '" is already set, but is not a multiple option!'
         STOP
       ELSE
         ! create new instance of multiple option
@@ -637,7 +637,7 @@ DO WHILE (associated(current))
       current%opt%isSet = .TRUE.
     ELSE
       CALL set_formatting("bright red")
-      SWRITE(UNIT_StdOut,*) 'WARNING: Option "', TRIM(name), '" is specified in file but is empty!'
+      SWRITE(UNIT_stdOut,*) 'WARNING: Option "', TRIM(name), '" is specified in file but is empty!'
       CALL clear_formatting()
     END IF
     RETURN
@@ -660,15 +660,15 @@ CLASS(link), POINTER :: current
 !==================================================================================================================================
 current => prms%firstLink
 CALL set_formatting("bright red")
-SWRITE(UNIT_StdOut,'(100("!"))')
-SWRITE(UNIT_StdOut,'(A)') "WARNING: The following options are defined, but NOT set in parameter-file or readin:"
+SWRITE(UNIT_stdOut,'(100("!"))')
+SWRITE(UNIT_stdOut,'(A)') "WARNING: The following options are defined, but NOT set in parameter-file or readin:"
 DO WHILE (associated(current))
   IF (.NOT.current%opt%isRemoved) THEN
-    SWRITE(UNIT_StdOut,*) "   ", TRIM(current%opt%name)
+    SWRITE(UNIT_stdOut,*) "   ", TRIM(current%opt%name)
   END IF
   current => current%next
 END DO
-SWRITE(UNIT_StdOut,'(100("!"))')
+SWRITE(UNIT_stdOut,'(100("!"))')
 CALL clear_formatting()
 END SUBROUTINE IgnoredParameters
 
@@ -731,17 +731,17 @@ END DO
 
 ! if name is not specified, the complete parameter files needs to be printed
 IF ((.NOT.markdown).AND.(LEN_TRIM(name).EQ.0)) THEN
-  SWRITE(UNIT_StdOut,'(A80)')  "!==============================================================================="
-  SWRITE(UNIT_StdOut,'(A)')    "! Default Parameter File generated using 'flexi --help' "
-  SWRITE(UNIT_StdOut,'(4A)')   "!   compiled at : ", __DATE__," ", __TIME__
-  SWRITE(UNIT_StdOut,'(A80)')  "!==============================================================================="
+  SWRITE(UNIT_stdOut,'(A80)')  "!==============================================================================="
+  SWRITE(UNIT_stdOut,'(A)')    "! Default Parameter File generated using 'flexi --help' "
+  SWRITE(UNIT_stdOut,'(4A)')   "!   compiled at : ", __DATE__," ", __TIME__
+  SWRITE(UNIT_stdOut,'(A80)')  "!==============================================================================="
 END IF
 
 mode = 1
 IF (markdown) THEN
   mode = 2
-  SWRITE(UNIT_StdOut,'(A)') "## Parameterfile"
-  SWRITE(UNIT_StdOut,'(A)') ""
+  SWRITE(UNIT_stdOut,'(A)') "## Parameterfile"
+  SWRITE(UNIT_stdOut,'(A)') ""
 END IF
 
 ! Find longest parameter name and length of the standard values
@@ -771,21 +771,21 @@ DO WHILE (associated(current))
     IF (.NOT.STRICMP(section,current%opt%section)) THEN
       section = current%opt%section
       IF (markdown) THEN
-        SWRITE(UNIT_StdOut,'('//fmtLineLen//'("-"))')
-        SWRITE(UNIT_StdOut,'(A2,A,A2)')                                 "**",TRIM(section),"**"
-        SWRITE(UNIT_StdOut,'('//fmtName//'("-")"--"A1)', ADVANCE='NO')  " "
-        SWRITE(UNIT_StdOut,'('//fmtValue//'("-")A1)', ADVANCE='NO')     " "
-        SWRITE(UNIT_StdOut,'('//fmtComment//'("-"))')
-        SWRITE(UNIT_StdOut,'(A)', ADVANCE='NO')                         "**Variable**"
-        SWRITE(UNIT_StdOut,'('//fmtNamespace//'(" "))', ADVANCE='NO')
-        SWRITE(UNIT_StdOut,'(A)', ADVANCE='NO')                         "**Default**"
-        SWRITE(UNIT_StdOut,'('//fmtValuespace//'(" "))', ADVANCE='NO')
-        SWRITE(UNIT_StdOut,'(A)')                                       "**Description**"
-        SWRITE(UNIT_StdOut,'(A80)')                                     ""
+        SWRITE(UNIT_stdOut,'('//fmtLineLen//'("-"))')
+        SWRITE(UNIT_stdOut,'(A2,A,A2)')                                 "**",TRIM(section),"**"
+        SWRITE(UNIT_stdOut,'('//fmtName//'("-")"--"A1)', ADVANCE='NO')  " "
+        SWRITE(UNIT_stdOut,'('//fmtValue//'("-")A1)', ADVANCE='NO')     " "
+        SWRITE(UNIT_stdOut,'('//fmtComment//'("-"))')
+        SWRITE(UNIT_stdOut,'(A)', ADVANCE='NO')                         "**Variable**"
+        SWRITE(UNIT_stdOut,'('//fmtNamespace//'(" "))', ADVANCE='NO')
+        SWRITE(UNIT_stdOut,'(A)', ADVANCE='NO')                         "**Default**"
+        SWRITE(UNIT_stdOut,'('//fmtValuespace//'(" "))', ADVANCE='NO')
+        SWRITE(UNIT_stdOut,'(A)')                                       "**Description**"
+        SWRITE(UNIT_stdOut,'(A80)')                                     ""
       ELSE
-        SWRITE(UNIT_StdOut,'(A1,'//fmtLineLen//'("="))') "!"
-        SWRITE(UNIT_StdOut,'(A2,A)') "! ", TRIM(section)
-        SWRITE(UNIT_StdOut,'(A1,'//fmtLineLen//'("="))') "!"
+        SWRITE(UNIT_stdOut,'(A1,'//fmtLineLen//'("="))') "!"
+        SWRITE(UNIT_stdOut,'(A2,A)') "! ", TRIM(section)
+        SWRITE(UNIT_stdOut,'(A1,'//fmtLineLen//'("="))') "!"
       END IF
     END IF
 
@@ -798,13 +798,13 @@ DO WHILE (associated(current))
       currentOpt => current%opt
       SELECT TYPE(currentOpt)
       CLASS IS (IntFromStringOption)
-        SWRITE(UNIT_StdOut,'(A)') 'Possible options for this parameter are:'
+        SWRITE(UNIT_stdOut,'(A)') 'Possible options for this parameter are:'
         WRITE(fmtIntFromStringLength,*) currentOpt%maxLength   ! The biggest lenght of a named option
         WRITE(fmtStringIntFromString,*) "(A"//TRIM(fmtIntFromStringLength)//",A,I0,A)"
         DO i=1,SIZE(currentOpt%strList)
           ! Output is in the format STRING (INTEGER)
           WRITE(intFromStringOutput,TRIM(fmtStringIntFromString)) TRIM(currentOpt%strList(i)), ' (', currentOpt%intList(i), ')'
-          SWRITE(UNIT_StdOut,'(A)') TRIM(intFromStringOutput)
+          SWRITE(UNIT_stdOut,'(A)') TRIM(intFromStringOutput)
         END DO
       END SELECT
     END IF
@@ -812,8 +812,8 @@ DO WHILE (associated(current))
     ! print ------ line at the end of a section in markdown mode
     IF (associated(current%next).AND.markdown) THEN
       IF (.NOT.STRICMP(section,current%next%opt%section)) THEN
-        SWRITE(UNIT_StdOut,'('//fmtLineLen//'("-"))')
-        SWRITE(UNIT_StdOut,*) ''
+        SWRITE(UNIT_stdOut,'('//fmtLineLen//'("-"))')
+        SWRITE(UNIT_stdOut,*) ''
       END IF
     END IF
   END IF
@@ -888,7 +888,7 @@ DO WHILE (associated(current))
     ELSE
       ! no proposal, no default and also not set in parameter file => abort
       IF ((.NOT.opt%hasDefault).AND.(.NOT.opt%isSet)) THEN
-        CALL ABORT(__STAMP__, &
+        CALL Abort(__STAMP__, &
             "Required option '"//TRIM(name)//"' not set in parameter file and has no default value.")
         RETURN
       END IF
@@ -924,7 +924,7 @@ DO WHILE (associated(current))
   END IF
   current => current%next
 END DO
-CALL ABORT(__STAMP__, &
+CALL Abort(__STAMP__, &
     'Option "'//TRIM(name)//'" is not defined in any DefineParameters... routine '//&
     'or already read (use GET... routine only for multiple options more than once).')
 END SUBROUTINE GetGeneralOption
@@ -962,7 +962,7 @@ DO WHILE (associated(current))
     ELSE
       ! no proposal, no default and also not set in parameter file => abort
       IF ((.NOT.opt%hasDefault).AND.(.NOT.opt%isSet)) THEN
-        CALL ABORT(__STAMP__, &
+        CALL Abort(__STAMP__, &
             "Required option '"//TRIM(name)//"' not set in parameter file and has no default value.")
         RETURN
       END IF
@@ -1004,7 +1004,7 @@ DO WHILE (associated(current))
   END IF
   current => current%next
 END DO
-CALL ABORT(__STAMP__, &
+CALL Abort(__STAMP__, &
     'Option "'//TRIM(name)//'" is not defined in any DefineParameters... routine '//&
     'or already read (use GET... routine only for multiple options more than once).')
 END SUBROUTINE GetGeneralArrayOption
@@ -1316,7 +1316,7 @@ IF (MPIRoot) THEN
         "File '"//TRIM(filename)//"' does not exist.")
   END IF
 
-  SWRITE(UNIT_StdOut,*)'| Extract parameter file from "',TRIM(filename),'" to "',TRIM(prmfile),'"'
+  SWRITE(UNIT_stdOut,*)'| Extract parameter file from "',TRIM(filename),'" to "',TRIM(prmfile),'"'
 
   ! Open parameter file for reading
   OPEN(NEWUNIT=fileUnit,FILE=TRIM(filename),STATUS='OLD',ACTION='READ',ACCESS='SEQUENTIAL',IOSTAT=stat)

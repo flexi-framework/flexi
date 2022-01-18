@@ -220,34 +220,34 @@ IF(doCalcResiduals)    CALL CalcResiduals(Residuals)
 
 
 IF(MPIRoot.AND.doCalcBodyforces)THEN
-  WRITE(UNIT_StdOut,*)'BodyForces (Pressure, Friction) : '
+  WRITE(UNIT_stdOut,*)'BodyForces (Pressure, Friction) : '
   WRITE(formatStr,'(A,I2,A)')'(A',maxlen,',6ES18.9)'
   DO i=1,nBCs
     IF(.NOT.isWall(i)) CYCLE
     IF (doWriteBodyForces) &
       CALL OutputToFile(FileName_BodyForce(i),(/Time/),(/9,1/),(/BodyForce(:,i),Fp(:,i),Fv(:,i)/))
-    WRITE(UNIT_StdOut,formatStr) ' '//TRIM(BoundaryName(i)),Fp(:,i),Fv(:,i)
+    WRITE(UNIT_stdOut,formatStr) ' '//TRIM(BoundaryName(i)),Fp(:,i),Fv(:,i)
   END DO
 END IF
 IF(MPIRoot.AND.doCalcWallVelocity)THEN
-  WRITE(UNIT_StdOut,*)'Wall Velocities (mean/min/max)  : '
+  WRITE(UNIT_stdOut,*)'Wall Velocities (mean/min/max)  : '
   WRITE(formatStr,'(A,I2,A)')'(A',maxlen,',3ES18.9)'
   DO i=1,nBCs
     IF(.NOT.isWall(i)) CYCLE
     IF (doWriteWallVelocity) &
       CALL OutputToFile(FileName_WallVel(i),(/Time/),(/3,1/),(/meanV(i),minV(i),maxV(i)/))
-    WRITE(UNIT_StdOut,formatStr) ' '//TRIM(BoundaryName(i)),meanV(i),minV(i),maxV(i)
+    WRITE(UNIT_stdOut,formatStr) ' '//TRIM(BoundaryName(i)),meanV(i),minV(i),maxV(i)
   END DO
 END IF
 
 IF(MPIRoot.AND.doCalcMeanFlux)THEN
   WRITE(formatStr,'(A,I2,A,I2,A)')'(A',maxlen,',',PP_nVar,'ES18.9)'
-  WRITE(UNIT_StdOut,*)'MeanFlux through boundaries     : '
+  WRITE(UNIT_stdOut,*)'MeanFlux through boundaries     : '
   DO i=1,nBCs
     IF((BoundaryType(i,BC_TYPE).EQ.1).AND.(BoundaryType(i,BC_ALPHA).LE.0)) CYCLE
     IF (doWriteMeanFlux) &
       CALL OutputToFile(FileName_MeanFlux(i),(/Time/),(/PP_nVar,1/),MeanFlux(:,i))
-    WRITE(UNIT_StdOut,formatStr) ' '//TRIM(BoundaryName(i)),MeanFlux(:,i)
+    WRITE(UNIT_stdOut,formatStr) ' '//TRIM(BoundaryName(i)),MeanFlux(:,i)
   END DO
 END IF  !(doCalcBodyforces)
 
@@ -255,19 +255,19 @@ IF(MPIRoot.AND.doCalcBulkState)THEN
   IF (doWriteBulkState) &
     CALL OutputToFile(FileName_Bulk,(/Time/),(/PP_nVarPrim+PP_nVar-1,1/),(/BulkPrim,BulkCons(2:PP_nVar)/))
   WRITE(formatStr,'(A,I2,A)')'(A14,',PP_nVarPrim,'ES18.9)'
-  WRITE(UNIT_StdOut,formatStr)' Bulk Prims : ',bulkPrim
+  WRITE(UNIT_stdOut,formatStr)' Bulk Prims : ',bulkPrim
   WRITE(formatStr,'(A,I2,A)')'(A14,',PP_nVar,'ES18.9)'
-  WRITE(UNIT_StdOut,formatStr)' Bulk Cons  : ',bulkCons
+  WRITE(UNIT_stdOut,formatStr)' Bulk Cons  : ',bulkCons
 END IF
 
 IF(MPIRoot.AND.doCalcTotalStates)THEN
-  WRITE(UNIT_StdOut,*)'Mean total states at boundaries : '
+  WRITE(UNIT_stdOut,*)'Mean total states at boundaries : '
   WRITE(formatStr,'(A,I2,A)')'(A',maxlen,',4ES18.9)'
   DO i=1,nBCs
     IF(BoundaryType(i,BC_TYPE).EQ.1) CYCLE
     IF (doWriteTotalStates) &
       CALL OutputToFile(FileName_TotalStates(i),(/Time/),(/4,1/),meanTotals(:,i) )
-    WRITE(UNIT_StdOut,formatStr) ' '//TRIM(BoundaryName(i)),MeanTotals(:,i)
+    WRITE(UNIT_stdOut,formatStr) ' '//TRIM(BoundaryName(i)),MeanTotals(:,i)
   END DO
 END IF
 
@@ -275,7 +275,7 @@ IF(MPIRoot.AND.doCalcResiduals)THEN
   IF (doWriteResiduals) &
     CALL OutputToFile(FileName_Residuals,(/Time/),(/PP_nVar,1/),Residuals)
   WRITE(formatStr,'(A,I2,A)')'(A14,',PP_nVar,'ES18.9)'
-  WRITE(UNIT_StdOut,formatStr)' Residuals Cons  : ',Residuals
+  WRITE(UNIT_stdOut,formatStr)' Residuals Cons  : ',Residuals
 END IF
 
 END SUBROUTINE AnalyzeEquation
@@ -350,7 +350,6 @@ USE MOD_PreProc
 USE MOD_Analyze_Vars,       ONLY: wGPVol,Vol
 USE MOD_Mesh_Vars,          ONLY: sJ,nElems
 USE MOD_DG_Vars,            ONLY: U,UPrim
-USE MOD_EOS,                ONLY: ConsToPrim
 #if FV_ENABLED
 USE MOD_FV_Vars,            ONLY: FV_Elems,FV_w
 #endif

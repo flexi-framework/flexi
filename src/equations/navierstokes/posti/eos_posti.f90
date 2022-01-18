@@ -449,7 +449,7 @@ DO iElem_calc=1,nElems_calc
                                              + U(MOM2,:,:,:,iElem)*    U(MOM2,:,:,:,iElem)    &
                                              + U(MOM3,:,:,:,iElem)*    U(MOM3,:,:,:,iElem)))
   ELSE
-    CALL ABORT(__STAMP__,'Not possible here')
+    CALL Abort(__STAMP__,'Not possible here')
   END IF
 END DO ! iElem
 END SUBROUTINE FillPressureTimeDeriv
@@ -459,7 +459,7 @@ END SUBROUTINE FillPressureTimeDeriv
 !==================================================================================================================================
 !> Calculate vorticity in direction dir.
 !==================================================================================================================================
-FUNCTION FillVorticity(dir,nVal,gradUx,gradUy,gradUz) RESULT(Vorticity)
+PURE FUNCTION FillVorticity(dir,nVal,gradUx,gradUy,gradUz) RESULT(Vorticity)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -521,7 +521,7 @@ END FUNCTION FillLambda2
 !==================================================================================================================================
 !> Calculate the Q criterion, which is the second invariant of the velocity gradient tensor.
 !==================================================================================================================================
-FUNCTION FillQcriterion(nVal,gradUx,gradUy,gradUz) RESULT(Qcriterion)
+PURE FUNCTION FillQcriterion(nVal,gradUx,gradUy,gradUz) RESULT(Qcriterion)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -555,7 +555,7 @@ END FUNCTION FillQcriterion
 !==================================================================================================================================
 !> Calculate the wall friction in direction dir.
 !==================================================================================================================================
-FUNCTION FillWallFriction(dir,nVal,Temperature,gradUx,gradUy,gradUz,NormVec) RESULT(WallFriction)
+PURE FUNCTION FillWallFriction(dir,nVal,Temperature,gradUx,gradUy,gradUz,NormVec) RESULT(WallFriction)
 ! MODULES
 USE MOD_Eos_Vars
 USE MOD_Viscosity

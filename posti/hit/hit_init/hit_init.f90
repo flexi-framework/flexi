@@ -136,7 +136,7 @@ INTEGER :: k
 ! Choose energy spectrum
 SELECT CASE(InitSpec)
  CASE(1) ! Rogallo
-   SWRITE(Unit_StdOut,'(A)') "SPECTRUM: Rogallo"
+   SWRITE(UNIT_stdOut,'(A)') "SPECTRUM: Rogallo"
    a0 =  4.7935398
    a1 = -1.3284141
    a2 = -0.2146974
@@ -151,7 +151,7 @@ SELECT CASE(InitSpec)
    END DO
 
  CASE(2) ! Blaisdell
-   SWRITE(Unit_StdOut,'(A)') "SPECTRUM: Blaisdell"
+   SWRITE(UNIT_stdOut,'(A)') "SPECTRUM: Blaisdell"
    specscale=0.01
    k0=6
    DO k=1,kmax+3
@@ -159,7 +159,7 @@ SELECT CASE(InitSpec)
    END DO
 
  CASE(3) ! Chasnov
-   SWRITE(Unit_StdOut,'(A)') "SPECTRUM: Chasnov"
+   SWRITE(UNIT_stdOut,'(A)') "SPECTRUM: Chasnov"
    a0=5.319230405352436e-01 ! for s=4 according to Batchelor-Proudman flow
    kp=4  ! to be chosen, scaling Re
    u0=5. ! scaling the total Energy
@@ -169,13 +169,13 @@ SELECT CASE(InitSpec)
    END DO
 
  CASE(4) ! inf inertial range
-   SWRITE(Unit_StdOut,'(A)') "SPECTRUM: Infinite inertial range spectrum k^(-5/3)"
+   SWRITE(UNIT_stdOut,'(A)') "SPECTRUM: Infinite inertial range spectrum k^(-5/3)"
    DO k=1,kmax+3
      E_k(k)= k**(-5/3.)
   END DO
 
  CASE(5) ! karman-pao
-   SWRITE(Unit_StdOut,'(A)') "SPECTRUM: Karman-Pao"
+   SWRITE(UNIT_stdOut,'(A)') "SPECTRUM: Karman-Pao"
    a  = 1.453 ! scaling const Bailly 99
    u0 = 0.3   ! rms of u
    ke = 2.    ! related to peak of E wavenumber, w ~~ sqrt(12/5) ke
@@ -262,7 +262,7 @@ p=p/REAL(N_FFT**3)**3   ! Correct normalization necessary
 ! Compute mean pressure from Mach number and add to fluctuations
 p0 = vmax**2/(Kappa*Ma0**2)
 p=p+p0
-SWRITE(Unit_StdOut,'(A,F4.2,A,F7.1,A,F4.2)') ' For the selected Mach number ',Ma0, &
+SWRITE(UNIT_stdOut,'(A,F4.2,A,F7.1,A,F4.2)') ' For the selected Mach number ',Ma0, &
                                              ', the mean pressure is ',p0,', with maximum velocity in field ',vmax
 
 ! Compute compressible state with ideal gas EOS

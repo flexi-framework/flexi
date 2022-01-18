@@ -77,7 +77,7 @@ IF((nVarAvg.EQ.0).AND.(nVarFluc.EQ.0))THEN
     'No quantities for time averaging have been specified. Please specify quantities or disable time averaging!')
 END IF
 #if FV_ENABLED
-SWRITE(UNIT_StdOut,*) 'Warning: If FV is enabled, time averaging is performed on integral cell mean values.'
+SWRITE(UNIT_stdOut,'(A)') 'Warning: If FV is enabled, time averaging is performed on integral cell mean values.'
 #endif
 
 ! Define variables to be averaged
@@ -283,14 +283,14 @@ END SUBROUTINE InitCalcTimeAverage
 !==================================================================================================================================
 !> Return index of string VarName in array VarNameList
 !==================================================================================================================================
-FUNCTION GETMAPBYNAME(VarName,VarNameList,nVarList)
+PURE FUNCTION GETMAPBYNAME(VarName,VarNameList,nVarList)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)    :: VarName                 !< string to be compared
-CHARACTER(LEN=*),INTENT(IN)    :: VarNameList(nVarList)   !< list of strings to be searched
 INTEGER,INTENT(IN)             :: nVarList                !< length of list
+CHARACTER(LEN=*),INTENT(IN)    :: VarNameList(nVarList)   !< list of strings to be searched
 INTEGER                        :: GETMAPBYNAME            !< index of VarName in VarNameList
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

@@ -177,7 +177,7 @@ CASE(1) !Periodic already filled!
   CALL Abort(__STAMP__, &
       "GetBoundaryState called for periodic side!")
 CASE DEFAULT ! unknown BCType
-  CALL abort(__STAMP__,&
+  CALL Abort(__STAMP__,&
        'no BC defined in linearscalaradvection/getboundaryflux.f90!')
 END SELECT ! BCType
 
@@ -230,7 +230,7 @@ CASE(2) !Exact function or refstate
 #endif /*PARABOLIC*/
                NormVec,TangVec1,TangVec2,doBC=.TRUE.)
 CASE DEFAULT ! unknown BCType
-  CALL abort(__STAMP__,&
+  CALL Abort(__STAMP__,&
        'no BC defined in linearscalaradvection/getboundaryflux.f90!')
 END SELECT ! BCType
 
@@ -246,7 +246,7 @@ SUBROUTINE GetBoundaryFVgradient(SideID,t,gradU,UPrim_master,NormVec,TangVec1,Ta
 USE MOD_PreProc
 USE MOD_Globals       ,ONLY: Abort
 USE MOD_Mesh_Vars     ,ONLY: BoundaryType,BC
-USE MOD_Testcase      ,ONLY: GetBoundaryFVgradientTestcase
+USE MOD_TestCase      ,ONLY: GetBoundaryFVgradientTestcase
 USE MOD_Exactfunc     ,ONLY: ExactFunc
 USE MOD_Equation_Vars ,ONLY: IniExactFunc
 IMPLICIT NONE
@@ -283,7 +283,7 @@ ELSE
 
   CASE(1) !Periodic already filled!
   CASE DEFAULT ! unknown BCType
-    CALL abort(__STAMP__,&
+    CALL Abort(__STAMP__,&
          'no BC defined in linearscalaradvection/getboundaryfvgradient.f90!')
   END SELECT ! BCType
 END IF
@@ -302,7 +302,7 @@ USE MOD_PreProc
 USE MOD_Globals      ,ONLY: Abort
 USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
 USE MOD_Lifting_Vars ,ONLY: doWeakLifting
-USE MOD_Testcase     ,ONLY: Lifting_GetBoundaryFluxTestcase
+USE MOD_TestCase     ,ONLY: Lifting_GetBoundaryFluxTestcase
 USE MOD_Exactfunc    ,ONLY: ExactFunc
 USE MOD_Equation_Vars,ONLY: IniExactFunc
 IMPLICIT NONE
@@ -337,7 +337,7 @@ ELSE
     Flux=0.5*(UPrim_master+UPrim_boundary)
   CASE(1) !Periodic already filled!
   CASE DEFAULT ! unknown BCType
-    CALL abort(__STAMP__,&
+    CALL Abort(__STAMP__,&
          'no BC defined in navierstokes/getboundaryflux.f90!')
   END SELECT
 

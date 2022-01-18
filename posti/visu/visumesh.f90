@@ -92,7 +92,7 @@ REAL,POINTER       :: NodeCoords_Glob(:,:,:,:,:)
 !===================================================================================================================================
 
 ! Convert coordinates to visu grid
-SWRITE (Unit_stdOut,'(A)') ' [MESH] Convert coordinates to visu grid (DG)'
+SWRITE (UNIT_stdOut,'(A)') ' [MESH] Convert coordinates to visu grid (DG)'
 
 ! Convert from NodeCoords to create consistent meshes
 ALLOCATE(Vdm_NGeo_NVisu(0:NVisu,0:NGeo))
@@ -114,7 +114,7 @@ IF (.NOT.Avg2D) THEN
 
 #if FV_ENABLED
   IF (hasFV_Elems) THEN
-    SWRITE (Unit_stdOut,'(A)') ' [MESH] Convert coordinates to visu grid (FV)'
+    SWRITE (UNIT_stdOut,'(A)') ' [MESH] Convert coordinates to visu grid (FV)'
     ! only NVisu changed, but NVisu_FV is independent of NVisu
     IF ((.NOT.changedMeshFile).AND.(.NOT.changedFV_Elems).AND.(.NOT.changedAvg2D)) RETURN
     ! convert coords of FV elements
@@ -237,7 +237,7 @@ REAL,ALLOCATABLE   :: Vdm_NGeo_NVisu_FV(:,:)
 #endif
 !===================================================================================================================================
 ! Convert coordinates to visu grid
-SWRITE (Unit_stdOut,'(A)') ' [MESH] Convert coordinates to surface visu grid (DG)'
+SWRITE (UNIT_stdOut,'(A)') ' [MESH] Convert coordinates to surface visu grid (DG)'
 
 ! Build surf coords on node coords
 DO iSide = 1,nBCSides
@@ -284,7 +284,7 @@ SDEALLOCATE(Vdm_NGeo_NVisu)
 
 #if FV_ENABLED
 IF (hasFV_Elems) THEN
-  SWRITE (Unit_stdOut,'(A)') ' [MESH] Convert coordinates to surface visu grid (FV)'
+  SWRITE (UNIT_stdOut,'(A)') ' [MESH] Convert coordinates to surface visu grid (FV)'
   IF ((.NOT.changedMeshFile).AND.(.NOT.changedFV_Elems).AND.(.NOT.changedBCnames)) RETURN
   ALLOCATE(Vdm_NGeo_NVisu_FV(0:NVisu_FV,0:NGeo))
   CALL GetVandermonde(NGeo,NodeTypeVisu,NVisu_FV,NodeTypeVISUFVEqui,Vdm_NGeo_NVisu_FV,modal=.FALSE.)
