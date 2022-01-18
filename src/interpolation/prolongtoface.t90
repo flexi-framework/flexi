@@ -51,14 +51,16 @@ LOGICAL,INTENT(IN),OPTIONAL     :: pureDG      != .TRUE. prolongates all element
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+#if FV_ENABLED
 INTEGER                         :: isFV(nElems)
+#endif
 INTEGER                         :: p,q,firstSideID,lastSideID
 INTEGER                         :: ElemID,nbElemID,locSide,nblocSide,SideID,flip
 REAL                            :: Uface(TP_nVar,0:Nloc,0:ZDIM(Nloc))
 !==================================================================================================================================
 
-isFV(:) = 0
 #if FV_ENABLED
+isFV(:) = 0
 IF (.NOT.PRESENT(pureDG)) THEN
   isFV(:) = FV_Elems(:)
 ELSE
@@ -83,7 +85,11 @@ DO SideID=firstSideID,lastSideID
     locSide = SideToElem(S2E_LOC_SIDE_ID,SideID)
     flip    = 0
 
+#if FV_ENABLED
     IF(PP_NodeType.EQ.1 .AND. isFV(ElemID).EQ.0)THEN
+#else
+    IF(PP_NodeType.EQ.1)THEN
+#endif
       CALL EvalElemFaceG(&
 #if WITHnVar
           TP_nVar,&
@@ -107,7 +113,11 @@ DO SideID=firstSideID,lastSideID
     nblocSide = SideToElem(S2E_NB_LOC_SIDE_ID,SideID)
     flip      = SideToElem(S2E_FLIP,SideID)
 
+#if FV_ENABLED
     IF(PP_NodeType.EQ.1 .AND. isFV(nbElemID).EQ.0)THEN
+#else
+    IF(PP_NodeType.EQ.1)THEN
+#endif
       CALL EvalElemFaceG(&
 #if WITHnVar
           TP_nVar,&

@@ -113,19 +113,18 @@ SUBROUTINE InitFV()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_Basis               ,ONLY: InitializeVandermonde
+USE MOD_Filter_Vars         ,ONLY: NFilter
 USE MOD_FV_Vars
 USE MOD_FV_Basis
-USE MOD_Basis               ,ONLY: InitializeVandermonde
-USE MOD_Indicator           ,ONLY: doCalcIndicator
 USE MOD_Indicator_Vars      ,ONLY: nModes,IndicatorType
+USE MOD_IO_HDF5             ,ONLY: AddToElemData,ElementOut
 USE MOD_Mesh_Vars           ,ONLY: nElems,nSides
+USE MOD_ReadInTools
+USE MOD_Overintegration_Vars,ONLY: NUnder
 #if FV_RECONSTRUCT
 USE MOD_FV_Limiter
 #endif
-USE MOD_ReadInTools
-USE MOD_IO_HDF5             ,ONLY: AddToElemData,ElementOut
-USE MOD_Overintegration_Vars,ONLY: NUnder
-USE MOD_Filter_Vars         ,ONLY: NFilter
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -137,11 +136,8 @@ IF(.NOT.FVInitBasisIsDone)THEN
    CALL CollectiveStop(__STAMP__,&
      'InitFV not ready to be called or already called.')
 END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT FV...'
-
-! The indicator value is used to decide where FV sub-cells are needed
-doCalcIndicator=.TRUE.
 
 ! Read minimal and maximal threshold for the indicator
 FV_IndLowerThreshold = GETREAL('FV_IndLowerThreshold','-99.')
@@ -250,7 +246,7 @@ IF (.NOT.FV_IniSharp) FV_IniSupersample = GETLOGICAL("FV_IniSupersample",'.TRUE.
 
 FVInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT FV DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitFV
 
@@ -487,19 +483,20 @@ END SUBROUTINE FV_Info
 SUBROUTINE FV_FillIni()
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_DG_Vars           ,ONLY: U
-USE MOD_Mesh_Vars         ,ONLY: nElems
-USE MOD_FV_Vars           ,ONLY: FV_Elems,FV_Vdm,FV_IniSharp,FV_IniSupersample
-USE MOD_FV_Basis          ,ONLY: FV_Build_X_w_BdryX
 USE MOD_Basis             ,ONLY: InitializeVandermonde
-USE MOD_Interpolation     ,ONLY: GetNodesAndWeights
 USE MOD_ChangeBasis       ,ONLY: ChangeBasis2D_XYZ, ChangeBasis3D_XYZ
 USE MOD_ChangeBasisByDim  ,ONLY: ChangeBasisVolume
-USE MOD_Mesh_Vars         ,ONLY: Elem_xGP
+USE MOD_DG_Vars           ,ONLY: U
 USE MOD_Equation_Vars     ,ONLY: IniExactFunc
 USE MOD_Exactfunc         ,ONLY: ExactFunc
+USE MOD_FV_Vars           ,ONLY: FV_Elems,FV_Vdm,FV_IniSharp,FV_IniSupersample
+USE MOD_FV_Basis          ,ONLY: FV_Build_X_w_BdryX
+USE MOD_Interpolation     ,ONLY: GetNodesAndWeights
 USE MOD_Interpolation_Vars,ONLY: NodeType,NodeTypeVISUInner
+USE MOD_Mesh_Vars         ,ONLY: nElems
+USE MOD_Mesh_Vars         ,ONLY: Elem_xGP
 USE MOD_ReadInTools       ,ONLY: GETLOGICAL
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -575,6 +572,7 @@ ELSE
     END DO !k
   END DO ! iElem=1,nElems
 END IF
+
 END SUBROUTINE FV_FillIni
 
 !==================================================================================================================================

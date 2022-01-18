@@ -87,7 +87,7 @@ IF((.NOT.InterpolationInitIsDone).OR.(.NOT.MeshInitIsDone).OR.(.NOT.RestartInitI
   CALL CollectiveStop(__STAMP__,&
     'InitDG not ready to be called or already called.')
 END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT DG...'
 
 ! Pre-compute the dg operator building blocks (differentiation matrices and prolongation operators)
@@ -136,7 +136,7 @@ END IF
 
 DGInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT DG DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitDG
 
 
@@ -237,8 +237,8 @@ USE MOD_Interpolation_Vars  ,ONLY: L_Minus,L_Plus
 USE MOD_Overintegration_Vars,ONLY: OverintegrationType
 USE MOD_Overintegration,     ONLY: Overintegration
 USE MOD_ChangeBasisByDim    ,ONLY: ChangeBasisVolume
-USE MOD_Testcase            ,ONLY: TestcaseSource
-USE MOD_Testcase_Vars       ,ONLY: doTCSource
+USE MOD_TestCase            ,ONLY: TestcaseSource
+USE MOD_TestCase_Vars       ,ONLY: doTCSource
 USE MOD_Equation            ,ONLY: GetPrimitiveStateSurface,GetConservativeStateSurface
 USE MOD_EOS                 ,ONLY: ConsToPrim
 USE MOD_Exactfunc           ,ONLY: CalcSource
@@ -520,7 +520,7 @@ CALL FV_DGtoFV(PP_nVarPrim,UPrim_master ,UPrim_slave )
 
 ! 10.2)
 CALL GetConservativeStateSurface(UPrim_master, UPrim_slave, U_master, U_slave, FV_Elems_master, FV_Elems_slave, 1)
-#endif
+#endif /*FV_ENABLED*/
 
 #if USE_MPI
 ! 10.3)

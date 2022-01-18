@@ -70,7 +70,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT FV Basis...'
 IF(InterpolationInitIsDone.AND.FVInitBasisIsDone)THEN
   CALL CollectiveStop(__STAMP__, &
@@ -111,7 +111,7 @@ FV_w_inv = 1.0 / FV_w
 
 FVInitBasisIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT FV DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitFV_Basis
 
 

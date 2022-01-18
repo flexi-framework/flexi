@@ -78,7 +78,6 @@ PUBLIC :: WriteArray,WriteAttribute,GatheredWriteArray,WriteAdditionalElemData,M
 
 CONTAINS
 
-
 !==================================================================================================================================
 !> Subroutine to write the solution U to HDF5 format
 !> Is used for postprocessing and for restart
@@ -116,6 +115,7 @@ INTEGER                        :: iElem,i,j,k
 INTEGER                        :: nVal(5)
 !==================================================================================================================================
 IF (.NOT.WriteStateFiles) RETURN
+
 IF(MPIRoot)THEN
   WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE STATE TO HDF5 FILE...'
   GETTIME(StartT)
@@ -181,7 +181,6 @@ ELSE ! write state on same polynomial degree as the solution
 #endif
 END IF ! (NOut.NE.PP_N)
 
-
 ! Reopen file and write DG solution
 #if USE_MPI
 CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
@@ -198,7 +197,6 @@ IF((PP_N .NE. NOut).OR.((PP_dim .EQ. 2).AND.(.NOT.output2D))) DEALLOCATE(UOut)
 
 CALL WriteAdditionalElemData(FileName,ElementOut)
 CALL WriteAdditionalFieldData(FileName,FieldOut)
-
 
 IF(MPIRoot)THEN
   CALL MarkWriteSuccessfull(FileName)
@@ -250,7 +248,7 @@ IF (PRODUCT(REAL(nVal)).GT.nLimit) CALL Abort(__STAMP__, & ! Casting to avoid ov
 
 IF(gatheredWrite)THEN
   IF(ANY(offset(1:rank-1).NE.0)) &
-    CALL abort(__STAMP__,'Offset only allowed in last dimension for gathered IO.')
+    CALL Abort(__STAMP__,'Offset only allowed in last dimension for gathered IO.')
 
   ! Get last dim of each array on IO nodes
   nDOFLocal=PRODUCT(nVal)
@@ -541,7 +539,7 @@ INTEGER                        :: NZ_loc
 INTEGER                        :: iElem,i,j,iVar
 #endif
 !==================================================================================================================================
-IF(MPIROOT)THEN
+IF(MPIRoot)THEN
   WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE BASE FLOW TO HDF5 FILE...'
   GETTIME(StartT)
 END IF
@@ -613,8 +611,8 @@ INTEGER,INTENT(IN)             :: nVarFluc                                     !
 INTEGER,INTENT(IN)             :: nVal(3)                                      !< Dimension of UAvg
 INTEGER,INTENT(IN)             :: FV_Elems_In(nElems)                          !< Array with custom FV_Elem information
 CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName                                 !< Name of mesh file
-CHARACTER(LEN=*),INTENT(IN)    :: VarNamesAvg(nVarAvg)                         !< Average variable names
-CHARACTER(LEN=*),INTENT(IN)    :: VarNamesFluc(nVarFluc)                       !< Average variable names
+CHARACTER(LEN=255),INTENT(IN)  :: VarNamesAvg(nVarAvg)                         !< Average variable names
+CHARACTER(LEN=255),INTENT(IN)  :: VarNamesFluc(nVarFluc)                       !< Average variable names
 REAL,INTENT(IN)                :: OutputTime                                   !< Time of output
 REAL,INTENT(IN)                :: dtAvg                                        !< Timestep of averaging
 REAL,INTENT(IN),TARGET         :: UAvg(nVarAvg,nVal(1),nVal(2),nVal(3),nElems) !< Averaged Solution
@@ -634,7 +632,7 @@ INTEGER                        :: nVar_loc, nVal_loc(5), nVal_glob(5), i
 !==================================================================================================================================
 IF(ANY(nVal(1:PP_dim).EQ.0)) RETURN ! no time averaging
 IF(nVarAvg.EQ.0.AND.nVarFluc.EQ.0) RETURN ! no time averaging
-IF(MPIROOT)THEN
+IF(MPIRoot)THEN
   WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE TIME AVERAGED STATE TO HDF5 FILE...'
   GETTIME(StartT)
 END IF
@@ -703,9 +701,9 @@ DO i=1,2
 #endif
 END DO
 
-IF(MPIROOT) CALL MarkWriteSuccessfull(FileName)
+IF(MPIRoot) CALL MarkWriteSuccessfull(FileName)
 
-IF(MPIROOT)THEN
+IF(MPIRoot)THEN
   GETTIME(EndT)
   WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',EndT-StartT,'s]'
 END IF
@@ -733,7 +731,7 @@ CHARACTER(LEN=*),INTENT(IN)    :: FileName           !< Name of file to create
 CHARACTER(LEN=*),INTENT(IN)    :: TypeString         !< Type of file to be created (state,timeaverage etc.)
 INTEGER,INTENT(IN)             :: nVar               !< Number of variables
 INTEGER,INTENT(IN)             :: NData              !< Polynomial degree of data
-CHARACTER(LEN=*)               :: StrVarNames(nVar)  !< Variabel names
+CHARACTER(LEN=255),INTENT(IN)  :: StrVarNames(nVar)  !< Variabel names
 CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName       !< Name of mesh file
 REAL,INTENT(IN)                :: OutputTime         !< Time of output
 REAL,INTENT(IN),OPTIONAL       :: FutureTime         !< Time of next output
@@ -781,7 +779,7 @@ CALL H5DCREATE_F(File_ID,TRIM(Dataset_Str), HDF5DataType, FileSpace, DSet_ID, iE
 ! Close the filespace and the dataset
 CALL H5DCLOSE_F(Dset_id, iError)
 CALL H5SCLOSE_F(FileSpace, iError)
-CALL WriteAttribute(File_ID,TRIM(Varname_Str),nVar,StrArray=StrVarNames)
+CALL WriteAttribute(File_ID,TRIM(Varname_Str),nVar,StrArray=StrVarNames(1:nVar))
 
 ! Write default attributes only if file is created
 IF(create_loc)THEN
@@ -860,7 +858,7 @@ CHARACTER(LEN=255)       :: FileName,InputFile,NextFile
 !==================================================================================================================================
 IF(.NOT.MPIRoot) RETURN
 
-WRITE(UNIT_stdOut,'(a)')' DELETING OLD HDF5 FILES...'
+SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' DELETING OLD HDF5 FILES...'
 IF (.NOT.PRESENT(FlushTime_In)) THEN
   FlushTime=0.0
 ELSE
@@ -974,7 +972,7 @@ END IF
 ! make array extendable in case you want to append something
 IF(PRESENT(resizeDim))THEN
   IF(.NOT.PRESENT(chunkSize))&
-    CALL abort(__STAMP__,&
+    CALL Abort(__STAMP__,&
                'Chunk size has to be specified when using resizable arrays.')
   nValMax = MERGE(H5S_UNLIMITED_F,nValMax,resizeDim)
 END IF

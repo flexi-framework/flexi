@@ -21,9 +21,9 @@
 !==================================================================================================================================
 !> Riemann2D testcase
 !==================================================================================================================================
-MODULE MOD_Testcase
+MODULE MOD_TestCase
 ! MODULES
-USE MOD_Testcase_Vars
+USE MOD_TestCase_Vars
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -93,7 +93,7 @@ END SUBROUTINE DO_NOTHING
 SUBROUTINE InitTestcase()
 ! MODULES
 USE MOD_Globals
-USE MOD_Testcase_Vars
+USE MOD_TestCase_Vars
 USE MOD_Equation_Vars ,ONLY: IniExactFunc
 USE MOD_Equation_Vars ,ONLY: RefStatePrim
 IMPLICIT NONE
@@ -102,7 +102,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE Riemann2D...'
 
 CALL CalcIniStates()
@@ -135,7 +135,7 @@ IF (MPIRoot) THEN
 ENDIF
 
 SWRITE(UNIT_stdOut,'(A)')' INIT TESTCASE Riemann2D DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitTestcase
 
 FUNCTION GetPHI(rhoL, rhoR, pL, pR)
@@ -260,7 +260,7 @@ END SUBROUTINE Calc_v_RankineHugoniot
 SUBROUTINE CalcIniStates()
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Testcase_Vars
+USE MOD_TestCase_Vars
 USE MOD_Equation_Vars ,ONLY: IniExactFunc
 USE MOD_Equation_Vars ,ONLY: RefStatePrim,RefStateCons, nRefState
 USE MOD_EOS_Vars      ,ONLY: Kappa,R
@@ -659,7 +659,7 @@ SUBROUTINE GetBoundaryFluxTestcase(SideID,t,Nloc,Flux,UPrim_master,  &
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_Testcase_Vars
+USE MOD_TestCase_Vars
 USE MOD_Mesh_Vars     ,ONLY: BoundaryType,BC
 USE MOD_Riemann       ,ONLY: Riemann
 USE MOD_EOS           ,ONLY: PrimToCons
@@ -1088,5 +1088,5 @@ REAL,DIMENSION(*),INTENT(IN) :: Ut                        !< solution time deriv
 !==================================================================================================================================
 END SUBROUTINE TestcaseSource
 
-END MODULE MOD_Testcase
+END MODULE MOD_TestCase
 

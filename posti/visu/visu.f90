@@ -711,9 +711,9 @@ Avg2D_old             = Avg2D
 NodeTypeVisuPosti_old = NodeTypeVisuPosti
 NState_old            = PP_N
 
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(*,*) "Visu finished for state file: ", TRIM(statefile)
-SWRITE(UNIT_StdOut,'(132("="))')
+SWRITE(UNIT_stdOut,'(132("="))')
 END SUBROUTINE visu
 
 !===================================================================================================================================
@@ -726,7 +726,6 @@ USE MOD_DG                   ,ONLY: FinalizeDG
 USE MOD_DG_Vars
 USE MOD_Equation             ,ONLY: FinalizeEquation
 USE MOD_Filter               ,ONLY: FinalizeFilter
-USE MOD_Indicator            ,ONLY: FinalizeIndicator
 USE MOD_Interpolation        ,ONLY: FinalizeInterpolation
 USE MOD_IO_HDF5              ,ONLY: FinalizeIOHDF5
 USE MOD_Mesh                 ,ONLY: FinalizeMesh
@@ -740,6 +739,7 @@ USE MOD_Visu_Vars
 USE MOD_Lifting              ,ONLY: FinalizeLifting
 #endif
 #if FV_ENABLED
+USE MOD_Indicator            ,ONLY: FinalizeIndicator
 USE MOD_FV_Basis             ,ONLY: FinalizeFV_Basis
 #endif /* FV_ENABLED */
 #if USE_MPI
@@ -748,7 +748,7 @@ USE MOD_MPI                  ,ONLY: FinalizeMPI
 IMPLICIT NONE
 !===================================================================================================================================
 
-SWRITE (Unit_stdOut,'(A)') 'VISU FINALIZE'
+SWRITE (UNIT_stdOut,'(A)') 'VISU FINALIZE'
 
 IF(MPIRoot)THEN
   IF(FILEEXISTS('.posti.ini'))THEN
@@ -797,7 +797,6 @@ SDEALLOCATE(U)
 SDEALLOCATE(Elem_xGP)
 
 CALL FinalizeRestart()
-CALL FinalizeIndicator()
 CALL FinalizeEquation()
 CALL FinalizeDG()
 CALL FinalizeOverintegration()
@@ -808,6 +807,7 @@ CALL FinalizeInterpolation()
 CALL FinalizeMesh()
 CALL FinalizeIOHDF5()
 #if FV_ENABLED
+CALL FinalizeIndicator()
 CALL FinalizeFV_Basis()
 #endif /* FV_ENABLED */
 CALL FinalizeMortar()

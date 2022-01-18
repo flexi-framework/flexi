@@ -119,7 +119,7 @@ USE MOD_Equation_Vars      ,ONLY: IniExactFunc,IniRefState
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT EXACT FUNCTION...'
 
 IniExactFunc = GETINTFROMSTR('IniExactFunc')
@@ -160,7 +160,7 @@ END SELECT
 #endif
 
 SWRITE(UNIT_stdOut,'(A)')' INIT EXACT FUNCTION DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitExactFunc
 
 !==================================================================================================================================
@@ -636,7 +636,7 @@ IF(fullBoundaryOrder)THEN ! add resu_t, resu_tt if time dependant
     Resu=Resu + RKc(3)*dt*Resu_t + RKc(2)*RKb(2)*dt*dt*Resu_tt
   CASE DEFAULT
     ! Stop, works only for 3 Stage O3 LS RK
-    CALL abort(__STAMP__,&
+    CALL Abort(__STAMP__,&
                'Exactfuntion works only for 3 Stage O3 LS RK!')
   END SELECT
 END IF
@@ -651,10 +651,10 @@ SUBROUTINE CalcSource(Ut,t)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Equation_Vars    ,ONLY: IniExactFunc,doCalcSource
+USE MOD_Equation_Vars    ,ONLY: IniExactFunc!,doCalcSource
 USE MOD_Equation_Vars    ,ONLY: SAKappa,SAd,cw1,cb1,cb2,sigma
 USE MOD_Equation_Vars    ,ONLY: fv2,fw,STilde,fn,ct1,ct2,ct3,ct4,includeTrip,omegaT,dXt,SAdt,SADebug,doSADebug
-USE MOD_Eos_Vars         ,ONLY: Kappa,KappaM1,cp
+USE MOD_Eos_Vars         ,ONLY: Kappa,KappaM1!,cp
 USE MOD_Exactfunc_Vars   ,ONLY: AdvVel
 USE MOD_DG_Vars          ,ONLY: U
 USE MOD_EOS              ,ONLY: ConsToPrim

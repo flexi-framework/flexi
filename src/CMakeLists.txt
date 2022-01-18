@@ -237,7 +237,6 @@ FILE(GLOB_RECURSE flexiF90 ./src/interpolation/*.f90
                            ./src/readintools/*.f90
                            ./src/mortar/*.f90
                            ./src/mesh/*.f90
-                           ./src/indicator/*.f90
                            ./src/mpi/*.f90
                            ./src/globals/*.f90
                            ./src/analyze/*.f90
@@ -300,7 +299,8 @@ LIST(APPEND flexiF90 ${dgF90})
 
 # >> collect F90 files of 'fv' directory (non-recursive) and append to 'flexiF90' list
 IF (FLEXI_FV)
-  FILE(GLOB fvF90 ./src/fv/*.f90)
+  FILE(GLOB fvF90 ./src/indicator/*.f90
+                  ./src/fv/*.f90)
   LIST(APPEND flexiF90 ${fvF90})
 ENDIF()
 

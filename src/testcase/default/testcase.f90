@@ -17,7 +17,7 @@
 !==================================================================================================================================
 !> Subroutines defining one specific testcase with all necessary variables
 !==================================================================================================================================
-MODULE MOD_Testcase
+MODULE MOD_TestCase
 ! MODULES
 IMPLICIT NONE
 PRIVATE
@@ -125,7 +125,7 @@ REAL,INTENT(OUT)                :: Resu_tt(5)  !< second time deriv of exact fuc
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-CALL abort(__STAMP__,'Exactfunction not specified!')
+CALL Abort(__STAMP__,'Exactfunction not specified!')
 Resu=-1.
 Resu_t =-1.
 Resu_tt=-1.
@@ -249,4 +249,4 @@ REAL,INTENT(OUT)   :: Flux(     PP_nVarLifting,0:PP_N,0:PP_NZ) !< lifting bounda
 !==================================================================================================================================
 END SUBROUTINE Lifting_GetBoundaryFluxTestcase
 
-END MODULE MOD_Testcase
+END MODULE MOD_TestCase

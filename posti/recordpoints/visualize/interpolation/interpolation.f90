@@ -95,17 +95,17 @@ IF(equiTimeSpacing) THEN
   TEnd=RPTime(nSamples_global)
 
   IF(dt_out.LE.dtMin) THEN
-    WRITE(UNIT_StdOut,'(A)')'WARNING: Equidistant sampling time step is lower than or equal to the input time step!!!'
+    WRITE(UNIT_stdOut,'(A)')'WARNING: Equidistant sampling time step is lower than or equal to the input time step!!!'
   END IF
 
   WRITE(UNIT_stdOut,'(A)')'  Database:'
-  WRITE(UNIT_StdOut,'(A18,ES16.7)')'         TStart = ',RPTIME(1)
-  WRITE(UNIT_StdOut,'(A18,ES16.7)')'           TEnd = ',TEnd
-  WRITE(UNIT_StdOut,'(A18,ES16.7)')'          dtMin = ',dtMin
-  WRITE(UNIT_StdOut,'(A18,I8    )')'       nSamples = ',nSamples_global
+  WRITE(UNIT_stdOut,'(A18,ES16.7)')'         TStart = ',RPTIME(1)
+  WRITE(UNIT_stdOut,'(A18,ES16.7)')'           TEnd = ',TEnd
+  WRITE(UNIT_stdOut,'(A18,ES16.7)')'          dtMin = ',dtMin
+  WRITE(UNIT_stdOut,'(A18,I8    )')'       nSamples = ',nSamples_global
   WRITE(UNIT_stdOut,'(A)')'  Equidistant time grid:'
-  WRITE(UNIT_StdOut,'(A18,ES16.7)')'             dt = ',dt_out
-  WRITE(UNIT_StdOut,'(A18,I8    )')'       nSamples = ',nSamples_out
+  WRITE(UNIT_stdOut,'(A18,ES16.7)')'             dt = ',dt_out
+  WRITE(UNIT_stdOut,'(A18,I8    )')'       nSamples = ',nSamples_out
 END IF
 WRITE(UNIT_stdOut,'(A)')' DONE.'
 WRITE(UNIT_stdOut,'(132("-"))')

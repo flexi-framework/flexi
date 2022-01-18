@@ -56,9 +56,9 @@ CALL prms%CreateLogicalOption('CalcErrorNorms' , "Set true to compute L2 and LIn
                                                  '.TRUE.')
 CALL prms%CreateLogicalOption('AnalyzeToFile',   "Set true to output result of error norms to a file (CalcErrorNorms=T)",&
                                                  '.FALSE.')
-CALL prms%CreateRealOption(   'Analyze_dt',      "Specifies time intervall at which analysis routines are called.",&
+CALL prms%CreateRealOption(   'analyze_dt',      "Specifies time intervall at which analysis routines are called.",&
                                                  '0.')
-CALL prms%CreateIntOption(    'nWriteData' ,     "Intervall as multiple of Analyze_dt at which HDF5 files "//&
+CALL prms%CreateIntOption(    'nWriteData' ,     "Intervall as multiple of analyze_dt at which HDF5 files "//&
                                                  "(e.g. State,TimeAvg,Fluc) are written.",&
                                                  '1')
 CALL prms%CreateIntOption(    'NAnalyze'   ,     "Polynomial degree at which analysis is performed (e.g. for L2 errors). "//&
@@ -107,7 +107,7 @@ CHARACTER(MAXVAL( (/( LEN_TRIM(StrVarNames(i)), i=1,SIZE(StrVarNames(:)) )/) )+5
 IF ((.NOT.InterpolationInitIsDone).OR.AnalyzeInitIsDone) THEN
   CALL CollectiveStop(__STAMP__,'InitAnalyse not ready to be called or already called.')
 END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT ANALYZE...'
 
 ! Get the various analysis/output variables
@@ -116,7 +116,7 @@ doAnalyzeToFile   =GETLOGICAL('AnalyzeToFile','.FALSE.')
 AnalyzeExactFunc  =GETINT('AnalyzeExactFunc',INTTOSTR(IniExactFunc))
 AnalyzeRefState   =GETINT('AnalyzeRefState' ,INTTOSTR(IniRefState))
 
-Analyze_dt        =GETREAL('Analyze_dt','0.0')
+analyze_dt        =GETREAL('analyze_dt','0.0')
 nWriteData        =GETINT('nWriteData' ,'1')
 NAnalyze          =GETINT('NAnalyze'   ,INTTOSTR(2*(PP_N+1)))
 #if PP_dim == 3
@@ -124,15 +124,15 @@ NAnalyzeZ         =NAnalyze
 #else
 NAnalyzeZ         =0
 #endif
-! If Analyze_dt is set to 0 (default) or to a negative value, no analyze calls should be performed at all.
-! To achieve this, Analyze_dt is set to the final simulation time. This will prevent any calls of the analyze routine
+! If analyze_dt is set to 0 (default) or to a negative value, no analyze calls should be performed at all.
+! To achieve this, analyze_dt is set to the final simulation time. This will prevent any calls of the analyze routine
 ! except at the beginning and the end of the simulation.
-IF (Analyze_dt.LE.0.) THEN
-  Analyze_dt = TEnd
+IF (analyze_dt.LE.0.) THEN
+  analyze_dt = TEnd
   nWriteData = 1
 END IF
 
-WriteData_dt = Analyze_dt*nWriteData
+WriteData_dt = analyze_dt*nWriteData
 
 ! precompute integration weights
 ALLOCATE(wGPSurf(0:PP_N,0:PP_NZ),wGPVol(0:PP_N,0:PP_N,0:PP_NZ))
@@ -209,9 +209,9 @@ CALL InitAnalyzeEquation()
 CALL InitBenchmarking()
 
 AnalyzeInitIsDone=.TRUE.
-SWRITE(UNIT_StdOut,'(A,ES18.9)')' Volume of computational domain : ',Vol
+SWRITE(UNIT_stdOut,'(A,ES18.9)')' Volume of computational domain : ',Vol
 SWRITE(UNIT_stdOut,'(A)')' INIT ANALYZE DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitAnalyze
 
 
@@ -274,10 +274,12 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Analyze_Vars
 USE MOD_AnalyzeEquation,    ONLY: AnalyzeEquation
-USE MOD_Output,             ONLY: OutputToFile
-USE MOD_Output_Vars,        ONLY: ProjectName
-USE MOD_Mesh_Vars,          ONLY: nGlobalElems
 USE MOD_Benchmarking,       ONLY: Benchmarking
+USE MOD_Mesh_Vars,          ONLY: nGlobalElems
+USE MOD_Output,             ONLY: OutputToFile,PrintStatusLine
+USE MOD_Output_Vars,        ONLY: ProjectName
+USE MOD_TimeDisc_Vars,      ONLY: dt,tStart,tEnd
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -292,31 +294,33 @@ REAL                            :: L_Inf_Error(PP_nVar),L_2_Error(PP_nVar)
 ! Graphical output
 CalcTime=FLEXITIME()
 RunTime=CalcTime-StartTime
-SWRITE(UNIT_StdOut,'(A14,ES16.7)')' Sim time   : ',Time
+SWRITE(UNIT_stdOut,'(A14,ES16.7)')' Sim time   : ',Time
 
 ! Calculate error norms
 IF(doCalcErrorNorms)THEN
   CALL CalcErrorNorms(Time,L_2_Error,L_Inf_Error)
-  IF(MPIroot) THEN
+  IF(MPIRoot) THEN
     WRITE(formatStr,'(A5,I1,A7)')'(A14,',PP_nVar,'ES18.9)'
-    WRITE(UNIT_StdOut,formatStr)' L_2        : ',L_2_Error
-    WRITE(UNIT_StdOut,formatStr)' L_inf      : ',L_Inf_Error
+    WRITE(UNIT_stdOut,formatStr)' L_2        : ',L_2_Error
+    WRITE(UNIT_stdOut,formatStr)' L_inf      : ',L_Inf_Error
     IF(doAnalyzeToFile)THEN
       CALL OutputToFile(FileName_ErrNorm,(/Time/),(/2*PP_nVar+5,1/),  (/L_2_Error,L_Inf_Error, &
                         REAL(iter)+iterRestart,RunTime+CalcTimeRestart,              &
                         REAL(nGlobalElems*(PP_N+1)**3),REAL(nGlobalElems),REAL(nProcessors)/))
     END IF
-  END IF !MPIroot
+  END IF !MPIRoot
 END IF  ! ErrorNorms
 
 CALL AnalyzeEquation(Time)
 CALL Benchmarking()
 
-IF(MPIroot .AND. (Time.GT.0.)) THEN
-  WRITE(UNIT_StdOut,'(132("."))')
-  WRITE(UNIT_stdOut,'(A,A,A,F8.2,A)') ' FLEXI RUNNING ',TRIM(ProjectName),'... [',RunTime,' sec ]'
-  WRITE(UNIT_StdOut,'(132("-"))')
-  WRITE(UNIT_StdOut,*)
+IF(Time.GT.0.) THEN
+  SWRITE(UNIT_stdOut,'(132("-"))')
+  CALL PrintStatusLine(time,dt,tStart,tEnd,doETA=.TRUE.)
+  SWRITE(UNIT_stdOut,'(132("."))')
+  SWRITE(UNIT_stdOut,'(A,A,A,F8.2,A)') ' FLEXI RUNNING ',TRIM(ProjectName),'... [',RunTime,' sec ]'
+  SWRITE(UNIT_stdOut,'(132("-"))')
+  SWRITE(UNIT_stdOut,*)
 END IF
 END SUBROUTINE Analyze
 
@@ -390,7 +394,7 @@ DO iElem=1,nElems
 #endif
    ! Interpolate the physical position Elem_xGP to the analyze position, needed for exact function
    CALL ChangeBasisVolume(3,PP_N,NAnalyze,Vdm_GaussN_NAnalyze,Elem_xGP(1:3,:,:,:,iElem),Coords_NAnalyze(1:3,:,:,:))
-   ! Interpolate the Jacobian to the analyze grid: be carefull we interpolate the inverse of the inverse of the jacobian ;-)
+   ! Interpolate the Jacobian to the analyze grid: be careful we interpolate the inverse of the inverse of the Jacobian ;-)
    J_N(1,0:PP_N,0:PP_N,0:PP_NZ)=1./sJ(:,:,:,iElem,0)
    CALL ChangeBasisVolume(1,PP_N,NAnalyze,Vdm_GaussN_NAnalyze,J_N,J_NAnalyze)
    ! Interpolate the solution to the analyze grid
@@ -446,7 +450,7 @@ SDEALLOCATE(wGPVol)
 SDEALLOCATE(wGPSurf)
 SDEALLOCATE(ElemVol)
 AnalyzeInitIsDone = .FALSE.
-END SUBROUTINE FinalizeAnalyze
 
+END SUBROUTINE FinalizeAnalyze
 
 END MODULE MOD_Analyze

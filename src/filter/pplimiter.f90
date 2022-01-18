@@ -97,7 +97,7 @@ IMPLICIT NONE
 INTEGER                      :: iElem,i,j,k
 REAL                         :: Vol
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT POSITIVITY-PRESERVING LIMITER...'
 
 ! Read in variables
@@ -153,7 +153,7 @@ IF (DoPPLimiter) THEN
   END IF
 END IF
 SWRITE(UNIT_stdOut,'(A)')' INIT POSITIVITY-PRESERVING LIMITER DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitPPLimiter
 
 !==================================================================================================================================

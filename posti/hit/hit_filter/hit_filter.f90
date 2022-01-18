@@ -69,7 +69,7 @@ CHARACTER(LEN=255),INTENT(IN)      :: StateFile !< State file to be read
 LOGICAL                          :: userblockFound
 CHARACTER(LEN=255)               :: prmfile=".parameter.ini"
 !===================================================================================================================================
-SWRITE(Unit_StdOut,'(3A)') "READING SOLUTION FROM STATE FILE """,TRIM(StateFile), """"
+SWRITE(UNIT_stdOut,'(3A)') "READING SOLUTION FROM STATE FILE """,TRIM(StateFile), """"
 
 ! Get start index of file extension to check if it is a h5 file
 IF (.NOT.STRICMP(GetFileExtension(StateFile), 'h5')) &
@@ -118,7 +118,7 @@ INQUIRE(FILE=TRIM(UserBlockTmpFile),SIZE=userblock_total_len)
 ! Close the data file
 CALL CloseDataFile()
 
-SWRITE(Unit_StdOut,'(A)') "READING SOLUTION DONE!"
+SWRITE(UNIT_stdOut,'(A)') "READING SOLUTION DONE!"
 END SUBROUTINE ReadOldStateFile
 
 

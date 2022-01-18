@@ -143,6 +143,7 @@ END FUNCTION INVERSE
 !LOGICAL         :: ALMOSTEQUALABSOLUTE
 !!==================================================================================================================================
 !ALMOSTEQUALRELATIVE=(ABS(x-y).LE.tol)
+!
 !END FUNCTION ALMOSTEQUALABSOLUTE
 
 
