@@ -600,15 +600,15 @@ SUBROUTINE WriteTimeAverage(MeshFileName,OutputTime,dtAvg,FV_Elems_In,nVal,&
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_Output_Vars,ONLY: ProjectName
+USE MOD_Output_Vars,ONLY: ProjectName,WriteTimeAvgFiles
 USE MOD_Mesh_Vars  ,ONLY: offsetElem,nGlobalElems,nElems
 USE MOD_2D         ,ONLY: ExpandArrayTo3D
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)             :: nVarAvg                                      !< Dimension of UAvg
-INTEGER,INTENT(IN)             :: nVarFluc                                     !< Dimension of UAvg
-INTEGER,INTENT(IN)             :: nVal(3)                                      !< Dimension of UAvg
+INTEGER,INTENT(IN)             :: nVarAvg                                      !< Number of variables in UAvg  (first dimension)
+INTEGER,INTENT(IN)             :: nVarFluc                                     !< Number of variables in UFluc (first dimension)
+INTEGER,INTENT(IN)             :: nVal(3)                                      !< Dimension (2:4) of UAvg/UFluc
 INTEGER,INTENT(IN)             :: FV_Elems_In(nElems)                          !< Array with custom FV_Elem information
 CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName                                 !< Name of mesh file
 CHARACTER(LEN=255),INTENT(IN)  :: VarNamesAvg(nVarAvg)                         !< Average variable names
@@ -616,7 +616,7 @@ CHARACTER(LEN=255),INTENT(IN)  :: VarNamesFluc(nVarFluc)                       !
 REAL,INTENT(IN)                :: OutputTime                                   !< Time of output
 REAL,INTENT(IN)                :: dtAvg                                        !< Timestep of averaging
 REAL,INTENT(IN),TARGET         :: UAvg(nVarAvg,nVal(1),nVal(2),nVal(3),nElems) !< Averaged Solution
-REAL,INTENT(IN),TARGET         :: UFluc(nVarFluc,nVal(1),nVal(2),nVal(3),nElems) !< Averaged Solution
+REAL,INTENT(IN),TARGET         :: UFluc(nVarFluc,nVal(1),nVal(2),nVal(3),nElems) !< Averaged Solution fluctuations
 REAL,INTENT(IN),OPTIONAL       :: FutureTime                                   !< Time of next output
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: Filename_In                            !< custom filename
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -630,6 +630,7 @@ REAL,POINTER                   :: UOut2D(:,:,:,:,:)
 TYPE(tElementOut),POINTER      :: ElementOutTimeAvg
 INTEGER                        :: nVar_loc, nVal_loc(5), nVal_glob(5), i
 !==================================================================================================================================
+IF(.NOT.WriteTimeAvgFiles) RETURN ! do not write time average files
 IF(ANY(nVal(1:PP_dim).EQ.0)) RETURN ! no time averaging
 IF(nVarAvg.EQ.0.AND.nVarFluc.EQ.0) RETURN ! no time averaging
 IF(MPIRoot)THEN

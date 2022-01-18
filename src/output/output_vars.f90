@@ -22,21 +22,22 @@ SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-INTEGER                      :: NVisu                 !< Number of points at which solution is sampled for visualization
-INTEGER                      :: NOut                  !< Polynomial degree at which solution is written. -1: NOut=N, >0: NOut
-REAL,ALLOCATABLE             :: Vdm_GaussN_NVisu(:,:) !< Vandermonde for direct interpolation from computation grid to visu grid
-REAL,ALLOCATABLE             :: Vdm_N_NOut(:,:)       !< output vandermonde
-REAL,PARAMETER               :: FileVersion=0.1       !< version written into output file
-CHARACTER(LEN=255),PARAMETER :: ProgramName='Flexi'   !< name of program written into output file
-CHARACTER(LEN=255)           :: ProjectName           !< Name of the current simulation (mandatory).
-INTEGER                      :: outputFormat=0        !< File format for visualization. <=0: no visualization, 1: Tecplot binary,
-                                                      !< 2: Tecplot ASCII, 3: Paraview binary. Note: Tecplot output is currently
-                                                      !< unavailable due to licensing issues.
-INTEGER                      :: ASCIIOutputFormat=0   !< File format for ASCII output. 0: CSV, 1: Tecplot
-LOGICAL                      :: OutputInitIsDone=.FALSE.  !< marks whether output routines have been initialized
-LOGICAL                      :: doPrintStatusLine     !< flag indicating if status line should be printed
-LOGICAL                      :: WriteStateFiles=.TRUE.!< flag indicating if state files should be written
-INTEGER                      :: userblock_total_len   !< length of userblock file + length of ini-file (with header) in bytes
+INTEGER                      :: NVisu                    !< Number of points at which solution is sampled for visualization
+INTEGER                      :: NOut                     !< Polynomial degree at which solution is written. -1: NOut=N, >0: NOut
+REAL,ALLOCATABLE             :: Vdm_GaussN_NVisu(:,:)    !< Vandermonde for direct interpolation from computation grid to visu grid
+REAL,ALLOCATABLE             :: Vdm_N_NOut(:,:)          !< output vandermonde
+REAL,PARAMETER               :: FileVersion=0.1          !< version written into output file
+CHARACTER(LEN=255),PARAMETER :: ProgramName='Flexi'      !< name of program written into output file
+CHARACTER(LEN=255)           :: ProjectName              !< Name of the current simulation (mandatory).
+INTEGER                      :: outputFormat=0           !< File format for visualization. <=0: no visualization, 1: Tecplot binary,
+                                                         !< 2: Tecplot ASCII, 3: Paraview binary. Note: Tecplot output is currently
+                                                         !< unavailable due to licensing issues.
+INTEGER                      :: ASCIIOutputFormat=0      !< File format for ASCII output. 0: CSV, 1: Tecplot
+LOGICAL                      :: OutputInitIsDone=.FALSE. !< marks whether output routines have been initialized
+LOGICAL                      :: doPrintStatusLine        !< flag indicating if status line should be printed
+LOGICAL                      :: WriteStateFiles=.TRUE.   !< flag indicating if state files should be written
+LOGICAL                      :: WriteTimeAvgFiles=.TRUE. !< flag indicating if time average files should be written
+INTEGER                      :: userblock_total_len      !< length of userblock file + length of ini-file (with header) in bytes
 CHARACTER(LEN=255)           :: UserBlockTmpFile='userblock.tmp' !< name of user block temp file
 !==================================================================================================================================
 END MODULE MOD_Output_Vars
