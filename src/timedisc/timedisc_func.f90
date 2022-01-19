@@ -300,7 +300,7 @@ USE MOD_TestCase            ,ONLY: AnalyzeTestCase
 USE MOD_TestCase_Vars       ,ONLY: nAnalyzeTestCase
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
 USE MOD_TimeDisc_Vars       ,ONLY: t,dt,dt_min,tAnalyze,tEnd,CalcTimeStart
-USE MOD_TimeDisc_Vars       ,ONLY: iter,iter_analyze,nCalcTimestep
+USE MOD_TimeDisc_Vars       ,ONLY: iter,iter_analyze
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize,writeCounter
 #if FV_ENABLED
 USE MOD_FV                  ,ONLY: FV_Info,FV_Switch
