@@ -135,10 +135,11 @@ CHARACTER(LEN=255):: TimeDiscMethod
 INTEGER           :: NEff
 !==================================================================================================================================
 IF(TimeDiscInitIsDone)THEN
-  SWRITE(*,*) "InitTimeDisc already called."
+  SWRITE(UNIT_stdOut,'(A)') "InitTimeDisc already called."
   RETURN
 END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
+
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TIMEDISC...'
 
 ! Read max number of iterations to perform
@@ -159,6 +160,8 @@ END IF
 TimeDiscMethod = GETSTR('TimeDiscMethod','Carpenter RK4-5')
 CALL StripSpaces(TimeDiscMethod)
 CALL LowCase(TimeDiscMethod)
+
+CALL SetTimeDiscCoefs(TimeDiscMethod)
 
 SELECT CASE(TimeDiscType)
   CASE('LSERKW2')
@@ -186,8 +189,8 @@ CASE(TIMEDISC_DYNAMIC,TIMEDISC_INITIAL)
   ! Read the normalized DFL number
   DFLScale = GETREAL('DFLScale')
 #endif /*PARABOLIC*/
-  NEff=MIN(PP_N,NFilter,NUnder)
-  IF(FilterType.GT.2) NEff=PP_N!LAF,HESTHAVEN no timestep effect
+  NEff     = MIN(PP_N,NFilter,NUnder)
+  IF(FilterType.GT.2) NEff = PP_N!LAF,HESTHAVEN no timestep effect
   CALL fillCFL_DFL(NEff,PP_N)
   ! Read in minimal timestep
   dt_dynmin = GETREAL("dtmin","-1.0")
@@ -353,7 +356,6 @@ USE MOD_Indicator           ,ONLY: CalcIndicator
 #endif
 #if PP_LIMITER
 USE MOD_PPLimiter           ,ONLY: PPLimiter_Info,PPLimiter
-USE MOD_Filter_Vars         ,ONLY: DoPPLimiter
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -609,11 +611,15 @@ CASE(TIMEDISC_INITIAL,TIMEDISC_STATIC)
   scaling = 0.
   DO iElem=1,nElems
     FVE = FV_Elems(iElem)
+#if PARABOLIC
     IF (ViscousTimeStep) THEN
       scaling = MAX(scaling,dtElem(iElem)/DFLScale(FVE))
     ELSE
+#endif
       scaling = MAX(scaling,dtElem(iElem)/CFLScale(FVE))
+#if PARABOLIC
     END IF
+#endif
   END DO
 #if USE_MPI
   IF(MPIRoot)THEN
@@ -623,11 +629,15 @@ CASE(TIMEDISC_INITIAL,TIMEDISC_STATIC)
   END IF
 #endif /*USE_MPI*/
 
+#if PARABOLIC
   IF (ViscousTimeStep) THEN
-    SWRITE(UNIT_stdOut,'(A,ES16.7,A,ES16.7)')' TimeDisc   : Current DFL    : ', scaling,' , Current Timestep: ', dt_anal
+    SWRITE(UNIT_stdOut,'(A,ES15.7,A,ES15.7)')' TimeDisc   :    Current DFL     : ', scaling,' , Current Timestep: ', dt_anal
   ELSE
-    SWRITE(UNIT_stdOut,'(A,ES16.7,A,ES16.7)')' TimeDisc   : Current CFL    : ', scaling,' , Current Timestep: ', dt_anal
+#endif
+    SWRITE(UNIT_stdOut,'(A,ES15.7,A,ES15.7)')' TimeDisc   :    Current CFL     : ',scaling,' , Current Timestep: ', dt_anal
+#if PARABOLIC
   END IF
+#endif
 END SELECT
 
 ! reset dt_analmin
