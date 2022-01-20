@@ -276,6 +276,7 @@ FILE(GLOB_RECURSE flexiF90 ./src/interpolation/*.f90
                            ./src/timedisc/*.f90
                            ./src/precond/*.f90
                            ./src/implicit/*.f90
+                           ./src/areas/*.f90
                            ./src/testcase/${FLEXI_TESTCASE}/*.f90
                            # ./src/flexilib.f90
                            ./unitTests/unittest.f90
