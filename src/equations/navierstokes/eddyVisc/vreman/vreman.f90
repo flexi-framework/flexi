@@ -127,6 +127,8 @@ DO j=1,3; DO i=1,3
 END DO; END DO! i,j=1,3
 
 ! Vreman: 2.5*(CS * deltaS)**2 * SQRT(B/A) * dens
+! Check if gradients are small, since then quotient A/B tends towards 0/0, which is undefined.
+! Set mu_sgs=0 manually in this case instead. The limits here are chosen in an ad hoc manner.
 IF (B .LT. 1d-12 .OR. A .LT. 1d-5) THEN
   muSGS = 0.
 ELSE
