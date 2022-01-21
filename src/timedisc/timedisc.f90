@@ -168,6 +168,7 @@ DO
   ! Update time step
   CALL UpdateTimeStep()
 
+  IF(doCalcTimeAverage) CALL CalcTimeAverage(.FALSE.,dt,t)
   IF(doTCSource)        CALL CalcForcing(t,dt)
 
   !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -177,8 +178,6 @@ DO
   iter         = iter         + 1
   iter_analyze = iter_analyze + 1
   t            = t            + dt
-
-  IF(doCalcTimeAverage) CALL CalcTimeAverage(.FALSE.,dt,t)
 
   ! Perform analysis at the end of the RK loop
   CALL AnalyzeTimeStep()
