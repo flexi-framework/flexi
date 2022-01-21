@@ -24,10 +24,13 @@ SAVE
 ! PARAMETER DEFINITONS
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-INTEGER,PARAMETER :: SHAPE_RAMP         = 1
-INTEGER,PARAMETER :: SHAPE_CYLINDRICAL  = 2
-INTEGER,PARAMETER :: SHAPE_CUBOID       = 3
-INTEGER,PARAMETER :: SHAPE_POLYGON      = 4
+INTEGER,PARAMETER :: SHAPE_REGION                 = 1
+INTEGER,PARAMETER :: SHAPE_CYLINDRICAL_OUTER      = 2
+INTEGER,PARAMETER :: SHAPE_CYLINDRICAL_INNER      = 3
+INTEGER,PARAMETER :: SHAPE_SPHERE                 = 4
+INTEGER,PARAMETER :: SHAPE_CUBE_CARTESIAN         = 5
+INTEGER,PARAMETER :: SHAPE_CUBOID_CARTESIAN       = 6
+INTEGER,PARAMETER :: SHAPE_POLYGON                = 7
 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! TYPE DEFINITONS
@@ -36,14 +39,13 @@ INTEGER,PARAMETER :: SHAPE_POLYGON      = 4
 ! Type used for general shape definition
 TYPE tShape
   SEQUENCE
-  REAL                                    :: xStart(3)           = 0.    !< Starting Point for Area Ramp
-  REAL                                    :: xEnd(3)             = 0.    !< End Point of Cuboit
-  REAL                                    :: ArVec(3)            = 0.    !< Vector defining the ramp direction
-  REAL                                    :: cubeoidCenter(3)    = 0.    !< Center of catresian aligned cube
-  REAL                                    :: ArDistance          = 0.    !< Distance of the area
-  REAL                                    :: ArRadius            = 0.    !< Radius of the cylindrical (3D) / radial (2D) Area
+  REAL                                    :: xStart(3)           = 0.    !< Starting Point
+  REAL                                    :: xEnd(3)             = 0.    !< End Point
+  REAL                                    :: xCenter(3)          = 0.    !< Center point
+  REAL                                    :: Vec(3)              = 0.    !< Vector defining the ramp direction
+  REAL                                    :: Radius              = 0.    !< Radius of the cylindrical (3D) / radial (2D) Area
 #if(PP_dim==3)
-  REAL                                    :: ArAxis(3)           = 0.    !< Axis of the cylindrical Area (only 3D)
+  REAL                                    :: Axis(3)             = 0.    !< Axis of the cylindrical Area (only 3D)
 #endif
   INTEGER                                 :: nAreaVertices       = 0.    !< Number of Vertices for each polygon Area
   REAL,ALLOCATABLE                        :: AreaVertex(:,:)             !< Vertices defining polygon Area region

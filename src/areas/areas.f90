@@ -14,9 +14,7 @@
 #include "flexi.h"
 
 !==================================================================================================================================
-!> Subroutines for applying a Area layer to the solution, to reduce reflections at the boundaries.
-!> This is done by forcing the solution towards a previously known state, the baseflow state.
-!> The forcing is applied within the Area region, where the forcing strength is increased till the end of the region.
+!> Subroutines for creating arbitrary areas in FLEXI and flaging elements inside the area
 !==================================================================================================================================
 MODULE MOD_Areas
 ! MODULES
@@ -70,7 +68,10 @@ LOGICAL                                 :: applyArea(nElems)
 CHARACTER(LEN=255)                      :: StrTmp
 INTEGER                                 :: i,j,k,iAreaElem,iElem,iVertex
 REAL,DIMENSION(  0:PP_N,0:PP_N,0:PP_NZ) :: x_star
-REAL                                    :: r_vec(PP_dim)
+REAL                                    :: r_vec(PP_dim),c_pt(PP_dim),dist
+#if PP_dim==3
+REAL                                    :: t_min
+#endif
 LOGICAL                                 :: applyPolygonArea
 !===================================================================================================================================
 ! A new area is created, increase the number of considered areas and add to array
@@ -98,32 +99,58 @@ locShape => locArea%Shape
 
 ! Readin of geometrical parameters for different Area shapes
 SELECT CASE(locArea%AreaShape)
-  CASE(SHAPE_RAMP) ! ramp aligned with a vector
-    locShape%ArVec(:) = GETREALARRAY(TRIM(locArea%AreaStr)//'Dir',3,'(/1.,0.,0./)')
-    locShape%xStart(:)    = GETREALARRAY(TRIM(locArea%AreaStr)//'XStart',3,'(/0.,0.,0./)')
+  CASE(SHAPE_REGION) ! ramp aligned with a vector
+    locShape%Vec(:)    = GETREALARRAY(TRIM(locArea%AreaStr)//'Dir',3,'(/1.,0.,0./)')
+    locShape%xStart(:) = GETREALARRAY(TRIM(locArea%AreaStr)//'XStart',3,'(/0.,0.,0./)')
     ! FLEXI normally stores REAL with KIND8. However, we must be able to perform arithmetic operations on locShape%xEnd, so only use KIND4
     WRITE(StrTmp,'(A,E15.7,A,E15.7,A,E15.7,A)') '(/',HUGE(REAL(1.,KIND=4)),',',HUGE(REAL(1.,KIND=4)),',',HUGE(REAL(1.,KIND=4)),'/)'
-    locShape%xEnd(:) = GETREALARRAY(TRIM(locArea%AreaStr)//'XEnd',3,StrTmp)
-    ! Readin of the area thickness
-    locShape%ArDistance = GETREAL(TRIM(locArea%AreaStr)//'Distance')
+    locShape%xEnd(:)   = GETREALARRAY(TRIM(locArea%AreaStr)//'XEnd',3,StrTmp)
 #if PP_dim==2
-    IF(locShape%ArVec(3).NE.0) &
+    IF(locShape%Vec(3).NE.0) &
       CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set '//TRIM(locArea%AreaStr)//'Dir'//'(3) = 0!')
 #endif
-    locShape%ArVec(:) = locShape%ArVec(:)/SQRT(DOT_PRODUCT(locShape%ArVec(:),locShape%ArVec(:))) ! Normalize locShape%ArVec
+    locShape%Vec(:) = locShape%Vec(:)/SQRT(DOT_PRODUCT(locShape%Vec(:),locShape%Vec(:))) ! Normalize locShape%Vec
 
-  CASE(SHAPE_CUBOID)
-    locShape%xStart(:) = GETREALARRAY(TRIM(locArea%AreaStr)//'XStart',3,'(/0.,0.,0./)')
-    locShape%xEnd (:)  = GETREALARRAY(TRIM(locArea%AreaStr)//'XEnd',  3,'(/0.,0.,0./)')
-    locShape%cubeoidCenter(:) = (locShape%xStart(1:PP_dim)+locShape%xEnd(1:PP_dim))/2.
+  CASE(SHAPE_CUBOID_CARTESIAN)
+    locShape%xStart(:)  = GETREALARRAY(TRIM(locArea%AreaStr)//'XStart',3,'(/0.,0.,0./)')
+    locShape%xEnd (:)   = GETREALARRAY(TRIM(locArea%AreaStr)//'XEnd',  3,'(/0.,0.,0./)')
+    locShape%xCenter(:) = (locShape%xStart(1:PP_dim)+locShape%xEnd(1:PP_dim))/2.
 
-  CASE(SHAPE_CYLINDRICAL) ! circular Area
-    locShape%ArRadius   = GETREAL(TRIM(locArea%AreaStr)//'Radius')
-    ! Readin of the area thickness
-    locShape%ArDistance = GETREAL(TRIM(locArea%AreaStr)//'Distance')
+  CASE(SHAPE_CUBE_CARTESIAN) ! cube
+    locShape%xCenter(:) = GETREALARRAY(TRIM(locArea%AreaStr)//'XCenter',3,'(/0.,0.,0./)')
+    locShape%Radius     = GETREAL(TRIM(locArea%AreaStr)//'Radius')
+    locShape%xStart(:)  = locShape%xCenter(:)-locShape%Radius
+    locShape%xEnd(:)    = locShape%xCenter(:)+locShape%Radius
+
+  CASE(SHAPE_CYLINDRICAL_OUTER) ! circular Area
+    IF (locShape%Radius.EQ.0.) &
+      locShape%Radius     = GETREAL(TRIM(locArea%AreaStr)//'Radius')
 #if PP_dim==3
-    locShape%ArAxis(:)  = GETREALARRAY(TRIM(locArea%AreaStr)//'Axis',3,'(/0.,0.,1./)')
+    locShape%xStart(:)  = GETREALARRAY(TRIM(locArea%AreaStr)//'XStart',3,'(/0.,0.,0./)')
+    locShape%Axis(:)    = GETREALARRAY(TRIM(locArea%AreaStr)//'Axis',3,'(/0.,0.,1./)')
+    locShape%xEnd(:)    = locShape%xStart(:)+locShape%Axis(:)
+    locShape%xCenter(:) = (locShape%xStart(:)+locShape%xEnd(:))/2.
+#else
+    locShape%xCenter(:) = GETREALARRAY(TRIM(locArea%AreaStr)//'XCenter',3,'(/0.,0.,0./)')
 #endif
+
+  CASE(SHAPE_CYLINDRICAL_INNER) ! circular Area
+    IF (locShape%Radius.EQ.0.) &
+      locShape%Radius     = GETREAL(TRIM(locArea%AreaStr)//'Radius')
+#if PP_dim==3
+    locShape%xStart(:)  = GETREALARRAY(TRIM(locArea%AreaStr)//'XStart',3,'(/0.,0.,0./)')
+    locShape%xEnd(:)    = GETREALARRAY(TRIM(locArea%AreaStr)//'XEnd',3,'(/0.,0.,0./)')
+    locShape%Axis(:)    = locShape%xEnd(:)-locShape%xStart(:)
+    locShape%xCenter(:) = (locShape%xStart(:)+locShape%xEnd(:))/2.
+#else
+    locShape% Center(:) = GETREALARRAY(TRIM(locArea%AreaStr)//'XCenter',3,'(/0.,0.,0./)')
+#endif
+
+  CASE(SHAPE_SPHERE) ! sphere
+    IF (locShape%Radius.EQ.0.) &
+      locShape%Radius     = GETREAL(TRIM(locArea%AreaStr)//'Radius')
+    locShape%xCenter(:) = GETREALARRAY(TRIM(locArea%AreaStr)//'XCenter',3,'(/0.,0.,0./)')
+
   CASE(SHAPE_POLYGON) ! Polygone Area
     locShape%nAreaVertices = GETINT('n'//TRIM(locArea%AreaStr)//'Vertices')
 END SELECT
@@ -142,28 +169,63 @@ DO iElem=1,nElems
   x_star=0.
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     SELECT CASE(locArea%AreaShape)
-      CASE(SHAPE_RAMP) ! ramp aligned with a vector
-        ! Region between locShape%xStart and locShape%xEnd
-        IF (SUM((Elem_xGP(1:PP_dim,i,j,k,iElem)-locShape%xStart  (1:PP_dim))      *locShape%ArVec(1:PP_dim)).GE.0 .AND. &
-            SUM((locShape%xEnd    (1:PP_dim)      -Elem_xGP(1:PP_dim,i,j,k,iElem))*locShape%ArVec(1:PP_dim)).GE.0) THEN
-              x_star(i,j,k) = SUM((Elem_xGP(1:PP_dim,i,j,k,iElem)-locShape%xStart(1:PP_dim))*locShape%ArVec(1:PP_dim))/locShape%ArDistance
+      CASE(SHAPE_REGION) ! ramp aligned with a vector
+        ! Region between xStart and xEnd
+        IF (SUM((Elem_xGP(1:PP_dim,i,j,k,iElem)-locShape%xStart  (1:PP_dim))   *locShape%Vec(1:PP_dim)).GE.0 .AND. &
+            SUM((locShape%xEnd    (1:PP_dim)   -Elem_xGP(1:PP_dim,i,j,k,iElem))*locShape%Vec(1:PP_dim)).GE.0) THEN
+              x_star(i,j,k) = SUM((Elem_xGP(1:PP_dim,i,j,k,iElem)-locShape%xStart(1:PP_dim))*locShape%Vec(1:PP_dim))
         END IF
 
-      CASE(SHAPE_CUBOID) ! cuboid cartesian aligned defined by two points
-        IF(ABS(Elem_xGP(1,i,j,k,iElem)-locShape%cubeoidCenter(1)).LT.ABS(locShape%xStart(1)-locShape%cubeoidCenter(1))) THEN
-          IF(ABS(Elem_xGP(2,i,j,k,iElem)-locShape%cubeoidCenter(2)).LT.ABS(locShape%xStart(2)-locShape%cubeoidCenter(2))) THEN
-            IF(ABS(Elem_xGP(3,i,j,k,iElem)-locShape%cubeoidCenter(3)).LT.ABS(locShape%xStart(3)-locShape%cubeoidCenter(3))) THEN
+      CASE(SHAPE_CUBOID_CARTESIAN) ! cuboid cartesian aligned defined by two points
+        IF(ABS(Elem_xGP(1,i,j,k,iElem)-locShape%xCenter(1)).LT.ABS(locShape%xStart(1)-locShape%xCenter(1))) THEN
+          IF(ABS(Elem_xGP(2,i,j,k,iElem)-locShape%xCenter(2)).LT.ABS(locShape%xStart(2)-locShape%xCenter(2))) THEN
+            IF(ABS(Elem_xGP(3,i,j,k,iElem)-locShape%xCenter(3)).LT.ABS(locShape%xStart(3)-locShape%xCenter(3))) THEN
               x_star(i,j,k) = 1.
             END IF
           END IF
         END IF
 
-      CASE(SHAPE_CYLINDRICAL) ! cylindrical Area
-        r_vec(:) = Elem_xGP(:,i,j,k,iElem)-locShape%xStart(1:PP_dim)
+      CASE(SHAPE_CUBE_CARTESIAN) ! cartesian cube
+        IF(ABS(Elem_xGP(1,i,j,k,iElem)-locShape%xCenter(1)).LT.ABS(locShape%Radius-locShape%xCenter(1))) THEN
+          IF(ABS(Elem_xGP(2,i,j,k,iElem)-locShape%xCenter(2)).LT.ABS(locShape%Radius-locShape%xCenter(2))) THEN
+            IF(ABS(Elem_xGP(3,i,j,k,iElem)-locShape%xCenter(3)).LT.ABS(locShape%Radius-locShape%xCenter(3))) THEN
+              x_star(i,j,k) = 1.
+            END IF
+          END IF
+        END IF
+
+!       CASE(SHAPE_CYLINDRICAL_OUTER) ! cylindrical outer area
+!         r_vec(:) = Elem_xGP(:,i,j,k,iElem)-locShape%xStart(1:PP_dim)
+! #if(PP_dim==3)
+!         r_vec    = r_vec - SUM((Elem_xGP(:,i,j,k,iElem)-locShape%xStart(:))*locShape%Axis(:))*locShape%Axis(:)
+! #endif
+!         x_star(i,j,k) = (SQRT(SUM(r_vec*r_vec))-locShape%Radius)
+
+      CASE(SHAPE_CYLINDRICAL_INNER,SHAPE_CYLINDRICAL_OUTER) ! cylindrical inner area
 #if(PP_dim==3)
-        r_vec    = r_vec - SUM((Elem_xGP(:,i,j,k,iElem)-locShape%xStart(:))*locShape%ArAxis(:))*locShape%ArAxis(:)
+        r_vec = locShape%xEnd(1:PP_dim)-locShape%xStart(1:PP_dim)
+        t_min = (DOT_PRODUCT(Elem_xGP(1:PP_dim,i,j,k,iElem),r_vec)-DOT_PRODUCT(locShape%xStart(1:PP_dim),r_vec))/DOT_PRODUCT(r_vec,r_vec)
+        c_pt  = locShape%xStart(1:PP_dim) + t_min*r_vec
+#else
+        c_pt  = locShape%xCenter(1:PP_dim)
 #endif
-        x_star(i,j,k) = (SQRT(SUM(r_vec*r_vec))-locShape%ArRadius)/locShape%ArDistance
+        dist  = SQRT(DOT_PRODUCT(c_pt-Elem_xGP(1:PP_dim,i,j,k,iElem),c_pt-Elem_xGP(1:PP_dim,i,j,k,iElem)))
+        SELECT CASE(SHAPE_REGION)
+          CASE(SHAPE_CYLINDRICAL_INNER)
+            IF (dist.LT.locShape%Radius) THEN
+              x_star(i,j,k) = 1.
+            END IF
+          CASE(SHAPE_CYLINDRICAL_OUTER)
+            IF (dist.GT.locShape%Radius) THEN
+              x_star(i,j,k) = 1.
+            END IF
+        END SELECT
+
+      CASE(SHAPE_SPHERE) ! sphere
+        IF(((Elem_xGP(1,i,j,k,iElem)-locShape%xCenter(1))**2.+(Elem_xGP(2,i,j,k,iElem)-locShape%xCenter(2))**2. + &
+            (Elem_xGP(3,i,j,k,iElem)-locShape%xCenter(3))**2.).LT.locShape%Radius**2.) THEN
+          x_star(i,j,k) = 1.
+        END IF
 
       CASE(SHAPE_POLYGON)
         applyPolygonArea = .FALSE.
