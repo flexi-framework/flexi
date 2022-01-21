@@ -226,7 +226,7 @@ USE MOD_CalcTimeStep        ,ONLY: CalcTimeStep
 USE MOD_HDF5_Output         ,ONLY: WriteState
 USE MOD_Mesh_Vars           ,ONLY: MeshFile
 USE MOD_TimeDisc_Vars       ,ONLY: t,tAnalyze,tEnd,dt,dt_min,dt_minOld
-USE MOD_TimeDisc_Vars       ,ONLY: iter,maxIter,nCalcTimeStep,nCalcTimeStepMax
+USE MOD_TimeDisc_Vars       ,ONLY: nCalcTimeStep,nCalcTimeStepMax
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -269,11 +269,6 @@ IF(dt_min(DT_ANALYZE)-dt.LT.dt/100.0 .AND. dt_min(DT_ANALYZE).GT.0) THEN; dt = d
 ! Increase time step if the LAST time step would be smaller than dt/100
 IF(    dt_min(DT_END)-dt.LT.dt/100.0 .AND. dt_min(DT_END    ).GT.0) THEN; dt = dt_min(DT_END)    ; doAnalyze  = .TRUE.; doFinalize = .TRUE.; END IF
 
-IF (iter.EQ.maxIter) THEN
-  tEnd=t; tAnalyze=t; tWriteData=t
-  doAnalyze=.TRUE.; doFinalize=.TRUE.
-END IF
-
 END SUBROUTINE UpdateTimeStep
 
 
@@ -300,7 +295,7 @@ USE MOD_TestCase            ,ONLY: AnalyzeTestCase
 USE MOD_TestCase_Vars       ,ONLY: nAnalyzeTestCase
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
 USE MOD_TimeDisc_Vars       ,ONLY: t,dt,dt_min,tAnalyze,tEnd,CalcTimeStart
-USE MOD_TimeDisc_Vars       ,ONLY: iter,iter_analyze
+USE MOD_TimeDisc_Vars       ,ONLY: iter,iter_analyze,maxIter
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize,writeCounter
 #if FV_ENABLED
 USE MOD_FV                  ,ONLY: FV_Info,FV_Switch
@@ -317,6 +312,11 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
+
+IF (iter.EQ.maxIter) THEN
+  tEnd=t; tAnalyze=t; tWriteData=t
+  doAnalyze=.TRUE.; doFinalize=.TRUE.
+END IF
 
 ! Call DG operator to fill face data, fluxes, gradients for analyze
 IF (doAnalyze) THEN
