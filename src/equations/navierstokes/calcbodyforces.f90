@@ -140,13 +140,13 @@ USE MOD_Analyze_Vars, ONLY:wGPSurf
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL, INTENT(IN)               :: UPrim_Face( PP_nVarPrim,0:PP_N,0:PP_NZ) !< (IN) primitive solution on face
-REAL, INTENT(IN)               :: gradUx_Face(PP_nVarPrim,0:PP_N,0:PP_NZ) !< (IN) sln. gradients x-dir on face
-REAL, INTENT(IN)               :: gradUy_Face(PP_nVarPrim,0:PP_N,0:PP_NZ) !< (IN) sln. gradients y-dir on face
-REAL, INTENT(IN)               :: gradUz_Face(PP_nVarPrim,0:PP_N,0:PP_NZ) !< (IN) sln. gradients z-dir on face
-REAL, INTENT(IN)               :: SurfElem(0:PP_N,0:PP_NZ)                !< (IN) face surface
-REAL, INTENT(IN)               :: NormVec(3,0:PP_N,0:PP_NZ)               !< (IN) face normal vectors
-REAL, INTENT(OUT)              :: Fv(3)                                  !< (OUT) integrated pressure force
+REAL, INTENT(IN)               :: UPrim_Face( PP_nVarPrim,0:PP_N,0:PP_NZ)    !< (IN) primitive solution on face
+REAL, INTENT(IN)               :: gradUx_Face(PP_nVarLifting,0:PP_N,0:PP_NZ) !< (IN) sln. gradients x-dir on face
+REAL, INTENT(IN)               :: gradUy_Face(PP_nVarLifting,0:PP_N,0:PP_NZ) !< (IN) sln. gradients y-dir on face
+REAL, INTENT(IN)               :: gradUz_Face(PP_nVarLifting,0:PP_N,0:PP_NZ) !< (IN) sln. gradients z-dir on face
+REAL, INTENT(IN)               :: SurfElem(0:PP_N,0:PP_NZ)                   !< (IN) face surface
+REAL, INTENT(IN)               :: NormVec(3,0:PP_N,0:PP_NZ)                  !< (IN) face normal vectors
+REAL, INTENT(OUT)              :: Fv(3)                                      !< (OUT) integrated pressure force
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                           :: tau(3,3)                  ! Viscous stress tensor
