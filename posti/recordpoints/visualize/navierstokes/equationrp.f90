@@ -333,7 +333,8 @@ INTEGER              :: iPlane,i,j,iSample,iVec
 REAL                 :: Tmat(3,3)
 TYPE(tPlane),POINTER :: Plane
 !===================================================================================================================================
-WRITE(UNIT_stdOut,'(A)')" coordinate transform of velocity along Plane coordinates.."
+
+WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')" Coordinate transform of velocity along Plane coordinates..."
 DO iPlane=1,nPlanes
   Plane=>Planes(iPlane)
   IF(Plane%Type.EQ.2) THEN ! BLPlane
@@ -366,6 +367,7 @@ DO iPlane=1,nPlanes
   END IF!(Plane%Type.EQ.2) THEN ! BLPlane
 END DO !iPlane
 WRITE(UNIT_stdOut,'(A)')" done!"
+
 END SUBROUTINE Plane_TransformVel
 
 !===================================================================================================================================
@@ -397,26 +399,13 @@ DO iBox=1,nBoxes
   IF(Box%Type.EQ.1) THEN ! BLBox
     DO i=1,Box%nRP(1)
       DO k=1,Box%nRP(3)
-        ! Standard Box orientation
-        IF (.NOT.Box%Ortho) THEN
-          ! T1= tangential vector
-          Tmat(1,1:3) = Box%TangVec(:,i,k)
-          ! T2= normalized Line Vector
-          Tmat(2,1:3) = Box%NormVec(:,i,k)
-          ! T3= crossprod to guarantee right hand system
-          Tmat(3,1:3) = CROSS(Tmat(1,1:3),Tmat(2,1:3))
-          Tmat(3,1:3) = Tmat(3,:)/NORM2(Tmat(3,:))
-        ! Box stands orthogonal to flow direction
-        ELSE
-          ! T3= tangential vector
-          Tmat(3,1:3) = Box%TangVec(:,i,k)
-          ! T2= normalized Line Vector
-          Tmat(2,1:3) = Box%NormVec(:,i,k)
-          ! T1= crossprod to guarantee right hand system
-          Tmat(1,1:3) = CROSS(Tmat(3,1:3),Tmat(2,1:3))
-          Tmat(1,1:3) = Tmat(1,:)/NORM2(Tmat(1,:))
-        END IF
-
+        ! T1= tangential vector
+        Tmat(1,1:3) = Box%TangVec(:,i,k)
+        ! T2= normalized Line Vector
+        Tmat(2,1:3) = Box%NormVec(:,i,k)
+        ! T3= crossprod to guarantee right hand system
+        Tmat(3,1:3) = CROSS(Tmat(1,1:3),Tmat(2,1:3))
+        Tmat(3,1:3) = Tmat(3,:)/NORM2(Tmat(3,:))
         DO iVec=1,nVecTrans
           IF(.NOT.is2D(iVec))THEN
             DO j=1,Box%nRP(2)
@@ -463,13 +452,14 @@ TYPE(tPlane),POINTER :: Plane
 
 WRITE(UNIT_stdOut,'(A)')" Calculate integral boundary layer properties for planes"
 SELECT CASE(Plane_BLvelScaling)
-CASE(0) ! do nothing
-WRITE(UNIT_stdOut,'(A)')" Velocity profiles are not scaled."
-CASE(1) ! laminar scaling
-WRITE(UNIT_stdOut,'(A)')" Velocity profiles are scaled with boundary layer edge velocity, PlaneY with BL thickness."
-CASE(2) ! turbulent scaling
-WRITE(UNIT_stdOut,'(A)')" Velocity profiles and PlaneY are scaled with friction velocity (= u+ over y+)."
+  CASE(0) ! do nothing
+    WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')" Velocity profiles are not scaled."
+  CASE(1) ! laminar scaling
+    WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')" Velocity profiles are scaled with boundary layer edge velocity, PlaneY with BL thickness."
+  CASE(2) ! turbulent scaling
+    WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')" Velocity profiles and PlaneY are scaled with friction velocity (= u+ over y+)."
 END SELECT
+
 DO iPlane=1,nPlanes
   Plane=>Planes(iPlane)
   IF(Plane%Type.EQ.2) THEN ! BLPlane
@@ -712,7 +702,8 @@ IMPLICIT NONE
 !===================================================================================================================================
 SDEALLOCATE(TransMap)
 SDEALLOCATE(is2D)
-WRITE(UNIT_stdOut,'(A)') '  EquationRP FINALIZED'
+WRITE(UNIT_stdOut,'(A)') ' EquationRP FINALIZED'
+
 END SUBROUTINE FinalizeEquationRP
 
 END MODULE MOD_EquationRP

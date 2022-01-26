@@ -63,7 +63,6 @@ TYPE tBox  !< Type used to organize a box set
   CHARACTER(LEN=255)            :: Name                    !< Name of the box
   INTEGER                       :: GroupID                 !< ID of the group the box belongs to
   INTEGER                       :: Type=0                  !< 0 - standard, 1 - sphere, 2 - BLPlane
-  LOGICAL                       :: Ortho=.FALSE.           !< BLPlane is orthogonal to flow velocity
   INTEGER                       :: nRP(3)                  !< Number of RPs in the two plane directions
   INTEGER,ALLOCATABLE           :: IDlist(:,:,:)           !< List of IDs of the RPs that make up the box
   REAL,ALLOCATABLE              :: NormVec(:,:,:)          !< Normal vector

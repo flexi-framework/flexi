@@ -25,7 +25,7 @@ PROGRAM postrec
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Commandline_Arguments
-USE MOD_StringTools                 ,ONLY:STRICMP, GetFileExtension
+USE MOD_StringTools                 ,ONLY:STRICMP,GetFileExtension
 USE MOD_ReadInTools                 ,ONLY:prms,PrintDefaultParameterFile
 USE MOD_ParametersVisu              ,ONLY:equiTimeSpacing,doSpec,doFluctuations,doTurb,doFilter,doEnsemble
 USE MOD_ParametersVisu              ,ONLY:Plane_doBLProps,Box_doBLProps
@@ -266,22 +266,24 @@ Projectname=GETSTR('ProjectName')
 ! =============================================================================== !
 ! RP INFO
 ! =============================================================================== !
+
 nGroups_visu=CountOption('GroupName')
+
 ALLOCATE(GroupNames_visu(nGroups_visu))
+
 DO iGroup=1,nGroups_visu
-  GroupNames_visu(iGroup)=GETSTR('Groupname','none')
+  GroupNames_visu(iGroup) = GETSTR('Groupname','none')
 END DO
-RP_SET_defined=.FALSE.
-RP_DefFile=GETSTR('RP_DefFile','none')
-IF(TRIM(RP_defFile).NE.'none') THEN
-  RP_SET_defined=.TRUE.
-END IF
+
+RP_SET_defined = .FALSE.
+RP_DefFile     = GETSTR('RP_DefFile','none')
+IF(TRIM(RP_defFile).NE.'none') RP_SET_defined=.TRUE.
 
 ! use primitive variables for derived quantities if they exist in the state file
-usePrims=GETLOGICAL('usePrims','.FALSE.')
+usePrims  = GETLOGICAL('usePrims','.FALSE.')
 
 ! rescale RPs if required
-meshScale=GETREAL('meshScale','1.')
+meshScale = GETREAL('meshScale','1.')
 
 ! =============================================================================== !
 ! TIME INTERVAL

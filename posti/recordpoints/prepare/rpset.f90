@@ -228,7 +228,7 @@ IF(nLines.GT.0) THEN
     END DO ! iP
   END DO ! iLine
 ! custom Lines
-  DO iLine=nlinLines+nCircles+1,nLines
+  DO iLine=nlinLines+nCircles+1,nlinLines+nCircles+nCustomLines
     aLine=>Lines(iLine)
     aLine%GroupID=GETINT('CustomLine_GroupID')
     WRITE(aLine%Name,'(A11,I6.6)')'CustomLine_',iLine
@@ -334,7 +334,7 @@ IF(nPlanes.GT.0) THEN
   END DO ! iPlane
 
 ! BL planes
-  DO iPlane=nPlanes-nBLPlanes+1,nPlanes
+  DO iPlane=nFlatplanes+nSphericPlanes+1,nFlatplanes+nSphericPlanes+nBLPlanes
     Plane=>Planes(iPlane)
     Plane%GroupID=GETINT('BLPlane_GroupID')
     WRITE(Plane%Name,'(A5,I6.6)')'BLPlane_',iPlane

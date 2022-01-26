@@ -83,7 +83,7 @@ END IF
 #endif /*MPI*/
 WRITE(UNIT_stdOut,'(132("-"))')
 WRITE(UNIT_stdOut,'(A)') ' INIT RECORDPOINT SET...'
-WRITE(UNIT_stdOut,'(A)')' Read recordpoint definitions from data file "'//TRIM(RP_DefFile_in)//'" ...'
+WRITE(UNIT_stdOut,'(A)')' Read recordpoint definitions from data file "'//TRIM(RP_DefFile_in)//'"...'
 
 ! Open data file
 CALL OpenDataFile(RP_DefFile_in,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
@@ -95,27 +95,27 @@ DEALLOCATE(HSize)
 ALLOCATE(GroupNames(1:nGroups))
 CALL ReadArray(TRIM('GroupNames'),1,(/nGroups/),0,1,StrArray=GroupNames)
 
-
 ! generate output map for groups
 ALLOCATE(OutputGroup(nGroups))
 IF(nGroups_visu.LT.1) THEN
-  OutputGroup=.TRUE.
+  OutputGroup    = .TRUE.
 ELSE
-  found(:)=.FALSE.
-  OutputGroup=.FALSE.
-  DO iGr1=1,nGroups
-    DO iGr2=1,nGroups_visu
-      IF(TRIM(GroupNames(iGr1)).EQ.TRIM(GroupNames_visu(iGr2)))THEN
-        OutputGroup(iGr1)=.TRUE.
-        found(iGr2)=.TRUE.
+  found(:)    = .FALSE.
+  OutputGroup = .FALSE.
+  DO iGr1 = 1,nGroups
+    DO iGr2 = 1,nGroups_visu
+      IF (TRIM(GroupNames(iGr1)).EQ.TRIM(GroupNames_visu(iGr2))) THEN
+        OutputGroup(iGr1) = .TRUE.
+        found(iGr2)       = .TRUE.
       END IF
-    END DO
-  END DO !iGr1
-  IF(.NOT.ALL(found)) THEN
-    WRITE(UNIT_stdOut,'(A)') 'One or more of the required Groups are not in this RPSet file!'; STOP
+    END DO ! iGr2
+  END DO ! iGr1
+  IF (.NOT.ALL(found)) THEN
+    WRITE(UNIT_stdOut,'(A)') 'One or more of the required Groups are not in this RPSet file!'
+    STOP
   END IF
-END IF! (nGroups_visu.LT.1)
-nRP_output=0
+END IF ! (nGroups_visu.LT.1)
+nRP_output = 0
 
 ! Readin coordinates
 CALL GetDataSize(File_ID,'xF_RP',nDims,HSize)
@@ -248,8 +248,8 @@ IF(DSexists) THEN
   DO iPlane=1,nPlanes_tmp
     Plane=>Planes_tmp(iPlane)
     IF(OutputGroup(Plane%GroupID)) THEN
-      iPlane2=iPlane2+1
-      Planes(iPlane2)=Planes_tmp(iPlane)
+      iPlane2               = iPlane2+1
+      Planes(iPlane2)       = Planes_tmp(iPlane)
     END IF
   END DO
   DEALLOCATE(Planes_tmp)
@@ -302,8 +302,6 @@ IF(DSexists) THEN
     IF(OutputGroup(Box%GroupID)) THEN
       iBox2               = iBox2+1
       Boxes(iBox2)        = Boxes_tmp(iBox)
-      ! Flag if the Box stands orthogonal
-      Boxes(iBox2)%Ortho = OutputOrtho(Box%GroupID)
     END IF
   END DO
   DEALLOCATE(Boxes_tmp)
