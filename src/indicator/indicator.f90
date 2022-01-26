@@ -373,18 +373,19 @@ USE MOD_FV_Vars            ,ONLY: FV_Elems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)    :: gradUx(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)   !< Gradients in x-direction
-REAL,INTENT(IN)    :: gradUy(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)   !< Gradients in x-direction
-REAL,INTENT(IN)    :: gradUz(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)   !< Gradients in x-direction
-REAL               :: IndValue(1:nElems)                                  !< Value of the indicator (Return Value)
+REAL,INTENT(IN)    :: gradUx(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)   !< Gradients in x-direction
+REAL,INTENT(IN)    :: gradUy(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)   !< Gradients in x-direction
+REAL,INTENT(IN)    :: gradUz(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)   !< Gradients in x-direction
+REAL               :: IndValue(1:nElems)                                      !< Value of the indicator (Return Value)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: i,j,k,iElem
-REAL    :: VorticityLoc(3),Vorticity2,IntegrationWeight
-REAL    :: divV2
+INTEGER            :: i,j,k,iElem
+REAL               :: VorticityLoc(3),Vorticity2,ElemVol,IntegrationWeight
+REAL               :: divV2
 !==================================================================================================================================
 DO iElem=1,nElems
-  IndValue = 0.
+  ElemVol = 0.0
+  IndValue(iElem) = 0.
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
 #if PP_dim==3
       VorticityLoc(1)=gradUy(LIFT_VEL3,i,j,k,iElem)-gradUz(LIFT_VEL2,i,j,k,iElem)  ! dw/dy-dv/dz
@@ -402,14 +403,13 @@ DO iElem=1,nElems
       divV2 = (gradUx(LIFT_VEL1,i,j,k,iElem) + gradUy(LIFT_VEL2,i,j,k,iElem))**2
 #endif
 
-      IntegrationWeight=wGPVol(i,j,k)/sJ(i,j,k,iElem,FV_Elems(iElem))
+      IntegrationWeight = wGPVol(i,j,k)/sJ(i,j,k,iElem,FV_Elems(iElem))
+      ElemVol = ElemVol + IntegrationWeight
       IF (Vorticity2.LT.100) Vorticity2 = 0.
-      IF (divV2.LT.100) divV2 = 0.
-      IndValue = IndValue + divV2 /(divV2 + Vorticity2 + 1e-15)* IntegrationWeight
-      !IndValue = IndValue + divV2 * IntegrationWeight
-      !IndValue = IndValue + Vorticity2 * IntegrationWeight
+      IF (divV2.LT.100) CYCLE
+      IndValue(iElem) = IndValue(iElem) + divV2 / (divV2 + Vorticity2) * IntegrationWeight
   END DO; END DO; END DO
-  !IndValue = (EXP(IndValue/ElemVol)-EXP(0.))/(EXP(1.)-EXP(0.))
+  IndValue(iElem) = IndValue(iElem)/ElemVol
 END DO ! iElem
 
 END FUNCTION DucrosIndicator

@@ -168,6 +168,9 @@ DO
   ! Update time step
   CALL UpdateTimeStep()
 
+  IF(doCalcTimeAverage) CALL CalcTimeAverage(.FALSE.,dt,t)
+  IF(doTCSource)        CALL CalcForcing(t,dt)
+
   !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   ! Perform Timestep using a global time stepping routine, attention: only RK3 has time dependent BC
   !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -175,9 +178,6 @@ DO
   iter         = iter         + 1
   iter_analyze = iter_analyze + 1
   t            = t            + dt
-
-  IF(doCalcTimeAverage) CALL CalcTimeAverage(.FALSE.,dt,t)
-  IF(doTCSource)        CALL CalcForcing(t,dt)
 
   ! Perform analysis at the end of the RK loop
   CALL AnalyzeTimeStep()
