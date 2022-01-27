@@ -12,6 +12,7 @@ CMAKE_DEPENDENT_OPTION(POSTI_SWAPMESH              "Build the Swapmesh tool"    
 CMAKE_DEPENDENT_OPTION(POSTI_CHANNEL_FFT           "Build the channel FFT tool"                         OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_WALLDISTANCE          "Build the walldistance tool"                        OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_TO3D                  "Build the 3D extrusion tool"                        OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_TODG                  "Build the DG conversion tool"                       OFF "POSTI;FLEXI_FV" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_AVG2D                 "Build the 2D average tool"                          OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_HIT_INIT              "Build the HIT initialization tool"                  OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_HIT_FILTER            "Build the HIT spectral filter tool"                 OFF "POSTI" OFF)
@@ -127,6 +128,10 @@ ENDIF()
 
 IF(POSTI_TO3D)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/to3D/CMakeLists.txt)
+ENDIF()
+
+IF(POSTI_TODG)
+  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/toDG/CMakeLists.txt)
 ENDIF()
 
 IF(POSTI_AVG2D)
