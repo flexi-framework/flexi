@@ -37,12 +37,17 @@ LOGICAL                             :: OutputTimeAverage       !< Should the tim
 LOGICAL                             :: OutputLines             !< General option to turn off the output of lines
 LOGICAL                             :: OutputPlanes            !< General option to turn off the output of planes
 LOGICAL                             :: OutputPoints            !< General option to turn off the output of points
+LOGICAL                             :: OutputBoxes             !< General option to turn off the output of boxes
 LOGICAL                             :: Line_LocalCoords        !< Set to use local instead of global coordinates along planes
 LOGICAL                             :: Line_LocalVel           !< Set to use local instead of global velocities along planes
 LOGICAL                             :: Plane_LocalCoords       !< Set to use local instead of global coordinates along planes
 LOGICAL                             :: Plane_LocalVel          !< Set to use local instead of global velocities along planes
 LOGICAL                             :: Plane_doBLProps         !< Set to use local instead of global velocities along planes
 INTEGER                             :: Plane_BLvelScaling      !< 0: no scaling, 1: laminar, 2: turbulent
+LOGICAL                             :: Box_LocalCoords         !< Set to use local instead of global coordinates along boxes
+LOGICAL                             :: Box_LocalVel            !< Set to use local instead of global velocities along boxes
+LOGICAL                             :: Box_doBLProps           !< Set to use local instead of global velocities along boxes
+INTEGER                             :: Box_BLvelScaling        !< 0: no scaling, 1: laminar, 2: turbulent
 LOGICAL                             :: usePrims                !< State directly gives the primitive variables
 LOGICAL                             :: RP_SET_defined          !< True if definition file has been specified
 !--------------------------------------------------

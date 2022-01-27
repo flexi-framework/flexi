@@ -28,6 +28,7 @@ INTEGER                         :: nGroups                        !< Number of d
 INTEGER                         :: nPoints                        !< Number of single points
 INTEGER                         :: nLines                         !< Number of line type structures
 INTEGER                         :: nPlanes                        !< Number of plane type structures
+INTEGER                         :: nBoxes                         !< Number of box type structures
 INTEGER,ALLOCATABLE             :: OffsetRP(:,:)                  !< Offest array used for parallel input/output
 
 TYPE tGroup                                                       !< Data type representing a single group
@@ -61,6 +62,16 @@ TYPE tPlane                                                         !< Data type
   REAL,ALLOCATABLE                 :: TangVec(:,:) !< Tangential vector at each of the points
 END TYPE tPlane
 
+TYPE tBox                                                           !< Data type representing a single box
+  CHARACTER(LEN=255)               :: Name            !< Name of the plane
+  INTEGER                          :: GroupID         !< ID of the group the plane belongs to
+  REAL                             :: x(3,8)          !< 4 corner points of the plane
+  INTEGER                          :: nRP(3)          !< Number of recordpoints in the two plane dimensions
+  TYPE(tRP_Ptr),POINTER            :: RP_ptr(:,:,:)   !< Array of pointers to the record points of the group
+  REAL,ALLOCATABLE                 :: NormVec(:,:,:)  !< Normal vector at each of the points
+  REAL,ALLOCATABLE                 :: TangVec(:,:,:)  !< Tangential vector at each of the points
+END TYPE tBox
+
 TYPE tRP                                                            !< Data type representing a single record point
   INTEGER                          :: ID           !< Identifier for the record point
   INTEGER                          :: ElemID       !< ID of the element in the mesh that the record point belongs to
@@ -84,6 +95,7 @@ TYPE(tGroup),POINTER            :: Groups(:)                        !< Array of 
 TYPE(tPoint),POINTER            :: Points(:)                        !< Array of pointers to all single points (not all recordpoints)
 TYPE(tLine),POINTER             :: Lines(:)                         !< Array of pointers to all lines
 TYPE(tPlane),POINTER            :: Planes(:)                        !< Array of pointers to all planes
+TYPE(tBox),POINTER              :: Boxes(:)                         !< Array of pointers to all planes
 TYPE(tRPlist),POINTER           :: RPlist(:)                        !< Array of pointers to all record points
 
 INTERFACE GetNewRP

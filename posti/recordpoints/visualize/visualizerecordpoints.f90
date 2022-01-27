@@ -25,10 +25,10 @@ PROGRAM postrec
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Commandline_Arguments
-USE MOD_StringTools                 ,ONLY:STRICMP, GetFileExtension
+USE MOD_StringTools                 ,ONLY:STRICMP,GetFileExtension
 USE MOD_ReadInTools                 ,ONLY:prms,PrintDefaultParameterFile
 USE MOD_ParametersVisu              ,ONLY:equiTimeSpacing,doSpec,doFluctuations,doTurb,doFilter,doEnsemble
-USE MOD_ParametersVisu              ,ONLY:Plane_doBLProps
+USE MOD_ParametersVisu              ,ONLY:Plane_doBLProps,Box_doBLProps
 USE MOD_RPSetVisu                   ,ONLY:FinalizeRPSet
 USE MOD_RPData                      ,ONLY:ReadRPData,AssembleRPData,FinalizeRPData
 USE MOD_OutputRPVisu
@@ -131,6 +131,7 @@ IF(doFluctuations)     CALL CalcFluctuations()
 IF(doFilter)           CALL FilterRP()
 IF(doSpec)             CALL Spec()
 IF(Plane_doBLProps)    CALL Plane_BLProps()
+IF(Box_doBLProps)      CALL Box_BLProps()
 IF(doTurb)             CALL Turbulence()
 CALL OutputRP()
 CALL FinalizeInterpolation()
@@ -183,6 +184,8 @@ CALL prms%CreateLogicalOption('equiTimeSpacing'    ,"Set to interpolate the temp
 CALL prms%CreateLogicalOption('OutputPoints'       ,"General option to turn off the output of points",".TRUE.")
 CALL prms%CreateLogicalOption('OutputLines'        ,"General option to turn off the output of lines",".TRUE.")
 CALL prms%CreateLogicalOption('OutputPlanes'       ,"General option to turn off the output of planes",".TRUE.")
+CALL prms%CreateLogicalOption('OutputBoxes'        ,"General option to turn off the output of boxes",".TRUE.")
+
 
 CALL prms%CreateLogicalOption('doFFT'              ,"Calculate a fast Fourier transform of the time signal",".FALSE.")
 CALL prms%CreateLogicalOption('doPSD'              ,"Calculate the power spectral density of the time signal",".FALSE.")
@@ -201,7 +204,10 @@ CALL prms%CreateRealOption   ('chord'              ,"TODO")
 
 CALL prms%CreateLogicalOption('doTurb'             ,"Set to compute a temporal FFT for each RP and compute turbulent quantities&
                                                     & like the kinetic energy over wave number",".FALSE.")
-
+CALL prms%CreateLogicalOption('Box_doBLProps'      ,"Set to calculate seperate boundary layer quantities for boundary layer&
+                                                    & planes",".FALSE.")
+CALL prms%CreateIntOption    ('Box_BLvelScaling'   ,"Choose scaling for boundary layer quantities. 0: no scaling, 1: laminar&
+                                                    & scaling, 3: turbulent scaling")
 CALL prms%CreateLogicalOption('Plane_doBLProps'    ,"Set to calculate seperate boundary layer quantities for boundary layer&
                                                      & planes",".FALSE.")
 CALL prms%CreateIntOption    ('Plane_BLvelScaling' ,"Choose scaling for boundary layer quantities. 0: no scaling, 1: laminar&
@@ -209,6 +215,10 @@ CALL prms%CreateIntOption    ('Plane_BLvelScaling' ,"Choose scaling for boundary
 CALL prms%CreateIntOption    ('RPRefState'         ,"Refstate required for computation of e.g. cp.")
 CALL prms%CreateRealArrayOption('RefState',     "State(s) in primitive variables (density, velx, vely, velz, pressure).",&
                                                 multiple=.TRUE.)
+
+CALL prms%CreateLogicalOption('Box_LocalCoords'    ,"Set to use local instead of global coordinates along boxes",".FALSE.")
+CALL prms%CreateLogicalOption('Box_LocalVel'       ,"Set to use local instead of global velocities along boxes",".FALSE.")
+
 CALL prms%CreateLogicalOption('Plane_LocalCoords'  ,"Set to use local instead of global coordinates along planes",".FALSE.")
 CALL prms%CreateLogicalOption('Plane_LocalVel'     ,"Set to use local instead of global velocities along planes",".FALSE.")
 
@@ -256,22 +266,24 @@ Projectname=GETSTR('ProjectName')
 ! =============================================================================== !
 ! RP INFO
 ! =============================================================================== !
+
 nGroups_visu=CountOption('GroupName')
+
 ALLOCATE(GroupNames_visu(nGroups_visu))
+
 DO iGroup=1,nGroups_visu
-  GroupNames_visu(iGroup)=GETSTR('Groupname','none')
+  GroupNames_visu(iGroup) = GETSTR('Groupname','none')
 END DO
-RP_SET_defined=.FALSE.
-RP_DefFile=GETSTR('RP_DefFile','none')
-IF(TRIM(RP_defFile).NE.'none') THEN
-  RP_SET_defined=.TRUE.
-END IF
+
+RP_SET_defined = .FALSE.
+RP_DefFile     = GETSTR('RP_DefFile','none')
+IF(TRIM(RP_defFile).NE.'none') RP_SET_defined=.TRUE.
 
 ! use primitive variables for derived quantities if they exist in the state file
-usePrims=GETLOGICAL('usePrims','.FALSE.')
+usePrims  = GETLOGICAL('usePrims','.FALSE.')
 
 ! rescale RPs if required
-meshScale=GETREAL('meshScale','1.')
+meshScale = GETREAL('meshScale','1.')
 
 ! =============================================================================== !
 ! TIME INTERVAL
@@ -334,6 +346,26 @@ IF(doEnsemble) THEN
 END IF
 
 ! =============================================================================== !
+! BOX OPTIONS
+! =============================================================================== !
+OutputBoxes     =GETLOGICAL('OutputBoxes','.TRUE.')
+Box_LocalCoords =GETLOGICAL('Box_LocalCoords','.FALSE.')
+Box_LocalVel    =GETLOGICAL('Box_LocalVel','.FALSE.')
+Box_doBLProps   =GETLOGICAL('Box_doBLProps','.FALSE.')
+IF(Box_doBLProps) THEN ! for BL properties we need local coords and velocities
+  WRITE(UNIT_StdOut,'(A)')' BL properties depend on local velocities and coordinates'
+  WRITE(UNIT_StdOut,'(A)')' and are calculated based on time-averaged data.'
+  WRITE(UNIT_StdOut,'(A)')' Setting Box_localCoords=.TRUE. and Box_localVel=.TRUE..'
+  CalcTimeAverage  =.TRUE.
+  OutputTimeAverage=.TRUE.
+  Box_LocalCoords=.TRUE.
+  Box_LocalVel   =.TRUE.
+  Box_BLvelScaling  =GETINT('Box_BLvelScaling','0') ! 0 - no scaling.
+  ! 1 - "laminar scaling": scale velocity with u_delta and PlaneY with delta99
+  ! 2 - "turbulent scaling:" calculate u+ and y+
+END IF
+
+! =============================================================================== !
 ! PLANE OPTIONS
 ! =============================================================================== !
 OutputPlanes      =GETLOGICAL('OutputPlanes','.TRUE.')
@@ -351,7 +383,12 @@ IF(Plane_doBLProps) THEN ! for BL properties we need local coords and velocities
   Plane_BLvelScaling  =GETINT('Plane_BLvelScaling','0') ! 0 - no scaling.
   ! 1 - "laminar scaling": scale velocity with u_delta and PlaneY with delta99
   ! 2 - "turbulent scaling:" calculate u+ and y+
+END IF
 
+! =============================================================================== !
+! REFSTATE
+! =============================================================================== !
+IF(Plane_doBLProps.OR.Box_doBLProps) THEN
   nRefState=CountOption('RefState')
   RPRefState  = GETINT('RPRefState', "0")
   IF(RPRefState.GT.nRefState)THEN
@@ -378,6 +415,7 @@ IF(Plane_doBLProps) THEN ! for BL properties we need local coords and velocities
   pInf   = RefStatePrim(5,RPRefState)
   SDEALLOCATE(RefStatePrim)
 END IF
+
 ! =============================================================================== !
 ! LINE OPTIONS
 ! =============================================================================== !
