@@ -202,7 +202,7 @@ IF(iError .NE. 0) STOP 'MPI finalize error'
 #endif
 
 SWRITE(UNIT_stdOut,'(132("="))')
-SWRITE(UNIT_stdOut,'(A)') ' TO3D TOOL FINISHED! '
+SWRITE(UNIT_stdOut,'(A)') ' AVG2D TOOL FINISHED! '
 SWRITE(UNIT_stdOut,'(132("="))')
 
 END PROGRAM avg2D
