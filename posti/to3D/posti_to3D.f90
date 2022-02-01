@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -39,7 +39,7 @@ CHARACTER(LEN=255),ALLOCATABLE       :: tmpDatasetNames(:)
 INTEGER,ALLOCATABLE                  :: Elem_IJK_2D(:,:),Elem_IJK_3D(:,:)
 INTEGER                              :: nElems2D,nElems3D,iElem,iElem2D
 REAL,ALLOCATABLE                     :: RealArray2D(:,:,:,:),RealArray3D(:,:,:,:)
-INTEGER                              :: nVar,N
+INTEGER                              :: N
 INTEGER                              :: p,q,i,j
 CHARACTER(LEN=255)                   :: OldFileName,FileName
 !===================================================================================================================================
@@ -113,11 +113,11 @@ SDEALLOCATE(RealArray2D)
 SDEALLOCATE(RealArray3D)
 
 #if USE_MPI
-CALL MPI_FINALIZE(iError)
-IF(iError .NE. 0) &
-  CALL Abort(__STAMP__,'MPI finalize error',iError)
 CALL FinalizeMPI()
+CALL MPI_FINALIZE(iError)
+IF(iError .NE. 0) STOP 'MPI finalize error'
 #endif
+
 WRITE(UNIT_stdOut,'(132("="))')
 WRITE(UNIT_stdOut,'(A)') ' TO3D TOOL FINISHED! '
 WRITE(UNIT_stdOut,'(132("="))')

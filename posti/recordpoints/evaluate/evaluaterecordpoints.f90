@@ -58,7 +58,7 @@ IMPLICIT NONE
 INTEGER                            :: iArg,start
 CHARACTER(LEN=255)                 :: FileType
 LOGICAL                            :: isValid,userblockFound
-LOGICAL                            :: stateFileMode
+LOGICAL                            :: stateFileMode = .TRUE.
 CHARACTER(LEN=255)                 :: DataSetName
 INTEGER                            :: HSize_proc(5),nVar,HSize_tmp(5)
 CHARACTER(LEN=255),ALLOCATABLE     :: StrVarNames_loc(:)
@@ -120,10 +120,9 @@ IF (doPrintHelp.LE.0) THEN
   ELSE
     CALL CollectiveStop(__STAMP__,'ERROR - Not a valid HDF5 file: '//TRIM(RestartFile))
   END IF
-END IF ! doPrintHelp.LE.0
 
 ! check for command line argument --help or --markdown
-IF (doPrintHelp.GT.0) THEN
+ELSE
   CALL PrintDefaultParameterFile(doPrintHelp.EQ.2, Args(1))
   STOP
 END IF
@@ -134,7 +133,7 @@ IF (stateFileMode) THEN
   ALLOCATE(StrVarNames_loc(PP_nVar))
   StrVarNames_loc = StrVarNames
 ELSE
-  ! We need to specify the name of the dataset to evaluate for non-state files. 
+  ! We need to specify the name of the dataset to evaluate for non-state files.
   DataSetName = GETSTR('RecordpointsDataSetName','DG_Solution')
   ! Determine the size of the data set
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
@@ -264,10 +263,9 @@ CALL FinalizeParameters()
 CALL FinalizeCommandlineArguments()
 
 #if USE_MPI
+CALL FinalizeMPI()
 CALL MPI_FINALIZE(iError)
-IF(iError .NE. 0) &
-  CALL Abort(__STAMP__,'MPI finalize error',iError)
-  CALL FinalizeMPI()
+IF(iError .NE. 0) STOP 'MPI finalize error'
 #endif
 
 SWRITE(UNIT_stdOut,'(132("="))')

@@ -323,7 +323,6 @@ CHARACTER(LEN=255),INTENT(IN)      :: StateFile !< State file to be read
 ! LOCAL VARIABLES
 LOGICAL                          :: userblockFound
 CHARACTER(LEN=255)               :: prmfile=".parameter.ini"
-INTEGER                          :: iElem
 !===================================================================================================================================
 SWRITE(UNIT_stdOut,('(3A)')) "READING SOLUTION FROM STATE FILE """,TRIM(StateFile), """"
 

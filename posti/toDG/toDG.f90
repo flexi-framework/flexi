@@ -225,9 +225,9 @@ SWRITE(UNIT_stdOut,'(A)') "===================================================  
 SWRITE(UNIT_stdOut,'(132("="))')
 
 #if USE_MPI
+CALL FinalizeMPI()
 CALL MPI_FINALIZE(iError)
 IF(iError .NE. 0) STOP 'MPI finalize error'
-CALL FinalizeMPI()
 #endif
 
 CONTAINS

@@ -209,10 +209,9 @@ CALL FinalizeMesh()
 CALL FinalizeFFT()
 CALL FinalizeIOHDF5
 #if USE_MPI
-CALL MPI_FINALIZE(iError)
-IF(iError .NE. 0) &
-  CALL Abort(__STAMP__,'MPI finalize error',iError)
 CALL FinalizeMPI()
+CALL MPI_FINALIZE(iError)
+IF(iError .NE. 0) STOP 'MPI finalize error'
 #endif
 
 SWRITE(UNIT_stdOut,'(132("="))')

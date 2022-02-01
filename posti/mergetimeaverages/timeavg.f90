@@ -135,6 +135,7 @@ CASE('Fluc')
   isTimeAvg=.TRUE.  ! since we have time-averaged correlations
   FileTypeOut='Fluc'
 CASE DEFAULT
+  isTimeAvg=.TRUE.  ! remove compiler warning
   CALL CollectiveStop(__STAMP__,'Unknown file type: '//TRIM(ref%FileType))
 END SELECT
 
@@ -239,9 +240,9 @@ SDEALLOCATE(UAvg)
 SDEALLOCATE(Uloc)
 
 #if USE_MPI
+CALL FinalizeMPI()
 CALL MPI_FINALIZE(iError)
 IF(iError .NE. 0) STOP 'MPI finalize error'
-CALL FinalizeMPI()
 #endif
 
 CONTAINS
