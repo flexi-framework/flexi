@@ -92,6 +92,7 @@ CALL prms%CreateStringOption('TimeDiscMethod', "Specifies the type of time-discr
                                                "  * cranknicolson2-2\n  * esdirk2-3\n  * esdirk3-4\n"//&
                                                "  * esdirk4-6" , value='CarpenterRK4-5')
 CALL prms%CreateRealOption(  'TEnd',           "End time of the simulation (mandatory).")
+CALL prms%CreateRealOption(  'TStart',         "Start time of the simulation (optional,conflicts with restart).")
 CALL prms%CreateRealOption(  'CFLScale',       "Scaling factor for the theoretical CFL number, typical range 0.1..1.0 (mandatory for dynamic and initial)")
 CALL prms%CreateRealOption(  'DFLScale',       "Scaling factor for the theoretical DFL number, typical range 0.1..1.0 (mandatory for dynamic and initial)")
 CALL prms%CreateRealOption(  'dt',             "Custom timestep (mandatory for static)")
@@ -117,7 +118,7 @@ USE MOD_Predictor           ,ONLY: InitPredictor
 USE MOD_ReadInTools         ,ONLY: GETREAL,GETINT,GETSTR,GETINTFROMSTR,GETLOGICAL
 USE MOD_StringTools         ,ONLY: LowCase,StripSpaces
 USE MOD_TimeDisc_Vars       ,ONLY: CFLScale,TimeDiscAlgorithm
-USE MOD_TimeDisc_Vars       ,ONLY: dtElem,dt,tend,dt_dynmin,dt_kill,dt_static
+USE MOD_TimeDisc_Vars       ,ONLY: dtElem,dt,tend,tstart,dt_dynmin,dt_kill,dt_static
 USE MOD_TimeDisc_Vars       ,ONLY: Ut_tmp,UPrev,S2
 USE MOD_TimeDisc_Vars       ,ONLY: maxIter,nCalcTimeStepMax
 USE MOD_TimeDisc_Vars       ,ONLY: SetTimeDiscCoefs,TimeStep,TimeDiscName,TimeDiscType,TimeDiscInitIsDone
@@ -180,6 +181,9 @@ END SELECT
 
 ! Read the end time TEnd from ini file
 TEnd     = GETREAL('TEnd')
+
+! Read the end time TEnd from ini file
+TStart   = GETREAL('TStart','0.0')
 
 SELECT CASE(TimeDiscAlgorithm)
 CASE(TIMEDISC_DYNAMIC,TIMEDISC_INITIAL)
