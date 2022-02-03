@@ -48,7 +48,7 @@ SUBROUTINE InitRPSet(RP_DefFile_in)
 ! MODULES
 USE MOD_Globals
 USE MOD_HDF5_Input
-USE MOD_ParametersVisu   ,ONLY: Line_LocalCoords,Line_LocalVel,Plane_LocalCoords
+USE MOD_ParametersVisu   ,ONLY: Line_LocalCoords,Line_LocalVel,Plane_LocalCoords,Box_LocalCoords
 USE MOD_ParametersVisu   ,ONLY: nGroups_visu,GroupNames_visu
 USE MOD_RPSetVisuVisu_Vars
 IMPLICIT NONE
@@ -61,15 +61,17 @@ TYPE(tLine),POINTER       :: aLine
 TYPE(tLine),POINTER       :: Lines_tmp(:)
 TYPE(tPlane),POINTER      :: Plane
 TYPE(tPlane),POINTER      :: Planes_tmp(:)
-INTEGER                   :: iLine,iLine2,iPlane,iPlane2,iGr1,iGr2,iRP,i,j,iPoint
+TYPE(tBox),POINTER        :: Box
+TYPE(tBox),POINTER        :: Boxes_tmp(:)
+INTEGER                   :: iLine,iLine2,iPlane,iPlane2,iBox,iBox2,iGr1,iGr2,iRP,i,j,k,iPoint
 INTEGER                   :: nRP_output
-INTEGER                   :: nLines_tmp,nPlanes_tmp,nPoints_tmp
+INTEGER                   :: nLines_tmp,nPlanes_tmp,nPoints_tmp,nBoxes_tmp
 LOGICAL                   :: DSexists
 LOGICAL                   :: found(nGroups_visu)
-LOGICAL                   :: LinesInFile=.FALSE.,PlanesInFile=.FALSE.,PointsInFile=.FALSE.
+LOGICAL                   :: LinesInFile=.FALSE.,PlanesInFile=.FALSE.,PointsInFile=.FALSE.,BoxesInFile=.FALSE.
 REAL,ALLOCATABLE          :: xF_tmp(:,:)
 INTEGER,ALLOCATABLE       :: Points_IDlist_tmp(:),Points_GroupIDlist_tmp(:)
-CHARACTER(LEN=255)        :: tmp255,PlaneType
+CHARACTER(LEN=255)        :: tmp255,PlaneType,BoxType
 !===================================================================================================================================
 IF(RPSetInitIsDone)THEN
    CALL CollectiveStop(__STAMP__, &
@@ -81,7 +83,7 @@ END IF
 #endif /*MPI*/
 WRITE(UNIT_stdOut,'(132("-"))')
 WRITE(UNIT_stdOut,'(A)') ' INIT RECORDPOINT SET...'
-WRITE(UNIT_stdOut,'(A)')' Read recordpoint definitions from data file "'//TRIM(RP_DefFile_in)//'" ...'
+WRITE(UNIT_stdOut,'(A)')' Read recordpoint definitions from data file "'//TRIM(RP_DefFile_in)//'"...'
 
 ! Open data file
 CALL OpenDataFile(RP_DefFile_in,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
@@ -93,27 +95,27 @@ DEALLOCATE(HSize)
 ALLOCATE(GroupNames(1:nGroups))
 CALL ReadArray(TRIM('GroupNames'),1,(/nGroups/),0,1,StrArray=GroupNames)
 
-
 ! generate output map for groups
 ALLOCATE(OutputGroup(nGroups))
 IF(nGroups_visu.LT.1) THEN
-  OutputGroup=.TRUE.
+  OutputGroup    = .TRUE.
 ELSE
-  found(:)=.FALSE.
-  OutputGroup=.FALSE.
-  DO iGr1=1,nGroups
-    DO iGr2=1,nGroups_visu
-      IF(TRIM(GroupNames(iGr1)).EQ.TRIM(GroupNames_visu(iGr2)))THEN
-        OutputGroup(iGr1)=.TRUE.
-        found(iGr2)=.TRUE.
+  found(:)    = .FALSE.
+  OutputGroup = .FALSE.
+  DO iGr1 = 1,nGroups
+    DO iGr2 = 1,nGroups_visu
+      IF (TRIM(GroupNames(iGr1)).EQ.TRIM(GroupNames_visu(iGr2))) THEN
+        OutputGroup(iGr1) = .TRUE.
+        found(iGr2)       = .TRUE.
       END IF
-    END DO
-  END DO !iGr1
-  IF(.NOT.ALL(found)) THEN
-    WRITE(UNIT_stdOut,'(A)') 'One or more of the required Groups are not in this RPSet file!'; STOP
+    END DO ! iGr2
+  END DO ! iGr1
+  IF (.NOT.ALL(found)) THEN
+    WRITE(UNIT_stdOut,'(A)') 'One or more of the required Groups are not in this RPSet file!'
+    STOP
   END IF
-END IF! (nGroups_visu.LT.1)
-nRP_output=0
+END IF ! (nGroups_visu.LT.1)
+nRP_output = 0
 
 ! Readin coordinates
 CALL GetDataSize(File_ID,'xF_RP',nDims,HSize)
@@ -246,13 +248,65 @@ IF(DSexists) THEN
   DO iPlane=1,nPlanes_tmp
     Plane=>Planes_tmp(iPlane)
     IF(OutputGroup(Plane%GroupID)) THEN
-      iPlane2=iPlane2+1
-      Planes(iPlane2)=Planes_tmp(iPlane)
+      iPlane2               = iPlane2+1
+      Planes(iPlane2)       = Planes_tmp(iPlane)
     END IF
   END DO
   DEALLOCATE(Planes_tmp)
   ! if reqired, calculate local (fitted) plane coordinates
   IF(Plane_LocalCoords)  CALL CalcPlane_LocalCoords()
+END IF!DSexists
+
+! Readin Boxes
+CALL DatasetExists(File_ID,'BoxNames',DSexists)
+nBoxes=0
+IF(DSexists) THEN
+  BoxesInFile=.TRUE.
+  CALL GetDataSize(File_ID,'BoxNames',nDims,HSize)
+  nBoxes_tmp=INT(HSize(1)) !number of Boxes
+  DEALLOCATE(HSize)
+  ALLOCATE(Boxes_tmp(1:nBoxes_tmp))
+  CALL ReadArray('BoxNames',1,(/nBoxes_tmp/),0,1,StrArray=Boxes_tmp(:)%Name)
+  DO iBox=1,nBoxes_tmp
+    Box=>Boxes_tmp(iBox)
+    CALL ReadAttribute(File_ID,'GroupID',1,DatasetName=TRIM(Box%Name),IntScalar=Box%GroupID)
+    !check if group is for output
+    IF(OutputGroup(Box%GroupID)) THEN
+      nBoxes=nBoxes+1
+      CALL GetDataSize(File_ID,TRIM(Box%Name),nDims,HSize)
+      Box%nRP(1)=INT(HSize(1)) !i number of recordpoints on Box
+      Box%nRP(2)=INT(HSize(2)) !j number of recordpoints on Box
+      Box%nRP(3)=INT(HSize(3)) !j number of recordpoints on Box
+      nRP_output=nRP_output+Box%nRP(1)*Box%nRP(2)*Box%nRP(3)
+      DEALLOCATE(HSize)
+      ALLOCATE(Box%IDlist(Box%nRP(1),Box%nRP(2),Box%nRP(3)))
+      CALL ReadArray(TRIM(Box%Name),3,(/Box%nRP(1),Box%nRP(2),Box%nRP(3)/),0,1,IntArray=Box%IDlist)
+      ! readin norm and tangential vectors if suitable
+      BoxType=TRIM(Box%Name(1:3))
+      IF(BoxType.EQ.TRIM("BLB")) THEN
+        Box%Type=1
+        ALLOCATE(Box%NormVec(3,Box%nRP(1),Box%nRP(3)))
+        WRITE(tmp255,'(A,A)')TRIM(Box%Name),'_NormVec'
+        CALL ReadArray(tmp255,3,(/3,Box%nRP(1),Box%nRP(3)/),0,3,RealArray=Box%NormVec)
+        ALLOCATE(Box%TangVec(3,Box%nRP(1),Box%nRP(3)))
+        WRITE(tmp255,'(A,A)')TRIM(Box%Name),'_TangVec'
+        CALL ReadArray(tmp255,3,(/3,Box%nRP(1),Box%nRP(3)/),0,3,RealArray=Box%TangVec)
+      END IF
+    END IF
+  END DO
+  ! now build the Box list for those Boxes in an output group
+  ALLOCATE(Boxes(1:nBoxes))
+  iBox2=0
+  DO iBox=1,nBoxes_tmp
+    Box=>Boxes_tmp(iBox)
+    IF(OutputGroup(Box%GroupID)) THEN
+      iBox2               = iBox2+1
+      Boxes(iBox2)        = Boxes_tmp(iBox)
+    END IF
+  END DO
+  DEALLOCATE(Boxes_tmp)
+  ! if reqired, calculate local (fitted) Box coordinates
+  IF(Box_LocalCoords)  CALL CalcBox_LocalCoords()
 END IF!DSexists
 
 ! build mapping from output RPs (1:nRP_output) to RPs on RPSet and RPData files (1:nRP_HDF5).
@@ -290,6 +344,22 @@ IF(PlanesInFile) THEN
         ! redefine plane mapping to newly generated global RP list
         Plane%IDlist(i,j)=iRP+1
         iRP=iRP+1
+      END DO
+    END DO
+  END DO
+END IF
+!Boxes
+IF(BoxesInFile) THEN
+  DO iBox=1,nBoxes
+    Box=>Boxes(iBox)
+    DO k=1,Box%nRP(3)
+      DO j=1,Box%nRP(2)
+        DO i=1,Box%nRP(1)
+          RPOutMap(iRP+1)=Box%IDlist(i,j,k)
+          ! redefine plane mapping to newly generated global RP list
+          Box%IDlist(i,j,k)=iRP+1
+          iRP=iRP+1
+        END DO
       END DO
     END DO
   END DO
@@ -549,7 +619,83 @@ DO iPlane=1,nPlanes
 END DO !iPlane
 END SUBROUTINE CalcPlane_LocalCoords
 
+!===================================================================================================================================
+!> Calculate the local coordinate for BLBoxes through a spline representation
+!===================================================================================================================================
+SUBROUTINE CalcBox_LocalCoords()
+! MODULES
+USE MOD_Globals
+USE MOD_RPSetVisuVisu_Vars, ONLY: nBoxes,tBox,xF_RP,Boxes
+USE MOD_Spline,     ONLY: GetSpline
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER              :: iBox,i,j,k,iS
+INTEGER              :: Nx,Ny,Nz,nSuper
+REAL                 :: x_loc(3),x_loc_old(3),t_loc
+REAL,ALLOCATABLE     :: xBox_tmp(:,:,:,:),localCoordX(:),localCoordY(:),localCoordZ(:),t_Nx(:),coeff(:,:,:)
+TYPE(tBox),POINTER   :: Box
+!===================================================================================================================================
+DO iBox=1,nBoxes
+  Box=>Boxes(iBox)
+  IF(Box%Type.NE.1) CYCLE
+  Nx=Box%nRP(1)
+  Ny=Box%nRP(2)
+  Nz=Box%nRP(3)
+  ALLOCATE(Box%LocalCoord(3,Nx,Ny,Nz))
+  ALLOCATE(xBox_tmp(3,Nx,Ny,Nz))
+  ALLOCATE(localCoordX(Nx))
+  ALLOCATE(localCoordY(Ny))
+  ALLOCATE(localCoordZ(Nz))
+  DO i=1,Nx; DO j=1,Ny; DO k=1,Nz
+    xBox_tmp(:,i,j,k)=xF_RP(:,Box%IDlist(i,j,k))
+  END DO; END DO; END DO
 
+  ! Box parallel directions -------------------------------------------------------
+  ALLOCATE(t_Nx(Nx))
+  ALLOCATE(coeff(3,4,Nx-1))
+  CALL GetSpline(3,Nx,xBox_tmp(:,:,1,1),coeff,t_Nx)! get spline through the first tangential layer
+  localCoordX=0.
+  ! calculate arclength on supersampled points
+  nSuper=10
+  x_loc=xBox_tmp(:,1,1,1)
+  DO i=2,Nx
+    localCoordX(i)=localCoordX(i-1)
+    DO iS=2,nSuper
+      t_loc=t_Nx(i-1)+REAL(iS-1)/REAL(nSuper-1)*(t_Nx(i)-t_Nx(i-1))
+      x_loc_old=x_loc
+      x_loc(:)=coeff(:,1,i-1)+coeff(:,2,i-1)*(t_loc-t_Nx(i-1)) &
+              +coeff(:,3,i-1)*(t_loc-t_Nx(i-1))**2 + coeff(:,4,i-1)*(t_loc-t_Nx(i-1))**3
+      localCoordX(i)=localCoordX(i)+NORM2(x_loc-x_loc_old)
+    END DO!iS
+  END DO!i
+  ! Use first xy-plane for transformation to ensure cartesian grid
+  DO k=1,Nz
+    DO j=1,Ny
+      Box%LocalCoord(1,:,j,k)=localCoordX(:)
+    END DO!j
+  END DO!k
+  ! Ensure uniform distribution in z
+  localCoordZ=0.
+  DO k=2,Nz
+    localCoordZ(k)=localCoordZ(k-1)+NORM2(xBox_tmp(:,1,1,k)-xBox_tmp(:,1,1,k-1))
+    Box%LocalCoord(3,:,:,k)=localCoordZ(k)
+  END DO! j=1,Nz
+  ! Box normal direction -------------------------------------------------------
+  DO k=1,Nz
+    localCoordY=0.
+    DO i=1,Nx
+      DO j=2,Ny
+        localCoordY(j)=localCoordY(j-1)+NORM2(xBox_tmp(:,i,j,k)-xBox_tmp(:,i,j-1,k))
+      END DO! j=1,Ny
+      Box%LocalCoord(2,i,:,k)=localCoordY(:)
+    END DO! i=1,Nx
+  END DO! j=1,Nz
+  DEALLOCATE(xBox_tmp,localCoordX,localCoordY,localCoordZ,t_Nx,coeff)
+END DO !iBox
+END SUBROUTINE CalcBox_LocalCoords
 
 !===================================================================================================================================
 !> Deallocate global variable for Recordpoints
@@ -560,7 +706,7 @@ USE MOD_RPSetVisuVisu_Vars
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: iLine,iPlane
+INTEGER :: iLine,iPlane,iBox
 !===================================================================================================================================
 SDEALLOCATE(GroupNames)
 SDEALLOCATE(RPOutMap)
@@ -586,6 +732,15 @@ IF(nPlanes.GT.1)THEN
     SDEALLOCATE(Planes(iPlane)%TangVec)
   END DO! iPlane=1,nPlanes
   DEALLOCATE(Planes)
+END IF
+
+IF(nBoxes.GT.1)THEN
+  DO iBox=1,nBoxes
+    SDEALLOCATE(Boxes(iBox)%IDlist)
+    SDEALLOCATE(Boxes(iBox)%NormVec)
+    SDEALLOCATE(Boxes(iBox)%TangVec)
+  END DO! iBox=1,nBoxes
+  DEALLOCATE(Boxes)
 END IF
 
 RPSetInitIsDone = .FALSE.

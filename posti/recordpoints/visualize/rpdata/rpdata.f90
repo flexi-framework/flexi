@@ -70,17 +70,18 @@ INTEGER                       :: nChunks,iChunk,nSamples_chunk,offset
 REAL                          :: nTotal,limit
 #endif
 !===================================================================================================================================
-WRITE(UNIT_stdOut,'(A)')' Read recordpoint data from data file "'//TRIM(FileString)//'" ...'
 
-IF(PRESENT(firstFile)) THEN
-  IF(firstFile.EQV..TRUE.) THEN
-    firstFile_loc=.TRUE.
-  ELSE
-    firstFile_loc=.FALSE.
-  END IF
-ELSE
-  firstFile_loc=.FALSE.
+firstFile_loc=.FALSE.
+IF (PRESENT(firstFile)) THEN
+  IF (firstFile.EQV..TRUE.) firstFile_loc=.TRUE.
 END IF
+
+IF (firstFile_loc) THEN
+  WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' Read recordpoint data from data file "'//TRIM(FileString)//'" ...'
+ELSE
+  WRITE(UNIT_stdOut,'(A)',ADVANCE='NO' )' Read recordpoint data from data file "'//TRIM(FileString)//'" ...'
+END IF
+
 ! Open data file
 CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 IF(firstFile_loc.AND.(TRIM(ProjectName).EQ.TRIM(''))) THEN
@@ -98,7 +99,7 @@ IF(firstFile_loc) THEN
   IF(.NOT.RP_SET_defined) THEN
     RP_DefFile=RP_DefFile_loc
   END IF
-  WRITE(UNIT_stdOut,'(A,A)')' Using RP set file ',RP_DefFile
+  WRITE(UNIT_stdOut,'(A,A)')' Using RP set file ',TRIM(RP_DefFile)
   CALL InitRPSet(RP_DefFile)
 END IF
 IF((RP_DefFile_loc.NE.RP_DefFile).AND.(.NOT.RP_SET_defined)) THEN
@@ -179,7 +180,11 @@ nSamples_global=nSamples_global+nSamples_skip-1
 
 CALL CloseDataFile()
 
-WRITE(UNIT_stdOut,'(A)')'done.'
+IF (firstFile_loc) THEN
+  WRITE(UNIT_stdOut,'(A)',ADVANCE='YES') ' Read recordpoint data from data file "'//TRIM(FileString)//'" ... done'
+ELSE
+  WRITE(UNIT_stdOut,'(A)',ADVANCE='YES') ' done'
+END IF
 
 END SUBROUTINE ReadRPData
 
@@ -203,8 +208,8 @@ INTEGER                  :: nSamples_loc
 INTEGER                  :: iStart,iEnd
 !===================================================================================================================================
 WRITE(UNIT_stdOut,'(132("-"))')
-WRITE(UNIT_stdOut,'(A)')  ' Assemble recordpoint data...'
-WRITE(UNIT_stdOut,'(A,I8)')'  total number of samples : ',nSamples_global
+WRITE(UNIT_stdOut,'(A)')   ' Assemble recordpoint data...'
+WRITE(UNIT_stdOut,'(A,I8)')' | total number of samples : ',nSamples_global
 
 ALLOCATE(RPData(1:nVar_HDF5,nRP_global,nSamples_global))
 ALLOCATE(RPTime(nSamples_global))
@@ -235,7 +240,7 @@ ELSE
   END DO
 END IF
 
-WRITE(UNIT_stdOut,'(A)')' done.'
+WRITE(UNIT_stdOut,'(A)')  ' Assemble recordpoint data done'
 END SUBROUTINE AssembleRPData
 
 

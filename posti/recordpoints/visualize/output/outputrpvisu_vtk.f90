@@ -53,13 +53,14 @@ CONTAINS
 SUBROUTINE WriteDataToVTK(nSamples,nRP,nVal,VarNames,Time,Value,FileName)
 ! MODULES
 USE MOD_Globals
-USE MOD_ParametersVisu      ,ONLY:Line_LocalCoords,Plane_LocalCoords
-USE MOD_ParametersVisu      ,ONLY:OutputPlanes,OutputLines,OutputPoints
+USE MOD_ParametersVisu      ,ONLY:Line_LocalCoords,Plane_LocalCoords,Box_LocalCoords
+USE MOD_ParametersVisu      ,ONLY:OutputPlanes,OutputLines,OutputPoints,OutputBoxes
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:GroupNames
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:OutputGroup
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:nPoints,Points_IDlist,Points_GroupIDlist
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:nLines,Lines,tLine
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:nPlanes,Planes,tPlane
+USE MOD_RPSetVisuVisu_Vars  ,ONLY:nBoxes,Boxes,tBox
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:xF_RP
 USE MOD_VTKStructuredOutput
 IMPLICIT NONE
@@ -76,7 +77,7 @@ CHARACTER(LEN=255),INTENT(IN) :: FileName                      !< First part of 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                   :: iSample
-INTEGER                   :: iPoint,iLine,iPlane,i,j
+INTEGER                   :: iPoint,iLine,iPlane,iBox,i,j,k
 INTEGER                   :: GroupID
 CHARACTER(LEN=255)        :: ZoneTitle
 CHARACTER(LEN=255)        :: GroupName
@@ -84,11 +85,15 @@ TYPE(tLine),POINTER       :: Line
 TYPE(tPlane),POINTER      :: Plane
 REAL,ALLOCATABLE          :: PlaneData(:,:,:)
 REAL,ALLOCATABLE          :: PlaneCoord(:,:,:)
+TYPE(tBox),POINTER        :: Box
+REAL,ALLOCATABLE          :: BoxData(:,:,:,:)
+REAL,ALLOCATABLE          :: BoxCoord(:,:,:,:)
 TYPE(RPPoint)             :: RPPoints
 TYPE(RPLine),ALLOCATABLE  :: RPLines(:)
 TYPE(RPPlane),ALLOCATABLE :: RPPlanes(:)
-INTEGER                   :: nPointsOutput,nLinesOutput,nPlanesOutput
-INTEGER                   :: iPointsOutput,iLinesOutput,iPlanesOutput
+TYPE(RPBox),ALLOCATABLE   :: RPBoxes(:)
+INTEGER                   :: nPointsOutput,nLinesOutput,nPlanesOutput,nBoxesOutput
+INTEGER                   :: iPointsOutput,iLinesOutput,iPlanesOutput,iBoxesOutput
 CHARACTER(LEN=255)        :: FileNamePVD
 CHARACTER(LEN=255)        :: TimestepString
 INTEGER                   :: ivtk=44
@@ -110,6 +115,7 @@ IF (OutputPoints) THEN
     ALLOCATE(RPPoints%Val(   nVal,nPointsOutput))
   END IF
 ELSE
+  nPointsOutput = 0
   RPPoints%nRPs = 0
 END IF
 
@@ -140,7 +146,7 @@ ELSE
 END IF
 
 ! Create a subdirectory that contains all the output files - since there are A LOT of them for timeseries
-CALL SYSTEM('mkdir timeseries')
+CALL SYSTEM('mkdir -p timeseries')
 
 ! Planes
 IF (OutputPlanes) THEN
@@ -165,6 +171,31 @@ IF (OutputPlanes) THEN
   END DO ! iPlane
 ELSE
   nPlanesOutput = 0
+END IF
+
+! Boxes
+IF (OutputBoxes) THEN
+  nBoxesOutput = 0
+  DO iBox=1,nBoxes
+    Box=>Boxes(iBox)
+    IF(.NOT.OutputGroup(Box%GroupID)) CYCLE
+    nBoxesOutput = nBoxesOutput + 1
+  END DO ! iBox
+  IF (nBoxesOutput.GT.0) THEN
+    ALLOCATE(RPBoxes(nBoxesOutput))
+  END IF
+  iBoxesOutput = 0
+  DO iBox=1,nBoxes
+    Box=>Boxes(iBox)
+    IF(.NOT.OutputGroup(Box%GroupID)) CYCLE
+    iBoxesOutput = iBoxesOutput + 1
+    RPBoxes(iBoxesOutput)%nRPs = Box%nRP
+    ALLOCATE(RPBoxes(iBoxesOutput)%Coords(3   ,Box%nRP(1),Box%nRP(2),Box%nRP(3)))
+    ALLOCATE(RPBoxes(iBoxesOutput)%Val(   nVal,Box%nRP(1),Box%nRP(2),Box%nRP(3)))
+    IF (Box_LocalCoords) RPBoxes(iBoxesOutput)%Coords(3,:,:,:) = 0.
+  END DO ! iBox
+ELSE
+  nBoxesOutput = 0
 END IF
 
 ! Loop over the time samples and perform the actual output
@@ -239,9 +270,49 @@ DO iSample=1,nSamples
     END DO ! iPlane
   END IF
 
+  ! Boxes
+  IF (OutputBoxes) THEN
+    iBoxesOutput = 0
+    DO iBox=1,nBoxes
+      Box=>Boxes(iBox)
+      IF(.NOT.OutputGroup(Box%GroupID)) CYCLE
+      iBoxesOutput = iBoxesOutput + 1
+      ! coordinates
+      IF (Box_LocalCoords) THEN
+        RPBoxes(iBoxesOutput)%Coords(1:3,:,:,:) = Box%LocalCoord(:,:,:,:)
+      ELSE
+        ! global xyz coordinates
+        ALLOCATE(BoxCoord(3,Box%nRP(1),Box%nRP(2),Box%nRP(3)))
+        DO k=1,Box%nRP(3)
+          DO j=1,Box%nRP(2)
+            DO i=1,Box%nRP(1)
+              BoxCoord(:,i,j,k)=xF_RP(:,Box%IDlist(i,j,k))
+            END DO ! i
+          END DO ! j
+        END DO ! k
+        RPBoxes(iBoxesOutput)%Coords(:,:,:,:) = BoxCoord
+        DEALLOCATE(BoxCoord)
+      END IF
+      ! values
+      ALLOCATE(BoxData(1:nVal,Box%nRP(1),Box%nRP(2),Box%nRP(3)))
+      DO k=1,Box%nRP(3)
+        DO j=1,Box%nRP(2)
+          DO i=1,Box%nRP(1)
+            BoxData(:,i,j,k)=Value(:,Box%IDlist(i,j,k),iSample)
+          END DO ! i
+        END DO ! j
+      END DO ! k
+      RPBoxes(iBoxesOutput)%Val(:,:,:,:) = BoxData
+      DEALLOCATE(BoxData)
+      ! name
+      GroupName=GroupNames(Box%GroupID)
+      RPBoxes(iBoxesOutput)%name = TRIM(GroupName)//'_'//TRIM(Box%Name)
+    END DO ! iBox
+  END IF
+
   ! Write to VTK
   ZoneTitle = 'timeseries/'//TRIM(TIMESTAMP(FileName,Time(iSample)))
-  CALL WriteStructuredDataToVTK(ZoneTitle,nLinesOutput,nPlanesOutput,RPPoints,RPLines,RPPlanes,.TRUE.,nVal,VarNames)
+  CALL WriteStructuredDataToVTK(ZoneTitle,nLinesOutput,nPlanesOutput,nBoxesOutput,RPPoints,RPLines,RPPlanes,RPBoxes,.TRUE.,nVal,VarNames)
 END DO
 
 ! Write .pvd collections to easily open the timeseries
@@ -333,6 +404,36 @@ IF (nPlanesOutput.GT.0) THEN
   END DO
 END IF
 
+! Boxes
+IF (nBoxesOutput.GT.0) THEN
+  iBoxesOutput = 0
+  DO iBox=1,nBoxes
+  Box=>Boxes(iBox)
+  IF(.NOT.OutputGroup(Box%GroupID)) CYCLE
+    iBoxesOutput = iBoxesOutput + 1
+    FileNamePVD=TRIM(FileName)//'_'//TRIM(RPBoxes(iBoxesOutput)%name)//'.pvd'
+    OPEN(UNIT=ivtk,FILE=TRIM(FileNamePVD),ACCESS='STREAM')
+    ! Write header
+    Buffer='<?xml version="1.0"?>'//lf;WRITE(ivtk) TRIM(Buffer)
+    Buffer='<VTKFile type="Collection" version="0.1" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)
+    Buffer='  <Collection>'//lf;WRITE(ivtk) TRIM(Buffer)
+    ! Loop and write the single collection entries
+    DO iSample = 1,nSamples
+      WRITE(TimestepString,'(F17.9)') Time(iSample)
+      DO i=1,LEN(TRIM(TimestepString))
+        IF(TimestepString(i:i).EQ.' ') TimestepString(i:i)='0'
+      END DO
+      ZoneTitle = 'timeseries/'//TRIM(TIMESTAMP(FileName,Time(iSample)))
+      Buffer='    <DataSet timestep="'//TRIM(TimestepString)//'" part="0" file="'//TRIM(ZoneTitle)//'_'//&
+                   TRIM(RPBoxes(iBoxesOutput)%name)//'.vts"/>'//lf;WRITE(ivtk) TRIM(Buffer)
+    END DO
+    ! Write Footer
+    Buffer='  </Collection>'//lf;WRITE(ivtk) TRIM(Buffer)
+    Buffer='</VTKFile>'//lf;WRITE(ivtk) TRIM(Buffer)
+    CLOSE(ivtk)
+  END DO
+END IF
+
 WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
 END SUBROUTINE WriteDataToVTK
 
@@ -344,13 +445,14 @@ END SUBROUTINE WriteDataToVTK
 SUBROUTINE WriteTimeAvgDataToVTK(nRP,nVal,VarNames,Value,FileName)
 ! MODULES
 USE MOD_Globals
-USE MOD_ParametersVisu      ,ONLY:Line_LocalCoords,Plane_LocalCoords
-USE MOD_ParametersVisu      ,ONLY:OutputPlanes,OutputLines,OutputPoints
+USE MOD_ParametersVisu      ,ONLY:Line_LocalCoords,Plane_LocalCoords,Box_LocalCoords
+USE MOD_ParametersVisu      ,ONLY:OutputPlanes,OutputLines,OutputPoints,OutputBoxes
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:GroupNames
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:OutputGroup
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:nPoints,Points_IDlist,Points_GroupIDlist
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:nLines,Lines,tLine
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:nPlanes,Planes,tPlane
+USE MOD_RPSetVisuVisu_Vars  ,ONLY:nBoxes,Boxes,tBox
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:xF_RP
 USE MOD_VTKStructuredOutput
 IMPLICIT NONE
@@ -364,23 +466,27 @@ CHARACTER(LEN=255),INTENT(IN) :: FileName                      !< First part of 
 !-----------------------------------------------------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: iPoint,iLine,iPlane,i,j
+INTEGER                        :: iPoint,iLine,iPlane,iBox,i,j,k
 INTEGER                        :: GroupID
 CHARACTER(LEN=255)             :: GroupName
 TYPE(tLine),POINTER            :: Line
 TYPE(tPlane),POINTER           :: Plane
 REAL,ALLOCATABLE               :: PlaneData(:,:,:)
 REAL,ALLOCATABLE               :: PlaneCoord(:,:,:)
+TYPE(tBox),POINTER             :: Box
+REAL,ALLOCATABLE               :: BoxData(:,:,:,:)
+REAL,ALLOCATABLE               :: BoxCoord(:,:,:,:)
 TYPE(RPPoint)                  :: RPPoints
 TYPE(RPLine),ALLOCATABLE       :: RPLines(:)
 TYPE(RPPlane),ALLOCATABLE      :: RPPlanes(:)
-INTEGER                        :: nPointsOutput,nLinesOutput,nPlanesOutput
-INTEGER                        :: iPointsOutput,iLinesOutput,iPlanesOutput
+TYPE(RPBox),ALLOCATABLE        :: RPBoxes(:)
+INTEGER                        :: nPointsOutput,nLinesOutput,nPlanesOutput,nBoxesOutput
+INTEGER                        :: iPointsOutput,iLinesOutput,iPlanesOutput,iBoxesOutput
 INTEGER                        :: nValLoc
 CHARACTER(LEN=255),ALLOCATABLE :: VarNamesLoc(:)
 !===================================================================================================================================
 ! In case line or plane local coordinates are used, we add the physical coordinates to the output variables
-IF (Line_LocalCoords.OR.Plane_LocalCoords) THEN
+IF (Line_LocalCoords.OR.Plane_LocalCoords.OR.Box_LocalCoords) THEN
   nValLoc = nVal + 3
   ALLOCATE(VarNamesLoc(nValLoc))
   VarNamesLoc(1:nVal) = VarNames
@@ -409,6 +515,7 @@ IF (OutputPoints) THEN
     ALLOCATE(RPPoints%Val(nValLoc,nPointsOutput))
   END IF
 ELSE
+  nPointsOutput = 0
   RPPoints%nRPs = 0
 END IF
 
@@ -461,6 +568,31 @@ IF (OutputPlanes) THEN
   END DO ! iPlane
 ELSE
   nPlanesOutput = 0
+END IF
+
+! Boxes
+IF (OutputBoxes) THEN
+  nBoxesOutput = 0
+  DO iBox=1,nBoxes
+    Box=>Boxes(iBox)
+    IF(.NOT.OutputGroup(Box%GroupID)) CYCLE
+    nBoxesOutput = nBoxesOutput + 1
+  END DO ! iBox
+  IF (nBoxesOutput.GT.0) THEN
+    ALLOCATE(RPBoxes(nBoxesOutput))
+  END IF
+  iBoxesOutput = 0
+  DO iBox=1,nBoxes
+    Box=>Boxes(iBox)
+    IF(.NOT.OutputGroup(Box%GroupID)) CYCLE
+    iBoxesOutput = iBoxesOutput + 1
+    RPBoxes(iBoxesOutput)%nRPs = Box%nRP
+    ALLOCATE(RPBoxes(iBoxesOutput)%Coords(3   ,Box%nRP(1),Box%nRP(2),Box%nRP(3)))
+    ALLOCATE(RPBoxes(iBoxesOutput)%Val(nValLoc,Box%nRP(1),Box%nRP(2),Box%nRP(3)))
+    IF (Box_LocalCoords) RPBoxes(iBoxesOutput)%Coords(3,:,:,:) = 0.
+  END DO ! iBox
+ELSE
+  nBoxesOutput = 0
 END IF
 
 ! Collect the coordinates and values
@@ -538,10 +670,51 @@ IF (OutputPlanes) THEN
   END DO ! iPlane
 END IF
 
-! Write to VTK
-CALL WriteStructuredDataToVTK(FileName,nLinesOutput,nPlanesOutput,RPPoints,RPLines,RPPlanes,.TRUE.,nValLoc,VarNamesLoc)
+! Boxes
+IF (OutputBoxes) THEN
+  iBoxesOutput = 0
+  DO iBox=1,nBoxes
+    Box=>Boxes(iBox)
+    IF(.NOT.OutputGroup(Box%GroupID)) CYCLE
+    iBoxesOutput = iBoxesOutput + 1
+    ! global xyz coordinates
+    ALLOCATE(BoxCoord(3,Box%nRP(1),Box%nRP(2),Box%nRP(3)))
+    DO k=1,Box%nRP(3)
+      DO j=1,Box%nRP(2)
+        DO i=1,Box%nRP(1)
+          BoxCoord(:,i,j,k)=xF_RP(:,Box%IDlist(i,j,k))
+        END DO ! i
+      END DO ! j
+    END DO ! k
+    IF (Box_LocalCoords) THEN
+      RPBoxes(iBoxesOutput)%Coords(1:3,:,:,:)         = Box%LocalCoord(:,:,:,:)
+      RPBoxes(iBoxesOutput)%Val(nVal+1:nVal+3,:,:,:)  = BoxCoord
+    ELSE
+      RPBoxes(iBoxesOutput)%Coords(:,:,:,:)           = BoxCoord
+      RPBoxes(iBoxesOutput)%Val(nVal+1:nValLoc,:,:,:) = 0.
+    END IF
+    ! values
+    ALLOCATE(BoxData(1:nVal,Box%nRP(1),Box%nRP(2),Box%nRP(3)))
+    DO k=1,Box%nRP(3)
+      DO j=1,Box%nRP(2)
+        DO i=1,Box%nRP(1)
+          BoxData(:,i,j,k)=Value(:,Box%IDlist(i,j,k))
+        END DO ! i
+      END DO ! j
+    END DO ! k
+    RPBoxes(iBoxesOutput)%Val(1:nVal,:,:,:) = BoxData
+    DEALLOCATE(BoxData)
+    DEALLOCATE(BoxCoord)
+    ! name
+    GroupName=GroupNames(Box%GroupID)
+    RPBoxes(iBoxesOutput)%name = TRIM(GroupName)//'_'//TRIM(Box%Name)
+  END DO ! iBox
+END IF
 
-WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
+! Write to VTK
+CALL WriteStructuredDataToVTK(FileName,nLinesOutput,nPlanesOutput,nBoxesOutput,RPPoints,RPLines,RPPlanes,RPBoxes,.TRUE.,nValLoc,VarNamesLoc)
+
+WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')" DONE"
 END SUBROUTINE WriteTimeAvgDataToVTK
 
 !===================================================================================================================================
@@ -554,8 +727,10 @@ SUBROUTINE WriteBLPropsToVTK(FileString)
 USE MOD_Globals
 USE MOD_VTKStructuredOutput
 USE MOD_EquationRP_Vars    ,ONLY: nBLProps,VarNames_BLProps
+USE MOD_ParametersVisu     ,ONLY: Plane_doBLProps,Box_doBLProps
 USE MOD_RPSetVisuVisu_Vars ,ONLY: GroupNames
 USE MOD_RPSetVisuVisu_Vars ,ONLY: nPlanes,Planes,tPlane
+USE MOD_RPSetVisuVisu_Vars ,ONLY: nBoxes,Boxes,tBox
 USE MOD_RPSetVisuVisu_Vars ,ONLY: OutputGroup
 USE MOD_RPSetVisuVisu_Vars ,ONLY: xF_RP
 IMPLICIT NONE
@@ -564,14 +739,16 @@ IMPLICIT NONE
 CHARACTER(LEN=*),INTENT(IN)   :: FileString !< Output file name
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                   :: iPlane,i
+INTEGER                   :: iPlane,iBox,i,j
 CHARACTER(LEN=255)        :: GroupName
 TYPE(tPlane),POINTER      :: Plane
+TYPE(tBox),POINTER        :: Box
+TYPE(RPBox),ALLOCATABLE   :: RPBoxes(:)
 TYPE(RPPlane),ALLOCATABLE :: RPPlanes(:)
 TYPE(RPLine),ALLOCATABLE  :: RPLines(:)
 TYPE(RPPoint)             :: RPPoints
-INTEGER                   :: nPlanesOutput
-INTEGER                   :: iPlanesOutput
+INTEGER                   :: nPlanesOutput,nBoxesOutput
+INTEGER                   :: iPlanesOutput,iBoxesOutput
 CHARACTER(LEN=255)        :: VarNamesLoc(nBLProps+3)
 !===================================================================================================================================
 WRITE(UNIT_stdOut,'(A,A,A)')" WRITE BOUNDARY LAYER PROPERTY DATA TO VTU FILE '",TRIM(FileString),"'.vtu ..."
@@ -586,7 +763,7 @@ VarNamesLoc(nBLProps+3) = 'GlobalCoordinateZ'
 nPlanesOutput = 0
 DO iPlane=1,nPlanes
   Plane=>Planes(iPlane)
-  IF((.NOT.OutputGroup(Plane%GroupID)).OR.(Plane%Type.NE.2)) CYCLE
+  IF((.NOT.OutputGroup(Plane%GroupID)).OR.(Plane%Type.NE.2).OR.(.NOT.Plane_doBLProps)) CYCLE
   nPlanesOutput = nPlanesOutput + 1
 END DO ! iPlane
 ! The output of the boundary layer properties is done as a line (the bottom of the plane)
@@ -596,20 +773,41 @@ END IF
 iPlanesOutput = 0
 DO iPlane=1,nPlanes
   Plane=>Planes(iPlane)
-  IF((.NOT.OutputGroup(Plane%GroupID)).OR.(Plane%Type.NE.2)) CYCLE
+  IF((.NOT.OutputGroup(Plane%GroupID)).OR.(Plane%Type.NE.2).OR.(.NOT.Plane_doBLProps)) CYCLE
   iPlanesOutput = iPlanesOutput + 1
   RPLines(iPlanesOutput)%nRPs = Plane%nRP(1)
   ALLOCATE(RPLines(iPlanesOutput)%Coords(3      ,Plane%nRP(1)))
   ALLOCATE(RPLines(iPlanesOutput)%Val(nBLProps+3,Plane%nRP(1)))
   RPLines(iPlanesOutput)%Coords(3,:) = 0.
 END DO ! iPlane
+! Boxes
+nBoxesOutput = 0
+DO iBox=1,nBoxes
+  Box=>Boxes(iBox)
+  IF((.NOT.OutputGroup(Box%GroupID)).OR.(Box%Type.NE.1).OR.(.NOT.Box_doBLProps)) CYCLE
+  nBoxesOutput = nBoxesOutput + 1
+END DO ! iBox
+! The output of the boundary layer properties is done as a line (the bottom of the Box)
+IF (nBoxesOutput.GT.0) THEN
+  ALLOCATE(RPPlanes(nBoxesOutput))
+END IF
+iBoxesOutput = 0
+DO iBox=1,nBoxes
+  Box=>Boxes(iBox)
+  IF((.NOT.OutputGroup(Box%GroupID)).OR.(Box%Type.NE.1).OR.(.NOT.Box_doBLProps)) CYCLE
+  iBoxesOutput = iBoxesOutput + 1
+  RPPlanes(iBoxesOutput)%nRPs = Box%nRP(1)
+  ALLOCATE(RPPlanes(iBoxesOutput)%Coords(3      ,Box%nRP(1),Box%nRP(3)))
+  ALLOCATE(RPPlanes(iBoxesOutput)%Val(nBLProps+3,Box%nRP(1),Box%nRP(3)))
+  RPPlanes(iBoxesOutput)%Coords(3,:,:) = 0.
+END DO ! iBox
 
 ! Collect the coordinates and values
 ! Planes
 iPlanesOutput = 0
 DO iPlane=1,nPlanes
   Plane=>Planes(iPlane)
-  IF((.NOT.OutputGroup(Plane%GroupID)).OR.(Plane%Type.NE.2)) CYCLE
+  IF((.NOT.OutputGroup(Plane%GroupID)).OR.(Plane%Type.NE.2).OR.(.NOT.Plane_doBLProps)) CYCLE
   iPlanesOutput = iPlanesOutput + 1
   ! coordinates
   RPLines(iPlanesOutput)%Coords(1:2,:) = Plane%LocalCoord(:,:,1)
@@ -623,13 +821,33 @@ DO iPlane=1,nPlanes
   GroupName=GroupNames(Plane%GroupID)
   RPLines(iPlanesOutput)%name = TRIM(GroupName)//'_'//TRIM(Plane%Name)
 END DO ! iPlane
+! Boxes
+iBoxesOutput = 0
+DO iBox=1,nBoxes
+  Box=>Boxes(iBox)
+  IF((.NOT.OutputGroup(Box%GroupID)).OR.(Box%Type.NE.1).OR.(.NOT.Box_doBLProps)) CYCLE
+  iBoxesOutput = iBoxesOutput + 1
+  ! coordinates
+  RPPlanes(iBoxesOutput)%Coords(1:3,:,:) = Box%LocalCoord(:,:,1,:)
+  ! global xyz coordinates
+  DO j=1,Box%nRP(3)
+    DO i=1,Box%nRP(1)
+      RPPlanes(iBoxesOutput)%Val(nBLProps+1:nBLProps+3,i,j) = xF_RP(:,Box%IDlist(i,1,j))
+    END DO ! i
+  END DO ! j
+  ! values
+  RPPlanes(iBoxesOutput)%Val(1:nBLProps,:,:) = Box%BLProps(:,:,:)
+  ! name
+  GroupName=GroupNames(Box%GroupID)
+  RPPlanes(iBoxesOutput)%name = TRIM(GroupName)//'_'//TRIM(Box%Name)
+END DO ! iBox
 
 ! Write to VTK
 RPPoints%nRPs = 0
-ALLOCATE(RPPlanes(0))
-CALL WriteStructuredDataToVTK(FileString,nPlanesOutput,0,RPPoints,RPLines,RPPlanes,.TRUE.,nBLProps+3,VarNamesLoc)
+ALLOCATE(RPBoxes(0))
+CALL WriteStructuredDataToVTK(FileString,nPlanesOutput,nBoxesOutput,0,RPPoints,RPLines,RPPlanes,RPBoxes,.TRUE.,nBLProps+3,VarNamesLoc)
 
-WRITE(UNIT_stdOut,'(A)')"DONE"
+WRITE(UNIT_stdOut,'(A)')" DONE"
 
 END SUBROUTINE WriteBLPropsToVTK
 

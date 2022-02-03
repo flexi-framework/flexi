@@ -107,8 +107,10 @@ IF(equiTimeSpacing) THEN
   WRITE(UNIT_stdOut,'(A18,ES16.7)')'             dt = ',dt_out
   WRITE(UNIT_stdOut,'(A18,I8    )')'       nSamples = ',nSamples_out
 END IF
-WRITE(UNIT_stdOut,'(A)')' DONE.'
+
+WRITE(UNIT_stdOut,'(A)')' INIT INTERPOLATION DONE'
 WRITE(UNIT_stdOut,'(132("-"))')
+
 END SUBROUTINE InitInterpolation
 
 
@@ -189,9 +191,9 @@ USE MOD_RPData_Vars          ,ONLY: RPTime,nVar_HDF5
 USE MOD_RPSetVisuVisu_Vars ,  ONLY: nRP_HDF5,RPOutMap
 USE MOD_RPInterpolation_Vars
 USE MOD_ParametersVisu       ,ONLY: nVarVisu,EquiTimeSpacing
-USE MOD_ParametersVisu       ,ONLY: Line_LocalVel,Plane_LocalVel
+USE MOD_ParametersVisu       ,ONLY: Line_LocalVel,Plane_LocalVel,Box_LocalVel
 USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out,RPData_out,RPDataTimeAvg_out
-USE MOD_EquationRP           ,ONLY: Line_TransformVel,Plane_TransformVel
+USE MOD_EquationRP           ,ONLY: Line_TransformVel,Plane_TransformVel,Box_TransformVel
 USE MOD_HDF5_Input
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -203,7 +205,7 @@ CHARACTER(LEN=255)      :: TimeAvgFile
 REAL,ALLOCATABLE        :: temparray(:,:,:),temparray2(:,:,:)
 !===================================================================================================================================
 WRITE(UNIT_stdOut,'(132("-"))')
-WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')' Calculating Time Average...'
+WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' Calculating Time Average...'
 
 ALLOCATE(RPDataTimeAvg_out(1:nVarVisu,nRP_global))
 
@@ -253,12 +255,16 @@ ELSE
     CALL Line_TransformVel(temparray2,1)
   IF(Plane_LocalVel) &
     CALL Plane_TransformVel(temparray2,1)
+  IF(Box_LocalVel) &
+    CALL Box_TransformVel(temparray2,1)
   ! Save in the TimeAvg array
   RPDataTimeAvg_out=temparray2(:,:,1)
   DEALLOCATE(temparray2)
 END IF
-WRITE(UNIT_stdOut,'(A)')'done.'
+
+WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' Calculating Time Average done'
 WRITE(UNIT_stdOut,'(132("-"))')
+
 END SUBROUTINE CalcTimeAvg
 
 

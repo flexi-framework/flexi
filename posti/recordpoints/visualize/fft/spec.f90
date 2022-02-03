@@ -372,7 +372,8 @@ IMPLICIT NONE
 !===================================================================================================================================
 SDEALLOCATE(RPData_spec)
 SDEALLOCATE(RPData_freq)
-WRITE(UNIT_stdOut,'(A)') '  SPECTRAL ANALYSIS FINALIZED'
+WRITE(UNIT_stdOut,'(A)') ' SPECTRAL ANALYSIS FINALIZED'
+
 END SUBROUTINE FinalizeSpec
 
 END MODULE MOD_Spec

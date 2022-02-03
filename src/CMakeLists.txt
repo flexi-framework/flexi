@@ -31,6 +31,31 @@ ELSE()
 ENDIF()
 
 # =========================================================================
+# Equation system
+# =========================================================================
+SET(FLEXI_EQNSYSNAME "navierstokes" CACHE STRING
+                     "Used equation system (navierstokes/linearscalaradvection/rans_sa)")
+SET_PROPERTY(CACHE FLEXI_EQNSYSNAME  PROPERTY STRINGS ${EQNSYSTEMS})
+IF(   FLEXI_EQNSYSNAME STREQUAL "navierstokes")
+  ADD_DEFINITIONS(-DPP_nVar=5 -DPP_nVarPrim=6 -DEQNSYSNR=2)
+  SET(WITHEOS 1)
+ELSEIF(FLEXI_EQNSYSNAME STREQUAL "linearscalaradvection")
+  ADD_DEFINITIONS(-DPP_nVar=1 -DPP_nVarPrim=1 -DEQNSYSNR=1)
+  SET(WITHEOS 0)
+ELSEIF(FLEXI_EQNSYSNAME STREQUAL "rans_sa")
+  ADD_DEFINITIONS(-DPP_nVar=6 -DPP_nVarPrim=7 -DEQNSYSNR=3)
+  SET(WITHEOS 1)
+ELSE()
+  MESSAGE(SEND_ERROR "Unknown equation system.")
+ENDIF()
+
+IF(WITHEOS GREATER 0)
+  SET(FLEXI_EOS "idealgas" CACHE STRING "Used equation of state (idealgas/table)")
+  SET_PROPERTY(CACHE FLEXI_EOS PROPERTY STRINGS idealgas)
+  MARK_AS_ADVANCED(FORCE FLEXI_EOS)
+ENDIF()
+
+# =========================================================================
 # SplitDG
 # =========================================================================
 OPTION(FLEXI_SPLIT_DG "Use split DG formulation" OFF)
@@ -56,31 +81,6 @@ IF(FLEXI_PP_LIMITER)
   IF(NOT FLEXI_EQNSYSNAME STREQUAL "navierstokes")
     MESSAGE(SEND_ERROR "FLEXI_PP_LIMITER only works for FLEXI_EQNSYSNAME==navierstokes.")
   ENDIF()
-ENDIF()
-
-# =========================================================================
-# Equation system
-# =========================================================================
-SET(FLEXI_EQNSYSNAME "navierstokes" CACHE STRING
-                     "Used equation system (navierstokes/linearscalaradvection/rans_sa)")
-SET_PROPERTY(CACHE FLEXI_EQNSYSNAME  PROPERTY STRINGS ${EQNSYSTEMS})
-IF(   FLEXI_EQNSYSNAME STREQUAL "navierstokes")
-  ADD_DEFINITIONS(-DPP_nVar=5 -DPP_nVarPrim=6 -DEQNSYSNR=2)
-  SET(WITHEOS 1)
-ELSEIF(FLEXI_EQNSYSNAME STREQUAL "linearscalaradvection")
-  ADD_DEFINITIONS(-DPP_nVar=1 -DPP_nVarPrim=1 -DEQNSYSNR=1)
-  SET(WITHEOS 0)
-ELSEIF(FLEXI_EQNSYSNAME STREQUAL "rans_sa")
-  ADD_DEFINITIONS(-DPP_nVar=6 -DPP_nVarPrim=7 -DEQNSYSNR=3)
-  SET(WITHEOS 1)
-ELSE()
-  MESSAGE(SEND_ERROR "Unknown equation system.")
-ENDIF()
-
-IF(WITHEOS GREATER 0)
-  SET(FLEXI_EOS "idealgas" CACHE STRING "Used equation of state (idealgas/table)")
-  SET_PROPERTY(CACHE FLEXI_EOS PROPERTY STRINGS idealgas)
-  MARK_AS_ADVANCED(FORCE FLEXI_EOS)
 ENDIF()
 
 # =========================================================================

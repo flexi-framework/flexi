@@ -227,6 +227,7 @@ USE MOD_EquationRP_Vars    ,ONLY: nBLProps,VarNames_BLProps
 USE MOD_ParametersVisu     ,ONLY: ProjectName
 USE MOD_RPSetVisuVisu_Vars ,ONLY: GroupNames
 USE MOD_RPSetVisuVisu_Vars ,ONLY: nPlanes,Planes,tPlane
+USE MOD_RPSetVisuVisu_Vars ,ONLY: nBoxes,Boxes,tBox
 USE MOD_RPSetVisuVisu_Vars ,ONLY: xF_RP
 USE MOD_OutputRPVisu_Vars  ,ONLY: nCoords,CoordNames
 IMPLICIT NONE
@@ -235,14 +236,14 @@ IMPLICIT NONE
 CHARACTER(LEN=*),INTENT(IN)   :: FileString !< Output file name
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER              :: nCoords_loc
-INTEGER              :: iPoint,iPlane
+INTEGER              :: iPoint,iPlane,iBox,iX,iZ
 CHARACTER(LEN=255)   :: ZoneTitle
 CHARACTER(LEN=255)   :: GroupName
-CHARACTER(LEN=255)   :: CoordNames_loc(nCoords-1)
 CHARACTER(LEN=255)   :: tmp255
 TYPE(tPlane),POINTER :: Plane
+TYPE(tBox),POINTER   :: Box
 REAL,ALLOCATABLE     :: LineCoord(:,:)
+REAL,ALLOCATABLE     :: SurfCoord(:,:,:)
 !===================================================================================================================================
 WRITE(UNIT_stdOut,'(A,A,A)',ADVANCE='NO')" WRITE BOUNDARY LAYER PROPERTY DATA TO HDF5 FILE '",TRIM(FileString),"'..."
 CALL OpenDataFile(Filestring,create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
@@ -252,9 +253,7 @@ CALL WriteAttribute(File_ID,'File_Type',1,StrScalar=(/CHARACTER(LEN=255)::'RP_Ou
 tmp255=TRIM(ProjectName)
 CALL WriteAttribute(File_ID,'ProjectName',1,StrScalar=(/tmp255/))
 CALL WriteAttribute(File_ID,'VarNames',nBLProps,StrArray=VarNames_BLProps)
-nCoords_loc=nCoords-1
-CoordNames_loc=CoordNames(2:nCoords)
-CALL WriteAttribute(File_ID,'CoordNames',nCoords_loc,StrArray=CoordNames_loc)
+CALL WriteAttribute(File_ID,'CoordNames',nCoords,StrArray=CoordNames(1:nCoords))
 
 ! local coord always active for BL props
 ! Planes
@@ -279,6 +278,31 @@ DO iPlane=1,nPlanes
     CALL WriteArray(TRIM(ZoneTitle),2,(/nBLProps,Plane%nRP(1)/),(/nBLProps,Plane%nRP(1)/),(/0,0/),.FALSE.,RealArray=Plane%BLProps)
   END IF!(Plane%Type.EQ.2) THEN ! BLPlane
 END DO ! iPlane
+! Boxes
+DO iBox=1,nBoxes
+  Box=>Boxes(iBox)
+  IF(Box%Type.EQ.2) THEN ! BLBox
+    GroupName=GroupNames(Box%GroupID)
+
+    !coordinates
+    ZoneTitle(1:255)=' '
+    WRITE(ZoneTitle,'(A,A,A,A)')TRIM(GroupName),'_',TRIM(Box%Name),'_BLProps_X'
+    ALLOCATE(SurfCoord(5,Box%nRP(1),Box%nRP(3)))
+    SurfCoord(1:3,:,:)=Box%LocalCoord(1:3,:,1,:)
+    DO iX=1,Box%nRP(1)
+      DO iZ=1,Box%nRP(3)
+        SurfCoord(3:5,iX,iZ)=xF_RP(:,Box%IDlist(iX,1,iZ))
+      END DO ! iZ
+    END DO ! iX
+    CALL WriteArray(TRIM(ZoneTitle),3,(/5,Box%nRP(1),Box%nRP(3)/),(/5,Box%nRP(1),Box%nRP(3)/),(/0,0,0/),.FALSE.,RealArray=SurfCoord)
+    DEALLOCATE(SurfCoord)
+
+    !values
+    WRITE(ZoneTitle,'(A,A,A,A)')TRIM(GroupName),'_',TRIM(Box%Name),'_BLProps'
+    CALL WriteArray(TRIM(ZoneTitle),3,(/nBLProps,Box%nRP(1),Box%nRP(3)/),(/nBLProps,Box%nRP(1),Box%nRP(3)/),(/0,0,0/),.FALSE.,RealArray=Box%BLProps)
+  END IF!(Box%Type.EQ.2) THEN ! BLBox
+END DO ! iBox
+
 
 ! Close the file.
 CALL CloseDataFile()

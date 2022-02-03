@@ -23,4 +23,3 @@ MESSAGE(STATUS "Posti: building ${TOOL_NAME} tool.")
 add_exec(             posti_${TOOL_NAME} ${TOOL_DIR}/calcfluc.f90)
 TARGET_LINK_LIBRARIES(posti_${TOOL_NAME} libflexishared)
 ADD_DEPENDENCIES(     posti_${TOOL_NAME} libflexishared)
-
