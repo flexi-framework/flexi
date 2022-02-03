@@ -477,7 +477,6 @@ USE MOD_TestCase_Vars,ONLY:writeBuf,Time
 IMPLICIT NONE
 !==================================================================================================================================
 IF(MPIRoot)THEN
-  CALL WriteStats()
   DEALLOCATE(Time)
   DEALLOCATE(writeBuf)
 END IF
