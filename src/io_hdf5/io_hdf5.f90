@@ -44,7 +44,8 @@ INTEGER(HID_T)           :: Plist_File_ID       !< property list of file which i
 INTEGER(HSIZE_T),POINTER :: HSize(:)            !< HDF5 array size (temporary variable)
 INTEGER                  :: nDims               !< data size dimensions
 INTEGER,PARAMETER        :: nLimit = INT(REAL(HUGE(INT(1,KIND=4)))/REAL(KIND(REAL(1))))
-                                                !< Max number of entries in double arrays for HDF5 IO with < MPI (2GB per rank)
+                                                !< Max number of entries in double arrays for HDF5 IO. Limit is computed as
+                                                !< INT( Max. Bytes allowed by MPI (2GB per rank) / Size of single double entry)
 INTEGER                  :: MPIInfo             !< hardware / storage specific / file system MPI parameters to pass to HDF5
                                                 !< for optimized performance on specific systems
 
