@@ -63,23 +63,6 @@ IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
 
 CALL ParseCommandlineArguments()
 
-SWRITE(UNIT_stdOut,'(132("="))')
-SWRITE(UNIT_stdOut,'(A)')
-SWRITE(UNIT_stdOut,'(11X,A)') &
-    "  ____  ____ _____ _________                      _________ _____ _____    _________ _________ _______     "
-SWRITE(UNIT_stdOut,'(11X,A)') &
-    " |_   ||   _|_   _|  _   _  |                    |_   ___  |_   _|_   _|  |  _   _  |_   ___  |_   __ \    "
-SWRITE(UNIT_stdOut,'(11X,A)') &
-    "   | |__| |   | | |_/ | | \_|       ______         | |_  \_| | |   | |    |_/ | | \_| | |_  \_| | |__) |   "
-SWRITE(UNIT_stdOut,'(11X,A)') &
-    "   |  __  |   | |     | |          |______|        |  _|     | |   | |   _    | |     |  _|  _  |  __ /    "
-SWRITE(UNIT_stdOut,'(11X,A)') &
-    "  _| |  | |_ _| |_   _| |_                        _| |_     _| |_ _| |__/ |  _| |_   _| |___/ |_| |  \ \_  "
-SWRITE(UNIT_stdOut,'(11X,A)') &
-    " |____||____|_____| |_____|                      |_____|   |_____|________| |_____| |_________|____| |___| "
-SWRITE(UNIT_stdOut,'(A)')
-SWRITE(UNIT_stdOut,'(132("="))')
-
 ! Define Parameters
 CALL DefineParametersInterpolation()
 CALL DefineParametersMPI()
@@ -101,6 +84,24 @@ END IF
 IF ((nArgs.LT.2).OR.(.NOT.(STRICMP(GetFileExtension(Args(1)),'ini')))) THEN
   CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: posti_hit_filter parameter.ini [statefile.h5, ....]')
 END IF
+
+SWRITE(UNIT_stdOut,'(132("="))')
+SWRITE(UNIT_stdOut,'(A)')
+SWRITE(UNIT_stdOut,'(11X,A)') &
+    "  ____  ____ _____ _________                      _________ _____ _____    _________ _________ _______     "
+SWRITE(UNIT_stdOut,'(11X,A)') &
+    " |_   ||   _|_   _|  _   _  |                    |_   ___  |_   _|_   _|  |  _   _  |_   ___  |_   __ \    "
+SWRITE(UNIT_stdOut,'(11X,A)') &
+    "   | |__| |   | | |_/ | | \_|       ______         | |_  \_| | |   | |    |_/ | | \_| | |_  \_| | |__) |   "
+SWRITE(UNIT_stdOut,'(11X,A)') &
+    "   |  __  |   | |     | |          |______|        |  _|     | |   | |   _    | |     |  _|  _  |  __ /    "
+SWRITE(UNIT_stdOut,'(11X,A)') &
+    "  _| |  | |_ _| |_   _| |_                        _| |_     _| |_ _| |__/ |  _| |_   _| |___/ |_| |  \ \_  "
+SWRITE(UNIT_stdOut,'(11X,A)') &
+    " |____||____|_____| |_____|                      |_____|   |_____|________| |_____| |_________|____| |___| "
+SWRITE(UNIT_stdOut,'(A)')
+SWRITE(UNIT_stdOut,'(132("="))')
+
 ! Parse parameter file
 CALL prms%read_options(Args(1))
 ParameterFile = Args(1)
