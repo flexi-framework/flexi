@@ -57,23 +57,6 @@ IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
 
 CALL ParseCommandlineArguments()
 
-SWRITE(UNIT_stdOut,'(132("="))')
-SWRITE(UNIT_stdOut,'(A)')
-SWRITE(UNIT_stdOut,'(2X,A)') &
-    "  ____  ____ _____ _________                           __      ____  _____      __      _____    ____  ____ ________ _________ "
-SWRITE(UNIT_stdOut,'(2X,A)') &
-    " |_   ||   _|_   _|  _   _  |                         /  \    |_   \|_   _|    /  \    |_   _|  |_  _||_  _|  __   _|_   ___  |"
-SWRITE(UNIT_stdOut,'(2X,A)') &
-    "   | |__| |   | | |_/ | | \_|       ______           / /\ \     |   \ | |     / /\ \     | |      \ \  / / |_/  / /   | |_  \_|"
-SWRITE(UNIT_stdOut,'(2X,A)') &
-    "   |  __  |   | |     | |          |______|         / ____ \    | |\ \| |    / ____ \    | |   _   \ \/ /     .'.' _  |  _|  _ "
-SWRITE(UNIT_stdOut,'(2X,A)') &
-    "  _| |  | |_ _| |_   _| |_                        _/ /    \ \_ _| |_\   |_ _/ /    \ \_ _| |__/ |  _|  |_   _/ /__/ |_| |___/ |"
-SWRITE(UNIT_stdOut,'(2X,A)') &
-    " |____||____|_____| |_____|                      |____|  |____|_____|\____|____|  |____|________| |______| |________|_________|"
-SWRITE(UNIT_stdOut,'(A)')
-SWRITE(UNIT_stdOut,'(132("="))')
-
 ! Define Parameters
 CALL DefineParametersInterpolation()
 CALL DefineParametersMPI()
@@ -96,6 +79,24 @@ END IF
 IF ((nArgs.LT.2).OR.(.NOT.(STRICMP(GetFileExtension(Args(1)),'ini')))) THEN
   CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: posti_hit_analyze prm-file [statefile.h5, ...]')
 END IF
+
+SWRITE(UNIT_stdOut,'(132("="))')
+SWRITE(UNIT_stdOut,'(A)')
+SWRITE(UNIT_stdOut,'(2X,A)') &
+    "  ____  ____ _____ _________                           __      ____  _____      __      _____    ____  ____ ________ _________ "
+SWRITE(UNIT_stdOut,'(2X,A)') &
+    " |_   ||   _|_   _|  _   _  |                         /  \    |_   \|_   _|    /  \    |_   _|  |_  _||_  _|  __   _|_   ___  |"
+SWRITE(UNIT_stdOut,'(2X,A)') &
+    "   | |__| |   | | |_/ | | \_|       ______           / /\ \     |   \ | |     / /\ \     | |      \ \  / / |_/  / /   | |_  \_|"
+SWRITE(UNIT_stdOut,'(2X,A)') &
+    "   |  __  |   | |     | |          |______|         / ____ \    | |\ \| |    / ____ \    | |   _   \ \/ /     .'.' _  |  _|  _ "
+SWRITE(UNIT_stdOut,'(2X,A)') &
+    "  _| |  | |_ _| |_   _| |_                        _/ /    \ \_ _| |_\   |_ _/ /    \ \_ _| |__/ |  _|  |_   _/ /__/ |_| |___/ |"
+SWRITE(UNIT_stdOut,'(2X,A)') &
+    " |____||____|_____| |_____|                      |____|  |____|_____|\____|____|  |____|________| |______| |________|_________|"
+SWRITE(UNIT_stdOut,'(A)')
+SWRITE(UNIT_stdOut,'(132("="))')
+
 ! Parse parameter file
 CALL prms%read_options(Args(1))
 ParameterFile = Args(1)

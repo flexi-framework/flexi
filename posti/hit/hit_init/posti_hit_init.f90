@@ -51,6 +51,36 @@ IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
 
 CALL ParseCommandlineArguments()
 
+! Define Parameters
+CALL DefineParametersInterpolation()
+CALL DefineParametersMPI()
+CALL DefineParametersIO_HDF5()
+CALL DefineParametersOutput()
+CALL DefineParametersMesh()
+
+! Define Parameters HIT_Init
+CALL prms%SetSection("HIT_Init")
+CALL prms%CreateIntOption("Seed"     , "Seed for random number generator for Rogallo precedure for reproducibility","0")
+CALL prms%CreateIntOption("N_FFT"    , "Number of global interpolation points to perform DFFT on.")
+CALL prms%CreateIntOption("InitSpec" , "Initial energy spectrum: (1) Rogallo,\n&
+                                       &                         (2) Blaisdell,\n&
+                                       &                         (3) Chasnov,\n&
+                                       &                         (4) Inf intertial range,\n&
+                                       &                         (5) Karman-Pao.")
+CALL prms%CreateRealOption("rho0", "Constant density for initial flow field.","1.0")
+CALL prms%CreateRealOption("Ma0",  "Target Mach number with respect to the maximum velocity in the flow field. &
+                                   &(Is set via the mean background pressure.)","0.1")
+
+! check for command line argument --help or --markdown
+IF (doPrintHelp.GT.0) THEN
+  CALL PrintDefaultParameterFile(doPrintHelp.EQ.2, Args(1))
+  STOP
+END IF
+! check if parameter file is given
+IF ((nArgs.LT.1).OR.(.NOT.(STRICMP(GetFileExtension(Args(1)),'ini')))) THEN
+  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: posti_hit_init parameter.ini')
+END IF
+
 SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A)')
 SWRITE(UNIT_stdOut,'(20X,A)') &
@@ -68,35 +98,6 @@ SWRITE(UNIT_stdOut,'(20X,A)') &
 SWRITE(UNIT_stdOut,'(A)')
 SWRITE(UNIT_stdOut,'(132("="))')
 
-! Define Parameters
-CALL DefineParametersInterpolation()
-CALL DefineParametersMPI()
-CALL DefineParametersIO_HDF5()
-CALL DefineParametersOutput()
-CALL DefineParametersMesh()
-
-! Define Parameters HIT_Init
-CALL prms%SetSection("HIT_Init")
-CALL prms%CreateIntOption("Seed"     , "Seed for random number generator for Rogallo precedure (Only Debug)")
-CALL prms%CreateIntOption("N_FFT"    , "Number of global interpolation points to perform DFFT on.")
-CALL prms%CreateIntOption("InitSpec" , "Initial energy spectrum (1) Rogallo,&
-                                                                &(2) Blaisdell,&
-                                                                &(3) Chasnov,&
-                                                                &(4) Inf intertial range,&
-                                                                &(5) Karman-Pao.")
-CALL prms%CreateRealOption("rho0", "Constant density for initial flow field.")
-CALL prms%CreateRealOption("Ma0",  "Target Mach number with respect to the maximum velocity in the flow field. &
-                                   &(Is set via the mean background pressure.)")
-
-! check for command line argument --help or --markdown
-IF (doPrintHelp.GT.0) THEN
-  CALL PrintDefaultParameterFile(doPrintHelp.EQ.2, Args(1))
-  STOP
-END IF
-! check if parameter file is given
-IF ((nArgs.LT.1).OR.(.NOT.(STRICMP(GetFileExtension(Args(1)),'ini')))) THEN
-  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: posti_hit_init parameter.ini')
-END IF
 ! Parse parameter file
 CALL prms%read_options(Args(1))
 ParameterFile = Args(1)
@@ -104,12 +105,12 @@ ParameterFile = Args(1)
 ! Readin Parameters
 N_FFT    = GETINT('N_FFT')
 InitSpec = GETINT('InitSpec')
-Seed     = GETINT('Seed','0')
+Seed     = GETINT('Seed')
 MeshFile = GETSTR('MeshFile')
 
 ! Get variables for flow field
-rho0  = GETREAL('rho0', '1.0')
-Ma0   = GETREAL('Ma0',  '0.1')
+rho0  = GETREAL('rho0')
+Ma0   = GETREAL('Ma0')
 
 CALL InitIOHDF5()
 CALL InitInterpolation()
