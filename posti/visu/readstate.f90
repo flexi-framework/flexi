@@ -370,7 +370,6 @@ SELECT CASE(RestartMode)
 END SELECT
 #endif /* EQNSYSNR!=1 */
 
-
 CALL CloseDataFile()
 
 CALL FinalizeParameters()
