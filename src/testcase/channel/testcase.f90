@@ -315,20 +315,21 @@ END SUBROUTINE WriteStats
 !==================================================================================================================================
 !> Specifies periodic hill testcase
 !==================================================================================================================================
-SUBROUTINE AnalyzeTestcase(Time)
+SUBROUTINE AnalyzeTestcase(Time,doFlush)
 ! MODULES
 USE MOD_Globals
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN)                 :: Time                   !< simulation time
+LOGICAL,INTENT(IN)              :: doFlush                !< indicate that data has to be written
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
 IF(MPIRoot)THEN
   ioCounter=ioCounter+1
   writeBuf(:,ioCounter) = (/Time, dpdx, BulkVel/)
-  IF(ioCounter.GE.nWriteStats) CALL WriteStats()
+  IF(ioCounter.GE.nWriteStats .OR. doFlush) CALL WriteStats()
 END IF
 END SUBROUTINE AnalyzeTestCase
 

@@ -52,8 +52,8 @@ END INTERFACE
 !  MODULE PROCEDURE TestcaseSource
 !END INTERFACE
 
-INTERFACE AnalyzeTestCase
-  MODULE PROCEDURE AnalyzeTestCase
+INTERFACE AnalyzeTestcase
+  MODULE PROCEDURE AnalyzeTestcase
 END INTERFACE
 
 INTERFACE GetBoundaryFluxTestcase
@@ -74,7 +74,7 @@ PUBLIC:: FinalizeTestcase
 PUBLIC:: ExactFuncTestcase
 PUBLIC:: TestcaseSource
 PUBLIC:: CalcForcing
-PUBLIC:: AnalyzeTestCase
+PUBLIC:: AnalyzeTestcase
 PUBLIC:: GetBoundaryFluxTestcase
 PUBLIC:: GetBoundaryFVgradientTestcase
 PUBLIC:: Lifting_GetBoundaryFluxTestcase
@@ -213,7 +213,7 @@ END SUBROUTINE TestcaseSource
 !==================================================================================================================================
 !> Perform TGV-specific analysis: compute dissipation rates, kinetic energy and enstrophy
 !==================================================================================================================================
-SUBROUTINE AnalyzeTestcase(t)
+SUBROUTINE AnalyzeTestcase(t,doFlush)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
@@ -235,6 +235,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN)                 :: t                      !< simulation time
+LOGICAL,INTENT(IN)              :: doFlush                !< indicate that data has to be written
 !----------------------------------------------------------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -444,13 +445,13 @@ IF(MPIRoot)THEN
 #else
   writeBuf(1:nTGVvars,ioCounter) = (/Ekin,Ekin_comp,mean_temperature,uprime,mean_entropy/)
 #endif
-  IF(ioCounter.EQ.nWriteStats)THEN
+  IF(ioCounter.EQ.nWriteStats .OR. doFlush)THEN
     CALL WriteStats()
     ioCounter=0
   END IF
 END IF
 
-END SUBROUTINE AnalyzeTestCase
+END SUBROUTINE AnalyzeTestcase
 
 
 !==================================================================================================================================

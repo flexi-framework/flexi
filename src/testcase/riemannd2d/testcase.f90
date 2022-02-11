@@ -49,8 +49,8 @@ INTERFACE CalcForcing
   MODULE PROCEDURE DO_NOTHING
 END INTERFACE
 
-INTERFACE AnalyzeTestCase
-  MODULE PROCEDURE DO_NOTHING
+INTERFACE AnalyzeTestcase
+  MODULE PROCEDURE DO_NOTHING_LOG
 END INTERFACE
 
 INTERFACE GetBoundaryFluxTestcase
@@ -71,7 +71,7 @@ PUBLIC:: FinalizeTestcase
 PUBLIC:: ExactFuncTestcase
 PUBLIC:: TestcaseSource
 PUBLIC:: CalcForcing
-PUBLIC:: AnalyzeTestCase
+PUBLIC:: AnalyzeTestcase
 PUBLIC:: GetBoundaryFluxTestcase
 PUBLIC:: GetBoundaryFVgradientTestcase
 PUBLIC:: Lifting_GetBoundaryFluxTestcase
@@ -83,8 +83,15 @@ CONTAINS
 !==================================================================================================================================
 SUBROUTINE DO_NOTHING(optionalREAL,optionalREAL2)
 IMPLICIT NONE
-REAL,OPTIONAL,INTENT(IN)  :: optionalREAL,optionalREAL2
+REAL,OPTIONAL,INTENT(IN)    :: optionalREAL,optionalREAL2
 END SUBROUTINE DO_NOTHING
+
+
+SUBROUTINE DO_NOTHING_LOG(optionalREAL,optionalLOG)
+IMPLICIT NONE
+REAL,OPTIONAL,INTENT(IN)    :: optionalREAL
+LOGICAL,OPTIONAL,INTENT(IN) :: optionalLOG
+END SUBROUTINE DO_NOTHING_LOG
 
 
 !==================================================================================================================================

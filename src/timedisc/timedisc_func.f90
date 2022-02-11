@@ -324,7 +324,7 @@ IF (doAnalyze) THEN
 END IF
 
 ! Call your analysis routine for your testcase here.
-IF((MOD(iter,INT(nAnalyzeTestCase,KIND=8)).EQ.0).OR.doAnalyze) CALL AnalyzeTestCase(t)
+IF((MOD(iter,INT(nAnalyzeTestCase,KIND=8)).EQ.0).OR.doAnalyze) CALL AnalyzeTestCase(t,doFinalize)
 ! Evaluate recordpoints
 IF(RP_onProc) CALL RecordPoints(PP_nVar,StrVarNames,iter,t,doAnalyze)
 ! Update Pruett filter base flow
