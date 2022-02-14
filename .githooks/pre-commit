@@ -1,0 +1,127 @@
+#!/bin/sh
+#=================================================================================================================================
+# Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+# This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+# For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+#
+# FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+#
+# FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+# of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+#
+# You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+#=================================================================================================================================
+
+#===================================================================================================================================
+# Check the number and total size of files about to be commited
+#===================================================================================================================================
+
+# Check if override is requested
+if [ "$GIT_OVERRIDE_LIMITS" = "1" ]; then
+  echo 'Detected "GIT_OVERRIDE_LIMITS=1", overriding pre-commit check ...'
+  exit 0
+fi
+
+# General variables
+# SIZELIMIT=1048576 # 1 MB
+SIZESINGLELIMIT=1000000
+SIZESINGLEWARN=100000
+SIZETOTALLIMIT=1000000
+SIZETOTALWARN=100000
+
+# Number of existing files plus 100
+NUMBERLIMIT=$(git ls-tree --full-tree -r --name-only HEAD | wc -l)
+NUMBERLIMIT=$(($NUMBERLIMIT + 100))
+NUMBERWARN=100
+
+# Local variables
+ERROR=0
+FILEWARN=0
+FILEERR=0
+FILESUM=0
+
+# Check if file is opened in a terminal
+if test -t 1; then
+  # Check if terminal supports color
+  NbrOfColors=$(which tput > /dev/null && tput colors)
+  if test -n "$NbrOfColors" && test "$NbrOfColors" -ge 8; then
+    NC="$(tput sgr0)"
+    RED="$(tput setaf 1)"
+    GREEN="$(tput setaf 2)"
+    YELLOW="$(tput setaf 3)"
+  fi
+fi
+
+# Get a list of all staged files
+CHANGED=$(git diff --staged --name-only)
+
+# Check if any changes are present
+if [ -n "$CHANGED" ]; then
+  # Sort found files by size (-S) in reverse ordering (-r)
+  SORTED=$(ls -Shsr "$CHANGED" 2> /dev/null)
+  NUMBER=$(git diff --staged --numstat | wc -l)
+
+  # Check the number of files
+  if [ "$NUMBER" -ge "$NUMBERLIMIT" ]; then
+    printf "${RED}Number of changed files ($NUMBER) exceeds limit ($NUMBERLIMIT)!${NC}\n"
+    ERROR=1
+  elif [ "$NUMBER" -ge "$NUMBERWARN" ]; then
+    printf "${YELLOW}Number of changed files ($NUMBER)!${NC}\n"
+  fi
+
+  # Loop over all changes
+  for file in $SORTED; do
+    # Check if path is a file that exists
+    if [ -f "$file" ]; then
+      # -b, --bytes           equivalent to '--apparent-size --block-size=1'
+      LINE=$(du -h "$file")
+      FILESIZE=$(du -b "$file" | cut -d '	' -f1) # this is a tab, not a white space
+
+      # Sum up the total file sizes
+      FILESUM=$(($FILESUM + $FILESIZE))
+
+      # Check the file size limit
+      if [ "$FILESIZE" -gt "$SIZESINGLELIMIT" ]; then
+        # Error header
+        if [ "$FILEERR" -eq 0 ]; then
+          printf "${RED}The following file(s) exceed the file size limit ($SIZESINGLELIMIT bytes)${NC}\n"
+          ERROR=1
+          FILEERR=1
+        fi
+        printf "$LINE\n"
+      # Check the file size warning
+      elif [ "$FILESIZE" -gt "$SIZESINGLEWARN" ]; then
+        # Error header
+        if [ "$FILEWARN" -eq 0 ]; then
+          printf "${YELLOW}The following large file(s) are about to be committed (>$SIZESINGLEWARN bytes)${NC}\n"
+          FILEWARN=1
+        fi
+        printf "$LINE\n"
+      fi
+    fi
+
+    # Check total file size
+    if [ "$FILESUM" -gt "$SIZETOTALLIMIT" ]; then
+      # Error header
+      printf "${RED}The total file size exceeds the size limit ($SIZETOTALLIMIT bytes)${NC}\n"
+      ERROR=1
+    # Check the file size warning
+    elif [ "$FILESUM" -gt "$SIZETOTALWARN" ]; then
+      # Error header
+      printf "${YELLOW}Total file size to be committed ($FILESUM bytes)${NC}\n"
+    fi
+  done
+
+  # Abort if hook encountered any error
+  if [ "$ERROR" -ne 0 ]; then
+    echo '------------------------------------------------------------------------------------------------------------------------------------'
+    echo 'Commit rejected! You can override this check by passing "GIT_OVERRIDE_LIMITS=1" to git.'
+    exit 1
+  fi
+
+# git commit should not allow to be run without staged changes
+else
+  echo 'No staged changes. Exiting ...'
+  exit 0
+fi
