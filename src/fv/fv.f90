@@ -326,6 +326,9 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER :: iSide,ElemID,nbElemID
 !==================================================================================================================================
+! array not allocated in postiMode
+IF (.NOT.ALLOCATED(SideToElem)) RETURN
+
 ! set information whether elements adjacent to a side are DG or FV elements
 DO iSide = 1,nSides
   ElemID    = SideToElem(S2E_ELEM_ID   ,iSide)

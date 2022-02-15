@@ -64,7 +64,7 @@ USE MOD_HDF5_Input     ,ONLY: DatasetExists,HSize,nDims,ReadArray
 USE MOD_StringTools    ,ONLY: STRICMP
 USE MOD_Restart        ,ONLY: InitRestartFile
 USE MOD_Restart_Vars   ,ONLY: RestartMode
-USE MOD_Visu_Vars      ,ONLY: FileType,VarNamesHDF5,nBCNamesAll,nVarIni
+USE MOD_Visu_Vars      ,ONLY: FileType,VarNamesHDF5,nBCNamesAll,nVarIni,nVar_State
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN)                       :: statefile
@@ -117,13 +117,20 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
         ! This routine requires the file to be closed
         CALL InitRestartFile(statefile)
         CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-        IF (RestartMode.EQ.2 .OR. RestartMode.EQ.3) THEN
-          SDEALLOCATE(VarNamesHDF5)
-          CALL GetVarNames("VarNames_Mean",VarNamesHDF5,VarNamesExist)
-          FileType = 'State'
-        ELSE
-          FileType = 'Generic'
-        END IF
+        SELECT CASE(RestartMode)
+          CASE(0)
+            SDEALLOCATE(VarNamesHDF5)
+            CALL GetVarNames("VarNames_Mean",VarNamesHDF5,VarNamesExist)
+            FileType = 'Generic'
+          CASE(2,3)
+            SDEALLOCATE(VarNamesHDF5)
+            CALL GetVarNames("VarNames_Mean",VarNamesHDF5,VarNamesExist)
+            FileType = 'State'
+            ! When restarting from a time-averaged file, we convert to U array to PP_nVar
+            nVar_State = PP_nVar
+          CASE DEFAULT
+            FileType = 'Generic'
+        END SELECT
       END IF
   END SELECT
 
@@ -292,8 +299,6 @@ ELSE
 #else
   CALL GetDataProps(nVar_State,N_State,nElems_State,NodeType_State,'Mean')
 #endif /* PP_N==N */
-  ! When restarting from a time-averaged file, we convert to U array to PP_nVar
-  nVar_State = PP_nVar
 END IF
 #endif /* EQNSYSNR != 1 */
 

@@ -192,7 +192,7 @@ END DO
 ! Initialize eval routines
 CALL InitAnalyzeBasis(PP_N,NAnalyze,xGP,wBary)
 
-IF(doAnalyzeToFile)THEN
+IF(doAnalyzeToFile.AND.MPIRoot)THEN
   DO i=1,PP_nVar
     VarNames(i)                   = 'L2_'//TRIM(StrVarNames(i))
     VarNames(PP_nVar+1:PP_nVar+i) = 'LInf_'//TRIM(StrVarNames(i))

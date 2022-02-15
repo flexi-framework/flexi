@@ -37,6 +37,9 @@ USE MOD_Output_Vars,        ONLY:ProjectName
 USE MOD_Mesh,               ONLY:DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Mesh_Vars,          ONLY:MeshFile
 USE MOD_Mortar,             ONLY:InitMortar,FinalizeMortar
+#if USE_MPI
+USE MOD_MPI,                ONLY:FinalizeMPI
+#endif /*USE_MPI*/
 #if FV_ENABLED
 USE MOD_FV_Basis,           ONLY:InitFV_Basis,FinalizeFV_Basis
 #endif
@@ -122,6 +125,7 @@ CALL FinalizeParameters()
 CALL FinalizeCommandlineArguments()
 
 #if USE_MPI
+CALL FinalizeMPI()
 CALL MPI_FINALIZE(iError)
 IF(iError .NE. 0) STOP 'MPI finalize error'
 #endif

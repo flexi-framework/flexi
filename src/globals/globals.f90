@@ -221,15 +221,17 @@ END SUBROUTINE Abort
 !> print a warning to the command line (only MPI root)
 !==================================================================================================================================
 SUBROUTINE PrintWarning(msg)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*) :: msg  !< output message
 !===================================================================================================================================
 IF (myRank.EQ.0) THEN
-  WRITE(UNIT_stdOut,*) '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
-  WRITE(UNIT_stdOut,*) 'WARNING:'
-  WRITE(UNIT_stdOut,*) TRIM(msg)
-  WRITE(UNIT_stdOut,*) '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+  WRITE(UNIT_stdOut,'(A)') '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+  WRITE(UNIT_stdOut,'(A)') 'WARNING:'
+  WRITE(UNIT_stdOut,'(A)') TRIM(msg)
+  WRITE(UNIT_stdOut,'(A)') '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
 END IF
 END SUBROUTINE PrintWarning
 

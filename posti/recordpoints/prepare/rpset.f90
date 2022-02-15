@@ -105,9 +105,9 @@ CALL prms%CreateIntOption(      'BLBox_GroupID'     ,"ID of a boundary layer gro
                                                      &, used to allocate the definition to a specific group",multiple=.TRUE.)
 CALL prms%CreateIntArrayOption( 'BLBox_nRP'         ,"Number of RPs along and normal to the boundary",multiple=.TRUE.)
 CALL prms%CreateIntOption(      'BLBox_nCP'         ,"Number of control points defining the spline (at least two). &
-                                                      Defined once per BLBox",multiple=.TRUE.)
+                                                     & Defined once per BLBox",multiple=.TRUE.)
 CALL prms%CreateIntOption(      'BLBox_nSP'         ,"Number of shifted splines (at least one), linear interpolation betweeen &
-                                                      the splines in shifted direction (linear extrusion)",multiple=.TRUE.)
+                                                     & the splines in shifted direction (linear extrusion)",multiple=.TRUE.)
 CALL prms%CreateRealArrayOption('BLBox_CP'          ,"Coordinates of the spline control points. nCPxnSP needed.",multiple=.TRUE.)
 CALL prms%CreateRealOption(     'BLBox_fac'         ,"Factor of geometrical stretching in wall-normal direction. ",multiple=.TRUE.)
 CALL prms%CreateRealOption(     'BLBox_height'      ,"Wall-normal extend of the box for each control point",multiple=.TRUE.)

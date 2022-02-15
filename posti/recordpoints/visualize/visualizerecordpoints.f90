@@ -42,6 +42,9 @@ USE MOD_EnsembleRP                  ,ONLY:EnsembleRP
 USE MOD_MPI                         ,ONLY:DefineParametersMPI,InitMPI
 USE MOD_IO_HDF5                     ,ONLY:DefineParametersIO_HDF5,InitIOHDF5
 USE MOD_EOS                         ,ONLY:DefineParametersEOS,InitEOS
+#if USE_MPI
+USE MOD_MPI                         ,ONLY:FinalizeMPI
+#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -142,10 +145,11 @@ CALL FinalizeRPData()
 CALL FinalizeSpec()
 CALL FinalizeCommandlineArguments()
 #if USE_MPI
+CALL FinalizeMPI()
 CALL MPI_FINALIZE(iError)
-IF(iError .NE. 0) &
-  CALL CollectiveStop(__STAMP__,'MPI finalize error',iError)
+IF(iError .NE. 0) STOP 'MPI finalize error'
 #endif
+
 WRITE(UNIT_stdOut,'(132("="))')
 WRITE(UNIT_stdOut,'(A)') ' RECORDPOINTS POSTPROC FINISHED! '
 WRITE(UNIT_stdOut,'(132("="))')

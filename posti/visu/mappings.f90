@@ -259,6 +259,13 @@ DO iVar=1,nVarIni
   END DO
 END DO
 
+! Warn the user when restarting from a time-averaged file and no mapping was found
+IF (nVarVisu.EQ.0 .AND. RestartMode.EQ.0) THEN
+  CALL PrintWarning('Trying to visualize a time-averaged file but no corresponding variable was found.\n'//&
+                    'Derived quantities are not available if file is missing conservative/primite variables.\n'//&
+                    'To access mean quantites, please prepend VarName with "Mean:VarName", "MeanSquare:VarName" or "Fluc:VarName"!')
+END IF
+
 ! check whether gradients are needed for any quantity
 DO iVar=1,nVarDep
   IF (mapAllVarsToSurfVisuVars(iVar).GT.0) THEN

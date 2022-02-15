@@ -12,10 +12,8 @@ MARK_AS_ADVANCED(FORCE LIBS_EXTERNAL_LIB_DIR)
 
 
 # =========================================================================
-# Check where the code originates
+# Set download locations depending on git origin
 # =========================================================================
-EXECUTE_PROCESS(COMMAND git ls-remote --get-url OUTPUT_VARIABLE GIT_ORIGIN)
-
 # Origin pointing to IAG
 IF("${GIT_ORIGIN}" MATCHES ".iag.uni-stuttgart.de")
 # Strip leading and trailing white space

@@ -49,7 +49,7 @@ END INTERFACE
 !END INTERFACE
 
 INTERFACE AnalyzeTestCase
-  MODULE PROCEDURE DO_NOTHING
+  MODULE PROCEDURE DO_NOTHING_LOG
 END INTERFACE
 
 INTERFACE GetBoundaryFluxTestcase
@@ -196,8 +196,15 @@ END SUBROUTINE TestcaseSource
 !==================================================================================================================================
 SUBROUTINE DO_NOTHING(optionalREAL,optionalREAL2)
 IMPLICIT NONE
-REAL,OPTIONAL,INTENT(IN)  :: optionalREAL,optionalREAL2
+REAL,OPTIONAL,INTENT(IN)    :: optionalREAL,optionalREAL2
 END SUBROUTINE DO_NOTHING
+
+
+SUBROUTINE DO_NOTHING_LOG(optionalREAL,optionalLOG)
+IMPLICIT NONE
+REAL,OPTIONAL,INTENT(IN)    :: optionalREAL
+LOGICAL,OPTIONAL,INTENT(IN) :: optionalLOG
+END SUBROUTINE DO_NOTHING_LOG
 
 
 SUBROUTINE GetBoundaryFluxTestcase(SideID,t,Nloc,Flux,UPrim_master,                   &
