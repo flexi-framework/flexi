@@ -531,7 +531,7 @@ dummy = Nin_DFL ! prevent compile warning
 END SUBROUTINE fillCFL_DFL
 
 !==================================================================================================================================
-!> Print information on the amount of FV subcells
+!> Print information on the timestep
 !==================================================================================================================================
 SUBROUTINE TimeDisc_Info()
 ! MODULES
