@@ -102,7 +102,7 @@ USE MOD_IO_HDF5             ,ONLY: AddToElemData,ElementOut
 USE MOD_Mesh_Vars           ,ONLY: nElems
 USE MOD_Overintegration_Vars,ONLY: NUnder
 USE MOD_Predictor           ,ONLY: InitPredictor
-USE MOD_ReadInTools         ,ONLY: GETREAL,GETINT,GETSTR,GETINTFROMSTR,GETLOGICAL
+USE MOD_ReadInTools         ,ONLY: GETREAL,GETINT,GETSTR
 USE MOD_StringTools         ,ONLY: LowCase,StripSpaces
 USE MOD_TimeDisc_Vars       ,ONLY: CFLScale
 USE MOD_TimeDisc_Vars       ,ONLY: dtElem,dt,tend,tstart,dt_dynmin,dt_kill
@@ -451,7 +451,7 @@ dt_analmin = MIN(dt_analmin,dt_Min)
 IF (dt_Min.LT.dt_dynmin) THEN
   dt_Min = dt_dynmin;   dtElem = dt_dynmin
 END IF
-IF (dt_Min.LT.dt_kill.AND.t.GT.0.1) THEN
+IF (dt_Min.LT.dt_kill) THEN
   CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
                   FutureTime=tWriteData,isErrorFile=.TRUE.)
   CALL Abort(__STAMP__,&
