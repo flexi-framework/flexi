@@ -20,16 +20,7 @@ MODULE MOD_TimeDisc_Functions
 ! MODULES
 IMPLICIT NONE
 PRIVATE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-
-INTEGER,PARAMETER,PUBLIC        :: TIMEDISC_DYNAMIC = 1
-INTEGER,PARAMETER,PUBLIC        :: TIMEDISC_STATIC  = 2
-INTEGER,PARAMETER,PUBLIC        :: TIMEDISC_INITIAL = 3
-
-! Public Part ----------------------------------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------------------------------------------------
 
 INTERFACE DefineParametersTimeDisc
   MODULE PROCEDURE DefineParametersTimeDisc
@@ -80,10 +71,6 @@ USE MOD_ReadInTools         ,ONLY: prms,addStrListEntry
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("TimeDisc")
-CALL prms%CreateIntFromStringOption('TimeDiscAlgorithm', "Specifies how timestep is calculated.","dynamic")
-CALL addStrListEntry('TimeDiscAlgorithm','dynamic',     TIMEDISC_DYNAMIC)
-CALL addStrListEntry('TimeDiscAlgorithm','static',      TIMEDISC_STATIC)
-CALL addStrListEntry('TimeDiscAlgorithm','initial',     TIMEDISC_INITIAL)
 CALL prms%CreateStringOption('TimeDiscMethod', "Specifies the type of time-discretization to be used, e.g. the name of&
                                                & a specific Runge-Kutta scheme. Possible values:\n"//&
                                                "  * standardrk3-3\n  * carpenterrk4-5\n  * niegemannrk4-14\n"//&
@@ -117,8 +104,8 @@ USE MOD_Overintegration_Vars,ONLY: NUnder
 USE MOD_Predictor           ,ONLY: InitPredictor
 USE MOD_ReadInTools         ,ONLY: GETREAL,GETINT,GETSTR,GETINTFROMSTR,GETLOGICAL
 USE MOD_StringTools         ,ONLY: LowCase,StripSpaces
-USE MOD_TimeDisc_Vars       ,ONLY: CFLScale,TimeDiscAlgorithm
-USE MOD_TimeDisc_Vars       ,ONLY: dtElem,dt,tend,tstart,dt_dynmin,dt_kill,dt_static
+USE MOD_TimeDisc_Vars       ,ONLY: CFLScale
+USE MOD_TimeDisc_Vars       ,ONLY: dtElem,dt,tend,tstart,dt_dynmin,dt_kill
 USE MOD_TimeDisc_Vars       ,ONLY: Ut_tmp,UPrev,S2
 USE MOD_TimeDisc_Vars       ,ONLY: maxIter,nCalcTimeStepMax
 USE MOD_TimeDisc_Vars       ,ONLY: SetTimeDiscCoefs,TimeStep,TimeDiscName,TimeDiscType,TimeDiscInitIsDone
@@ -149,14 +136,6 @@ maxIter = GETINT('maxIter','-1')
 ! Get nCalcTimeStepMax: check if advanced settings should be used!
 nCalcTimeStepMax = GETINT('nCalcTimeStepMax','1')
 
-! Get TimeDisc Algorithm
-IF (nCalcTimeStepMax.LT.0) THEN
-  TimeDiscAlgorithm = GETINTFROMSTR('TimeDiscAlgorithm')
-  nCalcTimeStepMax = 1
-ELSE
-  TimeDiscAlgorithm = TIMEDISC_DYNAMIC
-END IF
-
 ! Get TimeDisc Method
 TimeDiscMethod = GETSTR('TimeDiscMethod','Carpenter RK4-5')
 CALL StripSpaces(TimeDiscMethod)
@@ -185,26 +164,19 @@ TEnd     = GETREAL('TEnd')
 ! Read the end time TEnd from ini file
 TStart   = GETREAL('TStart','0.0')
 
-SELECT CASE(TimeDiscAlgorithm)
-CASE(TIMEDISC_DYNAMIC,TIMEDISC_INITIAL)
-  ! Read the normalized CFL number
-  CFLScale = GETREAL('CFLScale')
+! Read the normalized CFL number
+CFLScale = GETREAL('CFLScale')
 #if PARABOLIC
-  ! Read the normalized DFL number
-  DFLScale = GETREAL('DFLScale')
+! Read the normalized DFL number
+DFLScale = GETREAL('DFLScale')
 #endif /*PARABOLIC*/
-  NEff     = MIN(PP_N,NFilter,NUnder)
-  IF(FilterType.GT.2) NEff = PP_N!LAF,HESTHAVEN no timestep effect
-  CALL fillCFL_DFL(NEff,PP_N)
-  ! Read in minimal timestep
-  dt_dynmin = GETREAL("dtmin","-1.0")
-  ! Read in kill timestep
-  dt_kill   = GETREAL("dtkill","-1.0")
-CASE(TIMEDISC_STATIC)
-  dt_static = GETREAL('dt')
-CASE DEFAULT
-  CALL CollectiveStop(__STAMP__,'TimeDisc ERROR - Specified TimeDisc Algorithm not known.')
-END SELECT
+NEff     = MIN(PP_N,NFilter,NUnder)
+IF(FilterType.GT.2) NEff = PP_N!LAF,HESTHAVEN no timestep effect
+CALL fillCFL_DFL(NEff,PP_N)
+! Read in minimal timestep
+dt_dynmin = GETREAL("dtmin","-1.0")
+! Read in kill timestep
+dt_kill   = GETREAL("dtkill","-1.0")
 
 ! Set timestep to a large number
 dt=HUGE(1.)
@@ -431,7 +403,7 @@ FUNCTION EvalInitialTimeStep(errType) RESULT(dt)
 ! MODULES
 USE MOD_Globals
 USE MOD_CalcTimeStep        ,ONLY: CalcTimeStep
-USE MOD_TimeDisc_Vars       ,ONLY: TimeDiscAlgorithm,dt_static,dt_kill,dt_dynmin,dt_analmin,dtElem
+USE MOD_TimeDisc_Vars       ,ONLY: dt_kill,dt_dynmin,dt_analmin,dtElem
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -444,19 +416,14 @@ INTEGER,INTENT(OUT)          :: errType
 ! Initially set dt_analmin
 dt_analmin = HUGE(1.)
 
-SELECT CASE(TimeDiscAlgorithm)
-CASE (TIMEDISC_DYNAMIC,TIMEDISC_INITIAL)
-  dt=CalcTimeStep(errType)
-  dt_analmin = MIN(dt_analmin,dt)
-  IF (dt.LT.dt_dynmin) THEN
-    CALL PrintWarning("TimeDisc INFO - Timestep dropped below predefined minimum! - LIMITING!")
-    dt = dt_dynmin;   dtElem = dt_dynmin
-  END IF
-  IF (dt.LT.dt_kill) &
-    CALL Abort(__STAMP__,"TimeDisc ERROR - Initial timestep blow critical kill timestep!")
-CASE (TIMEDISC_STATIC)
-  dt = dt_static;   dtElem = dt_static
-END SELECT
+dt=CalcTimeStep(errType)
+dt_analmin = MIN(dt_analmin,dt)
+IF (dt.LT.dt_dynmin) THEN
+  CALL PrintWarning("TimeDisc INFO - Timestep dropped below predefined minimum! - LIMITING!")
+  dt = dt_dynmin;   dtElem = dt_dynmin
+END IF
+IF (dt.LT.dt_kill) &
+  CALL Abort(__STAMP__,"TimeDisc ERROR - Initial timestep blow critical kill timestep!")
 END FUNCTION EvalInitialTimeStep
 
 !==================================================================================================================================
@@ -469,7 +436,7 @@ USE MOD_Analyze_Vars        ,ONLY: tWriteData
 USE MOD_CalcTimeStep        ,ONLY: CalcTimeStep
 USE MOD_HDF5_Output         ,ONLY: WriteState
 USE MOD_Mesh_Vars           ,ONLY: MeshFile
-USE MOD_TimeDisc_Vars       ,ONLY: TimeDiscAlgorithm,dt_static,dt_kill,dt_dynmin,dt,t,dt_analmin,dtElem
+USE MOD_TimeDisc_Vars       ,ONLY: dt_kill,dt_dynmin,t,dt_analmin,dtElem
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -479,24 +446,17 @@ INTEGER,INTENT(OUT)          :: errType
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-SELECT CASE(TimeDiscAlgorithm)
-CASE(TIMEDISC_DYNAMIC)
-  dt_Min=CalcTimeStep(errType)
-  dt_analmin = MIN(dt_analmin,dt_Min)
-  IF (dt_Min.LT.dt_dynmin) THEN
-    dt_Min = dt_dynmin;   dtElem = dt_dynmin
-  END IF
-  IF (dt_Min.LT.dt_kill.AND.t.GT.0.1) THEN
-    CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
-                    FutureTime=tWriteData,isErrorFile=.TRUE.)
-    CALL Abort(__STAMP__,&
-      'TimeDisc ERROR - Critical Kill timestep reached! Time: ',RealInfo=t)
-  END IF
-CASE(TIMEDISC_INITIAL)
-  dt_Min = dt;          dtElem = dt
-CASE(TIMEDISC_STATIC)
-  dt_Min = dt_static;   dtElem = dt_static
-END SELECT
+dt_Min=CalcTimeStep(errType)
+dt_analmin = MIN(dt_analmin,dt_Min)
+IF (dt_Min.LT.dt_dynmin) THEN
+  dt_Min = dt_dynmin;   dtElem = dt_dynmin
+END IF
+IF (dt_Min.LT.dt_kill.AND.t.GT.0.1) THEN
+  CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
+                  FutureTime=tWriteData,isErrorFile=.TRUE.)
+  CALL Abort(__STAMP__,&
+    'TimeDisc ERROR - Critical Kill timestep reached! Time: ',RealInfo=t)
+END IF
 END FUNCTION EvalTimeStep
 
 !===================================================================================================================================
@@ -576,73 +536,19 @@ END SUBROUTINE fillCFL_DFL
 SUBROUTINE TimeDisc_Info()
 ! MODULES
 USE MOD_Globals
-USE MOD_CalcTimeStep        ,ONLY: CALCTIMESTEP
-#if FV_ENABLED
-USE MOD_FV_Vars             ,ONLY: FV_Elems
-#endif /*FV_ENABLES*/
-USE MOD_Mesh_Vars           ,ONLY: nElems
-USE MOD_TimeDisc_Vars       ,ONLY: TimeDiscAlgorithm,ViscousTimeStep,CFLScale,dtElem,dt_analmin,dt_dynmin
-#if PARABOLIC
-USE MOD_TimeDisc_Vars       ,ONLY: DFLScale
-#endif /*PARABOLIC*/
+USE MOD_TimeDisc_Vars       ,ONLY: dt_analmin,dt_dynmin
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: errType
-INTEGER             :: iElem,FVE
-REAL                :: dt_anal
-REAL                :: scaling
 !==================================================================================================================================
 ! Output Data
-SELECT CASE(TimeDiscAlgorithm)
-CASE(TIMEDISC_INITIAL,TIMEDISC_STATIC)
-  ! get current dynamic dt
-  dt_anal    = CALCTIMESTEP(errType)
-  dt_analmin = MIN(dt_analmin,dt_anal)
-END SELECT
-
 IF ((dt_analmin.LT.dt_dynmin)) THEN
     CALL PrintWarning("TimeDisc INFO - Timestep dropped below predefined minimum! - LIMITING!")
     SWRITE(UNIT_stdOut,'(A,ES16.7,A)')' TimeDisc   : min_dt (CFL/DFL):', dt_analmin
 END IF
-
-SELECT CASE(TimeDiscAlgorithm)
-CASE(TIMEDISC_INITIAL,TIMEDISC_STATIC)
-  ! Find maximum of CFL/DFL
-  scaling = 0.
-  DO iElem=1,nElems
-    FVE = FV_Elems(iElem)
-#if PARABOLIC
-    IF (ViscousTimeStep) THEN
-      scaling = MAX(scaling,dtElem(iElem)/DFLScale(FVE))
-    ELSE
-#endif
-      scaling = MAX(scaling,dtElem(iElem)/CFLScale(FVE))
-#if PARABOLIC
-    END IF
-#endif
-  END DO
-#if USE_MPI
-  IF(MPIRoot)THEN
-    CALL MPI_REDUCE(MPI_IN_PLACE,scaling,1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
-  ELSE
-    CALL MPI_REDUCE(scaling     ,0      ,1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
-  END IF
-#endif /*USE_MPI*/
-
-#if PARABOLIC
-  IF (ViscousTimeStep) THEN
-    SWRITE(UNIT_stdOut,'(A,ES15.7,A,ES15.7)')' TimeDisc   :    Current DFL     : ', scaling,' , Current Timestep: ', dt_anal
-  ELSE
-#endif
-    SWRITE(UNIT_stdOut,'(A,ES15.7,A,ES15.7)')' TimeDisc   :    Current CFL     : ',scaling,' , Current Timestep: ', dt_anal
-#if PARABOLIC
-  END IF
-#endif
-END SELECT
 
 ! reset dt_analmin
 dt_analmin = HUGE(1.)

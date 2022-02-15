@@ -36,13 +36,9 @@ END INTERFACE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-INTEGER          :: TimeDiscAlgorithm                  !< Specifies TimeDisc Algorithm
-
-
 REAL             :: t=0.                               !< current physical time
 REAL             :: dt                                 !< current timestep
 REAL             :: dt_old                             !< last timestep
-REAL             :: dt_static                          !< static timestep
 REAL             :: dt_dynmin                          !< minimal allowed timestep
 REAL             :: dt_kill                            !< Kill timestep for FLEXI
 REAL             :: dt_analmin                         !< global dt min for analyze
