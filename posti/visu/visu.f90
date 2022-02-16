@@ -454,6 +454,7 @@ USE MOD_Posti_Mappings      ,ONLY: Build_mapBCSides
 USE MOD_Visu_Avg2D          ,ONLY: Average2D,WriteAverageToHDF5
 USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeVISUFVEqui
 USE MOD_IO_HDF5             ,ONLY: InitMPIInfo
+USE MOD_Restart_Vars        ,ONLY: RestartMode
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)               :: mpi_comm_IN
@@ -715,6 +716,7 @@ DGonly_old            = DGonly
 Avg2D_old             = Avg2D
 NodeTypeVisuPosti_old = NodeTypeVisuPosti
 NState_old            = PP_N
+RestartMode           = -1
 
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(*,*) "Visu finished for state file: ", TRIM(statefile)
