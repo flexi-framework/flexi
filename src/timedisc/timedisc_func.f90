@@ -21,7 +21,6 @@ MODULE MOD_TimeDisc_Functions
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-
 INTERFACE DefineParametersTimeDisc
   MODULE PROCEDURE DefineParametersTimeDisc
 END INTERFACE
@@ -66,7 +65,7 @@ CONTAINS
 !==================================================================================================================================
 SUBROUTINE DefineParametersTimeDisc()
 ! MODULES
-USE MOD_ReadInTools         ,ONLY: prms,addStrListEntry
+USE MOD_ReadInTools         ,ONLY: prms
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
@@ -80,8 +79,8 @@ CALL prms%CreateStringOption('TimeDiscMethod', "Specifies the type of time-discr
                                                "  * esdirk4-6" , value='CarpenterRK4-5')
 CALL prms%CreateRealOption(  'TEnd',           "End time of the simulation (mandatory).")
 CALL prms%CreateRealOption(  'TStart',         "Start time of the simulation (optional, conflicts with restart).","0.0")
-CALL prms%CreateRealOption(  'CFLScale',       "Scaling factor for the theoretical CFL number, typical range 0.1..1.0")
-CALL prms%CreateRealOption(  'DFLScale',       "Scaling factor for the theoretical DFL number, typical range 0.1..1.0")
+CALL prms%CreateRealOption(  'CFLScale',       "Scaling factor for the theoretical CFL number, typical range 0.1..1.0 (mandatory)")
+CALL prms%CreateRealOption(  'DFLScale',       "Scaling factor for the theoretical DFL number, typical range 0.1..1.0 (mandatory)")
 CALL prms%CreateRealOption(  'dtmin',          "Minimal allowed timestep (optional)","-1.0")
 CALL prms%CreateRealOption(  'dtkill',         "Kill FLEXI if dt gets below this value (optional)","-1.0")
 CALL prms%CreateIntOption(   'maxIter',        "Stop simulation when specified number of timesteps has been performed.", value='-1')
@@ -104,7 +103,7 @@ USE MOD_Predictor           ,ONLY: InitPredictor
 USE MOD_ReadInTools         ,ONLY: GETREAL,GETINT,GETSTR
 USE MOD_StringTools         ,ONLY: LowCase,StripSpaces
 USE MOD_TimeDisc_Vars       ,ONLY: CFLScale
-USE MOD_TimeDisc_Vars       ,ONLY: dtElem,dt,tend,tstart,dt_dynmin,dt_kill
+USE MOD_TimeDisc_Vars       ,ONLY: dtElem,dt,tend,tStart,dt_dynmin,dt_kill
 USE MOD_TimeDisc_Vars       ,ONLY: Ut_tmp,UPrev,S2
 USE MOD_TimeDisc_Vars       ,ONLY: maxIter,nCalcTimeStepMax
 USE MOD_TimeDisc_Vars       ,ONLY: SetTimeDiscCoefs,TimeStep,TimeDiscName,TimeDiscType,TimeDiscInitIsDone
@@ -139,7 +138,6 @@ nCalcTimeStepMax = GETINT('nCalcTimeStepMax','1')
 TimeDiscMethod = GETSTR('TimeDiscMethod','Carpenter RK4-5')
 CALL StripSpaces(TimeDiscMethod)
 CALL LowCase(TimeDiscMethod)
-
 CALL SetTimeDiscCoefs(TimeDiscMethod)
 
 SELECT CASE(TimeDiscType)
@@ -355,7 +353,7 @@ IF(CalcPruettDamping) CALL TempFilterTimeDeriv(U,dt)
 ! Analyze and output now
 IF(doAnalyze)THEN
   CALL PrintAnalyze(dt_Min(DT_MIN))
-  CALL TimeDisc_Info()
+  CALL TimeDisc_Info(iter_analyze+1)
 #if FV_ENABLED
   ! Summation has one more iter step
   CALL FV_Info(iter_analyze+1)
@@ -402,7 +400,7 @@ FUNCTION EvalInitialTimeStep(errType) RESULT(dt)
 ! MODULES
 USE MOD_Globals
 USE MOD_CalcTimeStep        ,ONLY: CalcTimeStep
-USE MOD_TimeDisc_Vars       ,ONLY: dt_kill,dt_dynmin,dt_analyzemin,dtElem
+USE MOD_TimeDisc_Vars       ,ONLY: dt_kill,dt_dynmin,dt_analyzemin,dtElem,nDtLimited
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -414,12 +412,15 @@ INTEGER,INTENT(OUT)          :: errType
 !==================================================================================================================================
 ! Initially set dt_analyzemin
 dt_analyzemin = HUGE(1.)
+! Initially set nDtLimited
+nDtLimited    = 0
 
-dt=CalcTimeStep(errType)
+dt            = CalcTimeStep(errType)
 dt_analyzemin = MIN(dt_analyzemin,dt)
 IF (dt.LT.dt_dynmin) THEN
   CALL PrintWarning("TimeDisc INFO - Timestep dropped below predefined minimum! - LIMITING!")
   dt = dt_dynmin;   dtElem = dt_dynmin
+  nDtLimited  = nDtLimited + 1
 END IF
 IF (dt.LT.dt_kill) &
   CALL Abort(__STAMP__,"TimeDisc ERROR - Initial timestep blow critical kill timestep!")
@@ -435,7 +436,7 @@ USE MOD_Analyze_Vars        ,ONLY: tWriteData
 USE MOD_CalcTimeStep        ,ONLY: CalcTimeStep
 USE MOD_HDF5_Output         ,ONLY: WriteState
 USE MOD_Mesh_Vars           ,ONLY: MeshFile
-USE MOD_TimeDisc_Vars       ,ONLY: dt_kill,dt_dynmin,t,dt_analyzemin,dtElem
+USE MOD_TimeDisc_Vars       ,ONLY: dt_kill,dt_dynmin,t,dt_analyzemin,dtElem,nDtLimited
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -445,10 +446,11 @@ INTEGER,INTENT(OUT)          :: errType
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-dt_Min=CalcTimeStep(errType)
+dt_Min        = CalcTimeStep(errType)
 dt_analyzemin = MIN(dt_analyzemin,dt_Min)
 IF (dt_Min.LT.dt_dynmin) THEN
   dt_Min = dt_dynmin;   dtElem = dt_dynmin
+  nDtLimited  = nDtLimited + 1
 END IF
 IF (dt_Min.LT.dt_kill) THEN
   CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
@@ -532,25 +534,29 @@ END SUBROUTINE fillCFL_DFL
 !==================================================================================================================================
 !> Print information on the timestep
 !==================================================================================================================================
-SUBROUTINE TimeDisc_Info()
+SUBROUTINE TimeDisc_Info(iter)
 ! MODULES
 USE MOD_Globals
-USE MOD_TimeDisc_Vars       ,ONLY: dt_analyzemin,dt_dynmin
+USE MOD_TimeDisc_Vars       ,ONLY: dt_analyzemin,dt_dynmin,nDtLimited
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
+INTEGER(KIND=8),INTENT(IN) :: iter !< number of iterations
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
 ! Output Data
 IF ((dt_analyzemin.LT.dt_dynmin)) THEN
     CALL PrintWarning("TimeDisc INFO - Timestep dropped below predefined minimum! - LIMITING!")
-    SWRITE(UNIT_stdOut,'(A,ES16.7,A)')' TimeDisc   : min_dt (CFL/DFL):', dt_analyzemin
+    SWRITE(UNIT_stdOut,'(A,ES16.7,A)')' TimeDisc   : physical timestep acc. to CFL/DFL:', dt_analyzemin
+    SWRITE(UNIT_stdOut,'(A,F8.3,A,I0,A)')' TimeDisc   : limited timestep amount %: ',REAL(nDtLimited)/iter*100,', ',nDtLimited,' timesteps'
 END IF
 
 ! reset dt_analyzemin
 dt_analyzemin = HUGE(1.)
+! reset nDtLimited
+nDtLimited = 0
 
 END SUBROUTINE TimeDisc_Info
 

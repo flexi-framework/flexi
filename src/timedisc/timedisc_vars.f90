@@ -59,6 +59,7 @@ REAL             :: DFLScale(0:FV_ENABLED)             !< Viscous CFL number (on
 REAL             :: DFLScale_Readin(0:FV_ENABLED)      !< Viscous CFL number (only if PARABOLIC, value from parameter file)
 REAL,ALLOCATABLE :: dtElem(:)                          !< Timestep for each element
 INTEGER          :: CurrentStage=1                     !< Current Runge-Kutta stage within timestep
+INTEGER(KIND=8)  :: nDtLimited                         !< number of limited timesteps
 INTEGER          :: nCalcTimeStep                      !< Counter for iterations since last timestep calculation
 INTEGER          :: nCalcTimeStepMax                   !< Compute dt at least after every Nth timestep
 INTEGER(KIND=8)  :: iter                               !< Indicate actual number of timesteps
