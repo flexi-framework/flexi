@@ -79,7 +79,7 @@ CALL prms%CreateStringOption('TimeDiscMethod', "Specifies the type of time-discr
                                                "  * cranknicolson2-2\n  * esdirk2-3\n  * esdirk3-4\n"//&
                                                "  * esdirk4-6" , value='CarpenterRK4-5')
 CALL prms%CreateRealOption(  'TEnd',           "End time of the simulation (mandatory).")
-CALL prms%CreateRealOption(  'TStart',         "Start time of the simulation (optional, conflicts with restart).")
+CALL prms%CreateRealOption(  'TStart',         "Start time of the simulation (optional, conflicts with restart).","0.0")
 CALL prms%CreateRealOption(  'CFLScale',       "Scaling factor for the theoretical CFL number, typical range 0.1..1.0")
 CALL prms%CreateRealOption(  'DFLScale',       "Scaling factor for the theoretical DFL number, typical range 0.1..1.0")
 CALL prms%CreateRealOption(  'dtmin',          "Minimal allowed timestep (optional)","-1.0")
@@ -161,7 +161,7 @@ END SELECT
 TEnd     = GETREAL('TEnd')
 
 ! Read the end time TEnd from ini file
-TStart   = GETREAL('TStart','0.0')
+TStart   = GETREAL('TStart')
 
 ! Read the normalized CFL number
 CFLScale = GETREAL('CFLScale')
@@ -173,9 +173,9 @@ NEff     = MIN(PP_N,NFilter,NUnder)
 IF(FilterType.GT.2) NEff = PP_N!LAF,HESTHAVEN no timestep effect
 CALL fillCFL_DFL(NEff,PP_N)
 ! Read in minimal timestep
-dt_dynmin = GETREAL("dtmin","-1.0")
+dt_dynmin = GETREAL("dtmin")
 ! Read in kill timestep
-dt_kill   = GETREAL("dtkill","-1.0")
+dt_kill   = GETREAL("dtkill")
 
 ! Set timestep to a large number
 dt=HUGE(1.)
