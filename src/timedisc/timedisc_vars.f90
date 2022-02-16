@@ -41,7 +41,7 @@ REAL             :: dt                                 !< current timestep
 REAL             :: dt_old                             !< last timestep
 REAL             :: dt_dynmin                          !< minimal allowed timestep
 REAL             :: dt_kill                            !< Kill timestep for FLEXI
-REAL             :: dt_analmin                         !< global dt min for analyze
+REAL             :: dt_analyzemin                      !< global dt min for analyze
 REAL             :: dt_Min(3)                          !< dt_Min(DT_MIN)       = dt_Min(1) = original dt_Min
                                                        !< dt_Min(DT_ANALYZE)   = dt_Min(2) = tAnalyzeDiff
                                                        !< dt_Min(DT_END)       = dt_Min(3) = tEndDiff
