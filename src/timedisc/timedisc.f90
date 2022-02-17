@@ -86,11 +86,11 @@ SWRITE(UNIT_stdOut,'(A13,ES16.7)')'#DOFs      : ',REAL(nGlobalElems)*REAL((PP_N+
 SWRITE(UNIT_stdOut,'(A13,ES16.7)')'#Procs     : ',REAL(nProcessors)
 SWRITE(UNIT_stdOut,'(A13,ES16.7)')'#DOFs/Proc : ',REAL(nGlobalElems*(PP_N+1)**PP_dim/nProcessors)
 
-t = MERGE(RestartTime,0.,DoRestart)
+! Fill correct initial time
+t = MERGE(RestartTime,tStart,DoRestart)
 
 ! NOTE: Set initial variables
 ! t is set in init solution
-tStart            = t
 tWriteData        = MIN(t+WriteData_dt,tEnd)
 tAnalyze          = MIN(t+analyze_dt  ,tEnd)
 iter              = 0

@@ -36,45 +36,49 @@ END INTERFACE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-REAL             :: t=0.                          !< current physical time
-REAL             :: dt                            !< current timestep
-REAL             :: dt_old                        !< last timestep
-REAL             :: dt_Min(3)                     !< dt_Min(DT_MIN)       = dt_Min(1) = original dt_Min
-                                                  !< dt_Min(DT_ANALYZE)   = dt_Min(2) = tAnalyzeDiff
-                                                  !< dt_Min(DT_END)       = dt_Min(3) = tEndDiff
-REAL             :: dt_minOld                     !< dt_min in last timestep
-REAL,ALLOCATABLE :: b_dt(:)                       !< timestep of each RK stage
-REAL             :: tStart                        !< Start time of simulation
-REAL             :: tEnd                          !< End time of simulation
-REAL             :: tAnalyze                      !< Analyze time intervall
-REAL             :: CFLScale(0:FV_ENABLED)        !< Convective CFL number
-REAL             :: CFLScale_Readin(0:FV_ENABLED) !< Convective CFL number (value from parameter file)
+REAL             :: t=0.                               !< current physical time
+REAL             :: dt                                 !< current timestep
+REAL             :: dt_old                             !< last timestep
+REAL             :: dt_dynmin                          !< minimal allowed timestep
+REAL             :: dt_kill                            !< Kill timestep for FLEXI
+REAL             :: dt_analyzemin                      !< global dt min for analyze
+REAL             :: dt_Min(3)                          !< dt_Min(DT_MIN)       = dt_Min(1) = original dt_Min
+                                                       !< dt_Min(DT_ANALYZE)   = dt_Min(2) = tAnalyzeDiff
+                                                       !< dt_Min(DT_END)       = dt_Min(3) = tEndDiff
+REAL             :: dt_minOld                          !< dt_min in last timestep
+REAL,ALLOCATABLE :: b_dt(:)                            !< timestep of each RK stage
+REAL             :: tStart                             !< Start time of simulation
+REAL             :: tEnd                               !< End time of simulation
+REAL             :: tAnalyze                           !< Analyze time intervall
+REAL             :: CFLScale(0:FV_ENABLED)             !< Convective CFL number
+REAL             :: CFLScale_Readin(0:FV_ENABLED)      !< Convective CFL number (value from parameter file)
 #if FV_ENABLED
-REAL             :: CFLScaleFV                    !< For FV, this is always set to the CFLScale for Gauss and N=1
+REAL             :: CFLScaleFV                         !< For FV, this is always set to the CFLScale for Gauss and N=1
 #endif /*FV*/
-REAL             :: DFLScale(0:FV_ENABLED)        !< Viscous CFL number (only if PARABOLIC)
-REAL             :: DFLScale_Readin(0:FV_ENABLED) !< Viscous CFL number (only if PARABOLIC, value from parameter file)
-REAL,ALLOCATABLE :: dtElem(:)                     !< Timestep for each element
-INTEGER          :: CurrentStage=1                !< Current Runge-Kutta stage within timestep
-INTEGER          :: nCalcTimeStep                 !< Counter for iterations since last timestep calculation
-INTEGER          :: nCalcTimeStepMax              !< Compute dt at least after every Nth timestep
-INTEGER(KIND=8)  :: iter                          !< Indicate actual number of timesteps
-INTEGER(KIND=8)  :: iter_analyze                  !< Indicate number of timesteps since last analyze
-INTEGER(KIND=8)  :: maxIter                       !< Maximum permitted number of timesteps
-LOGICAL          :: fullBoundaryOrder=.FALSE.     !< temporal order degradation, occuring for
-                                                  !< time-dependant BCs, can easily be fixed when
-                                                  !< using 3 stage 3rd order RK schemes (no others!)
-LOGICAL          :: ViscousTimeStep=.FALSE.       !< Info wether we have convection of viscous dominated timestep
-LOGICAL          :: TimeDiscInitIsDone=.FALSE.    !< Indicate wheter InitTimeDisc routine has been run
+REAL             :: DFLScale(0:FV_ENABLED)             !< Viscous CFL number (only if PARABOLIC)
+REAL             :: DFLScale_Readin(0:FV_ENABLED)      !< Viscous CFL number (only if PARABOLIC, value from parameter file)
+REAL,ALLOCATABLE :: dtElem(:)                          !< Timestep for each element
+INTEGER          :: CurrentStage=1                     !< Current Runge-Kutta stage within timestep
+INTEGER(KIND=8)  :: nDtLimited                         !< number of limited timesteps
+INTEGER          :: nCalcTimeStep                      !< Counter for iterations since last timestep calculation
+INTEGER          :: nCalcTimeStepMax                   !< Compute dt at least after every Nth timestep
+INTEGER(KIND=8)  :: iter                               !< Indicate actual number of timesteps
+INTEGER(KIND=8)  :: iter_analyze                       !< Indicate number of timesteps since last analyze
+INTEGER(KIND=8)  :: maxIter                            !< Maximum permitted number of timesteps
+LOGICAL          :: fullBoundaryOrder=.FALSE.          !< temporal order degradation, occuring for
+                                                       !< time-dependant BCs, can easily be fixed when
+                                                       !< using 3 stage 3rd order RK schemes (no others!)
+LOGICAL          :: ViscousTimeStep=.FALSE.            !< Info wether we have convection of viscous dominated timestep
+LOGICAL          :: TimeDiscInitIsDone=.FALSE.         !< Indicate wheter InitTimeDisc routine has been run
 
-REAL             :: CalcTimeStart                 !< Start system time of simulation
-REAL             :: CalcTimeEnd                   !< End system time of simulation
+REAL             :: CalcTimeStart                      !< Start system time of simulation
+REAL             :: CalcTimeEnd                        !< End system time of simulation
 
-LOGICAL          :: doAnalyze                     !< Flag to perform analysis in current timestep
-LOGICAL          :: doFinalize                    !< Flag to exit simulation in current timestep
-INTEGER          :: writeCounter                  !< Count the number of analyze steps until nWriteData
+LOGICAL          :: doAnalyze                          !< Flag to perform analysis in current timestep
+LOGICAL          :: doFinalize                         !< Flag to exit simulation in current timestep
+INTEGER          :: writeCounter                       !< Count the number of analyze steps until nWriteData
 
-REAL,ALLOCATABLE :: Ut_tmp(:,:,:,:,:)             !< temporal variable for Ut
+REAL,ALLOCATABLE :: Ut_tmp(:,:,:,:,:)                  !< temporal variable for Ut
 REAL,ALLOCATABLE :: S2    (:,:,:,:,:)
 REAL,ALLOCATABLE :: UPrev (:,:,:,:,:)
 
