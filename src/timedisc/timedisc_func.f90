@@ -423,7 +423,7 @@ IF (dt.LT.dt_dynmin) THEN
   nDtLimited  = nDtLimited + 1
 END IF
 IF (dt.LT.dt_kill) &
-  CALL Abort(__STAMP__,"TimeDisc ERROR - Initial timestep blow critical kill timestep!")
+  CALL Abort(__STAMP__,"TimeDisc ERROR - Initial timestep below critical kill timestep!")
 END FUNCTION EvalInitialTimeStep
 
 !==================================================================================================================================
