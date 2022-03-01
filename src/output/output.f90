@@ -323,8 +323,8 @@ END SUBROUTINE PrintStatusLine
 SUBROUTINE PrintAnalyze(dt)
 ! MODULES                                                                                                                          !
 USE MOD_Globals
-USE MOD_Globals_Vars        ,ONLY: PID
 USE MOD_PreProc
+USE MOD_Analyze_Vars        ,ONLY: PID
 USE MOD_Implicit_Vars       ,ONLY: nGMRESIterGlobal,nNewtonIterGlobal
 USE MOD_Mesh_Vars           ,ONLY: nGlobalElems
 USE MOD_TimeDisc_Vars       ,ONLY: CalcTimeStart,CalcTimeEnd,TimeDiscType,ViscousTimeStep

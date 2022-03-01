@@ -339,9 +339,8 @@ END SUBROUTINE Analyze
 SUBROUTINE AnalyzePerformance()
 ! MODULES
 USE MOD_Globals
-USE MOD_Globals_Vars,       ONLY: PID
 USE MOD_Preproc
-USE MOD_Analyze_Vars,       ONLY: PIDTimeStart,PIDTimeEnd,PID_kill
+USE MOD_Analyze_Vars,       ONLY: PIDTimeStart,PIDTimeEnd,PID_kill,PID
 USE MOD_Mesh_Vars,          ONLY: nGlobalElems
 USE MOD_TimeDisc_Vars,      ONLY: nRKStages
 ! IMPLICIT VARIABLE HANDLING

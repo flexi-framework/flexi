@@ -47,6 +47,7 @@ LOGICAL              :: doAnalyzeToFile   =.FALSE.        !< marks whether error
 REAL                 :: PIDTimeStart                      !< start system time for PID calculation
 REAL                 :: PIDTimeEnd                        !< end   system time for PID calculation
 REAL                 :: PID_kill                          !< kill PID for FLEXI
+REAL                 :: PID                               !< current PID in FLEXI
 
 ! Analyze to file
 REAL                 :: iterRestart=0                     !< contains iteration count of previous computation in case a restart is
