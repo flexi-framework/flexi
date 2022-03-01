@@ -71,6 +71,8 @@ CALL prms%CreateLogicalOption('doMeasureFlops',  "Set true to measure flop count
                                                  '.TRUE.')
 CALL prms%CreateRealOption(   'PIDkill',         'Kill FLEXI if PID gets below this value (optional)',&
                                                  '-1.0')
+CALL prms%CreateIntOption(    'NCalcPID'         ,'Compute PID after every Nth timestep.',&
+                                                  '1')
 CALL DefineParametersAnalyzeEquation()
 END SUBROUTINE DefineParametersAnalyze
 
@@ -213,6 +215,7 @@ CALL InitBenchmarking()
 ! Read in kill PID
 PID_kill     = GETREAL('PIDkill')
 IF (PID_kill.GT.0) THEN
+  nCalcPIDMax  = GETINT('nCalcPID')
   PIDTimeStart = FLEXITIME()
 END IF
 
@@ -340,7 +343,7 @@ SUBROUTINE AnalyzePerformance()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Analyze_Vars,       ONLY: PIDTimeStart,PIDTimeEnd,PID_kill,PID
+USE MOD_Analyze_Vars,       ONLY: PID,PIDTimeStart,PIDTimeEnd,PID_kill,nCalcPID,nCalcPIDMax
 USE MOD_Mesh_Vars,          ONLY: nGlobalElems
 USE MOD_TimeDisc_Vars,      ONLY: nRKStages
 ! IMPLICIT VARIABLE HANDLING
@@ -352,6 +355,14 @@ IMPLICIT NONE
 !==================================================================================================================================
 
 IF (PID_kill.LE.0) RETURN
+
+! Return if no timestep update requested in this iteration
+IF (nCalcPID.GE.1) THEN
+  nCalcPID = nCalcPID - 1
+  RETURN
+ELSE
+  nCalcPID = nCalcPIDMax - 1
+END IF
 
 ! Get calculation time per DOF
 PIDTimeEnd = FLEXITIME()

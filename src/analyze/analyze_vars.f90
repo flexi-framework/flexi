@@ -47,6 +47,8 @@ LOGICAL              :: doAnalyzeToFile   =.FALSE.        !< marks whether error
 REAL                 :: PIDTimeStart                      !< start system time for PID calculation
 REAL                 :: PIDTimeEnd                        !< end   system time for PID calculation
 REAL                 :: PID_kill                          !< kill PID for FLEXI
+INTEGER              :: nCalcPID                          !< counter for iterations since last PID calculation
+INTEGER              :: nCalcPIDMax                       !< compute PID at least after every Nth iteration
 REAL                 :: PID                               !< current PID in FLEXI
 
 ! Analyze to file
