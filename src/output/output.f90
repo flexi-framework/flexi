@@ -243,9 +243,9 @@ REAL              :: percent,percent_ETA
 REAL              :: time_remaining,mins,secs,hours,days
 CHARACTER(3)      :: tmpString
 #if FV_ENABLED && PP_LIMITER
-INTEGER,PARAMETER :: barWidth = 31
+INTEGER,PARAMETER :: barWidth = 27
 #elif FV_ENABLED || PP_LIMITER
-INTEGER,PARAMETER :: barWidth = 41
+INTEGER,PARAMETER :: barWidth = 39
 #else
 INTEGER,PARAMETER :: barWidth = 51
 #endif
@@ -314,12 +314,15 @@ IF(MPIRoot)THEN
 
 #if FV_ENABLED
   FV_percent = REAL(FVcounter) / nGlobalElems * 100.
-  WRITE(UNIT_stdOut,'(F5.2,A5)',ADVANCE='NO') FV_percent, '% FV,'
-#endif
+  WRITE(UNIT_stdOut,'(F7.2,A5)',ADVANCE='NO') FV_percent, '% FV,'
+#endif /*FV_ENABLED*/
+
 #if PP_LIMITER
   PP_percent = REAL(PPcounter) / nGlobalElems * 100.
-  WRITE(UNIT_stdOut,'(F5.2,A5)',ADVANCE='NO') PP_percent, '% PP,'
-#endif
+  WRITE(UNIT_stdOut,'(F7.2,A5)',ADVANCE='NO') PP_percent, '% PP,'
+#endif /*PP_LIMITER*/
+
+  ! Status line or standard output
   tmpString = MERGE('YES','NO ',PRESENT(doETA))
 
   WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A12,A,A1,A,A3,F6.2,A3,A1)',ADVANCE=tmpString)    &

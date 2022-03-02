@@ -329,7 +329,7 @@ ELSE
   CALL MPI_REDUCE(totalPP_nElems,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 #endif
-SWRITE(UNIT_stdOut,'(A,F8.3,A,I0,A)')' PP Elems amount %: ',totalPP_nElems/REAL(nGlobalElems)/iter*100,', ',totalPP_nElems,' elems'
+SWRITE(UNIT_stdOut,'(A,F8.3,A,I0,A)')' PP amount  : ',totalPP_nElems/REAL(nGlobalElems)/iter*100,'%, ',totalPP_nElems,' elems'
 totalPP_nElems = 0
 END SUBROUTINE PPLimiter_Info
 
