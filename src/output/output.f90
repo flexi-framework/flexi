@@ -250,20 +250,20 @@ INTEGER,PARAMETER :: barWidth = 39
 INTEGER,PARAMETER :: barWidth = 51
 #endif
 #if FV_ENABLED
-INTEGER      :: FVcounter
-REAL         :: FV_percent
+INTEGER(KIND=8)   :: FVcounter
+REAL              :: FV_percent
 #endif /*FV_ENABLED*/
 #if PP_LIMITER
-INTEGER :: PPcounter
-REAL    :: PP_percent
+INTEGER(KIND=8)   :: PPcounter
+REAL              :: PP_percent
 #endif /*PP_LIMITER*/
 !==================================================================================================================================
 #if FV_ENABLED
-FVcounter = SUM(FV_Elems)
+FVcounter      = INT(SUM(FV_Elems),KIND=8)
 totalFV_nElems = totalFV_nElems + FVcounter ! counter for output of FV amount during analyze
 #endif
 #if PP_LIMITER
-PPcounter = SUM(PP_Elems)
+PPcounter      = INT(SUM(PP_Elems),KIND=8)
 totalPP_nElems = totalPP_nElems + PPcounter ! counter for output of FV amount during analyze
 #endif
 
@@ -277,17 +277,17 @@ IF(.NOT.doPrintStatusLine .AND. .NOT.doETA_loc) RETURN
 
 #if FV_ENABLED && USE_MPI
 IF (MPIRoot) THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE,FVcounter,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE,FVcounter,1,MPI_INTEGER8,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 ELSE
-  CALL MPI_REDUCE(FVcounter,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(FVcounter,0           ,1,MPI_INTEGER8,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 #endif
 
 #if PP_LIMITER && USE_MPI
 IF (MPIRoot) THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE,PPcounter,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE,PPcounter,1,MPI_INTEGER8,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 ELSE
-  CALL MPI_REDUCE(PPcounter,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(PPcounter,0           ,1,MPI_INTEGER8,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 #endif /*PP_LIMITER && USE_MPI*/
 
@@ -313,12 +313,12 @@ IF(MPIRoot)THEN
   days = time_remaining / 24
 
 #if FV_ENABLED
-  FV_percent = REAL(FVcounter) / nGlobalElems * 100.
+  FV_percent = REAL(FVcounter) / REAL(nGlobalElems) * 100.
   WRITE(UNIT_stdOut,'(F7.2,A5)',ADVANCE='NO') FV_percent, '% FV,'
 #endif /*FV_ENABLED*/
 
 #if PP_LIMITER
-  PP_percent = REAL(PPcounter) / nGlobalElems * 100.
+  PP_percent = REAL(PPcounter) / REAL(nGlobalElems) * 100.
   WRITE(UNIT_stdOut,'(F7.2,A5)',ADVANCE='NO') PP_percent, '% PP,'
 #endif /*PP_LIMITER*/
 

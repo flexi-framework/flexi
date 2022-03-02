@@ -323,13 +323,13 @@ INTEGER(KIND=8),INTENT(IN) :: iter !< number of iterations
 !==================================================================================================================================
 #if USE_MPI
 IF(MPIRoot)THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE,totalPP_nElems,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE,totalPP_nElems,1,MPI_INTEGER8,MPI_SUM,0,MPI_COMM_FLEXI,iError)
   ! totalPP_nElems is counted in PrintStatusLine
 ELSE
-  CALL MPI_REDUCE(totalPP_nElems,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(totalPP_nElems,0           ,1,MPI_INTEGER8,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 #endif
-SWRITE(UNIT_stdOut,'(A,F8.3,A,I0,A)')' PP amount  : ',totalPP_nElems/REAL(nGlobalElems)/iter*100,'%, ',totalPP_nElems,' elems'
+SWRITE(UNIT_stdOut,'(A,F8.3,A,I0,A)')' PP amount  : ',REAL(totalPP_nElems)/REAL(nGlobalElems)/iter*100,'%, ',totalPP_nElems,' elems'
 totalPP_nElems = 0
 END SUBROUTINE PPLimiter_Info
 
