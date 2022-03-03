@@ -85,6 +85,7 @@ CONTAINS
 SUBROUTINE DefineParametersOutput()
 ! MODULES
 USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Output")
@@ -123,6 +124,7 @@ USE MOD_StringTools       ,ONLY:INTTOSTR
 USE MOD_Interpolation     ,ONLY:GetVandermonde
 USE MOD_Interpolation_Vars,ONLY:InterpolationInitIsDone,NodeTypeVISU,NodeType
 USE ISO_C_BINDING,         ONLY: C_NULL_CHAR
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -211,6 +213,7 @@ SUBROUTINE PrintStatusLine(t,dt,tStart,tEnd,doETA)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Output_Vars   ,ONLY: doPrintStatusLine
+USE MOD_Restart_Vars  ,ONLY: DoRestart,RestartTime
 #if FV_ENABLED || PP_LIMITER
 USE MOD_Mesh_Vars     ,ONLY: nGlobalElems
 #endif
@@ -235,8 +238,10 @@ REAL,INTENT(IN)             :: tEnd   !< end time of simulation
 LOGICAL,INTENT(IN),OPTIONAL :: doETA !< flag to print ETA without carriage return
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL         :: percent,time_remaining,mins,secs,hours,days
-CHARACTER(3) :: tmpString
+LOGICAL           :: doETA_loc
+REAL              :: percent,percent_ETA
+REAL              :: time_remaining,mins,secs,hours,days
+CHARACTER(3)      :: tmpString
 #if FV_ENABLED && PP_LIMITER
 INTEGER,PARAMETER :: barWidth = 31
 #elif FV_ENABLED || PP_LIMITER
@@ -262,7 +267,13 @@ PPcounter = SUM(PP_Elems)
 totalPP_nElems = totalPP_nElems + PPcounter ! counter for output of FV amount during analyze
 #endif
 
-IF(.NOT.doPrintStatusLine) RETURN
+IF (PRESENT(doETA)) THEN
+  doETA_loc = doETA
+ELSE
+  doETA_loc = .FALSE.
+END IF
+
+IF(.NOT.doPrintStatusLine .AND. .NOT.doETA_loc) RETURN
 
 #if FV_ENABLED && USE_MPI
 IF (MPIRoot) THEN
@@ -278,15 +289,21 @@ IF (MPIRoot) THEN
 ELSE
   CALL MPI_REDUCE(PPcounter,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
-#endif
+#endif /*PP_LIMITER && USE_MPI*/
 
 IF(MPIRoot)THEN
 #ifdef INTEL
   OPEN(UNIT_stdOut,CARRIAGECONTROL='fortran')
 #endif
-  percent = (t-tStart) / (tend-tStart)
+  percent      = (t-tStart) / (tEnd-tStart)
+
+  ! Calculate ETA with percent of current run
+  ASSOCIATE(tBegin => MERGE(RestartTime,tStart,DoRestart))
+  percent_ETA  = (t-tBegin) / (tEnd-tBegin)
+  END ASSOCIATE
+
   CALL CPU_TIME(time_remaining)
-  IF (percent.GT.0.0) time_remaining = time_remaining/percent - time_remaining
+  IF (percent.GT.0.0) time_remaining = time_remaining/percent_ETA - time_remaining
   percent = percent*100.
   secs = MOD(time_remaining,60.)
   time_remaining = time_remaining / 60
@@ -393,6 +410,7 @@ USE MOD_EOS,              ONLY:PrimToCons,ConsToPrim
 USE MOD_FV_Basis
 USE MOD_Indicator_Vars,   ONLY:IndValue
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -546,6 +564,7 @@ SUBROUTINE InitOutputToFile(Filename,ZoneName,nVar,VarNames,lastLine)
 USE MOD_Globals
 USE MOD_Restart_Vars, ONLY: RestartTime
 USE MOD_Output_Vars,  ONLY: ProjectName,ASCIIOutputFormat
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -673,6 +692,7 @@ SUBROUTINE OutputToFile(FileName,time,nVar,output)
 ! MODULES
 USE MOD_Globals
 USE MOD_Output_Vars,  ONLY: ASCIIOutputFormat
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
