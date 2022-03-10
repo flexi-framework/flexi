@@ -162,15 +162,14 @@ DO iStage = 1,nRKStages
   CALL DGTimeDerivative_weakForm(tStage)
 
   IF (iStage.EQ.1) THEN
-    CALL VCopy(nTotalU,UPrev,U)                                          !UPrev=U
-    CALL VCopy(nTotalU,S2,U)                                             !S2=U
-    CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))                            !U      = U + Ut*b_dt(1)
+    CALL VCopy(nTotalU,UPrev,U)                                          !UPrev = U
+    CALL VCopy(nTotalU,S2,U)                                             !S2    = U
   ELSE
-    CALL VAXPBY(nTotalU,S2,U,ConstIn=RKdelta(iStage))                    !S2 = S2 + U*RKdelta(iStage)
-    CALL VAXPBY(nTotalU,U,S2,ConstOut=RKg1(iStage),ConstIn=RKg2(iStage)) !U = RKg1(iStage)*U + RKg2(iStage)*S2
-    CALL VAXPBY(nTotalU,U,UPrev,ConstIn=RKg3(iStage))                    !U = U + RKg3(ek)*UPrev
+    CALL VAXPBY(nTotalU,S2,U,ConstIn=RKdelta(iStage))                    !S2    = S2 + U*RKdelta(iStage)
+    CALL VAXPBY(nTotalU,U,S2,ConstOut=RKg1(iStage),ConstIn=RKg2(iStage)) !U     = RKg1(iStage)*U + RKg2(iStage)*S2
+    CALL VAXPBY(nTotalU,U,UPrev,ConstIn=RKg3(iStage))                    !U     = U + RKg3(ek)*UPrev
   END IF
-  CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(iStage))                         !U = U + Ut*b_dt(iStage)
+  CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(iStage))                         !U     = U + Ut*b_dt(iStage)
 
 #if FV_ENABLED
   ! Time needs to be evaluated at the next step because time integration was already performed
