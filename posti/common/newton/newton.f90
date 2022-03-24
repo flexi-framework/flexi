@@ -40,7 +40,7 @@ CONTAINS
 !===================================================================================================================================
 !>
 !===================================================================================================================================
-SUBROUTINE Newton_2D(NIn,xIn,dxIn,Xi_CLN,wBary_CLN,xZeroIn,Xi)
+SUBROUTINE Newton_2D(NIn,xIn,dxIn,Xi_CLN,wBary_CLN,xZeroIn,Xi,epsOut,LagOut,FOut)
 ! MODULES                                                                                                                          !
 USE MOD_Basis,             ONLY: LagrangeInterpolationPolys
 USE MOD_Mathtools,         ONLY: INVERSE
@@ -48,38 +48,42 @@ USE MOD_Mathtools,         ONLY: INVERSE
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: NIn
-REAL,INTENT(IN)    :: xIn(       :)
-REAL,INTENT(IN)    :: dxIn( 1:2,1:2,0:NIn,0:Nin)
-REAL,INTENT(IN)    :: Xi_CLN(    :)
-REAL,INTENT(IN)    :: wBary_CLN( :)
-REAL,INTENT(IN)    :: xZeroIn(  1:2,0:NIn,0:NIn)
-REAL,INTENT(INOUT) :: Xi(   1:2)
+INTEGER,INTENT(IN)        :: NIn
+REAL,INTENT(IN)           :: xIn(        :)
+REAL,INTENT(IN)           :: dxIn(  1:2,1:2,0:NIn,0:Nin)
+REAL,INTENT(IN)           :: Xi_CLN(     :)
+REAL,INTENT(IN)           :: wBary_CLN(  :)
+REAL,INTENT(IN)           :: xZeroIn(   1:2,0:NIn,0:NIn)
+REAL,INTENT(INOUT)        :: Xi(    1:2)
+REAL,INTENT(OUT),OPTIONAL :: EpsOut
+REAL,INTENT(OUT),OPTIONAL :: LagOut(1:2,0:NIn)
+REAL,INTENT(OUT),OPTIONAL :: FOut(  1:2)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER,PARAMETER :: N_dim  = 2
-REAL,PARAMETER    :: epsTol = 1.E-8
-INTEGER           :: i,j,iter
-REAL              :: eps_F
-REAL              :: F(   1:N_dim)
-REAL              :: Jac( 1:N_dim,1:N_dim)
-REAL              :: sJac(1:N_dim,1:N_dim)
-REAL              :: LagVol(0:NIn,0:NIn)
-REAL              :: LagXi( 0:NIn),LagEta(0:NIn)
+INTEGER,PARAMETER         :: N_dim  = 2
+REAL,PARAMETER            :: epsTol = 1.E-8
+INTEGER                   :: i,j,iter
+REAL                      :: eps_F
+REAL                      :: F(   1:N_dim)
+REAL                      :: Jac( 1:N_dim,1:N_dim)
+REAL                      :: sJac(1:N_dim,1:N_dim)
+REAL                      :: LagVol( 0:NIn,0:NIn)
+REAL                      :: Lag(1:2,0:NIn)
 !===================================================================================================================================
 
-CALL LagrangeInterpolationPolys(Xi(1),NIn,Xi_CLN,wBary_CLN,LagXi)
-CALL LagrangeInterpolationPolys(Xi(2),NIn,Xi_CLN,wBary_CLN,LagEta)
+CALL LagrangeInterpolationPolys(Xi(1),NIn,Xi_CLN,wBary_CLN,Lag(1,:))
+CALL LagrangeInterpolationPolys(Xi(2),NIn,Xi_CLN,wBary_CLN,Lag(2,:))
 
 F = -xIn
 
 DO j=0,NIn; DO i=0,NIn
-  LagVol(i,j) = LagXi(i)*LagEta(j)
+  LagVol(i,j) = Lag(1,i)*Lag(2,j)
   F = F + xZeroIn(1:2,i,j)*LagVol(i,j)
 END DO; END DO
 
 eps_F = epsTol*SUM(F*F) ! relative error to initial guess
 iter  = 0
+IF (PRESENT(epsOut)) epsOut = eps_F
 
 DO WHILE ((SUM(F*F).GT.eps_F).AND.(iter.LT.100))
   iter = iter+1
@@ -100,17 +104,20 @@ DO WHILE ((SUM(F*F).GT.eps_F).AND.(iter.LT.100))
   IF((iter.GT.3).AND.(ANY(ABS(Xi).GT.1.2))) EXIT
 
   ! Compute function value
-  CALL LagrangeInterpolationPolys(Xi(1),NIn,Xi_CLN,wBary_CLN,LagXi)
-  CALL LagrangeInterpolationPolys(Xi(2),NIn,Xi_CLN,wBary_CLN,LagEta)
+  CALL LagrangeInterpolationPolys(Xi(1),NIn,Xi_CLN,wBary_CLN,Lag(1,:))
+  CALL LagrangeInterpolationPolys(Xi(2),NIn,Xi_CLN,wBary_CLN,Lag(2,:))
 
   ! F(xi) = x(xi) - xIn
   F = -xIn
 
   DO j=0,NIn; DO i=0,NIn
-    LagVol(i,j) = LagXi(i)*LagEta(j)
+    LagVol(i,j) = Lag(1,i)*Lag(2,j)
     F = F + xZeroIn(1:2,i,j)*LagVol(i,j)
   END DO; END DO
 END DO
+
+IF (PRESENT(LagOut)) LagOut = Lag
+IF (PRESENT(FOut))   FOut   = F
 
 END SUBROUTINE Newton_2D
 
@@ -118,7 +125,7 @@ END SUBROUTINE Newton_2D
 !===================================================================================================================================
 !>
 !===================================================================================================================================
-SUBROUTINE Newton_3D(NIn,xIn,dxIn,Xi_CLN,wBary_CLN,xZeroIn,Xi)
+SUBROUTINE Newton_3D(NIn,xIn,dxIn,Xi_CLN,wBary_CLN,xZeroIn,Xi,epsOut,LagOut,FOut)
 ! MODULES                                                                                                                          !
 use mod_globals
 USE MOD_Basis,             ONLY: LagrangeInterpolationPolys
@@ -127,39 +134,43 @@ USE MOD_Mathtools,         ONLY: INVERSE
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: NIn
-REAL,INTENT(IN)    :: xIn(       :)
-REAL,INTENT(IN)    :: dxIn( 1:3,1:3,0:NIn,0:Nin,0:NIn)
-REAL,INTENT(IN)    :: Xi_CLN(    :)
-REAL,INTENT(IN)    :: wBary_CLN( :)
-REAL,INTENT(IN)    :: xZeroIn(  1:3,0:NIn,0:NIn,0:NIn)
-REAL,INTENT(INOUT) :: Xi(   1:3)
+INTEGER,INTENT(IN)        :: NIn
+REAL,INTENT(IN)           :: xIn(        :)
+REAL,INTENT(IN)           :: dxIn(  1:3,1:3,0:NIn,0:Nin,0:NIn)
+REAL,INTENT(IN)           :: Xi_CLN(     :)
+REAL,INTENT(IN)           :: wBary_CLN(  :)
+REAL,INTENT(IN)           :: xZeroIn(   1:3,0:NIn,0:NIn,0:NIn)
+REAL,INTENT(INOUT)        :: Xi(    1:3)
+REAL,INTENT(OUT),OPTIONAL :: EpsOut
+REAL,INTENT(OUT),OPTIONAL :: LagOut(1:3,0:NIn)
+REAL,INTENT(OUT),OPTIONAL :: FOut(  1:3)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER,PARAMETER :: N_dim  = 3
-REAL,PARAMETER    :: epsTol = 1.E-8
-INTEGER           :: i,j,k,iter
-REAL              :: eps_F
-REAL              :: F(   1:N_dim)
-REAL              :: Jac( 1:N_dim,1:N_dim)
-REAL              :: sJac(1:N_dim,1:N_dim)
-REAL              :: LagVol(0:NIn,0:NIn,0:NIn)
-REAL              :: LagXi( 0:NIn),LagEta(0:NIn),LagZeta(0:NIn)
+INTEGER,PARAMETER         :: N_dim  = 3
+REAL,PARAMETER            :: epsTol = 1.E-8
+INTEGER                   :: i,j,k,iter
+REAL                      :: eps_F
+REAL                      :: F(   1:N_dim)
+REAL                      :: Jac( 1:N_dim,1:N_dim)
+REAL                      :: sJac(1:N_dim,1:N_dim)
+REAL                      :: LagVol( 0:NIn,0:NIn,0:NIn)
+REAL                      :: Lag(1:3,0:NIn)
 !===================================================================================================================================
 
-CALL LagrangeInterpolationPolys(Xi(1),NIn,Xi_CLN,wBary_CLN,LagXi)
-CALL LagrangeInterpolationPolys(Xi(2),NIn,Xi_CLN,wBary_CLN,LagEta)
-CALL LagrangeInterpolationPolys(Xi(3),NIn,Xi_CLN,wBary_CLN,LagZeta)
+CALL LagrangeInterpolationPolys(Xi(1),NIn,Xi_CLN,wBary_CLN,Lag(1,:))
+CALL LagrangeInterpolationPolys(Xi(2),NIn,Xi_CLN,wBary_CLN,Lag(2,:))
+CALL LagrangeInterpolationPolys(Xi(3),NIn,Xi_CLN,wBary_CLN,Lag(3,:))
 
 F = -xIn
 
 DO k=0,NIn; DO j=0,NIn; DO i=0,NIn
-  LagVol(i,j,k) = LagXi(i)*LagEta(j)*LagZeta(k)
+  LagVol(i,j,k) = Lag(1,i)*Lag(2,j)*Lag(3,k)
   F = F + xZeroIn(1:3,i,j,k)*LagVol(i,j,k)
 END DO; END DO; END DO
 
 eps_F = epsTol*SUM(F*F) ! relative error to initial guess
 iter  = 0
+IF (PRESENT(epsOut)) epsOut = eps_F
 
 DO WHILE ((SUM(F*F).GT.eps_F).AND.(iter.LT.100))
   iter = iter+1
@@ -180,18 +191,21 @@ DO WHILE ((SUM(F*F).GT.eps_F).AND.(iter.LT.100))
   IF((iter.GT.3).AND.(ANY(ABS(Xi).GT.1.2))) EXIT
 
   ! Compute function value
-  CALL LagrangeInterpolationPolys(Xi(1),NIn,Xi_CLN,wBary_CLN,LagXi)
-  CALL LagrangeInterpolationPolys(Xi(2),NIn,Xi_CLN,wBary_CLN,LagEta)
-  CALL LagrangeInterpolationPolys(Xi(3),NIn,Xi_CLN,wBary_CLN,LagZeta)
+  CALL LagrangeInterpolationPolys(Xi(1),NIn,Xi_CLN,wBary_CLN,Lag(1,:))
+  CALL LagrangeInterpolationPolys(Xi(2),NIn,Xi_CLN,wBary_CLN,Lag(2,:))
+  CALL LagrangeInterpolationPolys(Xi(3),NIn,Xi_CLN,wBary_CLN,Lag(3,:))
 
   ! F(xi) = x(xi) - xIn
   F = -xIn
 
   DO k=0,NIn; DO j=0,NIn; DO i=0,NIn
-    LagVol(i,j,k) = LagXi(i)*LagEta(j)*LagZeta(k)
+    LagVol(i,j,k) = Lag(1,i)*Lag(2,j)*Lag(3,k)
     F = F + xZeroIn(1:3,i,j,k)*LagVol(i,j,k)
   END DO; END DO; END DO
 END DO
+
+IF (PRESENT(LagOut)) LagOut = Lag
+IF (PRESENT(FOut))   FOut   = F
 
 END SUBROUTINE Newton_3D
 
