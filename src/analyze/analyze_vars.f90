@@ -29,10 +29,10 @@ REAL                 :: WriteData_dt                      !< time intervall at w
 REAL                 :: tWriteData                        !< actual time at which next solution IO will be performed
 ! precomputed variables
 #if FV_ENABLED
-INTEGER              :: totalFV_nElems=0
+INTEGER(KIND=8)      :: totalFV_nElems=0
 #endif
 #if PP_LIMITER
-INTEGER              :: totalPP_nElems=0
+INTEGER(KIND=8)      :: totalPP_nElems=0
 #endif
 REAL,ALLOCATABLE     :: wGPSurf(:,:)                      !< wGPSurf(i,j)=wGP(i)*wGP(j)
 REAL,ALLOCATABLE     :: wGPVol(:,:,:)                     !< wGPVol(i,j,k)=wGP(i)*wGP(j)*wGP(k)
@@ -42,6 +42,14 @@ REAL                 :: Vol                               !< volume of the domai
 ! Analyze features
 LOGICAL              :: doCalcErrorNorms  =.FALSE.        !< marks whether error norms should be computed
 LOGICAL              :: doAnalyzeToFile   =.FALSE.        !< marks whether error norms should be written to a file
+
+! Performance features
+REAL                 :: PIDTimeStart                      !< start system time for PID calculation
+REAL                 :: PIDTimeEnd                        !< end   system time for PID calculation
+REAL                 :: PID_kill                          !< kill PID for FLEXI
+INTEGER              :: nCalcPID                          !< counter for iterations since last PID calculation
+INTEGER              :: nCalcPIDMax                       !< compute PID at least after every Nth iteration
+REAL                 :: PID                               !< current PID in FLEXI
 
 ! Analyze to file
 REAL                 :: iterRestart=0                     !< contains iteration count of previous computation in case a restart is

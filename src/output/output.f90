@@ -85,6 +85,7 @@ CONTAINS
 SUBROUTINE DefineParametersOutput()
 ! MODULES
 USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Output")
@@ -123,6 +124,7 @@ USE MOD_StringTools       ,ONLY:INTTOSTR
 USE MOD_Interpolation     ,ONLY:GetVandermonde
 USE MOD_Interpolation_Vars,ONLY:InterpolationInitIsDone,NodeTypeVISU,NodeType
 USE ISO_C_BINDING,         ONLY: C_NULL_CHAR
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -211,6 +213,7 @@ SUBROUTINE PrintStatusLine(t,dt,tStart,tEnd,doETA)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Output_Vars   ,ONLY: doPrintStatusLine
+USE MOD_Restart_Vars  ,ONLY: DoRestart,RestartTime
 #if FV_ENABLED || PP_LIMITER
 USE MOD_Mesh_Vars     ,ONLY: nGlobalElems
 #endif
@@ -235,58 +238,72 @@ REAL,INTENT(IN)             :: tEnd   !< end time of simulation
 LOGICAL,INTENT(IN),OPTIONAL :: doETA !< flag to print ETA without carriage return
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL         :: percent,time_remaining,mins,secs,hours,days
-CHARACTER(3) :: tmpString
+LOGICAL           :: doETA_loc
+REAL              :: percent,percent_ETA
+REAL              :: time_remaining,mins,secs,hours,days
+CHARACTER(3)      :: tmpString
 #if FV_ENABLED && PP_LIMITER
-INTEGER,PARAMETER :: barWidth = 31
+INTEGER,PARAMETER :: barWidth = 27
 #elif FV_ENABLED || PP_LIMITER
-INTEGER,PARAMETER :: barWidth = 41
+INTEGER,PARAMETER :: barWidth = 39
 #else
 INTEGER,PARAMETER :: barWidth = 51
 #endif
 #if FV_ENABLED
-INTEGER      :: FVcounter
-REAL         :: FV_percent
+INTEGER(KIND=8)   :: FVcounter
+REAL              :: FV_percent
 #endif /*FV_ENABLED*/
 #if PP_LIMITER
-INTEGER :: PPcounter
-REAL    :: PP_percent
+INTEGER(KIND=8)   :: PPcounter
+REAL              :: PP_percent
 #endif /*PP_LIMITER*/
 !==================================================================================================================================
 #if FV_ENABLED
-FVcounter = SUM(FV_Elems)
+FVcounter      = INT(SUM(FV_Elems),KIND=8)
 totalFV_nElems = totalFV_nElems + FVcounter ! counter for output of FV amount during analyze
 #endif
 #if PP_LIMITER
-PPcounter = SUM(PP_Elems)
+PPcounter      = INT(SUM(PP_Elems),KIND=8)
 totalPP_nElems = totalPP_nElems + PPcounter ! counter for output of FV amount during analyze
 #endif
 
-IF(.NOT.doPrintStatusLine) RETURN
+IF (PRESENT(doETA)) THEN
+  doETA_loc = doETA
+ELSE
+  doETA_loc = .FALSE.
+END IF
+
+IF(.NOT.doPrintStatusLine .AND. .NOT.doETA_loc) RETURN
 
 #if FV_ENABLED && USE_MPI
 IF (MPIRoot) THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE,FVcounter,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE,FVcounter,1,MPI_INTEGER8,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 ELSE
-  CALL MPI_REDUCE(FVcounter,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(FVcounter,0           ,1,MPI_INTEGER8,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 #endif
 
 #if PP_LIMITER && USE_MPI
 IF (MPIRoot) THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE,PPcounter,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE,PPcounter,1,MPI_INTEGER8,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 ELSE
-  CALL MPI_REDUCE(PPcounter,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(PPcounter,0           ,1,MPI_INTEGER8,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
-#endif
+#endif /*PP_LIMITER && USE_MPI*/
 
 IF(MPIRoot)THEN
 #ifdef INTEL
   OPEN(UNIT_stdOut,CARRIAGECONTROL='fortran')
 #endif
-  percent = (t-tStart) / (tend-tStart)
+  percent      = (t-tStart) / (tEnd-tStart)
+
+  ! Calculate ETA with percent of current run
+  ASSOCIATE(tBegin => MERGE(RestartTime,tStart,DoRestart))
+  percent_ETA  = (t-tBegin) / (tEnd-tBegin)
+  END ASSOCIATE
+
   CALL CPU_TIME(time_remaining)
-  IF (percent.GT.0.0) time_remaining = time_remaining/percent - time_remaining
+  IF (percent_ETA.GT.0.0) time_remaining = time_remaining/percent_ETA - time_remaining
   percent = percent*100.
   secs = MOD(time_remaining,60.)
   time_remaining = time_remaining / 60
@@ -296,13 +313,16 @@ IF(MPIRoot)THEN
   days = time_remaining / 24
 
 #if FV_ENABLED
-  FV_percent = REAL(FVcounter) / nGlobalElems * 100.
-  WRITE(UNIT_stdOut,'(F5.2,A5)',ADVANCE='NO') FV_percent, '% FV,'
-#endif
+  FV_percent = REAL(FVcounter) / REAL(nGlobalElems) * 100.
+  WRITE(UNIT_stdOut,'(F7.2,A5)',ADVANCE='NO') FV_percent, '% FV,'
+#endif /*FV_ENABLED*/
+
 #if PP_LIMITER
-  PP_percent = REAL(PPcounter) / nGlobalElems * 100.
-  WRITE(UNIT_stdOut,'(F5.2,A5)',ADVANCE='NO') PP_percent, '% PP,'
-#endif
+  PP_percent = REAL(PPcounter) / REAL(nGlobalElems) * 100.
+  WRITE(UNIT_stdOut,'(F7.2,A5)',ADVANCE='NO') PP_percent, '% PP,'
+#endif /*PP_LIMITER*/
+
+  ! Status line or standard output
   tmpString = MERGE('YES','NO ',PRESENT(doETA))
 
   WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A12,A,A1,A,A3,F6.2,A3,A1)',ADVANCE=tmpString)    &
@@ -324,6 +344,7 @@ SUBROUTINE PrintAnalyze(dt)
 ! MODULES                                                                                                                          !
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_Analyze_Vars        ,ONLY: PID
 USE MOD_Implicit_Vars       ,ONLY: nGMRESIterGlobal,nNewtonIterGlobal
 USE MOD_Mesh_Vars           ,ONLY: nGlobalElems
 USE MOD_TimeDisc_Vars       ,ONLY: CalcTimeStart,CalcTimeEnd,TimeDiscType,ViscousTimeStep
@@ -340,7 +361,7 @@ INTEGER :: TimeArray(8)              !< Array for system time
 
 ! Get calculation time per DOF
 CalcTimeEnd = FLEXITIME()
-CalcTimeEnd = (CalcTimeEnd-CalcTimeStart)*REAL(nProcessors)/(REAL(nGlobalElems)*REAL((PP_N+1)**PP_dim)*REAL(iter_analyze))/nRKStages
+PID         = (CalcTimeEnd-CalcTimeStart)*REAL(nProcessors)/(REAL(nGlobalElems)*REAL((PP_N+1)**PP_dim)*REAL(iter_analyze))/nRKStages
 ! Get system time
 CALL DATE_AND_TIME(values=TimeArray)
 
@@ -349,7 +370,7 @@ IF (.NOT.MPIRoot) RETURN
 WRITE(UNIT_stdOut,'(132("-"))')
 WRITE(UNIT_stdOut,'(A,I2.2,A1,I2.2,A1,I4.4,A1,I2.2,A1,I2.2,A1,I2.2)') &
   ' Sys date   :    ',timeArray(3),'.',timeArray(2),'.',timeArray(1),' ',timeArray(5),':',timeArray(6),':',timeArray(7)
-WRITE(UNIT_stdOut,'(A,ES12.5,A)')' CALCULATION TIME PER STAGE/DOF: [',CalcTimeEnd,' sec ]'
+WRITE(UNIT_stdOut,'(A,ES12.5,A)')' CALCULATION TIME PER STAGE/DOF: [',PID,' sec ]'
 WRITE(UNIT_stdOut,'(A,ES16.7)')  ' Timestep   : ',dt
 IF(ViscousTimeStep) WRITE(UNIT_stdOut,'(A)')' Viscous timestep dominates! '
 WRITE(UNIT_stdOut,'(A,ES16.7)')  '#Timesteps  : ',REAL(iter)
@@ -392,6 +413,7 @@ USE MOD_EOS,              ONLY:PrimToCons,ConsToPrim
 USE MOD_FV_Basis
 USE MOD_Indicator_Vars,   ONLY:IndValue
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -545,6 +567,7 @@ SUBROUTINE InitOutputToFile(Filename,ZoneName,nVar,VarNames,lastLine)
 USE MOD_Globals
 USE MOD_Restart_Vars, ONLY: RestartTime
 USE MOD_Output_Vars,  ONLY: ProjectName,ASCIIOutputFormat
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -672,6 +695,7 @@ SUBROUTINE OutputToFile(FileName,time,nVar,output)
 ! MODULES
 USE MOD_Globals
 USE MOD_Output_Vars,  ONLY: ASCIIOutputFormat
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

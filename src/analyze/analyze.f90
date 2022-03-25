@@ -47,21 +47,21 @@ CONTAINS
 !==================================================================================================================================
 SUBROUTINE DefineParametersAnalyze()
 ! MODULES
-USE MOD_ReadInTools ,ONLY: prms
-USE MOD_AnalyzeEquation ,ONLY: DefineParametersAnalyzeEquation
+USE MOD_ReadInTools,        ONLY: prms
+USE MOD_AnalyzeEquation,    ONLY: DefineParametersAnalyzeEquation
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Analyze")
-CALL prms%CreateLogicalOption('CalcErrorNorms' , "Set true to compute L2 and LInf error norms at analyze step.",&
+CALL prms%CreateLogicalOption('CalcErrorNorms',  "Set true to compute L2 and LInf error norms at analyze step.",&
                                                  '.TRUE.')
 CALL prms%CreateLogicalOption('AnalyzeToFile',   "Set true to output result of error norms to a file (CalcErrorNorms=T)",&
                                                  '.FALSE.')
 CALL prms%CreateRealOption(   'analyze_dt',      "Specifies time intervall at which analysis routines are called.",&
                                                  '0.')
-CALL prms%CreateIntOption(    'nWriteData' ,     "Intervall as multiple of analyze_dt at which HDF5 files "//&
+CALL prms%CreateIntOption(    'nWriteData',      "Intervall as multiple of analyze_dt at which HDF5 files "//&
                                                  "(e.g. State,TimeAvg,Fluc) are written.",&
                                                  '1')
-CALL prms%CreateIntOption(    'NAnalyze'   ,     "Polynomial degree at which analysis is performed (e.g. for L2 errors). "//&
+CALL prms%CreateIntOption(    'NAnalyze',        "Polynomial degree at which analysis is performed (e.g. for L2 errors). "//&
                                                  "Default: 2*N.")
 CALL prms%CreateIntOption(    'AnalyzeExactFunc',"Define exact function used for analyze (e.g. for computing L2 errors). "//&
                                                  "Default: Same as IniExactFunc")
@@ -69,6 +69,10 @@ CALL prms%CreateIntOption(    'AnalyzeRefState' ,"Define state used for analyze 
                                                  "Default: Same as IniRefState")
 CALL prms%CreateLogicalOption('doMeasureFlops',  "Set true to measure flop count, if compiled with PAPI.",&
                                                  '.TRUE.')
+CALL prms%CreateRealOption(   'PIDkill',         'Kill FLEXI if PID gets below this value (optional)',&
+                                                 '-1.0')
+CALL prms%CreateIntOption(    'NCalcPID'         ,'Compute PID after every Nth timestep.',&
+                                                  '1')
 CALL DefineParametersAnalyzeEquation()
 END SUBROUTINE DefineParametersAnalyze
 
@@ -198,7 +202,7 @@ IF(doAnalyzeToFile.AND.MPIRoot)THEN
     VarNames(PP_nVar+1:PP_nVar+i) = 'LInf_'//TRIM(StrVarNames(i))
   END DO
   VarNames(2*PP_nVar+1:2*PP_nVar+5) = &
-    [CHARACTER(9) :: "timesteps","t_CPU","DOF","Ncells","nProcs"] ! gfortran hates mixed length arrays
+    [CHARACTER(9) :: 'timesteps','t_CPU','DOF','Ncells','nProcs'] ! gfortran hates mixed length arrays
   FileName_ErrNorm='out.'//TRIM(ProjectName)
   CALL InitOutputToFile(FileName_ErrNorm,'Analyze',2*PP_nVar+5,VarNames,lastLine)
   iterRestart    =MAX(lastLine(2*PP_nVar+1),0.)
@@ -208,12 +212,19 @@ END IF
 CALL InitAnalyzeEquation()
 CALL InitBenchmarking()
 
-AnalyzeInitIsDone=.TRUE.
-SWRITE(UNIT_stdOut,'(A,ES18.9)')' Volume of computational domain : ',Vol
-SWRITE(UNIT_stdOut,'(A)')' INIT ANALYZE DONE!'
-SWRITE(UNIT_stdOut,'(132("-"))')
-END SUBROUTINE InitAnalyze
+! Read in kill PID
+PID_kill     = GETREAL('PIDkill')
+IF (PID_kill.GT.0) THEN
+  nCalcPIDMax  = GETINT('nCalcPID')
+  PIDTimeStart = FLEXITIME()
+END IF
 
+AnalyzeInitIsDone = .TRUE.
+SWRITE(UNIT_stdOut,'(A,ES18.9)')' Volume of computational domain : ',Vol
+SWRITE(UNIT_stdOut,'(A)')       ' INIT ANALYZE DONE!'
+SWRITE(UNIT_stdOut,'(132("-"))')
+
+END SUBROUTINE InitAnalyze
 
 
 !==================================================================================================================================
@@ -225,10 +236,10 @@ SUBROUTINE InitAnalyzeBasis(N_in,Nloc,xGP,wBary)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Analyze_Vars, ONLY: wGPVolAnalyze,Vdm_GaussN_NAnalyze
-USE MOD_Basis,        ONLY: InitializeVandermonde
-USE MOD_Interpolation,ONLY: GetNodesAndWeights
-USE MOD_Interpolation_Vars,ONLY: NodeTypeGL
+USE MOD_Analyze_Vars,       ONLY: wGPVolAnalyze,Vdm_GaussN_NAnalyze
+USE MOD_Basis,              ONLY: InitializeVandermonde
+USE MOD_Interpolation,      ONLY: GetNodesAndWeights
+USE MOD_Interpolation_Vars, ONLY: NodeTypeGL
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -260,7 +271,6 @@ END DO; END DO
 #endif
 
 END SUBROUTINE InitAnalyzeBasis
-
 
 
 !==================================================================================================================================
@@ -312,6 +322,7 @@ IF(doCalcErrorNorms)THEN
 END IF  ! ErrorNorms
 
 CALL AnalyzeEquation(Time)
+CALL AnalyzePerformance()
 CALL Benchmarking()
 
 IF(Time.GT.0.) THEN
@@ -323,6 +334,47 @@ IF(Time.GT.0.) THEN
   SWRITE(UNIT_stdOut,*)
 END IF
 END SUBROUTINE Analyze
+
+
+!==================================================================================================================================
+!> Calculates current code performance
+!==================================================================================================================================
+SUBROUTINE AnalyzePerformance()
+! MODULES
+USE MOD_Globals
+USE MOD_Preproc
+USE MOD_Analyze_Vars,       ONLY: PID,PIDTimeStart,PIDTimeEnd,PID_kill,nCalcPID,nCalcPIDMax
+USE MOD_Mesh_Vars,          ONLY: nGlobalElems
+USE MOD_TimeDisc_Vars,      ONLY: nRKStages
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+
+IF (PID_kill.LE.0) RETURN
+
+! Return if no timestep update requested in this iteration
+IF (nCalcPID.GE.1) THEN
+  nCalcPID = nCalcPID - 1
+  RETURN
+ELSE
+  nCalcPID = nCalcPIDMax - 1
+END IF
+
+! Get calculation time per DOF
+PIDTimeEnd = FLEXITIME()
+PID        = (PIDTimeEnd-PIDTimeStart)*REAL(nProcessors)/(REAL(nGlobalElems)*REAL((PP_N+1)**PP_dim))/nRKStages
+
+! Abort if PID is too low
+IF (PID.LT.PID_kill) &
+  CALL CollectiveStop(__STAMP__,'Aborting due to low performance, PID',RealInfo=PID)
+
+PIDTimeStart = PIDTimeStart
+
+END SUBROUTINE AnalyzePerformance
 
 
 !==================================================================================================================================
@@ -436,8 +488,8 @@ END SUBROUTINE CalcErrorNorms
 !==================================================================================================================================
 SUBROUTINE FinalizeAnalyze()
 ! MODULES
-USE MOD_AnalyzeEquation,   ONLY: FinalizeAnalyzeEquation
-USE MOD_Analyze_Vars,      ONLY: AnalyzeInitIsDone,wGPSurf,wGPVol,Surf,wGPVolAnalyze,Vdm_GaussN_NAnalyze,ElemVol
+USE MOD_AnalyzeEquation,    ONLY: FinalizeAnalyzeEquation
+USE MOD_Analyze_Vars,       ONLY: AnalyzeInitIsDone,wGPSurf,wGPVol,Surf,wGPVolAnalyze,Vdm_GaussN_NAnalyze,ElemVol
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
