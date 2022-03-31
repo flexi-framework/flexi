@@ -319,8 +319,7 @@ USE MOD_TimeDisc_Vars       ,ONLY: t,dt,dt_min,tAnalyze,tEnd,CalcTimeStart
 USE MOD_TimeDisc_Vars       ,ONLY: iter,iter_analyze,maxIter
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize,writeCounter
 #if FV_ENABLED
-USE MOD_FV                  ,ONLY: FV_Info,FV_Switch
-USE MOD_Indicator           ,ONLY: CalcIndicator
+USE MOD_FV                  ,ONLY: FV_Info
 #endif
 #if PP_LIMITER
 USE MOD_PPLimiter           ,ONLY: PPLimiter_Info,PPLimiter
