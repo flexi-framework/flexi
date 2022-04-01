@@ -174,7 +174,7 @@ DO iStage = 1,nRKStages
 #if FV_ENABLED
   ! Time needs to be evaluated at the next step because time integration was already performed
   ASSOCIATE(tFV => MERGE(t+dt,t,iStage.EQ.nRKStages))
-  CALL CalcIndicator(U,t)
+  CALL CalcIndicator(U,tFV)
   ! NOTE: Apply switch and update FV_Elems
   CALL FV_Switch(U,Uprev,S2,AllowToDG=(iStage.EQ.nRKStages .OR. FV_toDGinRK))
   END ASSOCIATE
@@ -215,6 +215,10 @@ USE MOD_TimeDisc_Vars     ,ONLY: RKb_implicit,RKb_embedded,safety,ESDIRK_gamma
 #if PARABOLIC
 USE MOD_TimeDisc_Vars     ,ONLY: DFLScale,DFLScale_Readin
 #endif
+#if FV_ENABLED
+USE MOD_FV                ,ONLY: FV_Switch
+USE MOD_Indicator         ,ONLY: CalcIndicator
+#endif /*FV_ENABLED*/
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -273,6 +277,12 @@ IF (NewtonConverged) THEN
 #if PARABOLIC
   DFLScale = MIN(DFLScale_Readin,1.05*DFLScale)
 #endif
+#if FV_ENABLED
+  ! Time needs to be evaluated at the next step
+  CALL CalcIndicator(U,t+dt)
+  ! NOTE: Apply switch and update FV_Elems
+  CALL FV_Switch(U,AllowToDG=.TRUE.)
+#endif /*FV_ENABLED*/
 ELSE
   ! repeat current timestep with decreased timestep size
   U = Un
