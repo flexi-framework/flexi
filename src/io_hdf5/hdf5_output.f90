@@ -608,7 +608,7 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)             :: nVarAvg                                      !< Number of variables in UAvg  (first dimension)
 INTEGER,INTENT(IN)             :: nVarFluc                                     !< Number of variables in UFluc (first dimension)
 INTEGER,INTENT(IN)             :: nVal(3)                                      !< Dimension (2:4) of UAvg/UFluc
-INTEGER,INTENT(IN)             :: FV_Elems_In(nElems)                          !< Array with custom FV_Elem information
+INTEGER,INTENT(IN),OPTIONAL    :: FV_Elems_In(nElems)                          !< Array with custom FV_Elem information
 CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName                                 !< Name of mesh file
 CHARACTER(LEN=255),INTENT(IN)  :: VarNamesAvg(nVarAvg)                         !< Average variable names
 CHARACTER(LEN=255),INTENT(IN)  :: VarNamesFluc(nVarFluc)                       !< Average variable names
@@ -669,10 +669,12 @@ CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 #endif
 
 ! write dummy FV array
-NULLIFY(ElementOutTimeAvg)
-CALL AddToElemData(ElementOutTimeAvg,'FV_Elems',IntArray=FV_Elems_In)
-CALL WriteAdditionalElemData(FileName,ElementOutTimeAvg)
-DEALLOCATE(ElementOutTimeAvg)
+IF(PRESENT(FV_Elems_In))THEN
+  NULLIFY(ElementOutTimeAvg)
+  CALL AddToElemData(ElementOutTimeAvg,'FV_Elems',IntArray=FV_Elems_In)
+  CALL WriteAdditionalElemData(FileName,ElementOutTimeAvg)
+  DEALLOCATE(ElementOutTimeAvg)
+END IF
 
 DO i=1,2
   nVar_loc =  MERGE(nVarAvg,nVarFluc,i.EQ.1)

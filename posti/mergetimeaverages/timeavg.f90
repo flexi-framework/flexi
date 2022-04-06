@@ -11,7 +11,7 @@ USE MOD_Commandline_Arguments
 USE MOD_PreProc              ,ONLY: PP_N
 USE MOD_AnalyzeEquation_Vars ,ONLY: UAvg,UFluc
 USE MOD_HDF5_Input           ,ONLY: ReadAttribute,ReadArray,GetDataSize
-USE MOD_HDF5_Output          ,ONLY: WriteTimeAverage,WriteArray
+USE MOD_HDF5_Output          ,ONLY: WriteTimeAverage,WriteArray,WriteAttribute
 USE MOD_IO_HDF5              ,ONLY: HSIZE,File_ID,nDims
 USE MOD_IO_HDF5              ,ONLY: OpenDataFile,CloseDataFile
 USE MOD_IO_HDF5              ,ONLY: InitMPIInfo,GetDataSetNamesInGroup
@@ -159,7 +159,6 @@ SELECT CASE(TRIM(ref%FileType))
     FileTypeOut = 'Fluc'
   CASE DEFAULT
     isTimeAvg   = .TRUE.  ! remove compiler warning
-    CALL CollectiveStop(__STAMP__,'Unknown file type: '//TRIM(ref%FileType))
 END SELECT
 
 ! Allocate arrays for the datasets
@@ -278,6 +277,8 @@ DO iFile = 1,nFiles
   ! Write the output
   IF ((iCoarse.EQ.coarsenFac).OR.(iFile.EQ.nFiles).OR.(ABS(Time-AvgEndTime).LT.dt.AND.Time+dt.GT.AvgEndTime)) THEN
     FileNameOut = TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(FileTypeOut)//'_Merged',Time,TimeStart))//'.h5'
+    nVarAvg        = 0
+    nVarFluc       = 0
 
     ! Compute total average
     DO i = 1,ref%nDataSets
@@ -287,21 +288,25 @@ DO iFile = 1,nFiles
       IF (isTimeAvg) THEN
         SELECT CASE(TRIM(ref%DatasetNames(i)))
           CASE('Mean')
-            nDim            = ref%nDims(   i)
-            nVarAvg      = ref%nVal(1:nDim,i)
+            nDim     = ref%nDims(   i)
+            nVarAvg  = ref%nVal(1:nDim,i)
             UAvg     = RESHAPE(avg(i)%AvgData,(/nVarAvg( 1),nVarAvg( 2),nVarAvg( 3),nVarAvg( 4),nVarAvg( 5)/))
 
           CASE('MeanSquare')
-            nDim        = ref%nDims(   i)
+            nDim     = ref%nDims(   i)
             nVarFluc = ref%nVal(1:nDim,i)
             UFluc    = RESHAPE(avg(i)%AvgData,(/nVarFluc(1),nVarFluc(2),nVarFluc(3),nVarFluc(4),nVarFluc(5)/))
         END SELECT
       ELSE
         SELECT CASE(TRIM(ref%DatasetNames(i)))
           CASE('DG_Solution')
-            nDim            = ref%nDims(   i)
-            nVarAvg      = ref%nVal(1:nDim,i)
+            nDim     = ref%nDims(   i)
+            nVarAvg  = ref%nVal(1:nDim,i)
             UAvg     = RESHAPE(avg(i)%AvgData,(/nVarAvg( 1),nVarAvg( 2),nVarAvg( 3),nVarAvg( 4),nVarAvg( 5)/))
+
+            CALL OpenDataFile(FileNameOut,create=.FALSE.,single=.FALSE.,readOnly=.FALSE.)
+            CALL WriteAttribute(File_ID,'VarNames_Mean',nVarAvg(1),StrArray=ref%DatasetNamesAvg)
+            CALL CloseDataFile
         END SELECT
       END IF
     END DO
@@ -314,7 +319,6 @@ DO iFile = 1,nFiles
     CALL WriteTimeAverage(MeshFileName = ref%MeshFile         &
                          ,OutputTime   = Time                 &
                          ,dtAvg        = TotalAvgTime         &
-                         ,FV_Elems_In  = FV_Elems_loc         &
                          ,nVal         = nVarAvg(2:4)         &
                          ,nVarAvg      = nVarAvg(1)           &
                          ,VarNamesAvg  = ref%DatasetNamesAvg  &
@@ -323,7 +327,6 @@ DO iFile = 1,nFiles
                          ,VarNamesFluc = ref%DatasetNamesFluc &
                          ,UFluc        = UFluc                &
                          ,FileName_In  = FileNameOut          &
-                         ! ,FutureTime   = Time                 &
                          ,NodeType_In  = ref%NodeType)
 
     ! Write the remaining datasets
@@ -350,6 +353,7 @@ DO iFile = 1,nFiles
                          ,RealArray    = avg(i)%AvgData)
       END SELECT
     END DO
+    CALL CloseDataFile()
 
     iCoarse            = 0
     TotalAvgTimeGlobal = TotalAvgTimeGlobal+TotalAvgTime
@@ -412,21 +416,36 @@ CALL ReadAttribute(File_ID,'Project_Name',1,StrScalar =ProjectName)
 CALL ReadAttribute(File_ID,'Time'        ,1,RealScalar=f%Time)
 
 ! Get the VarNames for Mean and MeanSquare
-DO i = 1,f%nDataSets
-  SELECT CASE(TRIM(f%DatasetNames(i)))
-    CASE('Mean','DG_Solution')
-      IF (ALLOCATED(f%DatasetNamesAvg )) CYCLE
+SELECT CASE(f%fileType)
+  CASE('TimeAvg','Fluc')
+    DO i = 1,f%nDataSets
+      SELECT CASE(TRIM(f%DatasetNames(i)))
+        CASE('Mean')
+          IF (ALLOCATED(f%DatasetNamesAvg )) CYCLE
 
-      ALLOCATE(f%DatasetNamesAvg( f%nVal(1,i)))
-      CALL ReadAttribute(File_ID,'VarNames_Mean'      ,f%nVal(1,i),StrArray=f%DatasetNamesAvg)
+          ALLOCATE(f%DatasetNamesAvg( f%nVal(1,i)))
+          CALL ReadAttribute(File_ID,'VarNames_Mean'      ,f%nVal(1,i),StrArray=f%DatasetNamesAvg)
 
-    CASE('MeanSquare')
-      IF (ALLOCATED(f%DatasetNamesFluc)) CYCLE
+        CASE('MeanSquare')
+          IF (ALLOCATED(f%DatasetNamesFluc)) CYCLE
 
-      ALLOCATE(f%DatasetNamesFluc(f%nVal(1,i)))
-      CALL ReadAttribute(File_ID,'VarNames_MeanSquare',f%nVal(1,i),StrArray=f%DatasetNamesFluc)
-  END SELECT
-END DO
+          ALLOCATE(f%DatasetNamesFluc(f%nVal(1,i)))
+          CALL ReadAttribute(File_ID,'VarNames_MeanSquare',f%nVal(1,i),StrArray=f%DatasetNamesFluc)
+      END SELECT
+    END DO
+
+  CASE('State')
+    DO i = 1,f%nDataSets
+      IF (STRICMP(f%DatasetNames(i),'DG_Solution')) THEN
+          IF (ALLOCATED(f%DatasetNamesAvg )) CYCLE
+
+          ALLOCATE(f%DatasetNamesAvg( f%nVal(1,i)))
+          CALL ReadAttribute(File_ID,'VarNames'           ,f%nVal(1,i),StrArray=f%DatasetNamesAvg)
+      END IF
+    END DO
+  CASE DEFAULT
+    CALL CollectiveStop(__STAMP__,'Unknown file type: '//TRIM(ref%FileType))
+END SELECT
 
 CALL CloseDataFile()
 
