@@ -114,7 +114,7 @@ SELECT CASE(locArea%AreaShape)
   CASE(SHAPE_CUBOID_CARTESIAN)
     locShape%xStart(:)  = GETREALARRAY(TRIM(locArea%AreaStr)//'XStart',3,'(/0.,0.,0./)')
     locShape%xEnd (:)   = GETREALARRAY(TRIM(locArea%AreaStr)//'XEnd',  3,'(/0.,0.,0./)')
-    locShape%xCenter(:) = (locShape%xStart(1:PP_dim)+locShape%xEnd(1:PP_dim))/2.
+    locShape%xCenter(:) = (locShape%xStart(:)+locShape%xEnd(:))/2.
 
   CASE(SHAPE_CUBE_CARTESIAN) ! cube
     locShape%xCenter(:) = GETREALARRAY(TRIM(locArea%AreaStr)//'XCenter',3,'(/0.,0.,0./)')
@@ -143,7 +143,7 @@ SELECT CASE(locArea%AreaShape)
     locShape%Axis(:)    = locShape%xEnd(:)-locShape%xStart(:)
     locShape%xCenter(:) = (locShape%xStart(:)+locShape%xEnd(:))/2.
 #else
-    locShape% Center(:) = GETREALARRAY(TRIM(locArea%AreaStr)//'XCenter',3,'(/0.,0.,0./)')
+    locShape%xCenter(:) = GETREALARRAY(TRIM(locArea%AreaStr)//'XCenter',3,'(/0.,0.,0./)')
 #endif
 
   CASE(SHAPE_SPHERE) ! sphere

@@ -82,7 +82,9 @@ CALL prms%CreateRealArrayOption('SpongeXEnd'      , "Coordinates of second point
 CALL prms%CreateRealArrayOption('SpongeDir'       , "Direction vector of the sponge ramp (SpongeShape=ramp)", multiple=.TRUE.)
 CALL prms%CreateRealOption(     'SpongeRadius'    , "Radius of the sponge zone (SpongeShape=cylindrical)", multiple=.TRUE.)
 #if (PP_dim==3)
-CALL prms%CreateRealArrayOption(     'SpongeAxis'        ,"Axis vector of cylindrical sponge (SpongeShape=cylindrical)",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('SpongeAxis'      , "Axis vector of cylindrical sponge (SpongeShape=cylindrical)", multiple=.TRUE.)
+#else
+CALL prms%CreateRealArrayOption('SpongeXCenter'   , "Center coordinates of cylindrical sponge (SpongeShape=cylindrical)", multiple=.TRUE.)
 #endif
 CALL prms%CreateLogicalOption(       'SpongeViz'         ,"Turn on to write a visualization file of sponge region and strength."   &
                                                          ,'.FALSE.')
@@ -284,7 +286,7 @@ REAL,DIMENSION(  0:PP_N,0:PP_N,0:PP_NZ) :: sigma, x_star
 REAL                                    :: SpongeMat_Temp(0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 REAL                                    :: SpongeCount_Temp(1:nElems)
 REAL,ALLOCATABLE                        :: SpongeMat_loc(:,:,:,:,:)
-REAL                                    :: r_vec(PP_dim),tmp1,tmp2
+REAL                                    :: r_vec(3),tmp1,tmp2
 REAL,ALLOCATABLE,TARGET                 :: SpDummy(:,:,:,:)
 REAL,ALLOCATABLE,TARGET                 :: SpongeMat_NVisu(:,:,:,:,:)
 REAL,ALLOCATABLE,TARGET                 :: Coords_NVisu(:,:,:,:,:)
@@ -398,7 +400,7 @@ DO iRamp = 1,nSpongeRamps
           END IF
 
       CASE(SHAPE_CYLINDRICAL_OUTER) ! cylindrical sponge
-      r_vec(:) = Elem_xGP(:,i,j,k,iElem)-locShape%xStart(1:PP_dim)
+      r_vec(:) = Elem_xGP(:,i,j,k,iElem)-locShape%xStart(:)
 #if(PP_dim==3)
       r_vec    = r_vec - SUM((Elem_xGP(:,i,j,k,iElem)-locShape%xStart(:))*locShape%Axis(:))*locShape%Axis(:)
 #endif
@@ -596,13 +598,13 @@ SUBROUTINE Sponge(Ut)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Sponge_Vars ,ONLY: SpongeMap,SpongeMat,SpBaseFlow,nSpongeElems
-USE MOD_DG_Vars     ,ONLY: U
-USE MOD_Mesh_Vars   ,ONLY: nElems
+USE MOD_Sponge_Vars      ,ONLY: SpongeMap,SpongeMat,SpBaseFlow_p,nSpongeElems
+USE MOD_DG_Vars          ,ONLY: U
+USE MOD_Mesh_Vars        ,ONLY: nElems
 #if FV_ENABLED
-USE MOD_ChangeBasis ,ONLY: ChangeBasis3D
-USE MOD_FV_Vars     ,ONLY: FV_Vdm,FV_Elems
-USE MOD_Mesh_Vars   ,ONLY: sJ
+USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisVolume
+USE MOD_FV_Vars          ,ONLY: FV_Vdm,FV_Elems
+USE MOD_Mesh_Vars        ,ONLY: sJ
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -627,8 +629,9 @@ DO iSpongeElem=1,nSpongeElems
       SpongeMatTmp(1,i,j,k) = sJ(i,j,k,iElem,0)*SpongeMat(i,j,k,iSpongeElem)
     END DO; END DO; END DO ! i,j,k
     ! Change Basis of SpongeMat and SpongeBaseFlow to FV grid
-    CALL ChangeBasis3D(1,PP_N,PP_N,FV_Vdm,SpongeMatTmp(:,:,:,:),SpongeMat_FV(:,:,:,:))
-    CALL ChangeBasis3D(PP_nVar,PP_N,PP_N,FV_Vdm,SpBaseFlow(:,:,:,:,iElem),SpBaseFlow_FV(:,:,:,:))
+    CALL ChangeBasisVolume(1,PP_N,PP_N,FV_Vdm,SpongeMatTmp(:,:,:,:),SpongeMat_FV(:,:,:,:))
+    CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,SpBaseFlow_p(:,:,:,:,iElem),SpBaseFlow_FV(:,:,:,:))
+
     ! Calc and add source, take the FV Jacobian into account
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) - SpongeMat_Fv(1,i,j,k)/sJ(i,j,k,iElem,1) * &
