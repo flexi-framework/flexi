@@ -14,31 +14,28 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Module containing the main procedures needed to build the connection between the WM interface and the boundary points.
+!> Module containing a Newton algorithm to find the coordinates in reference space for a point in physical coordinates
 !===================================================================================================================================
 MODULE MOD_Newton
 ! MODULES
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-
-!-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
-
 INTERFACE Newton
   MODULE PROCEDURE Newton_2D
   MODULE PROCEDURE Newton_3D
 END INTERFACE
 
 PUBLIC :: Newton
+!==================================================================================================================================
 
 CONTAINS
 
 !===================================================================================================================================
-!>
+!> Employ a Newton algorithm to find the parametric coordinates xi of an interpolation point in an element defined by CL points on
+!> NIn. We try to solve F(xi) = x(xi) - x_InterpolationPoint = 0 for the parametric coordinates in 2D.
+!> Newton iteration: xi_(n+1) = xi_n - (J(xi_n))^(-1)*F(xi_n), the Jacobian is the derivative of the mesh coordinates w.r.t. the
+!> parametric coordinates.
 !===================================================================================================================================
 SUBROUTINE Newton_2D(NIn,xIn,dxIn,Xi_CLN,wBary_CLN,xZeroIn,Xi,epsOut,LagOut,FOut)
 ! MODULES                                                                                                                          !
@@ -48,34 +45,36 @@ USE MOD_Mathtools,         ONLY: INVERSE
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)        :: NIn
-REAL,INTENT(IN)           :: xIn(        :)
-REAL,INTENT(IN)           :: dxIn(  1:2,1:2,0:NIn,0:Nin)
-REAL,INTENT(IN)           :: Xi_CLN(     :)
-REAL,INTENT(IN)           :: wBary_CLN(  :)
-REAL,INTENT(IN)           :: xZeroIn(   1:2,0:NIn,0:NIn)
-REAL,INTENT(INOUT)        :: Xi(    1:2)
-REAL,INTENT(OUT),OPTIONAL :: EpsOut
-REAL,INTENT(OUT),OPTIONAL :: LagOut(1:2,0:NIn)
-REAL,INTENT(OUT),OPTIONAL :: FOut(  1:2)
+INTEGER,INTENT(IN)        :: NIn                         !> Polynomial degree of coordinate mapping
+REAL,INTENT(IN)           :: xIn(        :)              !> Physical coordinates of point that is searched
+REAL,INTENT(IN)           :: dxIn(  1:2,1:2,0:NIn,0:Nin) !> Jacobian of coordinate mapping: dx_i/dxi_j
+REAL,INTENT(IN)           :: Xi_CLN(     :)              !> Interpolation points of Lagrange polynomials of degree NIn
+REAL,INTENT(IN)           :: wBary_CLN(  :)              !> Barycentric  weights of Lagrange polynomials of degree NIn
+REAL,INTENT(IN)           :: xZeroIn(1:2,0:NIn,0:NIn)    !> Physical coordinates at interpolation points Xi_CLN
+REAL,INTENT(INOUT)        :: Xi(    1:2)                 !> Input:  Intial guess of reference coordiantes for Newton
+                                                         !> Output: Found reference coordinates of point XIn by Newton
+REAL,INTENT(OUT),OPTIONAL :: EpsOut                      !> relative error bound for convergence
+REAL,INTENT(OUT),OPTIONAL :: LagOut(1:2,0:NIn)           !> Lagrange polynomials evaluated at Xi
+REAL,INTENT(OUT),OPTIONAL :: FOut(  1:2)                 !> L2-error of final Xi
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER,PARAMETER         :: N_dim  = 2
-REAL,PARAMETER            :: epsTol = 1.E-8
+INTEGER,PARAMETER         :: nDim    = 2
+INTEGER,PARAMETER         :: maxIter = 100
+REAL,PARAMETER            :: epsTol  = 1.E-8
 INTEGER                   :: i,j,iter
 REAL                      :: eps_F
-REAL                      :: F(   1:N_dim)
-REAL                      :: Jac( 1:N_dim,1:N_dim)
-REAL                      :: sJac(1:N_dim,1:N_dim)
+REAL                      :: F(   1:nDim)
+REAL                      :: Jac( 1:nDim,1:nDim)
 REAL                      :: LagVol( 0:NIn,0:NIn)
 REAL                      :: Lag(1:2,0:NIn)
 !===================================================================================================================================
 
+! Evaluate Lagrange polynomials at xi
 CALL LagrangeInterpolationPolys(Xi(1),NIn,Xi_CLN,wBary_CLN,Lag(1,:))
 CALL LagrangeInterpolationPolys(Xi(2),NIn,Xi_CLN,wBary_CLN,Lag(2,:))
 
+! F(xi) = x(xi) - xIn
 F = -xIn
-
 DO j=0,NIn; DO i=0,NIn
   LagVol(i,j) = Lag(1,i)*Lag(2,j)
   F = F + xZeroIn(1:2,i,j)*LagVol(i,j)
@@ -85,31 +84,29 @@ eps_F = epsTol*SUM(F*F) ! relative error to initial guess
 iter  = 0
 IF (PRESENT(epsOut)) epsOut = eps_F
 
-DO WHILE ((SUM(F*F).GT.eps_F).AND.(iter.LT.100))
+! While L2 error exceeds eps_F and max. iteration number not reached
+DO WHILE ((SUM(F*F).GT.eps_F).AND.(iter.LT.maxIter))
   iter = iter+1
+
   ! Compute F Jacobian dx/dXi
   Jac  = 0.
-
   DO j=0,NIn; DO i=0,NIn
     Jac = Jac + dxIn(1:2,1:2,i,j)*LagVol(i,j)
   END DO; END DO
 
-  ! Compute inverse of Jacobian
-  sJac = INVERSE(Jac)
+  ! Perform Newton step
+  Xi = Xi - MATMUL(INVERSE(Jac),F)
 
-  ! Iterate Xi using Newton step
-  Xi = Xi - MATMUL(sJac,F)
   ! if Newton gets outside reference space range [-1,1], exit.
   ! But allow for some oscillation in the first couple of iterations, as we may discard the correct point/element!!
   IF((iter.GT.3).AND.(ANY(ABS(Xi).GT.1.2))) EXIT
 
-  ! Compute function value
+  ! Evaluate Lagrange polynomials at new xi
   CALL LagrangeInterpolationPolys(Xi(1),NIn,Xi_CLN,wBary_CLN,Lag(1,:))
   CALL LagrangeInterpolationPolys(Xi(2),NIn,Xi_CLN,wBary_CLN,Lag(2,:))
 
   ! F(xi) = x(xi) - xIn
   F = -xIn
-
   DO j=0,NIn; DO i=0,NIn
     LagVol(i,j) = Lag(1,i)*Lag(2,j)
     F = F + xZeroIn(1:2,i,j)*LagVol(i,j)
@@ -123,46 +120,50 @@ END SUBROUTINE Newton_2D
 
 
 !===================================================================================================================================
-!>
+!> Employ a Newton algorithm to find the parametric coordinates xi of an interpolation point in an element defined by CL points on
+!> NIn. We try to solve F(xi) = x(xi) - x_InterpolationPoint = 0 for the parametric coordinates in 3D.
+!> Newton iteration: xi_(n+1) = xi_n - (J(xi_n))^(-1)*F(xi_n), the Jacobian is the derivative of the mesh coordinates w.r.t. the
+!> parametric coordinates.
 !===================================================================================================================================
 SUBROUTINE Newton_3D(NIn,xIn,dxIn,Xi_CLN,wBary_CLN,xZeroIn,Xi,epsOut,LagOut,FOut)
 ! MODULES                                                                                                                          !
-use mod_globals
 USE MOD_Basis,             ONLY: LagrangeInterpolationPolys
 USE MOD_Mathtools,         ONLY: INVERSE
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)        :: NIn
-REAL,INTENT(IN)           :: xIn(        :)
-REAL,INTENT(IN)           :: dxIn(  1:3,1:3,0:NIn,0:Nin,0:NIn)
-REAL,INTENT(IN)           :: Xi_CLN(     :)
-REAL,INTENT(IN)           :: wBary_CLN(  :)
-REAL,INTENT(IN)           :: xZeroIn(   1:3,0:NIn,0:NIn,0:NIn)
-REAL,INTENT(INOUT)        :: Xi(    1:3)
-REAL,INTENT(OUT),OPTIONAL :: EpsOut
-REAL,INTENT(OUT),OPTIONAL :: LagOut(1:3,0:NIn)
-REAL,INTENT(OUT),OPTIONAL :: FOut(  1:3)
+INTEGER,INTENT(IN)        :: NIn                               !> Polynomial degree of coordinate mapping
+REAL,INTENT(IN)           :: xIn(        :)                    !> Physical coordinates of point that is searched
+REAL,INTENT(IN)           :: dxIn(  1:3,1:3,0:NIn,0:Nin,0:NIn) !> Jacobian of coordinate mapping: dx_i/dxi_j
+REAL,INTENT(IN)           :: Xi_CLN(     :)                    !> Interpolation points of Lagrange polynomials of degree NIn
+REAL,INTENT(IN)           :: wBary_CLN(  :)                    !> Barycentric  weights of Lagrange polynomials of degree NIn
+REAL,INTENT(IN)           :: xZeroIn(   1:3,0:NIn,0:NIn,0:NIn) !> Physical coordinates at interpolation points Xi_CLN
+REAL,INTENT(INOUT)        :: Xi(    1:3)                       !> Input:  Intial guess of reference coordiantes for Newton
+                                                               !> Output: Found reference coordinates of point XIn by Newton
+REAL,INTENT(OUT),OPTIONAL :: EpsOut                            !> relative error bound for convergence
+REAL,INTENT(OUT),OPTIONAL :: LagOut(1:3,0:NIn)                 !> Lagrange polynomials evaluated at Xi
+REAL,INTENT(OUT),OPTIONAL :: FOut(  1:3)                       !> L2-error of final Xi
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER,PARAMETER         :: N_dim  = 3
-REAL,PARAMETER            :: epsTol = 1.E-8
+INTEGER,PARAMETER         :: nDim    = 3
+INTEGER,PARAMETER         :: maxIter = 100
+REAL,PARAMETER            :: epsTol  = 1.E-8
 INTEGER                   :: i,j,k,iter
 REAL                      :: eps_F
-REAL                      :: F(   1:N_dim)
-REAL                      :: Jac( 1:N_dim,1:N_dim)
-REAL                      :: sJac(1:N_dim,1:N_dim)
+REAL                      :: F(   1:nDim)
+REAL                      :: Jac( 1:nDim,1:nDim)
 REAL                      :: LagVol( 0:NIn,0:NIn,0:NIn)
 REAL                      :: Lag(1:3,0:NIn)
 !===================================================================================================================================
 
+! Evaluate Lagrange polynomials at xi
 CALL LagrangeInterpolationPolys(Xi(1),NIn,Xi_CLN,wBary_CLN,Lag(1,:))
 CALL LagrangeInterpolationPolys(Xi(2),NIn,Xi_CLN,wBary_CLN,Lag(2,:))
 CALL LagrangeInterpolationPolys(Xi(3),NIn,Xi_CLN,wBary_CLN,Lag(3,:))
 
+! F(xi) = x(xi) - xIn
 F = -xIn
-
 DO k=0,NIn; DO j=0,NIn; DO i=0,NIn
   LagVol(i,j,k) = Lag(1,i)*Lag(2,j)*Lag(3,k)
   F = F + xZeroIn(1:3,i,j,k)*LagVol(i,j,k)
@@ -172,32 +173,30 @@ eps_F = epsTol*SUM(F*F) ! relative error to initial guess
 iter  = 0
 IF (PRESENT(epsOut)) epsOut = eps_F
 
+! While L2 error exceeds eps_F and max. iteration number not reached
 DO WHILE ((SUM(F*F).GT.eps_F).AND.(iter.LT.100))
   iter = iter+1
+
   ! Compute F Jacobian dx/dXi
   Jac  = 0.
-
   DO k=0,NIn; DO j=0,NIn; DO i=0,NIn
     Jac = Jac + dxIn(1:3,1:3,i,j,k)*LagVol(i,j,k)
   END DO; END DO; END DO
 
-  ! Compute inverse of Jacobian
-  sJac = INVERSE(Jac)
+  ! Perform Newton step
+  Xi = Xi - MATMUL(INVERSE(Jac),F)
 
-  ! Iterate Xi using Newton step
-  Xi = Xi - MATMUL(sJac,F)
   ! if Newton gets outside reference space range [-1,1], exit.
   ! But allow for some oscillation in the first couple of iterations, as we may discard the correct point/element!!
   IF((iter.GT.3).AND.(ANY(ABS(Xi).GT.1.2))) EXIT
 
-  ! Compute function value
+  ! Evaluate Lagrange polynomials at new xi
   CALL LagrangeInterpolationPolys(Xi(1),NIn,Xi_CLN,wBary_CLN,Lag(1,:))
   CALL LagrangeInterpolationPolys(Xi(2),NIn,Xi_CLN,wBary_CLN,Lag(2,:))
   CALL LagrangeInterpolationPolys(Xi(3),NIn,Xi_CLN,wBary_CLN,Lag(3,:))
 
   ! F(xi) = x(xi) - xIn
   F = -xIn
-
   DO k=0,NIn; DO j=0,NIn; DO i=0,NIn
     LagVol(i,j,k) = Lag(1,i)*Lag(2,j)*Lag(3,k)
     F = F + xZeroIn(1:3,i,j,k)*LagVol(i,j,k)
@@ -208,5 +207,6 @@ IF (PRESENT(LagOut)) LagOut = Lag
 IF (PRESENT(FOut))   FOut   = F
 
 END SUBROUTINE Newton_3D
+
 
 END MODULE MOD_Newton

@@ -126,6 +126,7 @@ StartTime=OMP_FLEXITIME()
 ElemCounter=0
 nEqualElems=0
 equalElem=-999
+
 ! look for identical elements and mark them
 ! only for same Ngeo so far
 IF(NgeoOld.EQ.NGeoNew) THEN
@@ -185,8 +186,9 @@ END IF
 DO iElemOld=1,nElemsOld
   IF(ElemDoneOld(iElemOld)) CYCLE ! already found matching new element
 
-  ! Find initial guess for Newton, get supersampled element
+  ! Supersample element, which is later used to find a good initial guess for Newton
   CALL ChangeBasisVolume(PP_dim,NGeoOld,NSuper,Vdm_CLNGeo_EquiNSuper,xCLOld(1:PP_dim,:,:,:,iElemOld),X_NSuper)
+
   ! Compute Jacobian of element mapping for each CL point
   dXCL_NGeo=0.
   DO k=0,ZDIM(NGeoOld); DO j=0,NGeoOld; DO i=0,NGeoOld
@@ -202,6 +204,7 @@ DO iElemOld=1,nElemsOld
 
   DO iElemNew=1,nElemsNew
     IF(ElemDone(iElemNew)) CYCLE ! all IP already found
+
     ! Check if the two elements could be overlapping by comparing the distance between the centroids with the sum of the radii
     maxDist=radNew(iElemNew)+radOld(iElemOld)
     IF(SUM((xCOld(1:PP_dim,iElemOld)-xCNew(1:PP_dim,iElemNew))**2).GT.maxDist**2) CYCLE
@@ -215,11 +218,11 @@ DO iElemOld=1,nElemsOld
       IPOverlaps(ii,jj,kk)=(dist.LE.radSqOld(iElemOld))
     END DO; END DO; END DO
 
-    ! TODO: Move to own routine
-    ! Get smallest distance to supersampled points for starting Newton
+    ! Get coordinates in reference space for each overlapping candidate point
     DO kk=0,ZDIM(NInter); DO jj=0,NInter; DO ii=0,NInter
       IF(.NOT.IPOverlaps(ii,jj,kk)) CYCLE
 
+      ! Get initial guess for Newton by finding nearest supersampled point
       xInter = xCLInter(1:PP_dim,ii,jj,kk,iElemNew)
       best=HUGE(1.)
       DO i=0,NSuper; DO j=0,NSuper; DO k=0,ZDIM(NSuper)
@@ -234,13 +237,15 @@ DO iElemOld=1,nElemsOld
         END IF
       END DO; END DO; END DO
 
+      ! Find coordinates in reference space with Newton starting from initial guess
 #if PP_dim == 3
       CALL Newton(NGeoOld,XInter,dXCL_NGeo(:,:,:,:,:),Xi_CLNGeo,wBary_CLNGeo,xCLOld(:,:,:,:,iElemOld),xi)
 #else
       CALL Newton(NGeoOld,XInter,dXCL_NGeo(:,:,:,:,0),Xi_CLNGeo,wBary_CLNGeo,xCLOld(:,:,:,0,iElemOld),xi)
 #endif /*PP_dim == 3*/
 
-      ! check if result is better than previous result
+      ! Check if result is better than previous result
+      ! (Result might be outside of element but still within user-specified tolerance)
 !$OMP CRITICAL
       IF(MAXVAL(ABS(Xi)).LT.MAXVAL(ABS(xiInter(:,ii,jj,kk,iElemNew)))) THEN
         IF(MAXVAL(ABS(Xi)).LE.1.) IPDone(ii,jj,kk,iElemNew) = .TRUE. ! if point is inside element, stop searching
@@ -249,6 +254,7 @@ DO iElemOld=1,nElemsOld
       END IF
 !$OMP END CRITICAL
     END DO; END DO; END DO ! ii,jj,kk (IP loop)
+    ! Mark Element as done, if all its interpolation points are found
     IF(ALL(IPDone(:,:,:,iElemNew))) ElemDone(iElemNew)=.TRUE.
   END DO ! iElem
 !$OMP CRITICAL
