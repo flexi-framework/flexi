@@ -1,3 +1,16 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
 #include "flexi.h"
 
 !===================================================================================================================================
@@ -70,6 +83,9 @@ LOGICAL                              :: isTimeAvg
 INTEGER                              :: StartArgs,nFiles,iFile
 INTEGER                              :: coarsenFac,iCoarse,nSkipped
 REAL                                 :: AvgStarttime,Time,TimeStart,AvgEndTime
+CHARACTER(LEN=255),ALLOCATABLE       :: varnames_elems(:)
+CHARACTER(LEN=255),ALLOCATABLE       :: varnames_field(:)
+LOGICAL                              :: VarNamesElemsExist,VarNamesFieldExist
 
 !> Output
 CHARACTER(LEN=255)                   :: FilenameOut,FileTypeOut
@@ -330,8 +346,12 @@ DO iFile = 1,nFiles
                          ,FileName_In  = FileNameOut          &
                          ,NodeType_In  = ref%NodeType)
 
-    ! Write the remaining datasets
+    ! Write the remaining attributes
     CALL OpenDataFile(FileNameOut,create=.FALSE.,single=.FALSE.,readOnly=.FALSE.)
+    IF (VarNamesElemsExist) CALL WriteAttribute(File_ID,'VarNamesAdd'     ,SIZE(varnames_elems),StrArray=varnames_elems)
+    IF (VarNamesFieldExist) CALL WriteAttribute(File_ID,'VarNamesAddField',SIZE(varnames_field),StrArray=varnames_field)
+
+    ! Write the remaining datasets
     DO i = 1,ref%nDataSets
       SELECT CASE(TRIM(ref%DatasetNames(i)))
         CASE('DG_Solution','Mean','MeanSquare')
@@ -386,6 +406,7 @@ CONTAINS
 SUBROUTINE GetParams(filename,f)
 ! MODULES
 USE MOD_Output_Vars          ,ONLY: ProjectName
+USE MOD_HDF5_Input           ,ONLY: GetVarNames
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -415,6 +436,10 @@ CALL ReadAttribute(File_ID,'MeshFile',    1,StrScalar =f%MeshFile)
 CALL ReadAttribute(File_ID,'NodeType',    1,StrScalar =f%NodeType)
 CALL ReadAttribute(File_ID,'Project_Name',1,StrScalar =ProjectName)
 CALL ReadAttribute(File_ID,'Time'        ,1,RealScalar=f%Time)
+
+! Get additional varnames
+CALL GetVarNames('VarNamesAdd'     ,varnames_elems,VarNamesElemsExist)
+CALL GetVarNames('VarNamesAddField',varnames_field,VarNamesFieldExist)
 
 ! Get the VarNames for Mean and MeanSquare
 SELECT CASE(f%fileType)
