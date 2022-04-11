@@ -83,8 +83,8 @@ LOGICAL                              :: isTimeAvg
 INTEGER                              :: StartArgs,nFiles,iFile
 INTEGER                              :: coarsenFac,iCoarse,nSkipped
 REAL                                 :: AvgStarttime,Time,TimeStart,AvgEndTime
-CHARACTER(LEN=255),ALLOCATABLE       :: varnames_elems(:)
-CHARACTER(LEN=255),ALLOCATABLE       :: varnames_field(:)
+CHARACTER(LEN=255),ALLOCATABLE       :: VarNames_elems(:)
+CHARACTER(LEN=255),ALLOCATABLE       :: VarNames_field(:)
 LOGICAL                              :: VarNamesElemsExist,VarNamesFieldExist
 
 !> Output
@@ -175,7 +175,9 @@ SELECT CASE(TRIM(ref%FileType))
     isTimeAvg   = .TRUE.  ! since we have time-averaged correlations
     FileTypeOut = 'Fluc'
   CASE DEFAULT
-    isTimeAvg   = .TRUE.  ! remove compiler warning
+    ! CollectiveStop is previously called in GetParams, just remove compiler warning
+    ! about uninitialized variable
+    isTimeAvg   = .TRUE.
 END SELECT
 
 ! Allocate arrays for the datasets
@@ -348,8 +350,8 @@ DO iFile = 1,nFiles
 
     ! Write the remaining attributes
     CALL OpenDataFile(FileNameOut,create=.FALSE.,single=.FALSE.,readOnly=.FALSE.)
-    IF (VarNamesElemsExist) CALL WriteAttribute(File_ID,'VarNamesAdd'     ,SIZE(varnames_elems),StrArray=varnames_elems)
-    IF (VarNamesFieldExist) CALL WriteAttribute(File_ID,'VarNamesAddField',SIZE(varnames_field),StrArray=varnames_field)
+    IF (VarNamesElemsExist) CALL WriteAttribute(File_ID,'VarNamesAdd'     ,SIZE(VarNames_elems),StrArray=VarNames_elems)
+    IF (VarNamesFieldExist) CALL WriteAttribute(File_ID,'VarNamesAddField',SIZE(VarNames_field),StrArray=VarNames_field)
 
     ! Write the remaining datasets
     DO i = 1,ref%nDataSets
@@ -438,8 +440,8 @@ CALL ReadAttribute(File_ID,'Project_Name',1,StrScalar =ProjectName)
 CALL ReadAttribute(File_ID,'Time'        ,1,RealScalar=f%Time)
 
 ! Get additional varnames
-CALL GetVarNames('VarNamesAdd'     ,varnames_elems,VarNamesElemsExist)
-CALL GetVarNames('VarNamesAddField',varnames_field,VarNamesFieldExist)
+CALL GetVarNames('VarNamesAdd'     ,VarNames_elems,VarNamesElemsExist)
+CALL GetVarNames('VarNamesAddField',VarNames_field,VarNamesFieldExist)
 
 ! Get the VarNames for Mean and MeanSquare
 SELECT CASE(f%fileType)
@@ -470,11 +472,11 @@ SELECT CASE(f%fileType)
       END IF
     END DO
   CASE DEFAULT
-    CALL CollectiveStop(__STAMP__,'Unknown file type: '//TRIM(ref%FileType))
+    CALL CollectiveStop(__STAMP__,'Unknown file type: '//TRIM(f%FileType))
 END SELECT
 
 CALL CloseDataFile()
 
-END SUBROUTINE
+END SUBROUTINE GetParams
 
 END PROGRAM TimeAvg
