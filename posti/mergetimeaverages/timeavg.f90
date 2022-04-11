@@ -41,7 +41,8 @@ TYPE tFileSet
   CHARACTER(LEN=255)                 :: NodeType
   REAL                               :: time                 !< time
 END TYPE
-TYPE(tFileSet)                       :: ref,loc
+TYPE(tFileSet)                       :: ref  !< first file from command line used as reference
+TYPE(tFileSet)                       :: loc  !< current file that is processed
 
 TYPE tAvgData
   REAL,ALLOCATABLE                   :: AvgData(:)
