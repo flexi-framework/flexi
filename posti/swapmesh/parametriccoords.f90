@@ -51,12 +51,12 @@ CONTAINS
 SUBROUTINE GetParametricCoordinates()
 ! MODULES
 USE MOD_Globals
-USE MOD_SwapMesh_Vars
-USE MOD_Basis,                 ONLY: LagrangeInterpolationPolys,ChebyGaussLobNodesAndWeights,BarycentricWeights
+USE MOD_Basis,                 ONLY: ChebyGaussLobNodesAndWeights,BarycentricWeights
+USE MOD_ChangeBasisByDim,      ONLY: ChangeBasisVolume
 USE MOD_Interpolation,         ONLY: GetVandermonde,GetDerivativeMatrix
 USE MOD_Interpolation_Vars,    ONLY: NodeTypeCL
-USE MOD_ChangeBasisByDim,      ONLY: ChangeBasisVolume
-USE MOD_Mathtools,             ONLY: INVERSE
+USE MOD_Newton,                ONLY: Newton
+USE MOD_SwapMesh_Vars
 #if USE_OPENMP
 USE OMP_Lib
 #endif
@@ -71,7 +71,7 @@ IMPLICIT NONE
 INTEGER            :: i,j,k     ! CL,NSuper
 INTEGER            :: ii,jj,kk  ! IP
 INTEGER            :: iElemNew,iElemOld
-INTEGER            :: l,iter
+INTEGER            :: l
 REAL               :: xCOld(PP_dim,nElemsOld),radOld(nElemsOld),radSqOld(nElemsOld)
 REAL               :: xCNew(PP_dim,nElemsNew),radNew(nElemsNew),radSqNew(nElemsNew)
 LOGICAL            :: IPOverlaps(0:NInter,0:NInter,0:ZDIM(NInter))
@@ -80,16 +80,13 @@ LOGICAL            :: ElemDoneOld(nElemsOld)
 LOGICAL            :: equal
 REAL               :: X_NSuper(1:PP_dim,0:NSuper,0:NSuper,0:ZDIM(NSuper))
 REAL               :: dist,maxDist,best
-REAL               :: DCL_NGeo(0:NGeoOld,0:NGeoOld)
+REAL               :: DCL_NGeo(    0:NGeoOld,0:NGeoOld)
+REAL               :: Xi_CLNGeo(   0:NGeoOld)
+REAL               :: wBary_CLNGeo(0:NGeoOld)
 REAL               :: dXCL_NGeo(1:PP_dim,1:PP_dim,0:NGeoOld,0:NGeoOld,0:ZDIM(NGeoOld))
-REAL               :: Xi_CLNGeo(0:NGeoOld),wBary_CLNGeo(0:NGeoOld)
 REAL               :: Xi_NSuper(0:NSuper)
 REAL               :: xInter(PP_dim)
-REAL               :: LagXi(0:NGeoOld),LagEta(0:NGeoOld),LagVol(0:NGeoOld,0:NGeoOld,0:ZDIM(NGeoOld))
-#if PP_dim == 3
-REAL               :: LagZeta(0:NGeoOld)
-#endif
-REAL               :: F(1:PP_dim),eps_F,xi(1:PP_dim),Jac(1:PP_dim,1:PP_dim),sJac(1:PP_dim,1:PP_dim)
+REAL               :: xi(1:PP_dim)
 INTEGER            :: ElemCounter,nEqualElems
 INTEGER            :: nNotfound
 REAL               :: Time
@@ -129,6 +126,7 @@ StartTime=OMP_FLEXITIME()
 ElemCounter=0
 nEqualElems=0
 equalElem=-999
+
 ! look for identical elements and mark them
 ! only for same Ngeo so far
 IF(NgeoOld.EQ.NGeoNew) THEN
@@ -184,12 +182,13 @@ END IF
 
 !$OMP PARALLEL DEFAULT(SHARED)
 !$OMP DO PRIVATE(iElemOld,iElemNew,X_NSuper,dXCL_NGeo,IPOverlaps), &
-!$OMP& PRIVATE(ii,jj,kk,xInter,best,i,j,k,l,dist,xi,LagXi,LagEta,LagZeta,LagVol,F,iter,Jac,sJac,maxDist,eps_F) SCHEDULE(DYNAMIC,100)
+!$OMP& PRIVATE(ii,jj,kk,xInter,best,i,j,k,l,dist,xi,maxDist) SCHEDULE(DYNAMIC,100)
 DO iElemOld=1,nElemsOld
   IF(ElemDoneOld(iElemOld)) CYCLE ! already found matching new element
 
-  ! Find initial guess for Newton, get supersampled element
+  ! Supersample element, which is later used to find a good initial guess for Newton
   CALL ChangeBasisVolume(PP_dim,NGeoOld,NSuper,Vdm_CLNGeo_EquiNSuper,xCLOld(1:PP_dim,:,:,:,iElemOld),X_NSuper)
+
   ! Compute Jacobian of element mapping for each CL point
   dXCL_NGeo=0.
   DO k=0,ZDIM(NGeoOld); DO j=0,NGeoOld; DO i=0,NGeoOld
@@ -205,6 +204,7 @@ DO iElemOld=1,nElemsOld
 
   DO iElemNew=1,nElemsNew
     IF(ElemDone(iElemNew)) CYCLE ! all IP already found
+
     ! Check if the two elements could be overlapping by comparing the distance between the centroids with the sum of the radii
     maxDist=radNew(iElemNew)+radOld(iElemOld)
     IF(SUM((xCOld(1:PP_dim,iElemOld)-xCNew(1:PP_dim,iElemNew))**2).GT.maxDist**2) CYCLE
@@ -218,11 +218,11 @@ DO iElemOld=1,nElemsOld
       IPOverlaps(ii,jj,kk)=(dist.LE.radSqOld(iElemOld))
     END DO; END DO; END DO
 
-    ! TODO: Move to own routine
-    ! Get smallest distance to supersampled points for starting Newton
+    ! Get coordinates in reference space for each overlapping candidate point
     DO kk=0,ZDIM(NInter); DO jj=0,NInter; DO ii=0,NInter
       IF(.NOT.IPOverlaps(ii,jj,kk)) CYCLE
 
+      ! Get initial guess for Newton by finding nearest supersampled point
       xInter = xCLInter(1:PP_dim,ii,jj,kk,iElemNew)
       best=HUGE(1.)
       DO i=0,NSuper; DO j=0,NSuper; DO k=0,ZDIM(NSuper)
@@ -237,62 +237,15 @@ DO iElemOld=1,nElemsOld
         END IF
       END DO; END DO; END DO
 
-      CALL LagrangeInterpolationPolys(Xi(1),NGeoOld,Xi_CLNGeo,wBary_CLNGeo,LagXi)
-      CALL LagrangeInterpolationPolys(Xi(2),NGeoOld,Xi_CLNGeo,wBary_CLNGeo,LagEta)
+      ! Find coordinates in reference space with Newton starting from initial guess
 #if PP_dim == 3
-      CALL LagrangeInterpolationPolys(Xi(3),NGeoOld,Xi_CLNGeo,wBary_CLNGeo,LagZeta)
-#endif
-
-      ! F(xi) = x(xi) - xInter
-      F=-xInter
-      DO k=0,ZDIM(NGeoOld); DO j=0,NGeoOld; DO i=0,NGeoOld
-#if PP_dim == 3
-        LagVol(i,j,k)=LagXi(i)*LagEta(j)*LagZeta(k)
+      CALL Newton(NGeoOld,XInter,dXCL_NGeo(:,:,:,:,:),Xi_CLNGeo,wBary_CLNGeo,xCLOld(:,:,:,:,iElemOld),xi)
 #else
-        LagVol(i,j,k)=LagXi(i)*LagEta(j)
-#endif
-        F=F+xCLOld(1:PP_dim,i,j,k,iElemOld)*LagVol(i,j,k)
-      END DO; END DO; END DO
+      CALL Newton(NGeoOld,XInter,dXCL_NGeo(:,:,:,:,0),Xi_CLNGeo,wBary_CLNGeo,xCLOld(:,:,:,0,iElemOld),xi)
+#endif /*PP_dim == 3*/
 
-      !eps_F=1.E-16
-      eps_F=1.E-8*SUM(F*F) ! relative error to initial guess
-      iter=0
-      DO WHILE ((SUM(F*F).GT.eps_F).AND.(iter.LT.100))
-        iter=iter+1
-        ! Compute F Jacobian dx/dXi
-        Jac=0.
-        DO k=0,ZDIM(NGeoOld); DO j=0,NGeoOld; DO i=0,NGeoOld
-          Jac=Jac+dXCL_NGeo(1:PP_dim,1:PP_dim,i,j,k)*LagVol(i,j,k)
-        END DO; END DO; END DO
-
-        ! Compute inverse of Jacobian
-        sJac=INVERSE(Jac)
-
-        ! Iterate Xi using Newton step
-        Xi = Xi - MATMUL(sJac,F)
-        ! if Newton gets outside reference space range [-1,1], exit.
-        ! But allow for some oscillation in the first couple of iterations, as we may discard the correct point/element!!
-        IF((iter.GT.3).AND.(ANY(ABS(Xi).GT.1.2))) EXIT
-
-        ! Compute function value
-        CALL LagrangeInterpolationPolys(Xi(1),NGeoOld,Xi_CLNGeo,wBary_CLNGeo,LagXi)
-        CALL LagrangeInterpolationPolys(Xi(2),NGeoOld,Xi_CLNGeo,wBary_CLNGeo,LagEta)
-#if PP_dim == 3
-        CALL LagrangeInterpolationPolys(Xi(3),NGeoOld,Xi_CLNGeo,wBary_CLNGeo,LagZeta)
-#endif
-        ! F(xi) = x(xi) - xInter
-        F=-xInter
-        DO k=0,ZDIM(NGeoOld); DO j=0,NGeoOld; DO i=0,NGeoOld
-#if PP_dim == 3
-          LagVol(i,j,k)=LagXi(i)*LagEta(j)*LagZeta(k)
-#else
-          LagVol(i,j,k)=LagXi(i)*LagEta(j)
-#endif
-          F=F+xCLOld(1:PP_dim,i,j,k,iElemOld)*LagVol(i,j,k)
-        END DO; END DO; END DO
-      END DO !newton
-
-      ! check if result is better than previous result
+      ! Check if result is better than previous result
+      ! (Result might be outside of element but still within user-specified tolerance)
 !$OMP CRITICAL
       IF(MAXVAL(ABS(Xi)).LT.MAXVAL(ABS(xiInter(:,ii,jj,kk,iElemNew)))) THEN
         IF(MAXVAL(ABS(Xi)).LE.1.) IPDone(ii,jj,kk,iElemNew) = .TRUE. ! if point is inside element, stop searching
@@ -301,6 +254,7 @@ DO iElemOld=1,nElemsOld
       END IF
 !$OMP END CRITICAL
     END DO; END DO; END DO ! ii,jj,kk (IP loop)
+    ! Mark Element as done, if all its interpolation points are found
     IF(ALL(IPDone(:,:,:,iElemNew))) ElemDone(iElemNew)=.TRUE.
   END DO ! iElem
 !$OMP CRITICAL

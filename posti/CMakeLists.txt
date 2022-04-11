@@ -23,13 +23,13 @@ CMAKE_DEPENDENT_OPTION(POSTI_HIT_ANALYZE           "Build the HIT analyze tool" 
 # =========================================================================
 # collect F90 files for the common Posti modules
 FILE(GLOB_RECURSE postiF90 ./posti/common/vtkOutput/*.f90
+                           ./posti/common/newton/*.f90
                            ./posti/common/spline/*.f90)
 ADD_LIBRARY(libposti STATIC ${postiF90})
 SET_TARGET_PROPERTIES(libposti PROPERTIES OUTPUT_NAME "libposti")
 SET_TARGET_PROPERTIES(libposti PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
 TARGET_LINK_LIBRARIES(libposti libflexishared)
 ADD_DEPENDENCIES(libposti libflexishared)
-
 
 # =========================================================================
 # FFTW library
