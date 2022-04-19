@@ -109,6 +109,7 @@ IF ("${CMAKE_HOSTNAME}" MATCHES "login")
 ELSEIF("${CMAKE_HOSTNAME}" MATCHES "^prandtl")
   MESSAGE(STATUS "Compiling on Prandtl")
   MARK_AS_ADVANCED(FORCE C_PATH CXX_PATH Fortran_PATH)
+  SET(FLEXI_INSTRUCTION "-march=native")
   # Set LUSTRE definition to account for filesystem
   ADD_DEFINITIONS(-DLUSTRE)
 
@@ -116,6 +117,7 @@ ELSEIF("${CMAKE_HOSTNAME}" MATCHES "^prandtl")
 ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^grafik0")
   MESSAGE(STATUS "Compiling on ${CMAKE_HOSTNAME}")
   MARK_AS_ADVANCED(FORCE C_PATH CXX_PATH Fortran_PATH)
+  SET(FLEXI_INSTRUCTION "-march=native")
 
 ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^ilahead1")
   MESSAGE(STATUS "Compiling on ILA cluster")
@@ -132,6 +134,7 @@ ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^ilahead1")
 ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^xenon")
   MESSAGE(STATUS "Compiling on ILA student cluster")
   MARK_AS_ADVANCED(FORCE C_PATH CXX_PATH Fortran_PATH)
+  SET(FLEXI_INSTRUCTION "-march=native")
   # Work around MPI-IO issue 4446 on machines mountng storage via NFS
   ADD_DEFINITIONS(-DNFS)
 
@@ -150,7 +153,7 @@ ELSE()
   ENDIF()
 ENDIF()
 
-MESSAGE(STATUS "Compiling with [${CMAKE_Fortran_COMPILER_ID}] fortran compiler using [${FLEXI_INSTRUCTION}] instruction")
+MESSAGE(STATUS "Compiling with [${CMAKE_Fortran_COMPILER_ID}] (v${CMAKE_Fortran_COMPILER_VERSION}) fortran compiler using [${FLEXI_INSTRUCTION}] instruction")
 
 # =========================================================================
 # COMPILER FLAGS
