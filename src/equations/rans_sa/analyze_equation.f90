@@ -302,18 +302,18 @@ REAL,INTENT(OUT)                :: Residuals(PP_nVar)                   !> Conse
 REAL                            :: IntegrationWeight
 INTEGER                         :: iElem,i,j,k
 #if FV_ENABLED
-REAL                            :: FV_w3
+REAL                            :: FV_w_volume
 #endif
 !==================================================================================================================================
 Residuals=0.
 #if FV_ENABLED
-FV_w3 = FV_w**3
+FV_w_volume = FV_w**PP_dim
 #endif
 DO iElem=1,nElems
 #if FV_ENABLED
   IF (FV_Elems(iElem).GT.0) THEN ! FV Element
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      IntegrationWeight=FV_w3/sJ(i,j,k,iElem,1)
+      IntegrationWeight=FV_w_volume/sJ(i,j,k,iElem,1)
       Residuals = Residuals + Ut(:,i,j,k,iElem)**2*IntegrationWeight
     END DO; END DO; END DO !i,j,k
   ELSE ! DG element
@@ -366,19 +366,19 @@ INTEGER                         :: iElem,i,j,k
 REAL                            :: box(PP_nVar+PP_nVarPrim)
 #endif
 #if FV_ENABLED
-REAL                            :: FV_w3
+REAL                            :: FV_w_volume
 #endif
 !==================================================================================================================================
 BulkPrim=0.
 BulkCons=0.
 #if FV_ENABLED
-FV_w3 = FV_w**3
+FV_w_volume = FV_w**PP_dim
 #endif
 DO iElem=1,nElems
 #if FV_ENABLED
   IF (FV_Elems(iElem).GT.0) THEN ! FV Element
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      IntegrationWeight=FV_w3/sJ(i,j,k,iElem,1)
+      IntegrationWeight=FV_w_volume/sJ(i,j,k,iElem,1)
       BulkCons         =BulkCons+U(:,i,j,k,iElem)*IntegrationWeight
       BulkPrim         =BulkPrim+UPrim(:,i,j,k,iElem)*IntegrationWeight
     END DO; END DO; END DO !i,j,k

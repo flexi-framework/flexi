@@ -47,7 +47,7 @@ REAL                   :: FV_sweby_beta          !< parameter for Sweby limiter
 
 ! FV/DG
 INTEGER,ALLOCATABLE    :: FV_Elems(:)            !< indicates if DG element (0) or FV subcells (1) for each element
-INTEGER,ALLOCATABLE    :: FV_Elems_master(:) !< prolongate FV_Elems to faces
+INTEGER,ALLOCATABLE    :: FV_Elems_master(:)     !< prolongate FV_Elems to faces
 INTEGER,ALLOCATABLE    :: FV_Elems_slave(:)
 INTEGER,ALLOCATABLE    :: FV_Elems_Sum(:)        !< = FV_Elems_master + 2*FV_Elems_slave
                                                  !< array with values from 0..3: 0=both DG, 1=master FV, 2=slave FV, 3=both FV

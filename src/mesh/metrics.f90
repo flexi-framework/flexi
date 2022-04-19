@@ -101,10 +101,10 @@ USE MOD_Basis              ,ONLY: LagrangeInterpolationPolys
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(INOUT)            :: NodeCoords(3,0:NGeo,0:NGeo,0:ZDIM(NGeo),nElems)         !< Equidistant mesh coordinates
+REAL,INTENT(INOUT)            :: NodeCoords(3,0:NGeo,0:NGeo,0:ZDIM(NGeo),nElems)       !< Equidistant mesh coordinates
 CHARACTER(LEN=255),INTENT(IN) :: NodeType                                              !< Type of node that should be converted to
 INTEGER,INTENT(IN)            :: Nloc                                                  !< Convert to Nloc+1 points per direction
-REAL,INTENT(OUT)              :: VolumeCoords(3,0:Nloc,0:Nloc,0:ZDIM(Nloc),nElems)       !< OUT: Coordinates of solution/interpolation
+REAL,INTENT(OUT)              :: VolumeCoords(3,0:Nloc,0:Nloc,0:ZDIM(Nloc),nElems)     !< OUT: Coordinates of solution/interpolation
                                                                                        !< points
 REAL,INTENT(INOUT),OPTIONAL   :: TreeCoords(3,0:NGeoTree,0:NGeoTree,0:NGeoTree,nTrees) !< coordinates of nodes of tree-elements
 !----------------------------------------------------------------------------------------------------------------------------------

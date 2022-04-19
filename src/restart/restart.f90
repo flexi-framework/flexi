@@ -199,7 +199,7 @@ END SUBROUTINE InitRestartFile
 !> - In the restart case, it is checked if the restart file exists at all. If so, the properties of the restart file will be
 !>   read (polynomial degree and node type are needed) and stored to use later.The flag DoRestart indicating the restart is set
 !>   to be used by other routines. Also the simulation time of the restart is read.
-!>   A optional parameter ResetTime can be used to set the restart time to 0.
+!>   An optional parameter ResetTime can be used to set the restart time to 0.
 !> - If no restart is performed, the RestartTime is set to 0.
 !>
 !> The routine also checks if the node type and polynomial degree of the restart file is the same than in the current simulation.
