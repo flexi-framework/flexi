@@ -132,6 +132,7 @@ ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^ilahead1")
 ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^xenon")
   MESSAGE(STATUS "Compiling on ILA student cluster")
   MARK_AS_ADVANCED(FORCE C_PATH CXX_PATH Fortran_PATH)
+  SET(FLEXI_INSTRUCTION "-march=native")
   # Work around MPI-IO issue 4446 on machines mountng storage via NFS
   ADD_DEFINITIONS(-DNFS)
 
