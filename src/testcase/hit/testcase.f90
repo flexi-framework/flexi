@@ -373,7 +373,7 @@ END SUBROUTINE TestcaseSource
 !==================================================================================================================================
 !> Perform HIT-specific analysis: compute dissipation rates, kinetic energy and Reynolds number
 !==================================================================================================================================
-SUBROUTINE AnalyzeTestcase(t)
+SUBROUTINE AnalyzeTestcase(t,doFlush)
 ! MODULES
 USE MOD_Globals
 #if PP_N==N
@@ -392,6 +392,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN)                 :: t                      !< simulation time
+LOGICAL,INTENT(IN)              :: doFlush                !< indicate that data has to be written
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: i,j,k,p,q,iElem
@@ -536,7 +537,7 @@ Time(ioCounter)  = t
 writeBuf(1:nHITVars,ioCounter) = (/DR_S,DR_Sd+DR_p,Ekin,Ekin_comp,uRMS,Reynolds,A_ILF_Glob/)
 
 ! Perform output
-IF(ioCounter.EQ.nWriteStats)THEN
+IF(ioCounter.EQ.nWriteStats .OR. doFlush)THEN
   CALL WriteStats()
   ioCounter = 0
 END IF
