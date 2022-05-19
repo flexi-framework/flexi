@@ -23,10 +23,11 @@ IMPLICIT NONE
 PRIVATE
 
 #if FV_RECONSTRUCT
-INTEGER,PARAMETER :: FV_LIMITERTYPE_NULL    = 0
-INTEGER,PARAMETER :: FV_LIMITERTYPE_MINMOD  = 1
-INTEGER,PARAMETER :: FV_LIMITERTYPE_SWEBY   = 2
-INTEGER,PARAMETER :: FV_LIMITERTYPE_CENTRAL = 9
+INTEGER,PARAMETER :: FV_LIMITERTYPE_NULL      = 0
+INTEGER,PARAMETER :: FV_LIMITERTYPE_MINMOD    = 1
+INTEGER,PARAMETER :: FV_LIMITERTYPE_SWEBY     = 2
+INTEGER,PARAMETER :: FV_LIMITERTYPE_VANALBADA = 3
+INTEGER,PARAMETER :: FV_LIMITERTYPE_CENTRAL   = 9
 
 INTERFACE DefineParametersFV_Limiter
   MODULE PROCEDURE DefineParametersFV_Limiter
@@ -68,10 +69,11 @@ IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection('FV')
 CALL prms%CreateIntFromStringOption('FV_LimiterType',"Type of slope limiter of second order reconstruction", '1')
-CALL addStrListEntry('FV_LimiterType','none',   FV_LIMITERTYPE_NULL)
-CALL addStrListEntry('FV_LimiterType','minmod', FV_LIMITERTYPE_MINMOD)
-CALL addStrListEntry('FV_LimiterType','sweby',  FV_LIMITERTYPE_SWEBY)
-CALL addStrListEntry('FV_LimiterType','central',FV_LIMITERTYPE_CENTRAL)
+CALL addStrListEntry('FV_LimiterType','none',     FV_LIMITERTYPE_NULL)
+CALL addStrListEntry('FV_LimiterType','minmod',   FV_LIMITERTYPE_MINMOD)
+CALL addStrListEntry('FV_LimiterType','sweby',    FV_LIMITERTYPE_SWEBY)
+CALL addStrListEntry('FV_LimiterType','vanalbada',FV_LIMITERTYPE_VANALBADA)
+CALL addStrListEntry('FV_LimiterType','central',  FV_LIMITERTYPE_CENTRAL)
 CALL prms%CreateRealOption('swebyb', "beta parameter for Sweby limiter")
 END SUBROUTINE DefineParametersFV_Limiter
 
@@ -99,6 +101,9 @@ CASE (FV_LIMITERTYPE_SWEBY) ! Sweby
   FV_Limiter => Sweby
   FV_sweby_beta = GETREAL('swebyb')
   SWRITE(UNIT_stdOut,'(A,F8.6)') '  Using "Sweby" limiter with beta = ', FV_sweby_beta
+CASE (FV_LIMITERTYPE_VANALBADA) ! van Albada
+  FV_Limiter => VanAlbada
+  SWRITE(UNIT_stdOut,'(A)') '  Using "van Albada" limiter.'
 CASE (FV_LIMITERTYPE_CENTRAL) ! Central
   FV_Limiter => CentralLimiter
   SWRITE(UNIT_stdOut,'(A,F8.6)') '  Using "Central" limiter.'
@@ -166,6 +171,25 @@ CALL MinMod(sL*FV_sweby_beta,sR,sa)
 CALL MinMod(sL,sR*FV_sweby_beta,sb)
 s = SIGN(MAX(ABS(sa),ABS(sb)),sL)
 END SUBROUTINE Sweby
+
+!==================================================================================================================================
+!> van Albada slope limiter.
+!==================================================================================================================================
+PPURE SUBROUTINE VanAlbada(sL, sR, s)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+REAL,INTENT(IN)  :: sL(PP_nVarPrim) !< left slope
+REAL,INTENT(IN)  :: sR(PP_nVarPrim) !< right slope
+REAL,INTENT(OUT) :: s(PP_nVarPrim)  !< limited slope
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+! van Albada
+s = (sL*sR*(sL+sR))/MAX(sL**2+sR**2,1e-13)
+s = MERGE(s,0., sL*sR .GT. 0.)
+END SUBROUTINE VanAlbada
 
 !==================================================================================================================================
 !> central limiter s = (sL + sR)/2  (ATTENTION: unstable and not TVD)
