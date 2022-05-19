@@ -525,22 +525,22 @@ CASE(OUTPUTFORMAT_TECPLOTASCII)
   STOP 'Tecplot output removed due to license issues (possible GPL incompatibility).'
 CASE(OUTPUTFORMAT_PARAVIEW)
 #if FV_ENABLED
-  FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))//'.vtu'
+  FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))
 #else
-  FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtu'
+  FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
 #endif
   Coords_NVisu_p => Coords_NVisu
   U_NVisu_p => U_NVisu
   CALL WriteDataToVTK(PP_nVar_loc,NVisu,nElems-nFV_Elems,StrVarNames_loc,Coords_NVisu_p,U_NVisu_p,TRIM(FileString_DG),dim=PP_dim,DGFV=0)
 #if FV_ENABLED
-  FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))//'.vtu'
+  FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))
   FV_Coords_NVisu_p => FV_Coords_NVisu
   FV_U_NVisu_p => FV_U_NVisu
   CALL WriteDataToVTK(PP_nVar_loc,NVisu_FV,nFV_Elems,StrVarNames_loc,FV_Coords_NVisu_p,FV_U_NVisu_p,TRIM(FileString_FV),dim=PP_dim,DGFV=1)
 
   IF (MPIRoot) THEN
     ! write multiblock file
-    FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtm'
+    FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
     CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV)
   ENDIF
 #endif

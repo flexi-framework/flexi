@@ -319,6 +319,41 @@ DO i=0,PP_N
         CALL Abort(__STAMP__,'Slopes do not match with minmod in preconditioner!')
       END IF
     END DO !iVar
+  CASE(3) ! van Albada
+    DO iVar=1,PP_nVarPrim
+      IF((s_R(iVar,i)*s_L(iVar,i)).LT.0.)THEN ! first order
+        dUdUvolprim_plus( iVar,iVar,i,2) = 1.
+        dUdUvolprim_minus(iVar,iVar,i,2) = 1.
+      ELSE
+        dUdUvolprim_plus( iVar,iVar,i,1) = 0. + FV_dx_R(i) * FV_sdx(i) * (&
+                       -(s_R(iVar,i)*(s_L(iVar,i)+s_R(iVar,i))+s_L(iVar,i)*s_R(iVar,i))/MAX(s_L(iVar,i)**2+s_R(iVar,i)**2,1e-13) &
+                       +(2.*s_L(iVar,i)*(s_L(iVar,i)**2*s_R(iVar,i)+s_R(iVar,i)**2*s_L(iVar,i)))/(MAX(s_L(iVar,i)**2+s_R(iVar,i)**2,1e-13)**2))
+    
+        dUdUvolprim_plus( iVar,iVar,i,2) = 1. + FV_dx_R(i) * (&
+                       -(s_L(iVar,i)**2*FV_sdx(i+1)-s_R(iVar,i)**2*FV_sdx(i) & 
+                         +2.*s_L(iVar,i)*s_R(iVar,i)*FV_sdx(i+1)-2.*s_L(iVar,i)*s_R(iVar,i)*FV_sdx(i))/MAX(s_L(iVar,i)**2+s_R(iVar,i)**2,1e-13) &
+                       -(2.*(s_L(iVar,i)*s_R(iVar,i)**2+s_L(iVar,i)**2*s_R(iVar,i)) &
+                         *(s_L(iVar,i)*FV_sdx(i)-s_R(iVar,i)*FV_sdx(i+1)))/(MAX(s_L(iVar,i)**2+s_R(iVar,i)**2,1e-13)**2))
+    
+        dUdUvolprim_plus( iVar,iVar,i,3) = 0. + FV_dx_R(i) * FV_sdx(i+1) * (&
+                       -(2*s_L(iVar,i)*s_R(iVar,i)**2*(s_L(iVar,i)+s_R(iVar,i)))/(MAX(s_L(iVar,i)**2+s_R(iVar,i)**2,1e-13)**2) &
+                       +(s_L(iVar,i)*(2.*s_R(iVar,i)+s_L(iVar,i)))/MAX(s_L(iVar,i)**2+s_R(iVar,i)**2,1e-13))
+    
+        dUdUvolprim_minus(iVar,iVar,i,1) = 0. - FV_dx_L(i) * FV_sdx(i) * (&
+                       -(s_R(iVar,i)*(s_L(iVar,i)+s_R(iVar,i))+s_L(iVar,i)*s_R(iVar,i))/MAX(s_L(iVar,i)**2+s_R(iVar,i)**2,1e-13) &
+                       +(2.*s_L(iVar,i)*(s_L(iVar,i)**2*s_R(iVar,i)+s_R(iVar,i)**2*s_L(iVar,i)))/(MAX(s_L(iVar,i)**2+s_R(iVar,i)**2,1e-13)**2))
+    
+        dUdUvolprim_minus(iVar,iVar,i,2) = 1. - FV_dx_L(i) * (&
+                       -(s_L(iVar,i)**2*FV_sdx(i+1)-s_R(iVar,i)**2*FV_sdx(i) & 
+                         +2.*s_L(iVar,i)*s_R(iVar,i)*FV_sdx(i+1)-2.*s_L(iVar,i)*s_R(iVar,i)*FV_sdx(i))/MAX(s_L(iVar,i)**2+s_R(iVar,i)**2,1e-13) &
+                       -(2.*(s_L(iVar,i)*s_R(iVar,i)**2+s_L(iVar,i)**2*s_R(iVar,i)) &
+                         *(s_L(iVar,i)*FV_sdx(i)-s_R(iVar,i)*FV_sdx(i+1)))/(MAX(s_L(iVar,i)**2+s_R(iVar,i)**2,1e-13)**2))
+    
+        dUdUvolprim_minus(iVar,iVar,i,3) = 0. - FV_dx_L(i) * FV_sdx(i+1) * (&
+                       -(2*s_L(iVar,i)*s_R(iVar,i)**2*(s_L(iVar,i)+s_R(iVar,i)))/(MAX(s_L(iVar,i)**2+s_R(iVar,i)**2,1e-13)**2) &
+                       +(s_L(iVar,i)*(2.*s_R(iVar,i)+s_L(iVar,i)))/MAX(s_L(iVar,i)**2+s_R(iVar,i)**2,1e-13))
+      END IF
+    END DO !iVar
   CASE(9) ! Central
     ! Central: 0.5*( s_L(U_(i-1),U_i) + s_R(U_(i+1),U_i) )
     DO iVar=1,PP_nVarPrim
@@ -390,7 +425,7 @@ REAL,INTENT(OUT)   :: dUdUvol_minus(PP_nVar,PP_nVar,-1:0,2:3)        !< Jacobian
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                                :: iVar,ind,i
-REAL,DIMENSION(PP_nVarPrim)                            :: s_L_minus,s_R_minus,s_L_plus,s_R_plus,s_lim_minus,s_lim_plus
+REAL,DIMENSION(PP_nVarPrim)                            :: s_L_minus,s_R_minus,s_L_plus,s_R_plus,s_lim_minus,s_lim_plus!,s_L_nb,s_R_nb
 REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,PP_N:PP_N+1)    :: Jac_ConsPrim_plus
 REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,-1:0)           :: Jac_ConsPrim_minus
 REAL,DIMENSION(PP_nVarPrim,PP_nVar    , 0:1)           :: Jac_PrimCons_minus
@@ -496,6 +531,56 @@ CASE(1) ! MinMod
       IF(ABS(UPrim_plus_nb(iVar)-(URec_extended(iVar,PP_N+1)-s_R_plus(iVar)*FV_dx_L_nb)).LE.1E-12)THEN 
         dUdUvolprim_plus( iVar,iVar,PP_N+1,1) = 0. - FV_dx_L_nb * (-FV_sdx(PP_N+1))
       END IF
+    END DO !iVar
+  END IF
+CASE(3) ! van Albada
+  IF (.NOT.Mortar_minus) THEN
+    DO iVar=1,PP_nVarPrim
+      ! minus side of interface
+      IF((s_L_minus(iVar)*s_R_minus(iVar)).LT.0)THEN ! zero slope
+        IF (.NOT.Mortar_minus) dUdUvolprim_minus(iVar,iVar,0   ,2) = 1.
+      ELSE
+        ! derivatives of minus value at minus interface
+        dUdUvolprim_minus(iVar,iVar,0     ,2) = 1. - FV_dx_L * (&
+                         -(s_L_minus(iVar)**2*FV_sdx(1)-s_R_minus(iVar)**2*FV_sdx(0)+2.*s_L_minus(iVar)*s_R_minus(iVar)*FV_sdx(1) &
+                          -2.*s_L_minus(iVar)*s_R_minus(iVar)*FV_sdx(0))/MAX(s_L_minus(iVar)**2+s_R_minus(iVar)**2,1e-13) &
+                         -(2.*(s_L_minus(iVar)*s_R_minus(iVar)**2+s_L_minus(iVar)**2*s_R_minus(iVar))* &
+                           (s_L_minus(iVar)*FV_sdx(0)-s_R_minus(iVar)*FV_sdx(1)))/(MAX(s_L_minus(iVar)**2+s_R_minus(iVar)**2,1e-13)**2))
+        dUdUvolprim_minus(iVar,iVar,0     ,3) = 0. - FV_dx_L * FV_sdx(1) * (&
+                         -(2*s_L_minus(iVar)*s_R_minus(iVar)**2*(s_L_minus(iVar)+s_R_minus(iVar)))/(MAX(s_L_minus(iVar)**2+s_R_minus(iVar)**2,1e-13)**2) &
+                         +(s_L_minus(iVar)*(2.*s_R_minus(iVar)+s_L_minus(iVar)))/MAX(s_L_minus(iVar)**2+s_R_minus(iVar)**2,1e-13))
+        ! derivatives of plus value at minus interface
+        ! ATTENTION: s_L and s_R are not the same as above!!! s_L_nb is not known as this is from the neighbor!
+        !s_L_nb(iVar) = 0.
+        !dUdUvolprim_minus(iVar,iVar,-1    ,3) = 0. + FV_dx_R_nb *FV_sdx(0) *(&
+                         !-(2*s_L_nb(iVar)*s_L_minus(iVar)**2*(s_L_nb(iVar)+s_L_minus(iVar)))/(MAX(s_L_nb(iVar)**2+s_L_minus(iVar)**2,1e-13)**2) &
+                         !+(s_L_nb(iVar)*(2.*s_L_minus(iVar)+s_L_nb(iVar)))/MAX(s_L_nb(iVar)**2+s_L_minus(iVar)**2,1e-13))
+      END IF !zero slope
+    END DO !iVar
+  END IF
+
+  IF (.NOT.Mortar_plus) THEN
+    DO iVar=1,PP_nVarPrim
+      ! plus side of interface
+      IF((s_L_plus(iVar)*s_R_plus(iVar)).LT.0)THEN ! zero slope
+        IF (.NOT.Mortar_plus)  dUdUvolprim_plus( iVar,iVar,PP_N,2) = 1.
+      ELSE
+      ! derivatives of plus values at plus interface
+        dUdUvolprim_plus( iVar,iVar,PP_N  ,1) = 0. + FV_dx_R * FV_sdx(PP_N) *(&
+                         -(s_R_plus(iVar)*(s_L_plus(iVar)+s_R_plus(iVar))+s_L_plus(iVar)*s_R_plus(iVar))/MAX(s_L_plus(iVar)**2+s_R_plus(iVar)**2,1e-13) &
+                         +(2.*s_L_plus(iVar)*(s_L_plus(iVar)**2*s_R_plus(iVar)+s_R_plus(iVar)**2*s_L_plus(iVar)))/(MAX(s_L_plus(iVar)**2+s_R_plus(iVar)**2,1e-13)**2))
+        dUdUvolprim_plus( iVar,iVar,PP_N  ,2) = 1. + FV_dx_R * (&
+                         -(s_L_plus(iVar)**2*FV_sdx(PP_N+1)-s_R_plus(iVar)**2*FV_sdx(PP_N) & 
+                           +2.*s_L_plus(iVar)*s_R_plus(iVar)*FV_sdx(PP_N+1)-2.*s_L_plus(iVar)*s_R_plus(iVar)*FV_sdx(PP_N))/MAX(s_L_plus(iVar)**2+s_R_plus(iVar)**2,1e-13) &
+                         -(2.*(s_L_plus(iVar)*s_R_plus(iVar)**2+s_L_plus(iVar)**2*s_R_plus(iVar)) &
+                           *(s_L_plus(iVar)*FV_sdx(PP_N)-s_R_plus(iVar)*FV_sdx(PP_N+1)))/(MAX(s_L_plus(iVar)**2+s_R_plus(iVar)**2,1e-13)**2))
+        ! derivatives of minus values at plus interface
+        ! ATTENTION: s_L and s_R are not the same as above!!! s_R_nb is not known as this is from the neighbor!
+        !s_R_nb(iVar) = 0.
+        !dUdUvolprim_plus( iVar,iVar,PP_N+1,1) = 0. - FV_dx_L_nb * FV_sdx(PP_N+1) * (&
+                         !-(s_R_nb(iVar)*(s_R_plus(iVar)+s_R_nb(iVar))+s_R_plus(iVar)*s_R_nb(iVar))/MAX(s_R_plus(iVar)**2+s_R_nb(iVar)**2,1e-13) &
+                         !+(2.*s_R_plus(iVar)*(s_R_plus(iVar)**2*s_R_nb(iVar)+s_R_nb(iVar)**2*s_R_plus(iVar)))/(MAX(s_R_plus(iVar)**2+s_R_nb(iVar)**2,1e-13)**2))
+      END IF !zero slope
     END DO !iVar
   END IF
 CASE(9) ! Central

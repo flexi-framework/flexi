@@ -89,9 +89,6 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Implicit_Vars
 USE MOD_Mesh_Vars,         ONLY:MeshInitIsDone,nElems,nGlobalElems
-#if PP_dim==3
-USE MOD_Mesh_Vars,         ONLY:firstInnerSide,lastInnerSide,SideToElem
-#endif
 USE MOD_Interpolation_Vars,ONLY:InterpolationInitIsDone
 USE MOD_ReadInTools,       ONLY:GETINT,GETREAL,GETLOGICAL
 USE MOD_DG_Vars,           ONLY:nDOFElem
@@ -106,9 +103,6 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-#if PP_dim==3
-INTEGER                   :: i
-#endif
 !===================================================================================================================================
 IF((.NOT.InterpolationInitIsDone).OR.(.NOT.MeshInitIsDone).OR.ImplicitInitIsDone)THEN
    CALL Abort(__STAMP__,'InitImplicit not ready to be called or already called.')
@@ -121,15 +115,6 @@ IF(TimeDiscType.EQ.'ESDIRK') THEN
   nDOFVarElem   = PP_nVar*nDOFElem
   nDOFVarProc   = nDOFVarElem*nElems
   nDOFVarGlobal = nDOFVarElem*nGlobalElems
-
-  !Abort for 2D periodic meshes, when compiling in 3D. Preconditioner is not working in that case
-#if PP_dim==3
-  DO i=firstInnerSide,lastInnerSide
-    IF(SideToElem(S2E_ELEM_ID,i).EQ.SideToElem(S2E_NB_ELEM_ID,i)) THEN
-      CALL CollectiveStop(__STAMP__,'ERROR - This is a 2D mesh.')
-    ENDIF
-  END DO
-#endif
 
   !========================================================================================
   ! Variables used for Newton
