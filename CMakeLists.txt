@@ -217,23 +217,28 @@ ENDFOREACH()
 ADD_CUSTOM_TARGET(preproc_defines COMMAND echo ${comp_defs_str})
 
 # =========================================================================
-# USERBLOCK + Preproc_flags
+# USERBLOCK
 # =========================================================================
-# A function to get all user defined variables with a specified prefix
-function (getListOfVarsStartingWith _prefix _varResult)
-    GET_CMAKE_PROPERTY(_vars CACHE_VARIABLES)
-    STRING(REGEX MATCHALL "(^|;)${_prefix}[A-Za-z0-9_]*" _matchedVars "${_vars}")
-    SET(${_varResult} ${_matchedVars} PARENT_SCOPE)
-endfunction()
+# generate the configuration.cmake file needed for the userblock
 
 # A function to get all user defined variables with a specified prefix
+FUNCTION(getListOfVarsStartingWith _prefix _varResult)
+  GET_CMAKE_PROPERTY(_vars CACHE_VARIABLES)
+  STRING(REGEX MATCHALL "(^|;)${_prefix}[A-Za-z0-9_]*" _matchedVars "${_vars}")
+  SET(${_varResult} ${_matchedVars} PARENT_SCOPE)
+ENDFUNCTION()
+
+# get all user defined variables with a specified prefix
 SET(configuration ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/configuration.cmake)
 FILE(WRITE ${configuration} "")
-GETLISTOFVARSSTARTINGWITH("FLEXI_" flexiVars)
-FOREACH (_var IN LISTS flexiVars)
+GETLISTOFVARSSTARTINGWITH("FLEXI_" flexiConfigVars)
+GETLISTOFVARSSTARTINGWITH("LIBS_"  libsConfigVars)
+GETLISTOFVARSSTARTINGWITH("POSTI"  postiConfigVars) # no underscore
+SET(userDefinedVars "CMAKE_BUILD_TYPE" ${flexiConfigVars} ${libsConfigVars} ${postiConfigVars})
+FOREACH(_var IN LISTS userDefinedVars)
   GET_PROPERTY(currentHelpString CACHE "${_var}" PROPERTY HELPSTRING)
-  SET(boolian (${${_var}} STREQUAL "ON" OR ${${_var}} STREQUAL "OFF"))
-  IF(${boolian})
+  SET(isBoolean (${${_var}} STREQUAL "ON" OR ${${_var}} STREQUAL "OFF"))
+  IF(${isBoolean})
     FILE(APPEND ${configuration} "OPTION(${_var} \"${currentHelpString}\" ${${_var}})\n")
   ELSE()
     IF(${_var})
@@ -267,12 +272,6 @@ ELSE()
 ENDIF()
 
 # =========================================================================
-# Userblock
-# =========================================================================
-ADD_CUSTOM_COMMAND(TARGET libflexistatic PRE_BUILD COMMAND
-   sh ${CMAKE_CURRENT_SOURCE_DIR}/tools/userblock/generateuserblock.sh ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} ${CMAKE_CACHEFILE_DIR} "${CMAKE_CACHE_MAJOR_VERSION}.${CMAKE_CACHE_MINOR_VERSION}.${CMAKE_CACHE_PATCH_VERSION}")
-
-# =========================================================================
 # Install
 # =========================================================================
-INSTALL(FILES    ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/configuration.cmake ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.txt DESTINATION bin)
+INSTALL(FILES ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/configuration.cmake ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.txt DESTINATION bin)

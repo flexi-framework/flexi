@@ -217,7 +217,7 @@ ENDFUNCTION()
 
 FUNCTION(add_lib_shared target)
   ADD_LIBRARY(          ${target} SHARED ${ARGN})
-  TARGET_LINK_LIBRARIES(${target} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.o libflexistatic userblocklib stacksizelib ${linkedlibs})
+  TARGET_LINK_LIBRARIES(${target} libflexistatic userblocklib stacksizelib ${linkedlibs})
   SET_TARGET_PROPERTIES(${target} PROPERTIES PREFIX ""
                                              COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
                                              LINKER_LANGUAGE Fortran)
@@ -315,10 +315,18 @@ IF(SELFBUILTEXTERNALS)
   ADD_DEPENDENCIES(libflexistaticF90 ${SELFBUILTEXTERNALS})
 ENDIF()
 
-ADD_LIBRARY(userblocklib STATIC ./src/output/read_userblock.c)
+# Userblock
+EXECUTE_PROCESS(COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/src/output/userblock/read_userblock.c ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+ADD_CUSTOM_TARGET(generateUserblock COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/src/output/userblock/generate_userblock.sh
+                                               ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+                                               ${CMAKE_CACHEFILE_DIR}
+                                               "${CMAKE_CACHE_MAJOR_VERSION}.${CMAKE_CACHE_MINOR_VERSION}.${CMAKE_CACHE_PATCH_VERSION}"
+                                               ${CMAKE_CURRENT_SOURCE_DIR})
+ADD_LIBRARY(userblocklib STATIC ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/read_userblock.c)
+ADD_DEPENDENCIES(userblocklib generateUserblock)
+
 ADD_LIBRARY(stacksizelib STATIC ./src/globals/stacksize.c)
-SET_TARGET_PROPERTIES(stacksizelib userblocklib PROPERTIES LINKER_LANGUAGE C
-                                                           COMPILE_FLAGS "-fPIC")
+SET_TARGET_PROPERTIES(stacksizelib userblocklib PROPERTIES LINKER_LANGUAGE C COMPILE_FLAGS "-fPIC")
 
 # we link the statically built libs
 ADD_LIB_SHARED(       libflexishared ./src/flexilib.f90)
