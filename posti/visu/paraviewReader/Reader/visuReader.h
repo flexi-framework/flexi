@@ -87,8 +87,6 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       vtkGetObjectMacro(Controller, vtkMultiProcessController);
       // MPI
 
-      void ConvertToFortran(char* fstring, const char* cstring);
-
       // struct to exchange arrays between fortran and C
       struct DoubleARRAY coords_DG;
       struct DoubleARRAY values_DG;

@@ -6,9 +6,9 @@
 # Institution:  Inst. of Aero- and Gasdynamics, University of Stuttgart
 # Date:         14.07.2016
 #
-# Description:  This script will rebuild a specific code configuration from 
+# Description:  This script will rebuild a specific code configuration from
 #               useblock data contained in an HDF5 file.
-# 
+#
 # Input:        1: directory to place build, 2: HDF5 file with userblock data
 #
 #************************************************************************************
@@ -25,11 +25,12 @@ parser = argparse.ArgumentParser(description='Rebuild code revision from userblo
                                              'contained in HDF5 state file.')
 parser.add_argument('dir'  ,help='Name of empty directory where the rebuild will take place')
 parser.add_argument('state',help='HDF5 state file containing userblock')
+parser.add_argument('-m', '--minimal', help='only clone and retain necessary files', action='store_true')
 
 args = parser.parse_args()
 
 if not os.path.exists(args.dir) :
-   os.mkdir(args.dir) 
+   os.mkdir(args.dir)
 else :
    if os.listdir(args.dir) != []: # is dir empty?
       print os.listdir(args.dir)
@@ -58,9 +59,14 @@ rev = gitrevision.split()[1]
 print 'Reference branch name ' + gitrevision.split()[0]
 print 'Reference branch revision ' + rev
 
-cmd = "git clone " + git_url + " " + args.dir
-subprocess.call(cmd, shell=True)
-cmd = "git checkout -b " + branch + " " + rev
+if args.minimal:
+    cmd = "git clone " + git_url + " --branch " + branch + " --single-branch " + args.dir
+    subprocess.call(cmd, shell=True)
+    cmd = "git checkout " + rev
+else:
+    cmd = "git clone " + git_url + " " + args.dir
+    subprocess.call(cmd, shell=True)
+    cmd = "git checkout -b " + branch + " " + rev
 os.chdir(args.dir)
 subprocess.call(cmd, shell=True)
 
@@ -87,6 +93,14 @@ if git_diff :
   except:
     print 'Error while patching source code.'
     exit(1)
+
+if args.minimal:
+    print 'Remove everything except for source code'
+    os.system("rm -rf "+args.dir+"/.git*")
+    os.system("rm -rf "+args.dir+"/tutorials")
+    os.system("rm -rf "+args.dir+"/ini")
+    os.system("rm -rf "+args.dir+"/regressioncheck")
+    os.system("rm -rf "+args.dir+"/doc")
 
 # write ini file
 if not os.path.exists("ini"):
@@ -123,4 +137,3 @@ try:
 except:
   print 'Error while compiling the code.'
   exit(1)
-

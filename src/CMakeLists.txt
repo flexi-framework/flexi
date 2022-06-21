@@ -316,13 +316,13 @@ IF(SELFBUILTEXTERNALS)
 ENDIF()
 
 # Userblock
-EXECUTE_PROCESS(COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/src/output/userblock/read_userblock.c ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-ADD_CUSTOM_TARGET(generateUserblock COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/src/output/userblock/generate_userblock.sh
-                                               ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-                                               ${CMAKE_CACHEFILE_DIR}
-                                               "${CMAKE_CACHE_MAJOR_VERSION}.${CMAKE_CACHE_MINOR_VERSION}.${CMAKE_CACHE_PATCH_VERSION}"
-                                               ${CMAKE_CURRENT_SOURCE_DIR})
-ADD_LIBRARY(userblocklib STATIC ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/read_userblock.c)
+EXECUTE_PROCESS(COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/src/output/print_userblock.c ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+ADD_CUSTOM_TARGET(generateUserblock COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/tools/userblock/generate_userblock_source.sh
+                                                   ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+                                                   ${CMAKE_BINARY_DIR}
+                                                   "${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}"
+                                                   ${CMAKE_CURRENT_SOURCE_DIR})
+ADD_LIBRARY(userblocklib STATIC ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/print_userblock.c)
 ADD_DEPENDENCIES(userblocklib generateUserblock)
 
 ADD_LIBRARY(stacksizelib STATIC ./src/globals/stacksize.c)

@@ -27,7 +27,7 @@ def get_userblock(filename,userblock) :
         break
 
       if linesread == 1 and not line.startswith('{[(') :
-        print 'Error: HDF5 state file %s contains no userblock.' % filename
+        print('Error: HDF5 state file %s contains no userblock.' % filename)
         exit(1)
 
       if line.startswith('{[( END USERBLOCK )]}') :
@@ -37,7 +37,7 @@ def get_userblock(filename,userblock) :
       for i in range(len(line)) :
           c = line[i]
           if ord(c) == 0 : continue
-          if ord(c) == 137 : 
+          if ord(c) == 137 :
               if line[i+1:i+4] == 'HDF' : HDFfound = True
       if HDFfound :
         break
@@ -50,7 +50,7 @@ def get_userblock(filename,userblock) :
           filesize=int(f.readline()) #size in bytes
           userblock_compressed=f.read(filesize)
         except:
-          print 'Error: Could not extract compressed data.'
+          print('Error: Could not extract compressed data.')
           exit(1)
         fc = open(filenametar, 'w')
         fc.write(userblock_compressed)
@@ -58,13 +58,13 @@ def get_userblock(filename,userblock) :
         try:
           p = subprocess.call("tar -xJf " + filenametar,shell=True)
         except:
-          print 'Error while extracting userblock data.'
+          print('Error while extracting userblock data.')
           exit(1)
 
         try:
           userblock = get_userblock(filenamec.strip(),userblock)
         except:
-          print 'Error while reading compressed userblock data.'
+          print('Error while reading compressed userblock data.')
           exit(1)
         continue
 
@@ -79,21 +79,21 @@ def print_all_parts(userblock) :
         # try if line contains a part identifier: {[( IDENTIFIER )]}
         try :
             if not line.startswith("{[(") : continue
-            identifier = line.split("{[(")[1].split(")]}")[0] 
+            identifier = line.split("{[(")[1].split(")]}")[0]
             if "END USERBLOCK" in identifier : break
             # print identifier
-            print identifier
+            print(identifier)
         except :
             continue
 
 def get_part(userblock,part) :
-    ret = "" 
+    ret = ""
     output = False
     for line in userblock.split('\n') :
         # try if line contains a part identifier: {[( IDENTIFIER )]}
         try :
             if line.startswith("{[(") :
-                identifier = line.split("{[(")[1].split(")]}")[0] 
+                identifier = line.split("{[(")[1].split(")]}")[0]
                 # if identifier is found -> start output
                 if part in identifier :
                     output = True
@@ -112,12 +112,12 @@ def get_part(userblock,part) :
 def print_part(userblock,part) :
     tmp = get_part(userblock,part)
     if tmp :
-       print tmp,
+       print(tmp)
 
 # output whole userblock
 def print_all(userblock) :
     for line in userblock.split('\n') :
-        print line
+        print(line)
 
 
 if __name__ == "__main__":
@@ -129,7 +129,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    userblock = get_userblock(args.filename,'') 
+    userblock = get_userblock(args.filename,'')
     if args.show :
         print_all_parts(userblock)
     if args.part :

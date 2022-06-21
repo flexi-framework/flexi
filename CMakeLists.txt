@@ -104,11 +104,15 @@ PROJECT(Flexi)
 # =========================================================================
 # Store the current commit information
 # =========================================================================
-EXECUTE_PROCESS(COMMAND git rev-parse HEAD OUTPUT_VARIABLE GIT_COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE)
-SET(commit ${CMAKE_CURRENT_SOURCE_DIR}/src/commit.h)
-MESSAGE(STATUS "Current git commit ${GIT_COMMIT} will be written to ${commit}")
-FILE(WRITE ${commit} "! Define the current commit hash. The default must remain empty, i.e., ''. Do not commit the changed file!\n#define GIT_CURRENT_COMMIT  ''\n")
-EXECUTE_PROCESS(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/setCommitHash.sh ${commit})
+EXECUTE_PROCESS(COMMAND git rev-parse HEAD OUTPUT_VARIABLE GIT_COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE RESULT_VARIABLE ERR_NO_GIT)
+IF(${ERR_NO_GIT})
+  MESSAGE("No git information found. Continue without git.")
+ELSE()
+  SET(commit ${CMAKE_CURRENT_SOURCE_DIR}/src/commit.h)
+  MESSAGE(STATUS "Current git commit ${GIT_COMMIT} will be written to ${commit}")
+  FILE(WRITE ${commit} "! Define the current commit hash. The default must remain empty, i.e., ''. Do not commit the changed file!\n#define GIT_CURRENT_COMMIT  ''\n")
+  EXECUTE_PROCESS(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/setCommitHash.sh ${commit})
+ENDIF()
 
 # =========================================================================
 # Check IPO support:
@@ -237,7 +241,8 @@ GETLISTOFVARSSTARTINGWITH("POSTI"  postiConfigVars) # no underscore
 SET(userDefinedVars "CMAKE_BUILD_TYPE" ${flexiConfigVars} ${libsConfigVars} ${postiConfigVars})
 FOREACH(_var IN LISTS userDefinedVars)
   GET_PROPERTY(currentHelpString CACHE "${_var}" PROPERTY HELPSTRING)
-  SET(isBoolean (${${_var}} STREQUAL "ON" OR ${${_var}} STREQUAL "OFF"))
+  # Leading H is hack for empty strings which otherwise produce errors
+  SET(isBoolean ("H${${_var}}" STREQUAL "HON" OR "H${${_var}}" STREQUAL "HOFF"))
   IF(${isBoolean})
     FILE(APPEND ${configuration} "OPTION(${_var} \"${currentHelpString}\" ${${_var}})\n")
   ELSE()
