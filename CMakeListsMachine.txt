@@ -7,7 +7,7 @@ MARK_AS_ADVANCED(FORCE CMAKE_HOSTNAME)
 SITE_NAME(CMAKE_HOSTNAME)
 
 # =========================================================================
-# Some clusters requires setting the compilers by hand and invoking
+# Some clusters/systems requires setting the compilers by hand and invoking
 # ENABLE_LANGUAGE afterwards, which is required for
 # CMAKE_Fortran_COMPILER_ID that is used below
 # > This block must be called before ENABLE_LANGUAGE
@@ -35,6 +35,10 @@ ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^xenon")
   SET(CMAKE_C_COMPILER       mpicc)
   SET(CMAKE_CXX_COMPILER     mpicxx)
   SET(CMAKE_Fortran_COMPILER mpif90) # mpif08 wrapper seems to have issue
+ELSEIF ("${CMAKE_HOST_SYSTEM_NAME}" MATCHES "Darwin")
+  SET(CMAKE_C_COMPILER       mpicc)
+  SET(CMAKE_CXX_COMPILER     mpicxx)
+  SET(CMAKE_Fortran_COMPILER mpifort)
 ENDIF()
 
 # =========================================================================
