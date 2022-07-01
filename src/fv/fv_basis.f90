@@ -151,7 +151,7 @@ CALL GetNodesAndWeights(N_in,NodeType_in,xGP,wGP,wBary)
 !  xFV_i(k) = k-th Gauss point in i-th Subcell
 !
 ! We have to integrate the solution U in each Subcell (loop over i) and compute with this the integral mean value, which
-! then ist the Finite-Volume solution U_FV of this Subcell.
+! then is the Finite-Volume solution U_FV of this Subcell.
 ! Therefore we must compute the solution in each Gauss point xFV_i of the Subcell, which is done by evaluating all Lagrange
 ! polynomials l_j in all Gauss points xFV_i => stored in the matrix VDM_i = [ l_j(xFV_i(k)) ]_kj
 ! Multiplying this Vandermonde with the DG-solution U gives us the solution in the Gauss points xFV_i of the i-th Subcell:
