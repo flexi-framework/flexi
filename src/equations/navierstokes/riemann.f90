@@ -310,7 +310,7 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
   U_RR(EXT_MOM3)=0.
 #endif
 
-# ifndef SPLIT_DG
+#ifndef SPLIT_DG
   CALL EvalEulerFlux1D_fast(U_LL,F_L)
   CALL EvalEulerFlux1D_fast(U_RR,F_R)
 #endif /*SPLIT_DG*/
