@@ -142,7 +142,11 @@ ELSE
   nElems_DG = nElems
   nElems_FV = 0
   NVisu_FV = 1
+#if FV_RECONSTRUCT
+  NCalc_FV = NVisu_FV
+#else
   NCalc_FV = 0
+#endif
 
   ! build the mapping, that holds the global indices of all DG elements
   SDEALLOCATE(mapDGElemsToAllElems)
