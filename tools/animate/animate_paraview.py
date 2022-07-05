@@ -33,8 +33,8 @@ if not os.path.exists(fp):
 plotfiles = [f for f in args.plotfiles if (os.path.splitext(f)[1] in ['.pvtu', '.vtu', '.plt', '.vtm', '.h5']) ]
 
 has_h5_plotfiles = any([(os.path.splitext(f)[1] == '.h5') for f in plotfiles])
-if has_h5_plotfiles and not args.reader :
-   sys.exit("Please specifiy path to reader plugin (e.g. '-r path/to/libvisuReader.so')  if input is HDF5!")
+#if has_h5_plotfiles and not args.reader :
+#   sys.exit("Please specifiy path to reader plugin (e.g. '-r path/to/libvisuReader.so')  if input is HDF5!")
 
 i = 0
 for p in plotfiles :
@@ -78,9 +78,9 @@ WriteImage('%s',  Magnification=%d)
 """ % (args.layout, p, of, args.scale))
     f.close()
     if args.mpi > 1 :
-        cmd = ['mpirun', '-np', str(args.mpi), 'pvbatch', '--use-offscreen-rendering', fn]
+        cmd = ['mpirun', '-np', str(args.mpi), 'pvbatch', '--force-offscreen-rendering', fn]
     else :
-        cmd = ['pvbatch', '--use-offscreen-rendering', fn]
+        cmd = ['pvbatch', '--force-offscreen-rendering', fn]
     p = subprocess.Popen(cmd)
     p.wait()
     os.remove(fn)
@@ -88,7 +88,7 @@ sys.stdout.write('\n')
 
 
 if not args.nomovie :
-    print 'Generate movie ....'
+    print('Generate movie ....')
     cmd = ['mencoder']
     cmd.append('mf://%s/*%s.png' % (fp,args.output ))
     cmd.append('-mf')
@@ -101,5 +101,5 @@ if not args.nomovie :
     cmd.append('vcodec=msmpeg4v2:vbitrate=%d' % args.bitrate)
     p = subprocess.Popen(cmd)
     p.wait()
-    print 'done'
+    print('done')
 
