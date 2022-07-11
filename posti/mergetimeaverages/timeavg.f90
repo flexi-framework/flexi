@@ -188,8 +188,8 @@ DO i = 1,ref%nDataSets
   locsize(1:nDim) = ref%nVal(1:nDim,i)
   locsize(  nDim) = nElems
 
-  ALLOCATE(avg(i)%AvgData(PRODUCT(ref%nVal(1:nDim,i))) &
-          ,avg(i)%AvgTmp( PRODUCT(ref%nVal(1:nDim,i))))
+  ALLOCATE(avg(i)%AvgData(PRODUCT(locsize(1:nDim))) &
+          ,avg(i)%AvgTmp( PRODUCT(locsize(1:nDim))))
 
   avg(i)%AvgData = 0
   avg(i)%AvgTmp  = 0
@@ -308,24 +308,23 @@ DO iFile = 1,nFiles
         SELECT CASE(TRIM(ref%DatasetNames(i)))
           CASE('Mean')
             nDim     = ref%nDims(   i)
-            nVarAvg  = ref%nVal(1:nDim,i)
+            nVarAvg(1:nDim) = ref%nVal(1:nDim,i)
+            nVarAvg(nDim)   = nElems
             UAvg     = RESHAPE(avg(i)%AvgData,(/nVarAvg( 1),nVarAvg( 2),nVarAvg( 3),nVarAvg( 4),nVarAvg( 5)/))
 
           CASE('MeanSquare')
             nDim     = ref%nDims(   i)
-            nVarFluc = ref%nVal(1:nDim,i)
+            nVarFluc(1:nDim) = ref%nVal(1:nDim,i)
+            nVarFluc(nDim)   = nElems
             UFluc    = RESHAPE(avg(i)%AvgData,(/nVarFluc(1),nVarFluc(2),nVarFluc(3),nVarFluc(4),nVarFluc(5)/))
         END SELECT
       ELSE
         SELECT CASE(TRIM(ref%DatasetNames(i)))
           CASE('DG_Solution')
             nDim     = ref%nDims(   i)
-            nVarAvg  = ref%nVal(1:nDim,i)
+            nVarAvg(1:nDim) = ref%nVal(1:nDim,i)
+            nVarAvg(nDim)   = nElems
             UAvg     = RESHAPE(avg(i)%AvgData,(/nVarAvg( 1),nVarAvg( 2),nVarAvg( 3),nVarAvg( 4),nVarAvg( 5)/))
-
-            CALL OpenDataFile(FileNameOut,create=.FALSE.,single=.FALSE.,readOnly=.FALSE.)
-            CALL WriteAttribute(File_ID,'VarNames_Mean',nVarAvg(1),StrArray=ref%DatasetNamesAvg)
-            CALL CloseDataFile
         END SELECT
       END IF
     END DO
