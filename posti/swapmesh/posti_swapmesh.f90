@@ -43,6 +43,9 @@ USE MOD_MPI,                     ONLY: InitMPIvars,FinalizeMPI
 #endif
 USE MOD_SwapMesh,                ONLY: InitSwapmesh,ReadOldStateFile,WriteNewStateFile,FinalizeSwapMesh
 USE MOD_InterpolateSolution,     ONLY: InterpolateSolution
+#if FV_ENABLED
+USE MOD_FV_Basis,                ONLY: InitFV_Basis,FinalizeFV_Basis
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -120,6 +123,11 @@ CALL InitSwapmesh()
 CALL InitMPIvars()
 #endif
 
+#if FV_ENABLED
+! Required since it allocates some quantities written as HDF5 attributes to state file
+CALL InitFV_Basis()
+#endif
+
 ! Evaluate solution at new solution nodes
 DO iArg=2,nArgs
   ! Check if a .h5 file has been given to the swapmesh tool
@@ -143,6 +151,9 @@ DO iArg=2,nArgs
 END DO
 
 CALL FinalizeSwapMesh()
+#if FV_ENABLED
+CALL FinalizeFV_Basis()
+#endif
 #if USE_MPI
 CALL FinalizeMPI()
 CALL MPI_FINALIZE(iError)

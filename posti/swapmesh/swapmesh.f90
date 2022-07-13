@@ -343,8 +343,9 @@ END SUBROUTINE prepareVandermonde
 !===================================================================================================================================
 SUBROUTINE ReadOldStateFile(StateFile)
 ! MODULES                                                                                                                          !
-USE MOD_Globals,       ONLY: abort
-USE MOD_HDF5_Input,    ONLY: OpenDataFile,CloseDataFile,ReadArray,ReadAttribute,GetDataSize
+USE MOD_Globals,       ONLY: Abort,PrintWarning
+USE MOD_StringTools,   ONLY: STRICMP
+USE MOD_HDF5_Input,    ONLY: OpenDataFile,CloseDataFile,ReadArray,ReadAttribute,GetDataSize,GetVarNames
 USE MOD_IO_HDF5,       ONLY: File_ID,HSize
 USE MOD_Swapmesh_Vars, ONLY: nVar_State,NState,nElemsOld,Time_State,UOld,NNew,nElemsNew
 USE MOD_ReadInTools,   ONLY: ExtractParameterFile,ModifyParameterFile
@@ -360,10 +361,11 @@ IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN)      :: StateFile !< State file to be read
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-LOGICAL                          :: userblockFound
+LOGICAL                          :: userblockFound,VarNamesExist
 CHARACTER(LEN=255)               :: prmfile=".parameter.ini"
 CHARACTER(LEN=255)               :: FileType
-CHARACTER(LEN=255),ALLOCATABLE   :: VarNames_TimeAvg(:)     !< List of varnames in TimeAvg-File
+CHARACTER(LEN=255),ALLOCATABLE   :: VarNames_TimeAvg( :)     !< List of varnames in TimeAvg-File
+CHARACTER(LEN=255),ALLOCATABLE   :: VarNames_ElemData(:)     !< List of varnames for element-wise data
 REAL,ALLOCATABLE                 :: UMean(  :,:,:,:,:)      !< Mean solution from old TimeAvg state
 REAL,ALLOCATABLE                 :: U_local(:,:,:,:,:)
 INTEGER                          :: iVar,nVarsFound,nDims
@@ -433,9 +435,21 @@ CALL ModifyParameterFile(TRIM(prmfile),'N',NNew,userblockFound)
 CALL insert_userblock(TRIM(UserBlockTmpFile)//C_NULL_CHAR,TRIM(prmfile)//C_NULL_CHAR)
 INQUIRE(FILE=TRIM(UserBlockTmpFile),SIZE=userblock_total_len)
 
+! Check for FV in solution
+CALL GetVarNames('VarNamesAdd',VarNames_ElemData,VarNamesExist)
+IF (VarNamesExist) THEN
+  nVarsFound =  SIZE(VarNames_ElemData)
+  DO iVar=1,nVarsFound
+    IF (STRICMP(TRIM(VarNames_ElemData(iVar)),'FV_Elems')) &
+      CALL PrintWarning('The Swapmesh tool does not support FV subcells at the moment!\n&
+                        &FV cells are interpreted as DG cells, which might cause interpolation errors or even invalid solutions!')
+  END DO
+END IF
+
 ! Close the data file
 CALL CloseDataFile()
 SDEALLOCATE(VarNames_TimeAvg)
+SDEALLOCATE(VarNames_ElemData)
 SDEALLOCATE(UMean)
 DEALLOCATE(U_local)
 END SUBROUTINE ReadOldStateFile
