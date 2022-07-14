@@ -239,9 +239,9 @@ DO iElemOld=1,nElemsOld
 
       ! Find coordinates in reference space with Newton starting from initial guess
 #if PP_dim == 3
-      CALL Newton(NGeoOld,XInter,dXCL_NGeo(:,:,:,:,:),Xi_CLNGeo,wBary_CLNGeo,xCLOld(:,:,:,:,iElemOld),xi)
+      CALL Newton(NGeoOld,XInter,dXCL_NGeo(1:PP_dim,1:PP_dim,:,:,:),Xi_CLNGeo,wBary_CLNGeo,xCLOld(1:PP_dim,:,:,:,iElemOld),xi)
 #else
-      CALL Newton(NGeoOld,XInter,dXCL_NGeo(:,:,:,:,0),Xi_CLNGeo,wBary_CLNGeo,xCLOld(:,:,:,0,iElemOld),xi)
+      CALL Newton(NGeoOld,XInter,dXCL_NGeo(1:PP_dim,1:PP_dim,:,:,0),Xi_CLNGeo,wBary_CLNGeo,xCLOld(1:PP_dim,:,:,0,iElemOld),xi)
 #endif /*PP_dim == 3*/
 
       ! Check if result is better than previous result
