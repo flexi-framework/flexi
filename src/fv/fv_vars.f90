@@ -45,7 +45,8 @@ LOGICAL                :: switchConservative     !< Perform DG/FV switch in refe
 INTEGER                :: LimiterType            !< Readin variable for type of used fv limiter
 REAL                   :: FV_sweby_beta          !< parameter for Sweby limiter
 
-! FV/DG
+! FV/DG Switching
+! TODO: The following variables are only need for Switch-Type FV. Use correct CMake flags
 INTEGER,ALLOCATABLE    :: FV_Elems(:)            !< indicates if DG element (0) or FV subcells (1) for each element
 INTEGER,ALLOCATABLE    :: FV_Elems_master(:)     !< prolongate FV_Elems to faces
 INTEGER,ALLOCATABLE    :: FV_Elems_slave(:)
@@ -57,6 +58,13 @@ INTEGER                :: FV_Switch_counter      !< counts how often FV_Switch i
                                                  !< should be identical to nTimesteps * nRkStages
 
 REAL,ALLOCATABLE       :: FV_Elems_Amount(:)     !< counts for every element the RK stages it was DG or FV, nullified after
+
+! FV/DG Blending
+#if FV_ENABLED == 2
+REAL,ALLOCATABLE       :: alphaFV(:)             !< Blending coefficient
+REAL                   :: alpha_min              !< Minimal blending coefficient
+#endif /*FV_ENABLED==2*/
+
 ! FV variables on reference element
 REAL,ALLOCATABLE       :: FV_X(:)                !< positions of 'midpoints' of FV subcells in [-1,1]
 REAL,ALLOCATABLE       :: FV_BdryX(:)            !< positions of boundaries of FV subcells in [-1,1]
@@ -65,15 +73,9 @@ REAL,ALLOCATABLE       :: FV_w_inv(:)            !< 1/FV_w
 REAL                   :: FV_w_inv_equi          !< 1/FV_w on equidistant FV subcells, where the width is constant
 REAL,ALLOCATABLE       :: FV_Vdm(:,:)            !< Vandermonde to switch from DG to FV
 REAL,ALLOCATABLE       :: FV_sVdm(:,:)           !< Vandermonde to switch from FV to DG
-INTEGER                :: FV_CellType               !< Type of FV Cell: 0 = EQUIDISTANT       , 5 = SAME            3, = GENERIC
-                                                    !<                  4 = LEGENDRE_LOBATTO  , 5 = LEGENDRE_GAUSS
-                                                    !<                  6 = CHEBYSHEV_LOBATTO , 7 = CHEBYSHEV_GAUSS
-
-#if FV_BLENDING
-! Blending
-REAL,ALLOCATABLE       :: alphaFV(:)          !< Blending coefficient
-REAL                   :: alpha_min           !< Minimal blending coefficient
-#endif /*FV_BLENDING*/
+INTEGER                :: FV_CellType            !< Type of FV Cell: -1 = SAME              ,0 = EQUIDISTANT
+                                                 !<                   1 = LEGENDRE_GAUSS    ,2 = LEGENDRE_LOBATTO  
+                                                 !<                   3 = CHEBYSHEV_LOBATTO
 
 #if FV_RECONSTRUCT
 REAL,ALLOCATABLE,TARGET:: FV_surf_gradU(:,:,:,:) !< FD over DG interface

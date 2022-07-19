@@ -133,6 +133,14 @@
 #define FV_Elems_Sum(x) 0
 #endif
 
+! Compute viscous contributions in volume integral
+! NOT if FV-Blending or if non-parabolic
+#if (FV_ENABLED==2) || !PARABOLIC
+#define VOLINT_VISC 0
+#else
+#define VOLINT_VISC 1
+#endif
+
 #define KILL(x) SWRITE(*,*) __FILE__,__LINE__,x; stop
 
 ! overintegration

@@ -86,8 +86,13 @@ USE MOD_FV_Limiter  ,ONLY: DefineParametersFV_Limiter
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
-CALL DefineParametersFV_Basis()
 CALL prms%SetSection('FV')
+CALL prms%CreateLogicalOption('FV_IniSupersample'    ,"Supersample initial solution inside each sub-cell and take mean value \n&
+                                                      & as average sub-cell value.", '.TRUE.')
+CALL prms%CreateLogicalOption('FV_IniSharp'          ,"Maintain a sharp interface in the initial solution in the FV region",&
+                                                      '.FALSE.')
+CALL prms%CreateLogicalOption('FV_SwitchConservative',"Perform FV/DG switch in reference element", '.TRUE.')
+#if FV_ENABLED == 1
 CALL prms%CreateRealOption(   'FV_IndUpperThreshold' ,"Upper threshold: Element is switched from DG to FV if indicator \n"//&
                                                       "rises above this value" )
 CALL prms%CreateRealOption(   'FV_IndLowerThreshold' ,"Lower threshold: Element is switched from FV to DG if indicator \n"//&
@@ -97,14 +102,14 @@ CALL prms%CreateLogicalOption('FV_toDG_indicator'    ,"Apply additional Persson 
 CALL prms%CreateRealOption   ('FV_toDG_limit'        ,"Threshold for FV_toDG_indicator")
 CALL prms%CreateLogicalOption('FV_toDGinRK'          ,"Allow switching of FV elements to DG during Runge Kutta stages. \n"//&
                                                       "This may violated the DG timestep restriction of the element.", '.FALSE.')
-CALL prms%CreateLogicalOption('FV_IniSupersample'    ,"Supersample initial solution inside each sub-cell and take mean value \n&
-                                                      & as average sub-cell value.", '.TRUE.')
-CALL prms%CreateLogicalOption('FV_IniSharp'          ,"Maintain a sharp interface in the initial solution in the FV region",&
-                                                      '.FALSE.')
-CALL prms%CreateLogicalOption('FV_SwitchConservative',"Perform FV/DG switch in reference element", '.TRUE.')
+#elif FV_ENABLED == 2
+CALL prms%CreateRealOption(   'alpha_min'            ,"Lower bound for alpha",'0.01')
+#endif
+
 #if FV_RECONSTRUCT
 CALL DefineParametersFV_Limiter()
 #endif
+CALL DefineParametersFV_Basis()
 END SUBROUTINE DefineParametersFV
 
 !==================================================================================================================================
@@ -141,6 +146,7 @@ END IF
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT FV...'
 
+#if FV_ENABLED == 1
 ! Read minimal and maximal threshold for the indicator
 FV_IndLowerThreshold = GETREAL('FV_IndLowerThreshold','-99.')
 FV_IndUpperThreshold = GETREAL('FV_IndUpperThreshold', '99.')
@@ -149,12 +155,6 @@ FV_IndUpperThreshold = GETREAL('FV_IndUpperThreshold', '99.')
 ! anymore.
 FV_toDG_indicator = GETLOGICAL('FV_toDG_indicator')
 IF (FV_toDG_indicator) FV_toDG_limit = GETREAL('FV_toDG_limit')
-! If the main indicator is not already the persson indicator, then we need to read in the parameters
-IF (IndicatorType.NE.2) THEN
-  nModes = GETINT('nModes','2')
-  nModes = MAX(1,nModes+PP_N-MIN(NUnder,NFilter))-1 ! increase by number of empty modes in case of overintegration
-END IF
-
 
 ! Read flag, which allows switching from FV to DG between the stages of a Runge-Kutta time step
 ! (this might lead to instabilities, since the time step for a DG element is smaller)
@@ -162,6 +162,13 @@ FV_toDGinRK = GETLOGICAL("FV_toDGinRK")
 
 ! Read flag, which allows to perform the switching from FV to DG in the reference element
 switchConservative = GETLOGICAL("FV_SwitchConservative")
+#endif
+
+! If the main indicator is not already the persson indicator, then we need to read in the parameters
+IF (IndicatorType.NE.2) THEN
+  nModes = GETINT('nModes','2')
+  nModes = MAX(1,nModes+PP_N-MIN(NUnder,NFilter))-1 ! increase by number of empty modes in case of overintegration
+END IF
 
 #if FV_RECONSTRUCT
 CALL InitFV_Limiter()
@@ -247,7 +254,7 @@ FV_IniSharp       = GETLOGICAL("FV_IniSharp",'.FALSE.')
 IF (.NOT.FV_IniSharp) FV_IniSupersample = GETLOGICAL("FV_IniSupersample",'.TRUE.')
 
 ! Initialize FV Blending
-#if FV_BLENDING
+#if FV_ENABLED == 2
 #if EQNSYSNR != 2 /* NOT NAVIER-STOKES */
 CALL Abort(__STAMP__, &
     "FV blending only works with Navier-Stokes equations.")
@@ -256,7 +263,7 @@ CALL Abort(__STAMP__, &
 alpha_min = GETREAL('alpha_min')
 ALLOCATE(alphaFV(1:nElems))
 CALL AddToElemData(ElementOut,'alphaFV',alphaFV)
-#endif
+#endif /*FV_ENABLED==2*/
 
 FVInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT FV DONE!'
@@ -464,41 +471,7 @@ END IF
 END SUBROUTINE FV_InterpolateDG2FV_Face
 
 
-#if FV_Blending
-!==================================================================================================================================
-!> Print information on the amount of FV blending
-!==================================================================================================================================
-SUBROUTINE FV_Info(iter)
-! MODULES
-USE MOD_Globals
-USE MOD_FV_Vars      ,ONLY: alphaFV
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES
-INTEGER(KIND=8),INTENT(IN) :: iter !< number of iterations
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-REAL              :: alphaFV_range(3)
-!==================================================================================================================================
-alphaFV_range(1) = MINVAL(alphaFV)
-alphaFV_range(2) = MAXVAL(alphaFV)
-
-#if USE_MPI
-IF(MPIRoot)THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE    ,alphaFV_range(1),1,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_FLEXI,iError)
-  CALL MPI_REDUCE(MPI_IN_PLACE    ,alphaFV_range(2),1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
-ELSE
-  CALL MPI_REDUCE(alphaFV_range(1),0               ,1,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_FLEXI,iError)
-  CALL MPI_REDUCE(alphaFV_range(2),0               ,1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
-END IF
-#endif /*USE_MPI*/
-
-SWRITE(UNIT_stdOut,'(A,F8.3,A,F5.3)') ' alphaFV    : ',alphaFV_range(1),' - ',alphaFV_range(2)
-END SUBROUTINE FV_Info
-
-#else /* FV_Blending*/
-
+#if FV_ENABLED == 1
 !==================================================================================================================================
 !> Print information on the amount of FV subcells
 !==================================================================================================================================
@@ -522,12 +495,49 @@ IF(MPIRoot)THEN
 ELSE
   CALL MPI_REDUCE(totalFV_nElems,0           ,1,MPI_INTEGER8,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
-#endif
+#endif /*USE_MPI*/
 SWRITE(UNIT_stdOut,'(A,F8.3,A)')' FV amount %: ', REAL(totalFV_nElems) / REAL(nGlobalElems) / iter*100
 totalFV_nElems = 0
 END SUBROUTINE FV_Info
 
-#endif /*FV_Blending*/
+#elif FV_ENABLED == 2
+!==================================================================================================================================
+!> Print information on the amount of FV blending
+!==================================================================================================================================
+SUBROUTINE FV_Info(iter)
+! MODULES
+USE MOD_Globals
+USE MOD_FV_Vars      ,ONLY: alphaFV
+USE MOD_Analyze_Vars ,ONLY: totalAlphaFV
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER(KIND=8),INTENT(IN) :: iter !< number of iterations
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL              :: alphaFV_range(3)
+!==================================================================================================================================
+alphaFV_range(1) = MINVAL(alphaFV)
+alphaFV_range(2) = MAXVAL(alphaFV)
+
+#if USE_MPI
+IF(MPIRoot)THEN
+  CALL MPI_REDUCE(MPI_IN_PLACE    ,alphaFV_range(1),1,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE    ,alphaFV_range(2),1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE    ,totalAlphaFV    ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+  totalAlphaFV = totalAlphaFV / REAL(nGlobalElems) / iter
+ELSE
+  CALL MPI_REDUCE(alphaFV_range(1),0               ,1,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(alphaFV_range(2),0               ,1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(totalAlphaFV    ,0               ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+END IF
+#endif /*USE_MPI*/
+SWRITE(UNIT_stdOut,'(A,F8.3,A,F5.3,A,ES18.9)') ' alphaFV    : ',alphaFV_range(1),' - ',alphaFV_range(2),', avg: ',totalAlphaFV
+totalAlphaFV   = 0.
+END SUBROUTINE FV_Info
+
+#endif /*FV_ENABLED == 1*/
 
 !==================================================================================================================================
 !> Initialize all FV elements and overwrite data of DG FillIni. Each subcell is supersampled with PP_N points in each space
@@ -690,7 +700,7 @@ SDEALLOCATE(gradUeta_central)
 SDEALLOCATE(gradUzeta_central)
 #endif
 #endif
-#if FV_BLENDING
+#if FV_ENABLED == 2
 SDEALLOCATE(alphaFV)
 #endif
 

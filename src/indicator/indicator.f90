@@ -34,6 +34,7 @@ PRIVATE
 INTEGER,PARAMETER :: INDTYPE_DG             = 0
 INTEGER,PARAMETER :: INDTYPE_FV             = 1
 INTEGER,PARAMETER :: INDTYPE_PERSSON        = 2
+INTEGER,PARAMETER :: INDTYPE_PERSSON_BLEND  = 21
 INTEGER,PARAMETER :: INDTYPE_JAMESON        = 8
 INTEGER,PARAMETER :: INDTYPE_DUCROS         = 9
 INTEGER,PARAMETER :: INDTYPE_DUCROSTIMESJST = 10
@@ -167,6 +168,18 @@ CASE(INDTYPE_PERSSON)
   ! number of modes to be checked by Persson indicator
   nModes = GETINT('nModes','2')
   nModes = MAX(1,nModes+PP_N-MIN(NUnder,NFilter))-1 ! increase by number of empty modes in case of overintegration
+
+#if FV_ENABLED == 2
+CASE(INDTYPE_PERSSON_BLEND)
+#if EQNSYSNR != 2 /* NOT NAVIER-STOKES */
+  CALL Abort(__STAMP__, &
+      "Blending Persson indicator only works with Navier-Stokes equations.")
+#endif /* EQNSYSNR != 2 */
+  ! number of modes to be checked by Persson indicator
+  nModes = GETINT('nModes','2')
+  nModes = MAX(1,nModes+PP_N-MIN(NUnder,NFilter))-1 ! increase by number of empty modes in case of overintegration
+  T_FV = 0.5*10**(-1.8*(PP_N+1)**.25)
+#endif /*FV_ENABLED*/
 CASE(-1) ! legacy
   IndicatorType=INDTYPE_DG
 END SELECT
@@ -204,6 +217,10 @@ USE MOD_FV_Vars        ,ONLY: FV_Elems,FV_sVdm
 #if PARABOLIC && EQNSYSNR == 2
 USE MOD_Lifting_Vars   ,ONLY: gradUx,gradUy,gradUz
 #endif
+#if FV_ENABLED == 2
+USE MOD_Indicator_Vars     ,ONLY: s_FV,T_FV
+USE MOD_FV_Vars            ,ONLY: alphaFV,alpha_min
+#endif /*FV_ENABLED*/
 USE MOD_ChangeBasisByDim,ONLY:ChangeBasisVolume
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -248,6 +265,14 @@ CASE(INDTYPE_DUCROS)
 CASE(INDTYPE_DUCROSTIMESJST)
   IndValue = JamesonIndicator(U) * DucrosIndicator(gradUx,gradUy,gradUz)
 #endif /*PARABOLIC*/
+#if FV_ENABLED == 2
+CASE(INDTYPE_PERSSON_BLEND)
+  DO iElem=1,nElems
+    IndValue(iElem) = IndPerssonBlend(U(:,:,:,:,iElem))
+    alphaFV(iElem)  = 1. / (1. + EXP(-s_FV/T_FV * (IndValue(iElem) - T_FV)))
+    IF (alphaFV(iElem) .LT. alpha_min) alphaFV(iElem) = 0.
+  END DO
+#endif /*FV_ENABLED*/
 #endif /* NAVIER-STOKES */
 CASE(INDTYPE_HALFHALF)  ! half/half
   DO iElem=1,nElems
@@ -588,6 +613,51 @@ DO iElem=1,nElems
   IndValue(iElem) = IndValue(iElem) / ElemVol
 END DO ! iElem
 END FUNCTION JamesonIndicator
+
+#if FV_ENABLED == 2
+!==================================================================================================================================
+!> Determine, if given a modal representation solution "U_Modal" is oscillating
+!> Indicator value is scaled to \f$\sigma=0 \ldots 1\f$
+!> Suggested by Persson et al.
+!==================================================================================================================================
+FUNCTION IndPerssonBlend(U) RESULT(IndValue)
+USE MOD_PreProc
+USE MOD_Indicator_Vars,     ONLY: nModes
+USE MOD_Interpolation_Vars, ONLY: sVdm_Leg
+USE MOD_EOS_Vars
+USE MOD_ChangeBasisByDim,   ONLY: ChangeBasisVolume
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,INTENT(IN)    :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)          !< Solution
+REAL               :: IndValue                                  !< Value of the indicator (Return Value)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                               :: iDeg,iDeg2,i,j,k
+REAL                                  :: UE(1:PP_2Var)
+REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_NZ) :: U_loc,U_Modal
+!==================================================================================================================================
+DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+  UE(EXT_CONS)=U(:,i,j,k)
+  UE(EXT_SRHO)=1./UE(EXT_DENS)
+  UE(EXT_VELV)=VELOCITY_HE(UE)
+  U_loc(i,j,k)=PRESSURE_HE(UE)*UE(EXT_DENS)
+END DO; END DO; END DO! i,j,k=0,PP_N
+
+! Transform nodal solution to a modal representation
+CALL ChangeBasisVolume(PP_N,PP_N,sVdm_Leg,U_loc,U_Modal)
+
+IndValue=TINY(0.)
+DO iDeg=0,nModes
+  iDeg2=iDeg+1
+  IndValue=MAX(IndValue,(SUM(U_Modal(0:PP_N-iDeg,0:PP_N-iDeg,0:PP_N-iDeg)**2) - &
+                         SUM(U_Modal(0:PP_N-iDeg2,0:PP_N-iDeg2,0:PP_N-iDeg2)**2))/&
+                         SUM(U_Modal(0:PP_N,0:PP_N,0:PP_N)**2))
+END DO
+IF (IndValue .LT. EPSILON(1.)) IndValue = EPSILON(IndValue)
+
+END FUNCTION IndPerssonBlend
+#endif /*FV_ENABLED==2*/
 
 #endif /* EQNSYSNR == 2 */
 
