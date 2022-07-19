@@ -296,15 +296,15 @@ DO iElem=1,nElems
     IF (IndValue(iElem).GT.FV_IndUpperThreshold) THEN
       ! switch Element to FV
       FV_Elems(iElem) = 1
-      CALL FV_InterpolateDG2FV(U(:,:,:,:,iElem),sJ(:,:,:,iElem,0:FV_ENABLED))
-      IF (PRESENT(U2)) CALL FV_InterpolateDG2FV(U2(:,:,:,:,iElem),sJ(:,:,:,iElem,0:FV_ENABLED))
-      IF (PRESENT(U3)) CALL FV_InterpolateDG2FV(U3(:,:,:,:,iElem),sJ(:,:,:,iElem,0:FV_ENABLED))
+      CALL FV_InterpolateDG2FV(U(:,:,:,:,iElem),sJ(:,:,:,iElem,0:FV_SIZE))
+      IF (PRESENT(U2)) CALL FV_InterpolateDG2FV(U2(:,:,:,:,iElem),sJ(:,:,:,iElem,0:FV_SIZE))
+      IF (PRESENT(U3)) CALL FV_InterpolateDG2FV(U3(:,:,:,:,iElem),sJ(:,:,:,iElem,0:FV_SIZE))
     END IF
   ELSE ! FV Element
     ! Switch FV to DG Element, if Indicator is lower then IndMax
     IF ((IndValue(iElem).LT.FV_IndLowerThreshold).AND.AllowToDG) THEN
       U_DG = U(:,:,:,:,iElem)
-      CALL FV_InterpolateFV2DG(U_DG(:,:,:,:),sJ(:,:,:,iElem,0:FV_ENABLED))
+      CALL FV_InterpolateFV2DG(U_DG(:,:,:,:),sJ(:,:,:,iElem,0:FV_SIZE))
       IF (FV_toDG_indicator) THEN
         ind = IndPersson(U_DG(:,:,:,:))
         IF (ind.GT.FV_toDG_limit) CYCLE
@@ -312,8 +312,8 @@ DO iElem=1,nElems
       ! switch Element to DG
       FV_Elems(iElem)  = 0
       U(:,:,:,:,iElem) = U_DG
-      IF (PRESENT(U2)) CALL FV_InterpolateFV2DG(U2(:,:,:,:,iElem),sJ(:,:,:,iElem,0:FV_ENABLED))
-      IF (PRESENT(U3)) CALL FV_InterpolateFV2DG(U3(:,:,:,:,iElem),sJ(:,:,:,iElem,0:FV_ENABLED))
+      IF (PRESENT(U2)) CALL FV_InterpolateFV2DG(U2(:,:,:,:,iElem),sJ(:,:,:,iElem,0:FV_SIZE))
+      IF (PRESENT(U3)) CALL FV_InterpolateFV2DG(U3(:,:,:,:,iElem),sJ(:,:,:,iElem,0:FV_SIZE))
     END IF
   END IF
 END DO !iElem
@@ -369,7 +369,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 REAL,INTENT(INOUT) ::  U_In(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)      !< state vector to be switched from DG to FV representation
-REAL,INTENT(IN)    :: sJ_In(0:PP_N,0:PP_N,0:PP_NZ,0:FV_ENABLED) !< inverse of Jacobian determinant at each Gauss point
+REAL,INTENT(IN)    :: sJ_In(0:PP_N,0:PP_N,0:PP_NZ,0:FV_SIZE)    !< inverse of Jacobian determinant at each Gauss point
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: i,j,k
@@ -405,7 +405,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 REAL,INTENT(INOUT) ::  U_In(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)      !< state vector to be switched from FV to DG representation
-REAL,INTENT(IN)    :: sJ_In(0:PP_N,0:PP_N,0:PP_NZ,0:FV_ENABLED) !< inverse of Jacobian determinant at each Gauss point
+REAL,INTENT(IN)    :: sJ_In(0:PP_N,0:PP_N,0:PP_NZ,0:FV_SIZE)    !< inverse of Jacobian determinant at each Gauss point
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: i,j,k
@@ -442,7 +442,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: nVar                               !< number of variables
 REAL,INTENT(INOUT) :: U_In(nVar,0:PP_N,0:PP_NZ)          !< state vector to be switched from DG to FV representation
-REAL,INTENT(IN)    :: sJ_In(0:PP_N,0:PP_NZ,0:FV_ENABLED) !< inverse of Jacobian determinant at each Gauss point
+REAL,INTENT(IN)    :: sJ_In(0:PP_N,0:PP_NZ,0:FV_SIZE)    !< inverse of Jacobian determinant at each Gauss point
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: p,q

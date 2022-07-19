@@ -126,7 +126,7 @@ IF (DoPPLimiter) THEN
   SDEALLOCATE(IntegrationWeight) ! different array size in last dim
 #endif
   IF( .NOT. ALLOCATED(IntegrationWeight)) THEN
-    ALLOCATE(IntegrationWeight(0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_ENABLED))
+    ALLOCATE(IntegrationWeight(0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_SIZE))
     DO iElem=1,nElems
       Vol = 0.
       DO k=0,PP_NZ;DO j=0,PP_N;DO i=0,PP_N

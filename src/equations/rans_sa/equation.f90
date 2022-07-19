@@ -138,7 +138,7 @@ CALL InitEOS()
 ! SA-specific parameters
 includeTrip = GETLOGICAL('includeTrip','.FALSE.')
 PrTurb = GETREAL('PrTurb','0.9')
-ALLOCATE(SAd(0:PP_N,0:PP_N,0:PP_NZ,0:FV_ENABLED,nElems))
+ALLOCATE(SAd(0:PP_N,0:PP_N,0:PP_NZ,0:FV_SIZE,nElems))
 ! We choose a large number as our default for the walldistance, since it basically means we calculate free turbulence away from a
 ! wall. The square-root is taken since the value get's squared in the auxilliary functions, and this prevents errounus arithmetic
 ! operations to take place.
@@ -201,7 +201,7 @@ ELSE
 END IF
 
 IF (includeTrip) THEN
-  ALLOCATE(SAdt(0:PP_N,0:PP_N,0:PP_NZ,0:FV_ENABLED,nElems))
+  ALLOCATE(SAdt(0:PP_N,0:PP_N,0:PP_NZ,0:FV_SIZE,nElems))
   DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       SAdt(i,j,k,0,iElem) = NORM2(Elem_xGP(1:2,i,j,k,iElem)-TripX)

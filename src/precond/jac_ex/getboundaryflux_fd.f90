@@ -217,11 +217,11 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)                   :: SideID  
 REAL,INTENT(IN)                      :: t
 REAL, INTENT(IN)                     :: UPrim_master( PP_nVarPrim,0:PP_N,0:PP_NZ)
-REAL,INTENT(IN)                      :: xGP_Face(3,0:PP_N,0:PP_NZ,0:FV_ENABLED)
-REAL,INTENT(IN)                      :: normal  (3,0:PP_N,0:PP_NZ,0:FV_ENABLED)
-REAL,INTENT(IN)                      :: tangent1(3,0:PP_N,0:PP_NZ,0:FV_ENABLED)
-REAL,INTENT(IN)                      :: tangent2(3,0:PP_N,0:PP_NZ,0:FV_ENABLED)
-REAL,INTENT(IN)                      :: surfElem(  0:PP_N,0:PP_NZ,0:FV_ENABLED)
+REAL,INTENT(IN)                      :: xGP_Face(3,0:PP_N,0:PP_NZ,0:FV_SIZE)
+REAL,INTENT(IN)                      :: normal  (3,0:PP_N,0:PP_NZ,0:FV_SIZE)
+REAL,INTENT(IN)                      :: tangent1(3,0:PP_N,0:PP_NZ,0:FV_SIZE)
+REAL,INTENT(IN)                      :: tangent2(3,0:PP_N,0:PP_NZ,0:FV_SIZE)
+REAL,INTENT(IN)                      :: surfElem(  0:PP_N,0:PP_NZ,0:FV_SIZE)
 INTEGER,INTENT(IN)                   :: jk(2,0:PP_N,0:PP_NZ)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES

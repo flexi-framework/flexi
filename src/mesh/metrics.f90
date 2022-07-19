@@ -522,7 +522,7 @@ DO iElem=1,nElems
 #if (PP_dim == 3)
     JaCL_N_quad(:,3,:,:,:)=(length(1)*length(2)/4.)*JaCL_N_quad(:,3,:,:,:)
 #endif
-    CALL CalcSurfMetrics(PP_N,FV_ENABLED,JaCL_N_quad,XCL_N_quad,Vdm_CLN_N,iElem,&
+    CALL CalcSurfMetrics(PP_N,FV_SIZE,JaCL_N_quad,XCL_N_quad,Vdm_CLN_N,iElem,&
                          NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
   ELSE
     ! interpolate Metrics from Cheb-Lobatto N onto GaussPoints N
@@ -531,7 +531,7 @@ DO iElem=1,nElems
 #if (PP_dim == 3)
     CALL ChangeBasisVolume(3,PP_N,PP_N,Vdm_CLN_N,JaCL_N(3,:,:,:,:),Metrics_hTilde(:,:,:,:,iElem,0))
 #endif
-    CALL CalcSurfMetrics(PP_N,FV_ENABLED,JaCL_N,XCL_N,Vdm_CLN_N,iElem,&
+    CALL CalcSurfMetrics(PP_N,FV_SIZE,JaCL_N,XCL_N,Vdm_CLN_N,iElem,&
                          NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
   END IF
 
@@ -549,15 +549,15 @@ END DO !iElem=1,nElems
 
 #if USE_MPI
 ! Send surface geomtry informations from mpi master to mpi slave
-ALLOCATE(Geo(10,0:PP_N,0:PP_NZ,0:FV_ENABLED,firstMPISide_MINE:nSides))
+ALLOCATE(Geo(10,0:PP_N,0:PP_NZ,0:FV_SIZE,firstMPISide_MINE:nSides))
 Geo=0.
 Geo(1,:,:,:,:)   =SurfElem(  :,0:PP_NZ,:,firstMPISide_MINE:nSides)
 Geo(2:4,:,:,:,:) =NormVec (:,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
 Geo(5:7,:,:,:,:) =TangVec1(:,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
 Geo(8:10,:,:,:,:)=TangVec2(:,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
 MPIRequest_Geo=MPI_REQUEST_NULL
-CALL StartReceiveMPIData(Geo,10*(PP_N+1)**(PP_dim-1)*(FV_ENABLED+1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,RECV),SendID=1) ! Receive YOUR / Geo: master -> slave
-CALL StartSendMPIData(   Geo,10*(PP_N+1)**(PP_dim-1)*(FV_ENABLED+1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,SEND),SendID=1) ! SEND MINE / Geo: master -> slave
+CALL StartReceiveMPIData(Geo,10*(PP_N+1)**(PP_dim-1)*(FV_SIZE+1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,RECV),SendID=1) ! Receive YOUR / Geo: master -> slave
+CALL StartSendMPIData(   Geo,10*(PP_N+1)**(PP_dim-1)*(FV_SIZE+1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,SEND),SendID=1) ! SEND MINE / Geo: master -> slave
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Geo)
 SurfElem  (:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(1   ,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
 NormVec (:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(2:4 ,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)

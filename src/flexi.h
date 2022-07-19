@@ -120,6 +120,12 @@
 
 !#define DEBUGMESH
 
+#if FV_ENABLED
+#define FV_SIZE 1
+#else
+#define FV_SIZE 0
+#endif
+
 #if !(FV_ENABLED)
 #define FV_Elems(x) 0
 #define FV_Elems_master(x) 0

@@ -157,12 +157,22 @@ ENDIF()
 # =========================================================================
 # FV subcell shock capturing
 # =========================================================================
-OPTION(FLEXI_FV "Enable Finite Volume subcell shock capturing" OFF)
+SET(FLEXI_FV "OFF" CACHE STRING "Enable Finite Volume subcell shock capturing")
+SET_PROPERTY(CACHE FLEXI_FV PROPERTY STRINGS OFF SWITCH BLEND)
+
 CMAKE_DEPENDENT_OPTION(FLEXI_FV_RECONSTRUCTION "Enable 2nd order reconstruction for FV" ON
-                                               "FLEXI_FV" OFF)
-IF(FLEXI_FV)
-  ADD_DEFINITIONS(-DFV_ENABLED=1)
-  IF (FLEXI_FV_RECONSTRUCTION)
+	                                             "FLEXI_FV" ON) # Everyhting except "OFF" is logically "ON"
+
+IF(NOT (FLEXI_FV STREQUAL "OFF"))
+  IF(    FLEXI_FV STREQUAL "SWITCH")
+    ADD_DEFINITIONS(-DFV_ENABLED=1)
+  ELSEIF(FLEXI_FV STREQUAL "BLEND")
+    ADD_DEFINITIONS(-DFV_ENABLED=2)
+  ELSE()
+    MESSAGE(SEND_ERROR "No such FV shock capturing known.")
+  ENDIF()
+
+	IF (FLEXI_FV_RECONSTRUCTION)
     ADD_DEFINITIONS(-DFV_RECONSTRUCT=1)
   ELSE()
     ADD_DEFINITIONS(-DFV_RECONSTRUCT=0)
