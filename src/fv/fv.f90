@@ -78,6 +78,7 @@ CONTAINS
 SUBROUTINE DefineParametersFV()
 ! MODULES
 USE MOD_Globals
+USE MOD_FV_Basis    ,ONLY: DefineParametersFV_Basis
 USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
 #if FV_RECONSTRUCT
 USE MOD_FV_Limiter  ,ONLY: DefineParametersFV_Limiter
@@ -85,6 +86,7 @@ USE MOD_FV_Limiter  ,ONLY: DefineParametersFV_Limiter
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
+CALL DefineParametersFV_Basis()
 CALL prms%SetSection('FV')
 CALL prms%CreateRealOption(   'FV_IndUpperThreshold' ,"Upper threshold: Element is switched from DG to FV if indicator \n"//&
                                                       "rises above this value" )
@@ -243,6 +245,18 @@ gradUzeta_central=0.
 ! Options for initial solution
 FV_IniSharp       = GETLOGICAL("FV_IniSharp",'.FALSE.')
 IF (.NOT.FV_IniSharp) FV_IniSupersample = GETLOGICAL("FV_IniSupersample",'.TRUE.')
+
+! Initialize FV Blending
+#if FV_BLENDING
+#if EQNSYSNR != 2 /* NOT NAVIER-STOKES */
+CALL Abort(__STAMP__, &
+    "FV blending only works with Navier-Stokes equations.")
+#endif /* EQNSYSNR != 2 */
+! Blending
+alpha_min = GETREAL('alpha_min')
+ALLOCATE(alphaFV(1:nElems))
+CALL AddToElemData(ElementOut,'alphaFV',alphaFV)
+#endif
 
 FVInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT FV DONE!'
@@ -450,6 +464,41 @@ END IF
 END SUBROUTINE FV_InterpolateDG2FV_Face
 
 
+#if FV_Blending
+!==================================================================================================================================
+!> Print information on the amount of FV blending
+!==================================================================================================================================
+SUBROUTINE FV_Info(iter)
+! MODULES
+USE MOD_Globals
+USE MOD_FV_Vars      ,ONLY: alphaFV
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER(KIND=8),INTENT(IN) :: iter !< number of iterations
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL              :: alphaFV_range(3)
+!==================================================================================================================================
+alphaFV_range(1) = MINVAL(alphaFV)
+alphaFV_range(2) = MAXVAL(alphaFV)
+
+#if USE_MPI
+IF(MPIRoot)THEN
+  CALL MPI_REDUCE(MPI_IN_PLACE    ,alphaFV_range(1),1,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE    ,alphaFV_range(2),1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
+ELSE
+  CALL MPI_REDUCE(alphaFV_range(1),0               ,1,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(alphaFV_range(2),0               ,1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
+END IF
+#endif /*USE_MPI*/
+
+SWRITE(UNIT_stdOut,'(A,F8.3,A,F5.3)') ' alphaFV    : ',alphaFV_range(1),' - ',alphaFV_range(2)
+END SUBROUTINE FV_Info
+
+#else /* FV_Blending*/
+
 !==================================================================================================================================
 !> Print information on the amount of FV subcells
 !==================================================================================================================================
@@ -478,6 +527,7 @@ SWRITE(UNIT_stdOut,'(A,F8.3,A)')' FV amount %: ', REAL(totalFV_nElems) / REAL(nG
 totalFV_nElems = 0
 END SUBROUTINE FV_Info
 
+#endif /*FV_Blending*/
 
 !==================================================================================================================================
 !> Initialize all FV elements and overwrite data of DG FillIni. Each subcell is supersampled with PP_N points in each space
@@ -492,7 +542,7 @@ USE MOD_ChangeBasisByDim  ,ONLY: ChangeBasisVolume
 USE MOD_DG_Vars           ,ONLY: U
 USE MOD_Equation_Vars     ,ONLY: IniExactFunc
 USE MOD_Exactfunc         ,ONLY: ExactFunc
-USE MOD_FV_Vars           ,ONLY: FV_Elems,FV_Vdm,FV_IniSharp,FV_IniSupersample
+USE MOD_FV_Vars           ,ONLY: FV_Elems,FV_Vdm,FV_CellType,FV_IniSharp,FV_IniSupersample
 USE MOD_FV_Basis          ,ONLY: FV_Build_X_w_BdryX
 USE MOD_Interpolation     ,ONLY: GetNodesAndWeights
 USE MOD_Interpolation_Vars,ONLY: NodeType,NodeTypeVISUInner
@@ -504,7 +554,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                :: i,iElem, j,k,ii,jj,kk,iVar
-REAL                   :: FV_w,FV_BdryX(0:PP_N+1)
+REAL                   :: FV_w(0:PP_N),FV_BdryX(0:PP_N+1)
 REAL,DIMENSION(0:PP_N) :: FV_X,xGP,wGP,wBary,SubxGP
 REAL                   :: VDM(0:PP_N,0:PP_N,0:PP_N)
 REAL,ALLOCATABLE       :: xx(:,:,:,:)
@@ -523,11 +573,11 @@ IF (.NOT.FV_IniSharp) THEN
   IF (FV_IniSupersample) THEN
 
     CALL GetNodesAndWeights(PP_N,NodeType,xGP,wGP,wBary)
-    CALL FV_Build_X_w_BdryX(PP_N,FV_X,FV_w,FV_BdryX)
+    CALL FV_Build_X_w_BdryX(PP_N,FV_X,FV_w,FV_BdryX,FV_CellType)
     DO i=0,PP_N
       ! compute equidistant supersampling points inside FV sub-cell
       DO j=0,PP_N
-        SubxGP(j) = FV_BdryX(i) + (j+0.5)/(PP_N+1)*FV_w
+        SubxGP(j) = FV_BdryX(i) + (j+0.5)/(PP_N+1)*FV_w(i)
       END DO
       ! build Vandermonde for mapping the whole interval [-1,1] to the i-th FV subcell
       CALL InitializeVandermonde(PP_N,PP_N,wBary,xGP,SubxGP,VDM(:,:,i))
@@ -639,6 +689,9 @@ SDEALLOCATE(gradUxi_central)
 SDEALLOCATE(gradUeta_central)
 SDEALLOCATE(gradUzeta_central)
 #endif
+#endif
+#if FV_BLENDING
+SDEALLOCATE(alphaFV)
 #endif
 
 FVInitIsDone=.FALSE.
