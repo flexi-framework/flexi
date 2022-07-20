@@ -475,6 +475,7 @@ USE MOD_TimeDisc_Vars       ,ONLY:DFLScale,DFLScale_Readin,DFLScaleAlpha,Relativ
 #endif /*PARABOLIC*/
 #if FV_ENABLED
 USE MOD_TimeDisc_Vars       ,ONLY:CFLScaleFV
+USE MOD_FV_Vars             ,ONLY:FV_w
 #endif /*FV*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -495,7 +496,7 @@ INTEGER            :: dummy
 alpha       = CFLScaleAlpha(MIN(15,Nin_CFL))
 CFLScale(0) = CFLScale(0)*alpha
 #if FV_ENABLED
-CFLScale(1) = CFLScale(1)*CFLScaleFV/(PP_N+1.) ! equidistant distribution
+CFLScale(1) = CFLScale(1)*CFLScaleFV*MINVAL(FV_w)/2. ! Scale with smallest FV subcell
 #endif
 IF((Nin_CFL.GT.15).OR.(CFLScale(0).GT.alpha))THEN
   SWRITE(UNIT_stdOut,'(132("!"))')
@@ -515,7 +516,7 @@ CFLScale_Readin = CFLScale
 alpha       = DFLScaleAlpha(MIN(10,Nin_DFL))*RelativeDFL
 DFLScale(0) = DFLScale(0)*alpha
 #if FV_ENABLED
-DFLScale(1) = DFLScale(1)*DFLScaleAlpha(1)*RelativeDFL/(PP_N+1.)**2
+DFLScale(1) = DFLScale(1)*DFLScaleAlpha(1)*RelativeDFL*(MINVAL(FV_w)/2.)**2 ! Scale with smallest FV subcell
 #endif
 IF((Nin_DFL.GT.10).OR.(DFLScale(0).GT.alpha))THEN
   SWRITE(UNIT_stdOut,'(132("!"))')

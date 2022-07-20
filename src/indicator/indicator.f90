@@ -34,7 +34,6 @@ PRIVATE
 INTEGER,PARAMETER :: INDTYPE_DG             = 0
 INTEGER,PARAMETER :: INDTYPE_FV             = 1
 INTEGER,PARAMETER :: INDTYPE_PERSSON        = 2
-INTEGER,PARAMETER :: INDTYPE_PERSSON_BLEND  = 21
 INTEGER,PARAMETER :: INDTYPE_JAMESON        = 8
 INTEGER,PARAMETER :: INDTYPE_DUCROS         = 9
 INTEGER,PARAMETER :: INDTYPE_DUCROSTIMESJST = 10
@@ -140,7 +139,7 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT INDICATORS...'
 
 ! Read in  parameters
 #if FV_ENABLED == 2
-IndicatorType = INDTYPE_PERSSON_BLEND
+IndicatorType = INDTYPE_PERSSON
 #else
 IndicatorType = GETINTFROMSTR('IndicatorType')
 #endif
@@ -173,17 +172,12 @@ CASE(INDTYPE_PERSSON)
   ! number of modes to be checked by Persson indicator
   nModes = GETINT('nModes','2')
   nModes = MAX(1,nModes+PP_N-MIN(NUnder,NFilter))-1 ! increase by number of empty modes in case of overintegration
-
 #if FV_ENABLED == 2
-CASE(INDTYPE_PERSSON_BLEND)
+  T_FV = 0.5*10**(-1.8*(PP_N+1)**.25)
 #if EQNSYSNR != 2 /* NOT NAVIER-STOKES */
   CALL Abort(__STAMP__, &
-      "Blending Persson indicator only works with Navier-Stokes equations.")
+      "Persson indicator for FV-Blending only works with Navier-Stokes equations.")
 #endif /* EQNSYSNR != 2 */
-  ! number of modes to be checked by Persson indicator
-  nModes = GETINT('nModes','2')
-  nModes = MAX(1,nModes+PP_N-MIN(NUnder,NFilter))-1 ! increase by number of empty modes in case of overintegration
-  T_FV = 0.5*10**(-1.8*(PP_N+1)**.25)
 #endif /*FV_ENABLED*/
 CASE(-1) ! legacy
   IndicatorType=INDTYPE_DG
@@ -252,6 +246,13 @@ CASE(INDTYPE_DG) ! no indicator, just a high value to trigger filtering
 CASE(INDTYPE_FV) ! indicator everywhere
   IndValue = 100
 CASE(INDTYPE_PERSSON) ! Modal Persson indicator
+#if FV_ENABLED == 2
+  DO iElem=1,nElems
+    IndValue(iElem) = IndPerssonBlend(U(:,:,:,:,iElem))
+    alphaFV(iElem)  = 1. / (1. + EXP(-s_FV/T_FV * (IndValue(iElem) - T_FV)))
+    IF (alphaFV(iElem) .LT. alpha_min) alphaFV(iElem) = 0.
+  END DO ! iElem
+#else
   DO iElem=1,nElems
     IF (FV_Elems(iElem).EQ.0) THEN ! DG Element
       U_P(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) => U(:,:,:,:,iElem)
@@ -261,6 +262,7 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
     END IF
     IndValue(iElem) = IndPersson(U_P)
   END DO ! iElem
+#endif /*FV_ENABLED==2*/
 #if EQNSYSNR == 2 /* NAVIER-STOKES */
 CASE(INDTYPE_JAMESON)
   IndValue = JamesonIndicator(U)
@@ -270,14 +272,6 @@ CASE(INDTYPE_DUCROS)
 CASE(INDTYPE_DUCROSTIMESJST)
   IndValue = JamesonIndicator(U) * DucrosIndicator(gradUx,gradUy,gradUz)
 #endif /*PARABOLIC*/
-#if FV_ENABLED == 2
-CASE(INDTYPE_PERSSON_BLEND)
-  DO iElem=1,nElems
-    IndValue(iElem) = IndPerssonBlend(U(:,:,:,:,iElem))
-    alphaFV(iElem)  = 1. / (1. + EXP(-s_FV/T_FV * (IndValue(iElem) - T_FV)))
-    IF (alphaFV(iElem) .LT. alpha_min) alphaFV(iElem) = 0.
-  END DO
-#endif /*FV_ENABLED*/
 #endif /* NAVIER-STOKES */
 CASE(INDTYPE_HALFHALF)  ! half/half
   DO iElem=1,nElems
