@@ -46,7 +46,7 @@ INTEGER                :: LimiterType            !< Readin variable for type of 
 REAL                   :: FV_sweby_beta          !< parameter for Sweby limiter
 
 ! FV/DG Switching
-! TODO: The following variables are only need for Switch-Type FV. Use correct CMake flags
+! TODO: The following variables are only need for Switch-Type FV. Could be hidden behind correct preprocessor flags in the future
 INTEGER,ALLOCATABLE    :: FV_Elems(:)            !< indicates if DG element (0) or FV subcells (1) for each element
 INTEGER,ALLOCATABLE    :: FV_Elems_master(:)     !< prolongate FV_Elems to faces
 INTEGER,ALLOCATABLE    :: FV_Elems_slave(:)
