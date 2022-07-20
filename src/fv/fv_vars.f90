@@ -70,7 +70,6 @@ REAL,ALLOCATABLE       :: FV_X(:)                !< positions of 'midpoints' of 
 REAL,ALLOCATABLE       :: FV_BdryX(:)            !< positions of boundaries of FV subcells in [-1,1]
 REAL,ALLOCATABLE       :: FV_w(:)                !< weights of FV subcells (lenght of subcell)
 REAL,ALLOCATABLE       :: FV_w_inv(:)            !< 1/FV_w
-REAL                   :: FV_w_inv_equi          !< 1/FV_w on equidistant FV subcells, where the width is constant
 REAL,ALLOCATABLE       :: FV_Vdm(:,:)            !< Vandermonde to switch from DG to FV
 REAL,ALLOCATABLE       :: FV_sVdm(:,:)           !< Vandermonde to switch from FV to DG
 INTEGER                :: FV_CellType            !< Type of FV Cell: -1 = SAME              ,0 = EQUIDISTANT

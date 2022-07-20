@@ -506,8 +506,8 @@ DO iElem=1,nElems
     FV_Metrics_gTilde_sJ(d,:,:,:,iElem)=FV_Metrics_gTilde_sJ(d,:,:,:,iElem)*sJ(:,:,:,iElem,1)
 #if (PP_dim == 3)
     DO k=0,PP_N
-    FV_Metrics_hTilde_sJ(d,:,:,k,iElem)=FV_w_inv(k)*Metrics_hTilde(d,:,:,k,iElem,1)*&
-        (FV_dx_ZETA_L(:,:,k,iElem)+FV_dx_ZETA_R(:,:,k,iElem))
+      FV_Metrics_hTilde_sJ(d,:,:,k,iElem)=FV_w_inv(k)*Metrics_hTilde(d,:,:,k,iElem,1)*&
+          (FV_dx_ZETA_L(:,:,k,iElem)+FV_dx_ZETA_R(:,:,k,iElem))
     END DO ! k=0,PP_N
     FV_Metrics_hTilde_sJ(d,:,:,:,iElem)=FV_Metrics_hTilde_sJ(d,:,:,:,iElem)*sJ(:,:,:,iElem,1)
 #endif

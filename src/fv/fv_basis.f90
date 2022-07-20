@@ -154,8 +154,6 @@ CALL FV_GetVandermonde(PP_N,NodeType,FV_Vdm,FV_sVdm)
 
 ! calculate inverse FV-widths (little speedup)
 FV_w_inv      = 1.0 / FV_w
-FV_w_inv_equi = 0.5*(PP_N+1) ! On equidistant points the width is constant and thus a scalar
-
 
 FVInitBasisIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT FV DONE!'

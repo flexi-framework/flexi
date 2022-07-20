@@ -139,7 +139,12 @@ SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT INDICATORS...'
 
 ! Read in  parameters
+#if FV_ENABLED == 2
+IndicatorType = INDTYPE_PERSSON_BLEND
+#else
 IndicatorType = GETINTFROMSTR('IndicatorType')
+#endif
+
 SELECT CASE(IndicatorType)
 CASE(INDTYPE_JAMESON)
 #if EQNSYSNR != 2 /* NOT NAVIER-STOKES */

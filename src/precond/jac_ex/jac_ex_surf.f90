@@ -943,7 +943,7 @@ SUBROUTINE Assemble_JacSurfInt_FV(iElem,Df_DUInner,                             
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Implicit_Vars         ,ONLY: nDOFVarElem
-USE MOD_FV_Vars               ,ONLY: FV_w_inv_equi
+USE MOD_FV_Vars               ,ONLY: FV_w_inv
 #if PARABOLIC
 USE MOD_Jac_Ex_Reconstruction ,ONLY: JacFVGradients_Vol,JacFVGradients_nb
 USE MOD_Jacobian              ,ONLY: dPrimTempdCons
@@ -1089,34 +1089,34 @@ DO oo = 0,PP_NZ
     s = vn2*oo + vn1*nn
     ! direct dependency of prolongated value (of current element, minus) to volume dofs next to interface
     BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                      + FV_w_inv_equi*MATMUL(Df_DUinner(:,:,nn,oo,1,XI_MINUS),dUdUvol_minus(:,:,0,2))
+                                      + FV_w_inv(0)*MATMUL(Df_DUinner(:,:,nn,oo,1,XI_MINUS),dUdUvol_minus(:,:,0,2))
     ! dependency of prolongated value (of neighbouring element, plus) to volume dofs next to interface
     BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                      + FV_w_inv_equi*MATMUL(Df_DUinner(:,:,nn,oo,2,XI_MINUS),dUdUvol_minus(:,:,-1,3))
+                                      + FV_w_inv(0)*MATMUL(Df_DUinner(:,:,nn,oo,2,XI_MINUS),dUdUvol_minus(:,:,-1,3))
     ! dependency of prolongated value (of current element, minus) to volume dofs neighbouring the dofs next to interface
     r = vn2*oo + vn1*nn + PP_nVar
     BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) &
-                                      + FV_w_inv_equi*MATMUL(Df_DUinner(:,:,nn,oo,1,XI_MINUS),dUdUvol_minus(:,:,0,3))
+                                      + FV_w_inv(0)*MATMUL(Df_DUinner(:,:,nn,oo,1,XI_MINUS),dUdUvol_minus(:,:,0,3))
     !-------------------Derivatives at PLUS side with respect to volume dofs-----------------------------------------------------
     s = vn2*oo + vn1*nn + PP_nVar*PP_N
     ! direct dependency of prolongated value (of current element, plus) to volume dofs next to interface
     BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                      + FV_w_inv_equi*MATMUL(Df_DUinner(:,:,nn,oo,1,XI_PLUS),dUdUvol_plus(:,:,PP_N,2))
+                                      + FV_w_inv(PP_N)*MATMUL(Df_DUinner(:,:,nn,oo,1,XI_PLUS),dUdUvol_plus(:,:,PP_N,2))
     ! dependency of prolongated value (of neighbouring element, minus) to volume dofs next to interface
     BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                      + FV_w_inv_equi*MATMUL(Df_DUinner(:,:,nn,oo,2,XI_PLUS),dUdUvol_plus(:,:,PP_N+1,1))
+                                      + FV_w_inv(PP_N)*MATMUL(Df_DUinner(:,:,nn,oo,2,XI_PLUS),dUdUvol_plus(:,:,PP_N+1,1))
     ! dependency of prolongated value (of current element, plus) to volume dofs neighbouring the dofs next to interface
     r = vn2*oo + vn1*nn + PP_nVar*(PP_N-1)
     BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) &
-                                      + FV_w_inv_equi*MATMUL(Df_DUinner(:,:,nn,oo,1,XI_PLUS),dUdUvol_plus(:,:,PP_N,1))
+                                      + FV_w_inv(PP_N)*MATMUL(Df_DUinner(:,:,nn,oo,1,XI_PLUS),dUdUvol_plus(:,:,PP_N,1))
 #else
     !--------------------only direct dependencies of prolongated (copied) values to volume dofs next to interface----------------
     s = vn2*oo + vn1*nn
     BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                      + FV_w_inv_equi*Df_DUinner(:,:,nn,oo,1,XI_MINUS)
+                                      + FV_w_inv(0)*Df_DUinner(:,:,nn,oo,1,XI_MINUS)
     s = vn2*oo + vn1*nn + PP_nVar*PP_N
     BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                      + FV_w_inv_equi*Df_DUinner(:,:,nn,oo,1,XI_PLUS)
+                                      + FV_w_inv(PP_N)*Df_DUinner(:,:,nn,oo,1,XI_PLUS)
 #endif
   END DO !nn
 END DO !oo
@@ -1178,27 +1178,27 @@ DO oo = 0,PP_NZ
                                            Mortar_minus,Mortar_plus,dUdUvol_plus(:,:,:,:),dUdUvol_minus(:,:,:,:))
     s = vn2*oo + PP_nVar*mm
     BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                      + FV_w_inv_equi*MATMUL(Df_DUinner(:,:,mm,oo,1,ETA_MINUS),dUdUvol_minus(:,:,0,2))
+                                      + FV_w_inv(0)*MATMUL(Df_DUinner(:,:,mm,oo,1,ETA_MINUS),dUdUvol_minus(:,:,0,2))
     BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                      + FV_w_inv_equi*MATMUL(Df_DUinner(:,:,mm,oo,2,ETA_MINUS),dUdUvol_minus(:,:,-1,3))
+                                      + FV_w_inv(0)*MATMUL(Df_DUinner(:,:,mm,oo,2,ETA_MINUS),dUdUvol_minus(:,:,-1,3))
     r = vn2*oo + PP_nVar*mm + vn1*1
     BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) &
-                                      + FV_w_inv_equi*MATMUL(Df_DUinner(:,:,mm,oo,1,ETA_MINUS),dUdUvol_minus(:,:,0,3))
-    s = vn2*oo + PP_nVar*mm + vn1*PP_N 
+                                      + FV_w_inv(0)*MATMUL(Df_DUinner(:,:,mm,oo,1,ETA_MINUS),dUdUvol_minus(:,:,0,3))
+    s = vn2*oo + PP_nVar*mm + vn1*PP_N
     BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                      + FV_w_inv_equi*MATMUL(Df_DUinner(:,:,mm,oo,1,ETA_PLUS),dUdUvol_plus(:,:,PP_N,2))
+                                      + FV_w_inv(PP_N)*MATMUL(Df_DUinner(:,:,mm,oo,1,ETA_PLUS),dUdUvol_plus(:,:,PP_N,2))
     BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                      + FV_w_inv_equi*MATMUL(Df_DUinner(:,:,mm,oo,2,ETA_PLUS),dUdUvol_plus(:,:,PP_N+1,1))
-    r = vn2*oo + PP_nVar*mm + vn1*(PP_N-1) 
+                                      + FV_w_inv(PP_N)*MATMUL(Df_DUinner(:,:,mm,oo,2,ETA_PLUS),dUdUvol_plus(:,:,PP_N+1,1))
+    r = vn2*oo + PP_nVar*mm + vn1*(PP_N-1)
     BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) &
-                                      + FV_w_inv_equi*MATMUL(Df_DUinner(:,:,mm,oo,1,ETA_PLUS),dUdUvol_plus(:,:,PP_N,1))
+                                      + FV_w_inv(PP_N)*MATMUL(Df_DUinner(:,:,mm,oo,1,ETA_PLUS),dUdUvol_plus(:,:,PP_N,1))
 #else
     s = vn2*oo + PP_nVar*mm
     BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                      + FV_w_inv_equi*Df_DUinner(:,:,mm,oo,1,ETA_MINUS)
-    s = vn2*oo + PP_nVar*mm + vn1*PP_N 
+                                      + FV_w_inv(0)*Df_DUinner(:,:,mm,oo,1,ETA_MINUS)
+    s = vn2*oo + PP_nVar*mm + vn1*PP_N
     BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                      + FV_w_inv_equi*Df_DUinner(:,:,mm,oo,1,ETA_PLUS)
+                                      + FV_w_inv(PP_N)*Df_DUinner(:,:,mm,oo,1,ETA_PLUS)
 #endif
   END DO
 END DO
@@ -1261,27 +1261,27 @@ DO nn = 0,PP_N
                                            Mortar_minus,Mortar_plus,dUdUvol_plus(:,:,:,:),dUdUvol_minus(:,:,:,:))
     s = vn1*nn + PP_nVar*mm
     BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                      + FV_w_inv_equi*MATMUL(Df_DUinner(:,:,mm,nn,1,ZETA_MINUS),dUdUvol_minus(:,:,0,2))
+                                      + FV_w_inv(0)*MATMUL(Df_DUinner(:,:,mm,nn,1,ZETA_MINUS),dUdUvol_minus(:,:,0,2))
     BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                      + FV_w_inv_equi*MATMUL(Df_DUinner(:,:,mm,nn,2,ZETA_MINUS),dUdUvol_minus(:,:,-1,3))
+                                      + FV_w_inv(0)*MATMUL(Df_DUinner(:,:,mm,nn,2,ZETA_MINUS),dUdUvol_minus(:,:,-1,3))
     r = vn1*nn + PP_nVar*mm + vn2*1
     BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) &
-                                      + FV_w_inv_equi*MATMUL(Df_DUinner(:,:,mm,nn,1,ZETA_MINUS),dUdUvol_minus(:,:,0,3))
+                                      + FV_w_inv(0)*MATMUL(Df_DUinner(:,:,mm,nn,1,ZETA_MINUS),dUdUvol_minus(:,:,0,3))
     s = vn1*nn + PP_nVar*mm + vn2*PP_NZ
     BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                      + FV_w_inv_equi*MATMUL(Df_DUinner(:,:,mm,nn,1,ZETA_PLUS),dUdUvol_plus(:,:,PP_N,2))
+                                      + FV_w_inv(PP_N)*MATMUL(Df_DUinner(:,:,mm,nn,1,ZETA_PLUS),dUdUvol_plus(:,:,PP_N,2))
     BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                      + FV_w_inv_equi*MATMUL(Df_DUinner(:,:,mm,nn,2,ZETA_PLUS),dUdUvol_plus(:,:,PP_N+1,1))
+                                      + FV_w_inv(PP_N)*MATMUL(Df_DUinner(:,:,mm,nn,2,ZETA_PLUS),dUdUvol_plus(:,:,PP_N+1,1))
     r = vn1*nn + PP_nVar*mm + vn2*(PP_NZ-1)
     BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) &
-                                      + FV_w_inv_equi*MATMUL(Df_DUinner(:,:,mm,nn,1,ZETA_PLUS),dUdUvol_plus(:,:,PP_N,1))
+                                      + FV_w_inv(PP_N)*MATMUL(Df_DUinner(:,:,mm,nn,1,ZETA_PLUS),dUdUvol_plus(:,:,PP_N,1))
 #else
     s = vn1*nn + PP_nVar*mm
     BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                      + FV_w_inv_equi*Df_DUinner(:,:,mm,nn,1,ZETA_MINUS)
+                                      + FV_w_inv(0)*Df_DUinner(:,:,mm,nn,1,ZETA_MINUS)
     s = vn1*nn + PP_nVar*mm + vn2*PP_NZ
     BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                      + FV_w_inv_equi*Df_DUinner(:,:,mm,nn,1,ZETA_PLUS)
+                                      + FV_w_inv(PP_N)*Df_DUinner(:,:,mm,nn,1,ZETA_PLUS)
 #endif
   END DO
 END DO
@@ -1334,7 +1334,7 @@ IF (.NOT.HyperbolicPrecond) THEN
 #endif
                               )
       df_dQ_minus(:,:) = MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,0,p,q))
-      BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_w_inv_equi*df_dQ_minus
+      BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_w_inv(0)*df_dQ_minus
 
       s = vn1*p + vn2*q + PP_nVar*1 ! index of point right of flux
       CALL dPrimTempdCons(UPrim(:,1,p,q,iElem),PrimConsJac(:,:,1,p,q))
@@ -1345,7 +1345,7 @@ IF (.NOT.HyperbolicPrecond) THEN
 #endif
                               )
       df_dQ_minus(:,:) = MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,1,p,q))
-      BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_w_inv_equi*df_dQ_minus
+      BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_w_inv(1)*df_dQ_minus
 
       IF(NoFillIn.EQV..FALSE.)THEN 
         ! dependency on gradient in eta-direction
@@ -1381,7 +1381,7 @@ IF (.NOT.HyperbolicPrecond) THEN
 #endif
                              )
       df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,PP_N,p,q))
-      BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_w_inv_equi*df_dQ_plus
+      BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_w_inv(PP_N)*df_dQ_plus
 
       s = vn1*p + vn2*q + PP_nVar*(PP_N-1) ! index of point left of flux
       CALL dPrimTempdCons(UPrim(:,PP_N-1,p,q,iElem),PrimConsJac(:,:,PP_N-1,p,q))
@@ -1392,7 +1392,7 @@ IF (.NOT.HyperbolicPrecond) THEN
 #endif
                              )
       df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,PP_N-1,p,q))
-      BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_w_inv_equi*df_dQ_plus
+      BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_w_inv(PP_N-1)*df_dQ_plus
 
       IF(NoFillIn.EQV..FALSE.)THEN
         ! dependency on gradient in eta-direction
@@ -1432,7 +1432,7 @@ IF (.NOT.HyperbolicPrecond) THEN
 #endif
                               )
       df_dQ_minus(:,:) = MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,p,0,q))
-      BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_w_inv_equi*df_dQ_minus
+      BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_w_inv(0)*df_dQ_minus
 
       s = vn1*1 + vn2*q + PP_nVar*p ! index of point right of flux
       CALL dPrimTempdCons(UPrim(:,p,1,q,iElem),PrimConsJac(:,:,p,1,q))
@@ -1443,7 +1443,7 @@ IF (.NOT.HyperbolicPrecond) THEN
 #endif
                               )
       df_dQ_minus(:,:) = MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,p,1,q))
-      BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_w_inv_equi*df_dQ_minus
+      BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_w_inv(1)*df_dQ_minus
 
       IF(NoFillIn.EQV..FALSE.)THEN
         ! dependency on gradient in xi-direction
@@ -1479,7 +1479,7 @@ IF (.NOT.HyperbolicPrecond) THEN
 #endif
                              )
       df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,p,PP_N,q))
-      BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_w_inv_equi*df_dQ_plus
+      BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_w_inv(PP_N)*df_dQ_plus
 
       s = vn1*(PP_N-1) + vn2*q + PP_nVar*p ! index of point left of flux
       CALL dPrimTempdCons(UPrim(:,p,PP_N-1,q,iElem),PrimConsJac(:,:,p,PP_N-1,q))
@@ -1490,7 +1490,7 @@ IF (.NOT.HyperbolicPrecond) THEN
 #endif
                              )
       df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,p,PP_N-1,q))
-      BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_w_inv_equi*df_dQ_plus
+      BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_w_inv(PP_N-1)*df_dQ_plus
 
       IF(NoFillIn.EQV..FALSE.)THEN
         ! dependency on gradient in xi-direction
@@ -1529,7 +1529,7 @@ IF (.NOT.HyperbolicPrecond) THEN
                               +Df_dQzOuter(:,:,p,q,ZETA_MINUS) * dQzOuter_dUvol(p,q,ZETA_MINUS,0) &
                               )
       df_dQ_minus(:,:) = MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,p,q,0))
-      BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_w_inv_equi*df_dQ_minus
+      BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_w_inv(0)*df_dQ_minus
 
       s = vn2*1 + vn1*q + PP_nVar*p ! index of point right of flux
       CALL dPrimTempdCons(UPrim(:,p,q,1,iElem),PrimConsJac(:,:,p,q,1))
@@ -1538,7 +1538,7 @@ IF (.NOT.HyperbolicPrecond) THEN
                               +Df_dQzInner(:,:,p,q,ZETA_MINUS) * dQzVol_dU(p,q,0,1,3) &
                               )
       df_dQ_minus(:,:) = MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,p,q,1))
-      BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_w_inv_equi*df_dQ_minus
+      BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_w_inv(1)*df_dQ_minus
 
       IF(NoFillIn.EQV..FALSE.)THEN
         ! dependency on gradient in xi-direction
@@ -1568,7 +1568,7 @@ IF (.NOT.HyperbolicPrecond) THEN
                              -Df_dQzOuter(:,:,p,q,ZETA_PLUS) * dQzOuter_dUvol(p,q,ZETA_PLUS,PP_N) &
                              )
       df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,p,q,PP_N))
-      BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_w_inv_equi*df_dQ_plus
+      BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_w_inv(PP_N)*df_dQ_plus
 
       s = vn2*(PP_N-1) + vn1*q + PP_nVar*p ! index of point left of flux
       CALL dPrimTempdCons(UPrim(:,p,q,PP_N-1,iElem),PrimConsJac(:,:,p,q,PP_N-1))
@@ -1577,7 +1577,7 @@ IF (.NOT.HyperbolicPrecond) THEN
                              +Df_dQzInner(:,:,p,q,ZETA_PLUS) * dQzVol_dU(p,q,PP_N,PP_N-1,3) &
                              )
       df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,p,q,PP_N-1))
-      BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_w_inv_equi*df_dQ_plus
+      BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_w_inv(PP_N-1)*df_dQ_plus
 
       IF(NoFillIn.EQV..FALSE.)THEN
         ! dependency on gradient in xi-direction
@@ -1638,7 +1638,7 @@ USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Implicit_Vars ,ONLY: nDOFVarElem
 USE MOD_Jacobian      ,ONLY: dPrimTempdCons
-USE MOD_FV_Vars       ,ONLY: FV_w_inv_equi
+USE MOD_FV_Vars       ,ONLY: FV_w_inv
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1679,7 +1679,7 @@ DO ii=i-1,i+1,2
 #endif
                   )
   Jac = MATMUL(JacTilde(:,:),PrimConsJac)
-  BJ(r+1:r+PP_nVar,ss(j)+1:ss(j)+PP_nVar) = BJ(r+1:r+PP_nVar,ss(j)+1:ss(j)+PP_nVar) + FV_w_inv_equi*Jac
+  BJ(r+1:r+PP_nVar,ss(j)+1:ss(j)+PP_nVar) = BJ(r+1:r+PP_nVar,ss(j)+1:ss(j)+PP_nVar) + FV_w_inv(ii)*Jac
   j = j+1
 END DO
 END SUBROUTINE Assemble_FVSurfIntGradJac

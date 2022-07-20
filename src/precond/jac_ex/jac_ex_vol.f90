@@ -622,7 +622,7 @@ USE MOD_FV_Vars               ,ONLY: FV_SurfElemZeta_sw
 #endif
 USE MOD_FV_Vars               ,ONLY: FV_NormVecXi,FV_TangVec1Xi,FV_TangVec2Xi
 USE MOD_FV_Vars               ,ONLY: FV_NormVecEta,FV_TangVec1Eta,FV_TangVec2Eta
-USE MOD_FV_Vars               ,ONLY: FV_SurfElemXi_sw,FV_SurfElemEta_sw
+USE MOD_FV_Vars               ,ONLY: FV_SurfElemXi_sw,FV_SurfElemEta_sw,FV_w_inv
 USE MOD_Implicit_Vars         ,ONLY: rEps0,nDOFVarElem
 USE MOD_Riemann               ,ONLY: Riemann_Point
 USE MOD_EOS                   ,ONLY: ConsToPrim,PrimToCons
@@ -787,10 +787,10 @@ DO p=0,PP_N
         ! flux has positive sign for left cell (i-1) and negative sign for right cell (i)
         DO iVar=1,PP_nVar
           ! Take surface element into account when computing the finite difference approximation
-          dFdU_plus( iVar,jVar,i-1,p,q) =  FV_SurfElemXi_sw(p,q,i,iElem)*(F_Tilde(iVar,i-1,p,q) - F(iVar,i-1,p,q))*sreps0_L
-          dFdU_plus( iVar,jVar,i  ,p,q) = -FV_SurfElemXi_sw(p,q,i,iElem)*(F_Tilde(iVar,i-1,p,q) - F(iVar,i-1,p,q))*sreps0_L
-          dFdU_minus(iVar,jVar,i-1,p,q) =  FV_SurfElemXi_sw(p,q,i,iElem)*(F_Tilde(iVar,i  ,p,q) - F(iVar,i-1,p,q))*sreps0_R
-          dFdU_minus(iVar,jVar,i  ,p,q) = -FV_SurfElemXi_sw(p,q,i,iElem)*(F_Tilde(iVar,i  ,p,q) - F(iVar,i-1,p,q))*sreps0_R
+          dFdU_plus( iVar,jVar,i-1,p,q) =  FV_SurfElemXi_sw(p,q,i,iElem)*FV_w_inv(i-1)*(F_Tilde(iVar,i-1,p,q) - F(iVar,i-1,p,q))*sreps0_L
+          dFdU_plus( iVar,jVar,i  ,p,q) = -FV_SurfElemXi_sw(p,q,i,iElem)*FV_w_inv(i)  *(F_Tilde(iVar,i-1,p,q) - F(iVar,i-1,p,q))*sreps0_L
+          dFdU_minus(iVar,jVar,i-1,p,q) =  FV_SurfElemXi_sw(p,q,i,iElem)*FV_w_inv(i-1)*(F_Tilde(iVar,i  ,p,q) - F(iVar,i-1,p,q))*sreps0_R
+          dFdU_minus(iVar,jVar,i  ,p,q) = -FV_SurfElemXi_sw(p,q,i,iElem)*FV_w_inv(i)  *(F_Tilde(iVar,i  ,p,q) - F(iVar,i-1,p,q))*sreps0_R
         END DO !iVar
         ! reset U_plus
         FV_U_plus_Tilde(jVar,i-1) = FV_U_Xiplus_loc(jVar,i-1)
@@ -863,10 +863,10 @@ DO p=0,PP_N
                               FV_NormVecXi(2,p,q,i,iElem)*gJac_visc(:,:,i  ,p,q) + &
                               FV_NormVecXi(3,p,q,i,iElem)*hJac_visc(:,:,i  ,p,q))
 
-        BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_SurfElemXi_sw(p,q,i,iElem) * Jac_Visc_plus
-        BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_SurfElemXi_sw(p,q,i,iElem) * Jac_Visc_minus
-        BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) - FV_SurfElemXi_sw(p,q,i,iElem) * Jac_Visc_minus
-        BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) - FV_SurfElemXi_sw(p,q,i,iElem) * Jac_Visc_plus
+        BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_SurfElemXi_sw(p,q,i,iElem) * FV_w_inv(i-1) * Jac_Visc_plus
+        BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_SurfElemXi_sw(p,q,i,iElem) * FV_w_inv(i)   * Jac_Visc_minus
+        BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) - FV_SurfElemXi_sw(p,q,i,iElem) * FV_w_inv(i)   * Jac_Visc_minus
+        BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) - FV_SurfElemXi_sw(p,q,i,iElem) * FV_w_inv(i-1) * Jac_Visc_plus
       END IF
 #endif /*PARABOLIC*/
     END DO !i
@@ -939,10 +939,10 @@ DO p=0,PP_N
                      FV_TangVec1Eta(      :,p,q  ,j,iElem),            &
                      FV_TangVec2Eta(      :,p,q  ,j,iElem),.FALSE.)
         DO iVar=1,PP_nVar
-          dFdU_plus( iVar,jVar,p,j-1,q) =  FV_SurfElemEta_sw(p,q,j,iElem)*(F_Tilde(iVar,p,j-1,q) - F(iVar,p,j-1,q))*sreps0_L
-          dFdU_plus( iVar,jVar,p,j  ,q) = -FV_SurfElemEta_sw(p,q,j,iElem)*(F_Tilde(iVar,p,j-1,q) - F(iVar,p,j-1,q))*sreps0_L
-          dFdU_minus(iVar,jVar,p,j-1,q) =  FV_SurfElemEta_sw(p,q,j,iElem)*(F_Tilde(iVar,p,j  ,q) - F(iVar,p,j-1,q))*sreps0_R
-          dFdU_minus(iVar,jVar,p,j  ,q) = -FV_SurfElemEta_sw(p,q,j,iElem)*(F_Tilde(iVar,p,j  ,q) - F(iVar,p,j-1,q))*sreps0_R
+          dFdU_plus( iVar,jVar,p,j-1,q) =  FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j-1)*(F_Tilde(iVar,p,j-1,q) - F(iVar,p,j-1,q))*sreps0_L
+          dFdU_plus( iVar,jVar,p,j  ,q) = -FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j)  *(F_Tilde(iVar,p,j-1,q) - F(iVar,p,j-1,q))*sreps0_L
+          dFdU_minus(iVar,jVar,p,j-1,q) =  FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j-1)*(F_Tilde(iVar,p,j  ,q) - F(iVar,p,j-1,q))*sreps0_R
+          dFdU_minus(iVar,jVar,p,j  ,q) = -FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j)  *(F_Tilde(iVar,p,j  ,q) - F(iVar,p,j-1,q))*sreps0_R
         END DO !iVar
         ! reset U_plus
         FV_U_plus_Tilde(jVar,j-1) = FV_U_Etaplus_loc(jVar,j-1)
@@ -1002,10 +1002,10 @@ DO p=0,PP_N
                               FV_NormVecEta(2,p,q,j,iElem)*gJac_visc(:,:,p,j  ,q) + &
                               FV_NormVecEta(3,p,q,j,iElem)*hJac_visc(:,:,p,j  ,q))
 
-        BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_SurfElemEta_sw(p,q,j,iElem) * Jac_Visc_plus
-        BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_SurfElemEta_sw(p,q,j,iElem) * Jac_Visc_minus
-        BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) - FV_SurfElemEta_sw(p,q,j,iElem) * Jac_Visc_minus
-        BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) - FV_SurfElemEta_sw(p,q,j,iElem) * Jac_Visc_plus
+        BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j-1) * Jac_Visc_plus
+        BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j)   * Jac_Visc_minus
+        BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) - FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j)   * Jac_Visc_minus
+        BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) - FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j-1) * Jac_Visc_plus
       END IF
 #endif /*PARABOLIC*/
     END DO !j
@@ -1080,10 +1080,10 @@ DO p=0,PP_N
                      FV_TangVec1Zeta(      :,p,q,k  ,iElem),            &
                      FV_TangVec2Zeta(      :,p,q,k  ,iElem),.FALSE.)
         DO iVar=1,PP_nVar
-          dFdU_plus( iVar,jVar,p,q,k-1) =  FV_SurfElemZeta_sw(p,q,k,iElem)*(F_Tilde(iVar,p,q,k-1) - F(iVar,p,q,k-1))*sreps0_L
-          dFdU_plus( iVar,jVar,p,q,k  ) = -FV_SurfElemZeta_sw(p,q,k,iElem)*(F_Tilde(iVar,p,q,k-1) - F(iVar,p,q,k-1))*sreps0_L
-          dFdU_minus(iVar,jVar,p,q,k-1) =  FV_SurfElemZeta_sw(p,q,k,iElem)*(F_Tilde(iVar,p,q,k  ) - F(iVar,p,q,k-1))*sreps0_R
-          dFdU_minus(iVar,jVar,p,q,k  ) = -FV_SurfElemZeta_sw(p,q,k,iElem)*(F_Tilde(iVar,p,q,k  ) - F(iVar,p,q,k-1))*sreps0_R
+          dFdU_plus( iVar,jVar,p,q,k-1) =  FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k-1)*(F_Tilde(iVar,p,q,k-1) - F(iVar,p,q,k-1))*sreps0_L
+          dFdU_plus( iVar,jVar,p,q,k  ) = -FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k)  *(F_Tilde(iVar,p,q,k-1) - F(iVar,p,q,k-1))*sreps0_L
+          dFdU_minus(iVar,jVar,p,q,k-1) =  FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k-1)*(F_Tilde(iVar,p,q,k  ) - F(iVar,p,q,k-1))*sreps0_R
+          dFdU_minus(iVar,jVar,p,q,k  ) = -FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k)  *(F_Tilde(iVar,p,q,k  ) - F(iVar,p,q,k-1))*sreps0_R
         END DO !iVar
         ! reset U_plus
         FV_U_plus_Tilde(jVar,k-1) = FV_U_Zetaplus_loc(jVar,k-1)
@@ -1143,10 +1143,10 @@ DO p=0,PP_N
                               FV_NormVecZeta(2,p,q,k,iElem)*gJac_visc(:,:,p,q,k  ) + &
                               FV_NormVecZeta(3,p,q,k,iElem)*hJac_visc(:,:,p,q,k  ))
 
-        BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_SurfElemZeta_sw(p,q,k,iElem) * Jac_Visc_plus
-        BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_SurfElemZeta_sw(p,q,k,iElem) * Jac_Visc_minus
-        BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) - FV_SurfElemZeta_sw(p,q,k,iElem) * Jac_Visc_minus
-        BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) - FV_SurfElemZeta_sw(p,q,k,iElem) * Jac_Visc_plus
+        BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k-1) * Jac_Visc_plus
+        BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k)   * Jac_Visc_minus
+        BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) - FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k)   * Jac_Visc_minus
+        BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) - FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k-1) * Jac_Visc_plus
       END IF
 #endif /*PARABOLIC*/
     END DO !k
@@ -1179,7 +1179,7 @@ USE MOD_Jacobian              ,ONLY: EvalFluxGradJacobian
 USE MOD_EddyVisc_Vars         ,ONLY: muSGS
 #endif /*EDDYVISCOSITY*/
 USE MOD_Jacobian              ,ONLY: dPrimTempdCons
-USE MOD_FV_Vars               ,ONLY: FV_NormVecXi,FV_NormVecEta,FV_SurfElemXi_sw,FV_SurfElemEta_sw
+USE MOD_FV_Vars               ,ONLY: FV_NormVecXi,FV_NormVecEta,FV_SurfElemXi_sw,FV_SurfElemEta_sw,FV_w_inv
 #if PP_dim==3
 USE MOD_FV_Vars               ,ONLY: FV_NormVecZeta,FV_SurfElemZeta_sw
 #endif
@@ -1255,13 +1255,13 @@ DO p=0,PP_N
 #if PP_dim==3
                          +hJacTilde_plus( :,:)*FV_NormVecXi(3,p,q,i,iElem) &
 #endif
-                         )*FV_SurfElemXi_sw(p,q,i,iElem)
+                         )*FV_SurfElemXi_sw(p,q,i,iElem)*FV_w_inv(i)
       JacQx_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecXi(1,p,q,i,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecXi(2,p,q,i,iElem) &
 #if PP_dim==3
                          +hJacTilde_minus(:,:)*FV_NormVecXi(3,p,q,i,iElem) &
 #endif
-                         )*FV_SurfElemXi_sw(p,q,i,iElem)
+                         )*FV_SurfElemXi_sw(p,q,i,iElem)*FV_w_inv(i)
       ! y-gradient
       fJacTilde_plus =fJacQy(:,:,i-1,p,q)
       gJacTilde_plus =gJacQy(:,:,i-1,p,q)
@@ -1276,13 +1276,13 @@ DO p=0,PP_N
 #if PP_dim==3
                          +hJacTilde_plus( :,:)*FV_NormVecXi(3,p,q,i,iElem) &
 #endif
-                         )*FV_SurfElemXi_sw(p,q,i,iElem)
+                         )*FV_SurfElemXi_sw(p,q,i,iElem)*FV_w_inv(i)
       JacQy_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecXi(1,p,q,i,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecXi(2,p,q,i,iElem) &
 #if PP_dim==3
                          +hJacTilde_minus(:,:)*FV_NormVecXi(3,p,q,i,iElem) &
 #endif
-                         )*FV_SurfElemXi_sw(p,q,i,iElem)
+                         )*FV_SurfElemXi_sw(p,q,i,iElem)*FV_w_inv(i)
 #if PP_dim==3
       ! z-gradient
       fJacTilde_plus =fJacQz(:,:,i-1,p,q)
@@ -1294,11 +1294,11 @@ DO p=0,PP_N
       JacQz_plus  =  0.5*(fJacTilde_plus( :,:)*FV_NormVecXi(1,p,q,i,iElem) &
                          +gJacTilde_plus( :,:)*FV_NormVecXi(2,p,q,i,iElem) &
                          +hJacTilde_plus( :,:)*FV_NormVecXi(3,p,q,i,iElem) &
-                         )*FV_SurfElemXi_sw(p,q,i,iElem)
+                         )*FV_SurfElemXi_sw(p,q,i,iElem)*FV_w_inv(i)
       JacQz_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecXi(1,p,q,i,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecXi(2,p,q,i,iElem) &
                          +hJacTilde_minus(:,:)*FV_NormVecXi(3,p,q,i,iElem) &
-                         )*FV_SurfElemXi_sw(p,q,i,iElem)
+                         )*FV_SurfElemXi_sw(p,q,i,iElem)*FV_w_inv(i)
 #endif
       ! assemble preconditioner
       ! indices give neighbors of considered DOFs; dependency on m,l is due to reconstruction procedure:
@@ -1392,13 +1392,13 @@ DO p=0,PP_N
 #if PP_dim==3
                          +hJacTilde_plus( :,:)*FV_NormVecEta(3,p,q,j,iElem) &
 #endif
-                         )*FV_SurfElemEta_sw(p,q,j,iElem)
+                         )*FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j)
       JacQx_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecEta(1,p,q,j,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecEta(2,p,q,j,iElem) &
 #if PP_dim==3
                          +hJacTilde_minus(:,:)*FV_NormVecEta(3,p,q,j,iElem) &
 #endif
-                         )*FV_SurfElemEta_sw(p,q,j,iElem)
+                         )*FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j)
       fJacTilde_plus =fJacQy(:,:,p,j-1,q)
       gJacTilde_plus =gJacQy(:,:,p,j-1,q)
       fJacTilde_minus=fJacQy(:,:,p,j  ,q)
@@ -1412,13 +1412,13 @@ DO p=0,PP_N
 #if PP_dim==3
                          +hJacTilde_plus( :,:)*FV_NormVecEta(3,p,q,j,iElem) &
 #endif
-                         )*FV_SurfElemEta_sw(p,q,j,iElem)
+                         )*FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j)
       JacQy_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecEta(1,p,q,j,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecEta(2,p,q,j,iElem) &
 #if PP_dim==3
                          +hJacTilde_minus(:,:)*FV_NormVecEta(3,p,q,j,iElem) &
 #endif
-                         )*FV_SurfElemEta_sw(p,q,j,iElem)
+                         )*FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j)
 #if PP_dim==3
       fJacTilde_plus =fJacQz(:,:,p,j-1,q)
       gJacTilde_plus =gJacQz(:,:,p,j-1,q)
@@ -1429,11 +1429,11 @@ DO p=0,PP_N
       JacQz_plus  =  0.5*(fJacTilde_plus( :,:)*FV_NormVecEta(1,p,q,j,iElem) &
                          +gJacTilde_plus( :,:)*FV_NormVecEta(2,p,q,j,iElem) &
                          +hJacTilde_plus( :,:)*FV_NormVecEta(3,p,q,j,iElem) &
-                         )*FV_SurfElemEta_sw(p,q,j,iElem)
+                         )*FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j)
       JacQz_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecEta(1,p,q,j,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecEta(2,p,q,j,iElem) &
                          +hJacTilde_minus(:,:)*FV_NormVecEta(3,p,q,j,iElem) &
-                         )*FV_SurfElemEta_sw(p,q,j,iElem)
+                         )*FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j)
 #endif
       ! assemble preconditioner
       r = vn1*(j-1) + vn2*q + PP_nVar*p
@@ -1499,11 +1499,11 @@ DO p=0,PP_N
       JacQx_plus  = 0.5*( fJacTilde_plus( :,:)*FV_NormVecZeta(1,p,q,k,iElem) &
                          +gJacTilde_plus( :,:)*FV_NormVecZeta(2,p,q,k,iElem) &
                          +hJacTilde_plus( :,:)*FV_NormVecZeta(3,p,q,k,iElem) &
-                         )*FV_SurfElemZeta_sw(p,q,k,iElem)
+                         )*FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k)
       JacQx_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecZeta(1,p,q,k,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecZeta(2,p,q,k,iElem) &
                          +hJacTilde_minus(:,:)*FV_NormVecZeta(3,p,q,k,iElem) &
-                         )*FV_SurfElemZeta_sw(p,q,k,iElem)
+                         )*FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k)
       fJacTilde_plus =fJacQy(:,:,p,q,k-1)
       gJacTilde_plus =gJacQy(:,:,p,q,k-1)
       fJacTilde_minus=fJacQy(:,:,p,q,k  )
@@ -1513,11 +1513,11 @@ DO p=0,PP_N
       JacQy_plus  =  0.5*(fJacTilde_plus( :,:)*FV_NormVecZeta(1,p,q,k,iElem) &
                          +gJacTilde_plus( :,:)*FV_NormVecZeta(2,p,q,k,iElem) &
                          +hJacTilde_plus( :,:)*FV_NormVecZeta(3,p,q,k,iElem) &
-                         )*FV_SurfElemZeta_sw(p,q,k,iElem)
+                         )*FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k)
       JacQy_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecZeta(1,p,q,k,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecZeta(2,p,q,k,iElem) &
                          +hJacTilde_minus(:,:)*FV_NormVecZeta(3,p,q,k,iElem) &
-                         )*FV_SurfElemZeta_sw(p,q,k,iElem)
+                         )*FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k)
       fJacTilde_plus =fJacQz(:,:,p,q,k-1)
       gJacTilde_plus =gJacQz(:,:,p,q,k-1)
       fJacTilde_minus=fJacQz(:,:,p,q,k  )
@@ -1527,11 +1527,11 @@ DO p=0,PP_N
       JacQz_plus  =  0.5*(fJacTilde_plus( :,:)*FV_NormVecZeta(1,p,q,k,iElem) &
                          +gJacTilde_plus( :,:)*FV_NormVecZeta(2,p,q,k,iElem) &
                          +hJacTilde_plus( :,:)*FV_NormVecZeta(3,p,q,k,iElem) &
-                         )*FV_SurfElemZeta_sw(p,q,k,iElem)
+                         )*FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k)
       JacQz_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecZeta(1,p,q,k,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecZeta(2,p,q,k,iElem) &
                          +hJacTilde_minus(:,:)*FV_NormVecZeta(3,p,q,k,iElem) &
-                         )*FV_SurfElemZeta_sw(p,q,k,iElem)
+                         )*FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k)
       ! assemble preconditioner
       r = vn1*q + vn2*(k-1) + PP_nVar*p
       s = vn1*q + vn2*k     + PP_nVar*p

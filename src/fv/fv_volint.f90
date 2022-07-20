@@ -149,9 +149,9 @@ DO iElem=1,nElems
 
     ! 6. apply flux to the sub-cells at the left and right side of the interface/slice
     DO k=0,PP_NZ; DO j=0,PP_N
-      Ut_FV(:,i-1,j,k) = Ut_FV(:,i-1,j,k) + F_FV(:,j,k) * FV_SurfElemXi_sw(j,k,i,iElem)
+      Ut_FV(:,i-1,j,k) = Ut_FV(:,i-1,j,k) + F_FV(:,j,k) * FV_SurfElemXi_sw(j,k,i,iElem) * FV_w_inv(i-1)
       ! During our first sweep, the DOF here has never been touched and can thus be overwritten
-      Ut_FV(:,i  ,j,k) =                     -1.* F_FV(:,j,k) * FV_SurfElemXi_sw(j,k,i,iElem)
+      Ut_FV(:,i  ,j,k) =               -1.* F_FV(:,j,k) * FV_SurfElemXi_sw(j,k,i,iElem) * FV_w_inv(i)
     END DO; END DO
   END DO ! i
 
@@ -201,8 +201,8 @@ DO iElem=1,nElems
 
     ! 6. apply flux to the sub-cells at the left and right side of the interface/slice
     DO k=0,PP_NZ; DO i=0,PP_N
-      Ut_FV(:,i,j-1,k) = Ut_FV(:,i,j-1,k) + F_FV(:,i,k) * FV_SurfElemEta_sw(i,k,j,iElem)
-      Ut_FV(:,i,j  ,k) = Ut_FV(:,i,j  ,k) - F_FV(:,i,k) * FV_SurfElemEta_sw(i,k,j,iElem)
+      Ut_FV(:,i,j-1,k) = Ut_FV(:,i,j-1,k) + F_FV(:,i,k) * FV_SurfElemEta_sw(i,k,j,iElem) * FV_w_inv(j-1)
+      Ut_FV(:,i,j  ,k) = Ut_FV(:,i,j  ,k) - F_FV(:,i,k) * FV_SurfElemEta_sw(i,k,j,iElem) * FV_w_inv(j)
     END DO; END DO
   END DO ! j
 
@@ -241,8 +241,8 @@ DO iElem=1,nElems
 
     ! 6. apply flux to the sub-cells at the left and right side of the interface/slice
     DO j=0,PP_N; DO i=0,PP_N
-      Ut_FV(:,i,j,k-1) = Ut_FV(:,i,j,k-1) + F_FV(:,i,j) * FV_SurfElemZeta_sw(i,j,k,iElem)
-      Ut_FV(:,i,j,k  ) = Ut_FV(:,i,j,k  ) - F_FV(:,i,j) * FV_SurfElemZeta_sw(i,j,k,iElem)
+      Ut_FV(:,i,j,k-1) = Ut_FV(:,i,j,k-1) + F_FV(:,i,j) * FV_SurfElemZeta_sw(i,j,k,iElem) * FV_w_inv(k-1)
+      Ut_FV(:,i,j,k  ) = Ut_FV(:,i,j,k  ) - F_FV(:,i,j) * FV_SurfElemZeta_sw(i,j,k,iElem) * FV_w_inv(k)
     END DO; END DO
   END DO ! k
 #endif /* PP_dim == 3 */
