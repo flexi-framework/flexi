@@ -151,7 +151,7 @@ They are briefly described below. The path to the python files (of the form `$FL
 For most python tools, possible arguments and syntax can be shown with the `-h` argument:
 
 ~~~~~~~
-python2 [toolname.py] -h
+python3 [toolname.py] -h
 ~~~~~~~
 
 ### `animate`
@@ -160,7 +160,7 @@ The python script **animate_paraview.py** creates movies from a series of state 
 You need ParaView installed on your system (details can be found in the ParaView <!--- TODO --> section) and the directory containing the PvBatch executable needs to be a part of your `$PATH`. Before running this script, you have to visualize your **FLEXI** state file with ParaView and save the current view via `Save State...`, e.g. under the name `pvstate.pvsm`. You also need the `MEncoder` tool installed. The basic command to run the script is
 
 ~~~~~~~
-python2 animate_paraview.py -l [pvstate.pvsm] -r [path_to_posti_paraview_plugin] [statefile1.h5 statefile2.h5 ...]
+python3 animate_paraview.py -l [pvstate.pvsm] -r [path_to_posti_paraview_plugin] [statefile1.h5 statefile2.h5 ...]
 ~~~~~~~
 
 Apart from the movie file, the script also outputs a `.png`-file for each HDF5 file given as input.
@@ -171,20 +171,20 @@ There are further tools for image handling in this folder:
 The tool **concatenatepics.py** stitches several pairs of images (e.g. creates a time series of stitched images from two time series of images). A possible command could look like this (*Further options can be shown with the `-h` argument*):
 
 ~~~~~~~
-python concatenatepics.py -d e -p left*.png  -a right*.png
+python3 concatenatepics.py -d e -p left*.png  -a right*.png
 ~~~~~~~
 
 
 The tool **crop.py** crops several images to the same size. Simply pass all images as arguments:
 
 ~~~~~~~
-python crop.py [image*.png]
+python3 crop.py [image*.png]
 ~~~~~~~
 
 The script **pics2movie.py** creates a movie from several images using the `mencoder` tool (which is also done as part of the `animate_paraview.py` script. Basic usage is again
 
 ~~~~~~~
-python pics2movie.py [image*.png]
+python3 pics2movie.py [image*.png]
 ~~~~~~~
 
 and further options can again be shown with the `-h` argument.
@@ -198,7 +198,7 @@ The python scripts `convergence` and `convergence_grid` provide automated conver
 The basic command is
 
 ~~~~~~~
-python2 convergence flexi [parameter.ini]
+python3 convergence flexi [parameter.ini]
 ~~~~~~~
 
 where `convergence` can be replaced by `convergence_grid` for h-convergence. Further options can again be shown with the `-h` option.
@@ -213,7 +213,7 @@ Note that for h convergence, the mesh names are hard-coded to the form `CART_HEX
 The `userblock` contains complete information about a **FLEXI** run (git branch of the repository, differences to that branch, `cmake` configuration and parameter file) and is prepended to every `.h5` state file. The parameter file is prepended in ASCII format, the rest is binary and is generated automatically during the build process with the `generateuserblock.sh` script. It can be extracted and printed using the `extract_userblock.py` script. Its basic usage is
 
 ~~~~~~~
-python2 extract_userblock.py -XXX [statefile.h5]
+python3 extract_userblock.py -XXX [statefile.h5]
 ~~~~~~~
 
 where `-XXX` can be replaced by
@@ -225,7 +225,7 @@ where `-XXX` can be replaced by
 The second python tool in this folder is `rebuild.py`. It extracts the userblock from a state file and builds a **FLEXI** repository and binary identical to the one that the state file was created with. In order to do so, it clones a **FLEXI** git repository, checks out the given branch, applies the stored changes to the git `HEAD` and builds **FLEXI** with the stored `cmake` options. If run with the parameter file given in the `INIFILE` part of the userblock, this binary should reproduce the same results/behaviour (possible remaining sources of different output are for example differences in restart files, compilers, linked libraries or machines). The basic usage is
 
 ~~~~~~~
-python2 rebuild.py [dir] [statefile.h5]
+python3 rebuild.py [dir] [statefile.h5]
 ~~~~~~~
 
 where `dir` is an empty directory that the repository is cloned into and where the `flexi` executable is built. `statefile.h5` is the state file whose userblock is used to rebuild the `flexi` executable. Help can be shown via `-h` for both userblock scripts.
@@ -254,6 +254,6 @@ No arguments are passed to this script, all input values are hard-coded and have
 The python script **plotChannelFFT.py** creates plots of the mean velocity and the Reynolds stress profiles as well as the turbulent energy spectra based on the posti_channel_fft HDF5 output files. Basic usage is:
 
 ~~~~~~~
-python plotChannelFFT.py -p projectname -t time
+python3 plotChannelFFT.py -p projectname -t time
 ~~~~~~~
 Further options can be shown with the `-h` argument.
