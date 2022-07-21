@@ -301,19 +301,13 @@ REAL,INTENT(OUT)                :: Residuals(PP_nVar)                   !> Conse
 ! LOCAL VARIABLES
 REAL                            :: IntegrationWeight
 INTEGER                         :: iElem,i,j,k
-#if FV_ENABLED
-REAL                            :: FV_w_volume
-#endif
 !==================================================================================================================================
 Residuals=0.
-#if FV_ENABLED
-FV_w_volume = FV_w**PP_dim
-#endif
 DO iElem=1,nElems
 #if FV_ENABLED
   IF (FV_Elems(iElem).GT.0) THEN ! FV Element
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      IntegrationWeight=FV_w_volume/sJ(i,j,k,iElem,1)
+      IntegrationWeight=FV_w(i)*FV_w(j)*FV_w(k)/sJ(i,j,k,iElem,1)
       Residuals = Residuals + Ut(:,i,j,k,iElem)**2*IntegrationWeight
     END DO; END DO; END DO !i,j,k
   ELSE ! DG element
@@ -365,20 +359,14 @@ INTEGER                         :: iElem,i,j,k
 #if USE_MPI
 REAL                            :: box(PP_nVar+PP_nVarPrim)
 #endif
-#if FV_ENABLED
-REAL                            :: FV_w_volume
-#endif
 !==================================================================================================================================
 BulkPrim=0.
 BulkCons=0.
-#if FV_ENABLED
-FV_w_volume = FV_w**PP_dim
-#endif
 DO iElem=1,nElems
 #if FV_ENABLED
   IF (FV_Elems(iElem).GT.0) THEN ! FV Element
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      IntegrationWeight=FV_w_volume/sJ(i,j,k,iElem,1)
+      IntegrationWeight=FV_w(i)*FV_w(j)*FV_w(k)/sJ(i,j,k,iElem,1)
       BulkCons         =BulkCons+U(:,i,j,k,iElem)*IntegrationWeight
       BulkPrim         =BulkPrim+UPrim(:,i,j,k,iElem)*IntegrationWeight
     END DO; END DO; END DO !i,j,k
@@ -435,14 +423,8 @@ REAL,INTENT(OUT)             :: meanTotals(4,nBCs)           !< total and static
 REAL                           :: dA,c,mach
 REAL                           :: primvar(1:14),UE(PP_2Var)
 INTEGER                        :: SideID,i,j,iBC
-#if FV_ENABLED
-REAL                           :: FV_w_surf
-#endif
 !===================================================================================================================================
 meanTotals= 0.
-#if FV_ENABLED
-FV_w_surf = FV_w**(PP_dim-1)
-#endif
 DO SideID=1,nBCSides
   iBC=BC(SideID)
   IF(Boundarytype(iBC,BC_TYPE) .EQ. 1) CYCLE
@@ -486,7 +468,7 @@ DO SideID=1,nBCSides
  !   minV(iBC)=MIN(minV(iBC),locV)
 #if FV_ENABLED
     IF (FV_Elems_master(SideID).EQ.1) THEN ! FV element
-      dA=FV_w_surf*SurfElem(i,j,1,SideID)
+      dA=FV_w(i)*FV_w(j)*SurfElem(i,j,1,SideID)
     ELSE
 #endif
       dA=wGPSurf(i,j)*SurfElem(i,j,0,SideID)
@@ -542,16 +524,10 @@ REAL,INTENT(OUT)               :: meanV(nBCs)         !< Mean of wall velocity p
 ! LOCAL VARIABLES
 REAL                           :: dA,Vel(3),locV
 INTEGER                        :: iSide,i,j,iBC
-#if FV_ENABLED
-REAL                           :: FV_w_surf
-#endif
 !==================================================================================================================================
 minV =  1.e14
 maxV = -1.e14
 meanV= 0.
-#if FV_ENABLED
-FV_w_surf = FV_w**(PP_dim-1)
-#endif
 DO iSide=1,nBCSides
   iBC=BC(iSide)
   IF(.NOT.isWall(iBC)) CYCLE
@@ -563,7 +539,7 @@ DO iSide=1,nBCSides
     minV(iBC)=MIN(minV(iBC),locV)
 #if FV_ENABLED
     IF (FV_Elems_master(iSide).EQ.1) THEN ! FV element
-      dA=FV_w_surf*SurfElem(i,j,1,iSide)
+      dA=FV_w(i)*FV_w(j)*SurfElem(i,j,1,iSide)
     ELSE
 #endif
       dA=wGPSurf(i,j)*SurfElem(i,j,0,iSide)
@@ -613,14 +589,8 @@ REAL,INTENT(OUT)               :: MeanFlux(PP_nVar,nBCs)        !< Mean flux in 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: iSide,iSurf,i,j
-#if FV_ENABLED
-REAL                           :: FV_w_surf
-#endif
 !==================================================================================================================================
 MeanFlux=0.
-#if FV_ENABLED
-FV_w_surf = FV_w**(PP_dim-1)
-#endif
 DO iSide=1,nSides-nMPISides_YOUR
   iSurf=AnalyzeSide(iSide)
   IF(iSurf.EQ.0) CYCLE
@@ -628,7 +598,7 @@ DO iSide=1,nSides-nMPISides_YOUR
   IF (FV_Elems_master(iSide).EQ.1) THEN ! FV element
     DO j=0,PP_NZ; DO i=0,PP_N
       ! Don't multiply with Surfelem, its already contained in the fluxes
-      MeanFlux(:,iSurf)=MeanFlux(:,iSurf)+Flux_master(:,i,j,iSide)*FV_w_surf
+      MeanFlux(:,iSurf)=MeanFlux(:,iSurf)+Flux_master(:,i,j,iSide)*FV_w(i)*FV_w(j)
     END DO; END DO
   ELSE ! DG element
 #endif

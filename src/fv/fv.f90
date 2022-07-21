@@ -507,6 +507,7 @@ END SUBROUTINE FV_Info
 SUBROUTINE FV_Info(iter)
 ! MODULES
 USE MOD_Globals
+USE MOD_Mesh_Vars    ,ONLY: nGlobalElems
 USE MOD_FV_Vars      ,ONLY: alphaFV
 USE MOD_Analyze_Vars ,ONLY: totalAlphaFV
 ! IMPLICIT VARIABLE HANDLING
