@@ -1,61 +1,58 @@
 #! /usr/bin/env python
 #************************************************************************************
 #
-# Author:       Thomas Bolemann
-# Institution:  Inst. of Aero- and Gasdynamics, University of Stuttgart
-# Date:         07.07.2016
-#
 # Description:  This script will compute a the number of cores for a
-#               given number of elements, polynomial degree and desired load/core 
+#               given number of elements, polynomial degree and desired load/core
 #               in a sense that for equal element distribution there will be no
 #               single cores having more elements then the average, only less.
-# 
+#
 #************************************************************************************
 
-from numpy import *
+nElems        = 86712
+N             = 7
+nDOFTarget    = 6000.0
+dim           = 3
 
-nElems=86712
-N=7
-nDOFTarget=6000.0
-dim=3
+nCoresMax     = 5000.0
+nCoresPerNode = 24
 
+# END OF USER INPUT BLOCK ***********************************************************
 
-nCoresMax=5000.0
-nCoresPerNode=24
+from numpy     import *
+from termcolor import colored
 
-nDOF=nElems*(N+1)**dim
+nDOF = nElems*(N+1)**dim
 
-print "============================================="
-print "Number of DOF " + str(nDOF)
+print("┌────────────────────────────────────────────")
+print("│ Number of DOF: {}".format(nDOF))
 
-nCores=min(nCoresMax,nDOF/nDOFTarget)
-nElemsPerCoreIdeal=ceil(nElems / nCores)
-nElemsPerNodeIdeal=nElemsPerCoreIdeal*nCoresPerNode
-nNodes=ceil(nElems/(nElemsPerNodeIdeal))
-nCores=nNodes*nCoresPerNode
-nElemsPerCore = nElems / nCores
-Imbalance=(nElemsPerCoreIdeal - nElemsPerCore) / nElemsPerCoreIdeal
+nCores             = min(nCoresMax,nDOF/nDOFTarget)
+nElemsPerCoreIdeal = ceil(nElems / nCores)
+nElemsPerNodeIdeal = nElemsPerCoreIdeal*nCoresPerNode
+nNodes             = int(ceil(nElems/(nElemsPerNodeIdeal)))
+nCores             = nNodes*nCoresPerNode
+nElemsPerCore      = nElems / nCores
+Imbalance          = (nElemsPerCoreIdeal - nElemsPerCore) / nElemsPerCoreIdeal
 
-print "============================================="
-print "Approaching from bottom:"
-print "Suggested number of nodes " + str(int(nNodes)) + " (" + str(int(nCores)) + " cores)"
-print "results in " + str(nElems / nCores) + " elements "
-print "and " + str(nElems / nCores *(N+1)**dim) + " DOF per core "
-print "Efficiency loss: " + str(100*Imbalance) + " %"
-print "============================================="
+print("├────────────────────────────────────────────")
+print("│ " + colored("Approaching from bottom:",'white',attrs=['bold']))
+print("│ Suggested number of nodes : {:9d} ({:d} cores)".format(nNodes,nCores))
+print("├── resulting elements/core : {:9.3f}".format(nElems / nCores))
+print("├── resulting DOF     /core : {:9.3f}".format(nElems / nCores *(N+1)**dim))
+print("├── efficiency loss         : {:9.3f}%".format(100*Imbalance))
 
-nCores=min(nCoresMax,nDOF/nDOFTarget)
-nElemsPerCoreIdeal=floor(nElems / nCores)
-nElemsPerNodeIdeal=nElemsPerCoreIdeal*nCoresPerNode
-nNodes=ceil(nElems/(nElemsPerNodeIdeal))
-nCores=nNodes*nCoresPerNode
-nElemsPerCore = nElems / nCores
-Imbalance=(nElemsPerCoreIdeal - nElemsPerCore) / nElemsPerCoreIdeal
+nCores             = min(nCoresMax,nDOF/nDOFTarget)
+nElemsPerCoreIdeal = floor(nElems / nCores)
+nElemsPerNodeIdeal = nElemsPerCoreIdeal*nCoresPerNode
+nNodes             = int(ceil(nElems/(nElemsPerNodeIdeal)))
+nCores             = nNodes*nCoresPerNode
+nElemsPerCore      = nElems / nCores
+Imbalance          = (nElemsPerCoreIdeal - nElemsPerCore) / nElemsPerCoreIdeal
 
-print "Approaching from top:"
-print "Suggested number of nodes " + str(int(nNodes)) + " (" + str(int(nCores)) + " cores)"
-print "results in " + str(nElems / nCores) + " elements "
-print "and " + str(nElems / nCores *(N+1)**dim) + " DOF per core "
-print "Efficiency loss: " + str(100*Imbalance) + " %"
-print "============================================="
-
+print("├────────────────────────────────────────────")
+print("│ " + colored("Approaching from top:",'white',attrs=['bold']))
+print("│ Suggested number of nodes : {:9d} ({:d} cores)".format(nNodes,nCores))
+print("├── resulting elements/core : {:9.3f}".format(nElems / nCores))
+print("├── resulting DOF     /core : {:9.3f}".format(nElems / nCores *(N+1)**dim))
+print("├── efficiency loss         : {:9.3f}%".format(100*Imbalance))
+print("└────────────────────────────────────────────")
