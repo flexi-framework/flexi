@@ -220,7 +220,7 @@ USE MOD_Lifting_Vars     ,ONLY: gradUx,gradUy,gradUz
 #endif
 #if FV_ENABLED == 2
 USE MOD_Indicator_Vars   ,ONLY: s_FV,T_FV
-USE MOD_FV_Vars          ,ONLY: alphaFV,alpha_min
+USE MOD_FV_Vars          ,ONLY: alphaFV,alpha_min,alpha_max
 #endif /*FV_ENABLED*/
 USE MOD_ChangeBasisByDim ,ONLY:ChangeBasisVolume
 ! IMPLICIT VARIABLE HANDLING
@@ -254,7 +254,11 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
   DO iElem=1,nElems
     IndValue(iElem) = IndPerssonBlend(U(:,:,:,:,iElem))
     alphaFV(iElem)  = 1. / (1. + EXP(-s_FV/T_FV * (IndValue(iElem) - T_FV)))
-    IF (alphaFV(iElem) .LT. alpha_min) alphaFV(iElem) = 0.
+    IF (alphaFV(iElem) .LT. alpha_min) THEN
+      alphaFV(iElem) = 0.
+    ELSE IF (alphaFV(iElem) .GT. alpha_max) THEN
+      alphaFV(iElem) = alpha_max
+    END IF
   END DO ! iElem
 #else
   DO iElem=1,nElems

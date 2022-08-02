@@ -103,7 +103,9 @@ CALL prms%CreateRealOption   ('FV_toDG_limit'        ,"Threshold for FV_toDG_ind
 CALL prms%CreateLogicalOption('FV_toDGinRK'          ,"Allow switching of FV elements to DG during Runge Kutta stages. \n"//&
                                                       "This may violated the DG timestep restriction of the element.", '.FALSE.')
 #elif FV_ENABLED == 2
-CALL prms%CreateRealOption(   'alpha_min'            ,"Lower bound for alpha",'0.01')
+CALL prms%CreateRealOption(   'alpha_min'            ,"Lower bound for alpha (all elements below threshold are treated as pure DG)"&
+                                                     ,'0.01')
+CALL prms%CreateRealOption(   'alpha_max'            ,"Maximum value for alpha",'0.5' )
 #endif
 
 #if FV_RECONSTRUCT
@@ -261,6 +263,7 @@ CALL Abort(__STAMP__, &
 #endif /* EQNSYSNR != 2 */
 ! Blending
 alpha_min = GETREAL('alpha_min')
+alpha_max = GETREAL('alpha_max')
 ALLOCATE(alphaFV(1:nElems))
 CALL AddToElemData(ElementOut,'alphaFV',alphaFV)
 #endif /*FV_ENABLED==2*/
