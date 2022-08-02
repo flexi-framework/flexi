@@ -659,9 +659,15 @@ CALL ChangeBasisVolume(PP_N,PP_N,sVdm_Leg,U_loc,U_Modal)
 IndValue=TINY(0.)
 DO iDeg=0,nModes
   iDeg2=iDeg+1
+#if PP_dim == 3
   IndValue=MAX(IndValue,(SUM(U_Modal(0:PP_N-iDeg,0:PP_N-iDeg,0:PP_N-iDeg)**2) - &
                          SUM(U_Modal(0:PP_N-iDeg2,0:PP_N-iDeg2,0:PP_N-iDeg2)**2))/&
                          SUM(U_Modal(0:PP_N,0:PP_N,0:PP_N)**2))
+#else
+  IndValue=MAX(IndValue,(SUM(U_Modal(0:PP_N-iDeg,0:PP_N-iDeg,0)**2) - &
+                         SUM(U_Modal(0:PP_N-iDeg2,0:PP_N-iDeg2,0)**2))/&
+                         SUM(U_Modal(0:PP_N,0:PP_N,0)**2))
+#endif
 END DO
 IF (IndValue .LT. EPSILON(1.)) IndValue = EPSILON(IndValue)
 
