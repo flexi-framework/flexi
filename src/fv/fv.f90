@@ -527,14 +527,14 @@ IF(MPIRoot)THEN
   CALL MPI_REDUCE(MPI_IN_PLACE    ,alphaFV_range(1),1,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_FLEXI,iError)
   CALL MPI_REDUCE(MPI_IN_PLACE    ,alphaFV_range(2),1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
   CALL MPI_REDUCE(MPI_IN_PLACE    ,totalAlphaFV    ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
-  totalAlphaFV = totalAlphaFV / REAL(nGlobalElems) / iter
 ELSE
   CALL MPI_REDUCE(alphaFV_range(1),0               ,1,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_FLEXI,iError)
   CALL MPI_REDUCE(alphaFV_range(2),0               ,1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
   CALL MPI_REDUCE(totalAlphaFV    ,0               ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 #endif /*USE_MPI*/
-SWRITE(UNIT_stdOut,'(A,F8.3,A,F5.3,A,ES18.9)') ' alphaFV    : ',alphaFV_range(1),' - ',alphaFV_range(2),', avg: ',totalAlphaFV
+SWRITE(UNIT_stdOut,'(A,F8.3,A,F5.3,A,ES18.9)') ' alphaFV    : ',alphaFV_range(1),' - ',alphaFV_range(2),&
+                                              ', avg: '        ,totalAlphaFV / REAL(nGlobalElems) / iter
 totalAlphaFV   = 0.
 END SUBROUTINE FV_Info
 

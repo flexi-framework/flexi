@@ -210,17 +210,19 @@ SUBROUTINE CalcIndicator(U,t)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Indicator_Vars ,ONLY: IndicatorType,IndValue,IndStartTime
-USE MOD_Mesh_Vars      ,ONLY: offsetElem,Elem_xGP,nElems
-USE MOD_FV_Vars        ,ONLY: FV_Elems,FV_sVdm
+USE MOD_Indicator_Vars   ,ONLY: IndicatorType,IndValue,IndStartTime
+USE MOD_Mesh_Vars        ,ONLY: offsetElem,Elem_xGP,nElems
+#if !(FV_ENABLED == 2)
+USE MOD_FV_Vars          ,ONLY: FV_Elems,FV_sVdm
+#endif
 #if PARABOLIC && EQNSYSNR == 2
-USE MOD_Lifting_Vars   ,ONLY: gradUx,gradUy,gradUz
+USE MOD_Lifting_Vars     ,ONLY: gradUx,gradUy,gradUz
 #endif
 #if FV_ENABLED == 2
-USE MOD_Indicator_Vars     ,ONLY: s_FV,T_FV
-USE MOD_FV_Vars            ,ONLY: alphaFV,alpha_min
+USE MOD_Indicator_Vars   ,ONLY: s_FV,T_FV
+USE MOD_FV_Vars          ,ONLY: alphaFV,alpha_min
 #endif /*FV_ENABLED*/
-USE MOD_ChangeBasisByDim,ONLY:ChangeBasisVolume
+USE MOD_ChangeBasisByDim ,ONLY:ChangeBasisVolume
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -230,8 +232,10 @@ REAL,INTENT(IN)           :: t                                            !< Sim
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                   :: iElem
-REAL,TARGET               :: U_DG(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL,POINTER              :: U_P(:,:,:,:)
+#if !(FV_ENABLED == 2)
+REAL,TARGET               :: U_DG(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
+#endif
 !==================================================================================================================================
 
 ! if time is before IndStartTime return high Indicator value (FV)
@@ -484,9 +488,11 @@ REAL                      :: UE(1:PP_2Var)
 INTEGER                   :: TMP(1:nElems)
 INTEGER                   :: TMP_master(1:nSides)
 INTEGER                   :: TMP_slave( 1:nSides)
-INTEGER                   :: DataSizeSide_loc
 INTEGER                   :: firstMortarSideID,lastMortarSideID
 INTEGER                   :: MortarSideID,tf
+#if USE_MPI
+INTEGER                   :: DataSizeSide_loc
+#endif
 !==================================================================================================================================
 ! Fill UJameson with conservative variable or pressure
 SELECT CASE(IndVar)
