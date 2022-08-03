@@ -103,9 +103,9 @@ CALL prms%CreateRealOption   ('FV_toDG_limit'        ,"Threshold for FV_toDG_ind
 CALL prms%CreateLogicalOption('FV_toDGinRK'          ,"Allow switching of FV elements to DG during Runge Kutta stages. \n"//&
                                                       "This may violated the DG timestep restriction of the element.", '.FALSE.')
 #elif FV_ENABLED == 2
-CALL prms%CreateRealOption(   'alpha_min'            ,"Lower bound for alpha (all elements below threshold are treated as pure DG)"&
-                                                     ,'0.01')
-CALL prms%CreateRealOption(   'alpha_max'            ,"Maximum value for alpha",'0.5' )
+CALL prms%CreateRealOption(   'FV_alpha_min'            ,"Lower bound for alpha (all elements below threshold are treated as pure DG)"&
+                                                        ,'0.01')
+CALL prms%CreateRealOption(   'FV_alpha_max'            ,"Maximum value for alpha",'0.5' )
 #endif
 
 #if FV_RECONSTRUCT
@@ -262,10 +262,10 @@ CALL Abort(__STAMP__, &
     "FV blending only works with Navier-Stokes equations.")
 #endif /* EQNSYSNR != 2 */
 ! Blending
-alpha_min = GETREAL('alpha_min')
-alpha_max = GETREAL('alpha_max')
-ALLOCATE(alphaFV(1:nElems))
-CALL AddToElemData(ElementOut,'alphaFV',alphaFV)
+FV_alpha_min = GETREAL('FV_alpha_min')
+FV_alpha_max = GETREAL('FV_alpha_max')
+ALLOCATE(FV_alpha(1:nElems))
+CALL AddToElemData(ElementOut,'FV_alpha',FV_alpha)
 #endif /*FV_ENABLED==2*/
 
 FVInitIsDone=.TRUE.
@@ -511,8 +511,8 @@ SUBROUTINE FV_Info(iter)
 ! MODULES
 USE MOD_Globals
 USE MOD_Mesh_Vars    ,ONLY: nGlobalElems
-USE MOD_FV_Vars      ,ONLY: alphaFV
-USE MOD_Analyze_Vars ,ONLY: totalAlphaFV
+USE MOD_FV_Vars      ,ONLY: FV_alpha
+USE MOD_Analyze_Vars ,ONLY: FV_totalAlpha
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -520,25 +520,25 @@ IMPLICIT NONE
 INTEGER(KIND=8),INTENT(IN) :: iter !< number of iterations
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL              :: alphaFV_range(3)
+REAL              :: FV_alpha_range(3)
 !==================================================================================================================================
-alphaFV_range(1) = MINVAL(alphaFV)
-alphaFV_range(2) = MAXVAL(alphaFV)
+FV_alpha_range(1) = MINVAL(FV_alpha)
+FV_alpha_range(2) = MAXVAL(FV_alpha)
 
 #if USE_MPI
 IF(MPIRoot)THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE    ,alphaFV_range(1),1,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_FLEXI,iError)
-  CALL MPI_REDUCE(MPI_IN_PLACE    ,alphaFV_range(2),1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
-  CALL MPI_REDUCE(MPI_IN_PLACE    ,totalAlphaFV    ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE    ,FV_alpha_range(1),1,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE    ,FV_alpha_range(2),1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE    ,FV_totalAlpha    ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 ELSE
-  CALL MPI_REDUCE(alphaFV_range(1),0               ,1,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_FLEXI,iError)
-  CALL MPI_REDUCE(alphaFV_range(2),0               ,1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
-  CALL MPI_REDUCE(totalAlphaFV    ,0               ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(FV_alpha_range(1),0               ,1,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(FV_alpha_range(2),0               ,1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(FV_totalAlpha    ,0               ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 #endif /*USE_MPI*/
-SWRITE(UNIT_stdOut,'(A,F8.3,A,F5.3,A,ES18.9)') ' alphaFV    : ',alphaFV_range(1),' - ',alphaFV_range(2),&
-                                              ', avg: '        ,totalAlphaFV / REAL(nGlobalElems) / iter
-totalAlphaFV   = 0.
+SWRITE(UNIT_stdOut,'(A,F8.3,A,F5.3,A,ES18.9)') ' FV_alpha    : ',FV_alpha_range(1),' - ',FV_alpha_range(2),&
+                                              ', avg: '         ,FV_totalAlpha / REAL(nGlobalElems) / iter
+FV_totalAlpha   = 0.
 END SUBROUTINE FV_Info
 
 #endif /*FV_ENABLED == 1*/
@@ -705,7 +705,7 @@ SDEALLOCATE(gradUzeta_central)
 #endif
 #endif
 #if FV_ENABLED == 2
-SDEALLOCATE(alphaFV)
+SDEALLOCATE(FV_alpha)
 #endif
 
 FVInitIsDone=.FALSE.

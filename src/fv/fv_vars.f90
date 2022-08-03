@@ -61,9 +61,9 @@ REAL,ALLOCATABLE       :: FV_Elems_Amount(:)     !< counts for every element the
 
 ! FV/DG Blending
 #if FV_ENABLED == 2
-REAL,ALLOCATABLE       :: alphaFV(:)             !< Blending coefficient
-REAL                   :: alpha_min              !< Minimal blending coefficient (all elems below are treated as pure DG)
-REAL                   :: alpha_max              !< Maximal blending coefficient
+REAL,ALLOCATABLE       :: FV_alpha(:)            !< Blending coefficient
+REAL                   :: FV_alpha_min           !< Minimal blending coefficient (all elems below are treated as pure DG)
+REAL                   :: FV_alpha_max           !< Maximal blending coefficient
 #endif /*FV_ENABLED==2*/
 
 ! FV variables on reference element

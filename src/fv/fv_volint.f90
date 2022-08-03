@@ -92,7 +92,7 @@ DO iElem=1,nElems
 #if FV_ENABLED == 1
   IF (FV_Elems(iElem) .EQ. 0) CYCLE ! DG Element
 #elif FV_ENABLED == 2
-  IF (alphaFV(iElem) .LT. EPSILON(0.)) CYCLE
+  IF (FV_alpha(iElem) .LT. EPSILON(0.)) CYCLE
 #endif
 
 #if VOLINT_VISC
@@ -249,7 +249,7 @@ DO iElem=1,nElems
 
 #if FV_ENABLED == 2
   ! Blend the solutions together
-  Ut(:,:,:,:,iElem) = (1 - alphaFV(iElem)) * Ut(:,:,:,:,iElem) + alphaFV(iElem)*Ut_FV
+  Ut(:,:,:,:,iElem) = (1 - FV_alpha(iElem)) * Ut(:,:,:,:,iElem) + FV_alpha(iElem)*Ut_FV
 #else
   Ut(:,:,:,:,iElem) = Ut_FV
 #endif /*FV_BLENDING*/
