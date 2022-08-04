@@ -212,16 +212,16 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Indicator_Vars   ,ONLY: IndicatorType,IndValue,IndStartTime
 USE MOD_Mesh_Vars        ,ONLY: offsetElem,Elem_xGP,nElems
-#if !(FV_ENABLED == 2)
-USE MOD_FV_Vars          ,ONLY: FV_Elems,FV_sVdm
-#endif
 #if PARABOLIC && EQNSYSNR == 2
 USE MOD_Lifting_Vars     ,ONLY: gradUx,gradUy,gradUz
 #endif
 #if FV_ENABLED == 2
+USE MOD_FV_Blending      ,ONLY: FV_ExtendAlpha
+USE MOD_FV_Vars          ,ONLY: FV_alpha,FV_alpha_min,FV_alpha_max,FV_doExtendAlpha
 USE MOD_Indicator_Vars   ,ONLY: s_FV,T_FV
-USE MOD_FV_Vars          ,ONLY: FV_alpha,FV_alpha_min,FV_alpha_max
-#endif /*FV_ENABLED*/
+#else
+USE MOD_FV_Vars          ,ONLY: FV_Elems,FV_sVdm
+#endif /*FV_ENABLED==2*/
 USE MOD_ChangeBasisByDim ,ONLY:ChangeBasisVolume
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -254,11 +254,13 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
   DO iElem=1,nElems
     IndValue(iElem) = IndPerssonBlend(U(:,:,:,:,iElem))
     FV_alpha(iElem)  = 1. / (1. + EXP(-s_FV/T_FV * (IndValue(iElem) - T_FV)))
-    IF (FV_alpha(iElem) .LT. FV_alpha_min) THEN
-      FV_alpha(iElem) = 0.
-    ELSE IF (FV_alpha(iElem) .GT. FV_alpha_max) THEN
-      FV_alpha(iElem) = FV_alpha_max
-    END IF
+    ! Limit to alpha_max
+    FV_alpha(iElem) = MAX(FV_alpha(iElem),FV_alpha_max)
+  END DO ! iElem
+  CALL FV_ExtendAlpha(FV_alpha)
+  ! Do not compute FV contribution for elements below threshold
+  DO iElem=1,nElems
+    IF (FV_alpha(iElem) .LT. FV_alpha_min) FV_alpha(iElem) = 0.
   END DO ! iElem
 #else
   DO iElem=1,nElems

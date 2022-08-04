@@ -36,6 +36,7 @@ INTERFACE InitFV
   MODULE PROCEDURE InitFV
 END INTERFACE
 
+#if FV_ENABLED == 1
 INTERFACE FV_Switch
   MODULE PROCEDURE FV_Switch
 END INTERFACE
@@ -44,16 +45,17 @@ INTERFACE FV_ProlongFVElemsToFace
   MODULE PROCEDURE FV_ProlongFVElemsToFace
 END INTERFACE
 
-INTERFACE FV_Info
-  MODULE PROCEDURE FV_Info
-END INTERFACE
-
 INTERFACE FV_FillIni
   MODULE PROCEDURE FV_FillIni
 END INTERFACE
+#endif /*FV_ENABLED*/
 
 INTERFACE FV_DGtoFV
   MODULE PROCEDURE FV_DGtoFV
+END INTERFACE
+
+INTERFACE FV_Info
+  MODULE PROCEDURE FV_Info
 END INTERFACE
 
 INTERFACE FinalizeFV
@@ -62,11 +64,13 @@ END INTERFACE
 
 PUBLIC::DefineParametersFV
 PUBLIC::InitFV
+#if FV_ENABLED == 1
 PUBLIC::FV_Switch
 PUBLIC::FV_ProlongFVElemsToFace
-PUBLIC::FV_Info
 PUBLIC::FV_FillIni
+#endif /*FV_ENABLED*/
 PUBLIC::FV_DGtoFV
+PUBLIC::FV_Info
 PUBLIC::FinalizeFV
 !==================================================================================================================================
 
@@ -87,12 +91,12 @@ USE MOD_FV_Limiter  ,ONLY: DefineParametersFV_Limiter
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection('FV')
+CALL prms%CreateLogicalOption('FV_SwitchConservative',"Perform FV/DG switch in reference element", '.TRUE.')
+#if FV_ENABLED == 1
 CALL prms%CreateLogicalOption('FV_IniSupersample'    ,"Supersample initial solution inside each sub-cell and take mean value \n&
                                                       & as average sub-cell value.", '.TRUE.')
 CALL prms%CreateLogicalOption('FV_IniSharp'          ,"Maintain a sharp interface in the initial solution in the FV region",&
                                                       '.FALSE.')
-CALL prms%CreateLogicalOption('FV_SwitchConservative',"Perform FV/DG switch in reference element", '.TRUE.')
-#if FV_ENABLED == 1
 CALL prms%CreateRealOption(   'FV_IndUpperThreshold' ,"Upper threshold: Element is switched from DG to FV if indicator \n"//&
                                                       "rises above this value" )
 CALL prms%CreateRealOption(   'FV_IndLowerThreshold' ,"Lower threshold: Element is switched from FV to DG if indicator \n"//&
@@ -103,9 +107,13 @@ CALL prms%CreateRealOption   ('FV_toDG_limit'        ,"Threshold for FV_toDG_ind
 CALL prms%CreateLogicalOption('FV_toDGinRK'          ,"Allow switching of FV elements to DG during Runge Kutta stages. \n"//&
                                                       "This may violated the DG timestep restriction of the element.", '.FALSE.')
 #elif FV_ENABLED == 2
-CALL prms%CreateRealOption(   'FV_alpha_min'            ,"Lower bound for alpha (all elements below threshold are treated as pure DG)"&
-                                                        ,'0.01')
-CALL prms%CreateRealOption(   'FV_alpha_max'            ,"Maximum value for alpha",'0.5' )
+CALL prms%CreateRealOption(   'FV_alpha_min'          ,"Lower bound for alpha (all elements below threshold are treated as pure DG)"&
+                                                      ,'0.01')
+CALL prms%CreateRealOption(   'FV_alpha_max'          ,"Maximum value for alpha",'0.5' )
+CALL prms%CreateRealOption(   'FV_alpha_ExtScale'     ,"Scaling factor for elpha if extended into neighboring elements",'0.5' )
+CALL prms%CreateIntOption(    'FV_nExtendAlpha'       ,"Number of times alpha should be passed to neighbor elements per timestep",&
+                                                       '1' )
+CALL prms%CreateLogicalOption('FV_doExtendAlpha'      ,"Blending factor is prolongated into neighboring elements", '.FALSE.')
 #endif
 
 #if FV_RECONSTRUCT
@@ -126,7 +134,9 @@ USE MOD_Basis               ,ONLY: InitializeVandermonde
 USE MOD_Filter_Vars         ,ONLY: NFilter
 USE MOD_FV_Vars
 USE MOD_FV_Basis
+#if FV_ENABLED == 1
 USE MOD_Indicator_Vars      ,ONLY: nModes,IndicatorType
+#endif
 USE MOD_IO_HDF5             ,ONLY: AddToElemData,ElementOut
 USE MOD_Mesh_Vars           ,ONLY: nElems,nSides
 USE MOD_ReadInTools
@@ -148,6 +158,9 @@ END IF
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT FV...'
 
+! Read flag, which allows to perform the switching from FV to DG in the reference element
+switchConservative = GETLOGICAL("FV_SwitchConservative")
+
 #if FV_ENABLED == 1
 ! Read minimal and maximal threshold for the indicator
 FV_IndLowerThreshold = GETREAL('FV_IndLowerThreshold','-99.')
@@ -162,15 +175,12 @@ IF (FV_toDG_indicator) FV_toDG_limit = GETREAL('FV_toDG_limit')
 ! (this might lead to instabilities, since the time step for a DG element is smaller)
 FV_toDGinRK = GETLOGICAL("FV_toDGinRK")
 
-! Read flag, which allows to perform the switching from FV to DG in the reference element
-switchConservative = GETLOGICAL("FV_SwitchConservative")
-#endif
-
 ! If the main indicator is not already the persson indicator, then we need to read in the parameters
 IF (IndicatorType.NE.2) THEN
   nModes = GETINT('nModes','2')
   nModes = MAX(1,nModes+PP_N-MIN(NUnder,NFilter))-1 ! increase by number of empty modes in case of overintegration
 END IF
+#endif
 
 #if FV_RECONSTRUCT
 CALL InitFV_Limiter()
@@ -251,9 +261,11 @@ gradUzeta_central=0.
 #endif /* PARABOLIC */
 #endif /* FV_RECONSTRUCT */
 
+#if FV_ENABLED == 1
 ! Options for initial solution
 FV_IniSharp       = GETLOGICAL("FV_IniSharp",'.FALSE.')
 IF (.NOT.FV_IniSharp) FV_IniSupersample = GETLOGICAL("FV_IniSupersample",'.TRUE.')
+#endif /*FV_ENABLED == 1*/
 
 ! Initialize FV Blending
 #if FV_ENABLED == 2
@@ -264,7 +276,17 @@ CALL Abort(__STAMP__, &
 ! Blending
 FV_alpha_min = GETREAL('FV_alpha_min')
 FV_alpha_max = GETREAL('FV_alpha_max')
+FV_doExtendAlpha = GETLOGICAL('FV_doExtendAlpha')
+IF (FV_doExtendAlpha) THEN
+  FV_nExtendAlpha = GETINT('FV_nExtendAlpha')
+  FV_alpha_extScale = GETREAL('FV_alpha_extScale')
+  IF ((FV_alpha_extScale.GT.1.) .OR. (FV_alpha_extScale.LT.0.)) CALL ABORT(__STAMP__,&
+                                      'The parameter FV_alpha_extScale has to be between 0. and 1.!')
+ENDIF
+
 ALLOCATE(FV_alpha(1:nElems))
+ALLOCATE(FV_alpha_master(nSides))
+ALLOCATE(FV_alpha_slave( nSides))
 CALL AddToElemData(ElementOut,'FV_alpha',FV_alpha)
 #endif /*FV_ENABLED==2*/
 
@@ -274,6 +296,7 @@ SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitFV
 
+#if FV_ENABLED == 1
 !==================================================================================================================================
 !> Perform switching between DG element and FV sub-cells element (and vise versa) depending on the indicator value.
 !> Optionally, the switching process can be done in the reference element to guarantee conservation on non-cartesian elements.
@@ -399,6 +422,7 @@ ELSE
   CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,U_In)
 END IF
 END SUBROUTINE FV_InterpolateDG2FV
+#endif /*FV_ENABLED==1*/
 
 
 !==================================================================================================================================
@@ -543,6 +567,7 @@ END SUBROUTINE FV_Info
 
 #endif /*FV_ENABLED == 1*/
 
+#if FV_ENABLED == 1
 !==================================================================================================================================
 !> Initialize all FV elements and overwrite data of DG FillIni. Each subcell is supersampled with PP_N points in each space
 !> dimension and the mean value is taken as value for this subcell.
@@ -641,6 +666,7 @@ ELSE
 END IF
 
 END SUBROUTINE FV_FillIni
+#endif /*FV_ENABLED == 1*/
 
 !==================================================================================================================================
 !> Switch DG solution at faces between a DG element and an FV sub-cells element to Finite Volume.
@@ -706,6 +732,8 @@ SDEALLOCATE(gradUzeta_central)
 #endif
 #if FV_ENABLED == 2
 SDEALLOCATE(FV_alpha)
+SDEALLOCATE(FV_alpha_slave )
+SDEALLOCATE(FV_alpha_master)
 #endif
 
 FVInitIsDone=.FALSE.

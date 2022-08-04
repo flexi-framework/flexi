@@ -32,6 +32,7 @@ REAL                   :: FV_IndUpperThreshold   !< Upper threshold: Element is 
 REAL                   :: FV_IndLowerThreshold   !< Lower threshold: Element is switched from FV to DG if indicator
                                                  !< falls below this value
 
+#if FV_ENABLED == 1
 LOGICAL                :: FV_toDG_indicator      !< additional Persson indicator applied to DG solution after switch from FV to DG
                                                  !< to check if DG solution is valid
 REAL                   :: FV_toDG_limit          !< limit for ^ this indicator: If FV_toDG_indicator is above limit, keep FV
@@ -39,6 +40,7 @@ LOGICAL                :: FV_toDGinRK            !< Flag that allows switching o
                                                  !< This may violated the DG timestep restriction of the element.
 LOGICAL                :: FV_IniSharp            !< Maintain a sharp interface in the initial solution in the FV region
 LOGICAL                :: FV_IniSupersample      !< Supersample initial solution inside each sub-cell
+#endif /*FV_ENABLED*/
 LOGICAL                :: switchConservative     !< Perform DG/FV switch in reference element
 
 ! Limiting
@@ -62,8 +64,13 @@ REAL,ALLOCATABLE       :: FV_Elems_Amount(:)     !< counts for every element the
 ! FV/DG Blending
 #if FV_ENABLED == 2
 REAL,ALLOCATABLE       :: FV_alpha(:)            !< Blending coefficient
+REAL,ALLOCATABLE       :: FV_alpha_master(:)     !< Prolongated blending coefficient on master sides
+REAL,ALLOCATABLE       :: FV_alpha_slave( :)     !< Prolongated blending coefficient on slave  sides
 REAL                   :: FV_alpha_min           !< Minimal blending coefficient (all elems below are treated as pure DG)
 REAL                   :: FV_alpha_max           !< Maximal blending coefficient
+REAL                   :: FV_alpha_extScale      !< Amount alpha is scaled when extended into neighbouring elements.
+LOGICAL                :: FV_doExtendAlpha       !< Flag whether alpha should be extended into neighbouring elements
+INTEGER                :: FV_nExtendAlpha        !< Number of times alpha should be passed towards neighboring elements per timestep
 #endif /*FV_ENABLED==2*/
 
 ! FV variables on reference element
