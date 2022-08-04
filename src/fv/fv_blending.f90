@@ -1,0 +1,179 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
+#if FV_ENABLED == 2
+#include "flexi.h"
+#include "eos.h"
+
+!==================================================================================================================================
+!> Module for the Finite Volume sub-cells shock capturing.
+!>
+!> DG elements, that are detected to contain a shock/high gradients/oscillations/..., can be switched to a Finite Volume scheme.
+!> A DG element of polynomial degree N is subdivided into (N+1)^dim sub-cells (to each Gauss Point/DOF one FV sub-cell).
+!> The FV sub-cells of such an element are updated using FV method with 2nd order TVD reconstruction (slope limiters).
+!==================================================================================================================================
+MODULE MOD_FV_Blending
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+PRIVATE
+
+INTERFACE FV_ExtendAlpha
+  MODULE PROCEDURE FV_ExtendAlpha
+END INTERFACE
+
+INTERFACE FV_ComputeExtendedAlpha
+  MODULE PROCEDURE FV_ComputeExtendedAlpha
+END INTERFACE
+
+INTERFACE FV_ProlongFValphaToFace
+  MODULE PROCEDURE FV_ProlongFValphaToFace
+END INTERFACE
+
+PUBLIC::FV_ExtendAlpha
+!==================================================================================================================================
+
+CONTAINS
+
+!==================================================================================================================================
+!> Extend the blending coefficient FV_alpha 
+!==================================================================================================================================
+SUBROUTINE FV_ExtendAlpha(FV_alpha)
+! MODULES
+USE MOD_PreProc
+USE MOD_FV_Mortar        ,ONLY: FV_alpha_Mortar
+USE MOD_FV_Vars          ,ONLY: FV_doExtendAlpha,FV_nExtendAlpha
+USE MOD_FV_Vars          ,ONLY: FV_alpha_master,FV_alpha_slave,FV_alpha_extScale
+USE MOD_Mesh_Vars        ,ONLY: nElems
+#if USE_MPI
+USE MOD_Mesh_Vars        ,ONLY: nSides
+USE MOD_MPI              ,ONLY: StartExchange_FV_alpha,FinishExchangeMPIData
+USE MOD_MPI_Vars         ,ONLY: MPIRequest_FV_Elems,nNbProcs
+#endif
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+REAL,INTENT(INOUT)    :: FV_alpha(nElems)    !< elementwise blending coefficient for DG/FV blending
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: i,iElem
+REAL               :: FV_alpha_current(nElems)
+!==================================================================================================================================
+IF (FV_doExtendAlpha) THEN
+  ! Nullify arrays
+  FV_alpha_master = 0.
+  FV_alpha_slave  = 0.
+  
+  DO i=1,FV_nExtendAlpha
+    ! Prolong blending factor to faces
+    CALL FV_ProlongFValphaToFace()
+  
+    ! TODO: You get here two times the network latency. Could be optimized
+#if USE_MPI
+    CALL FV_alpha_Mortar(FV_alpha_master,FV_alpha_slave,doMPISides=.TRUE.)
+    CALL StartExchange_FV_alpha(FV_alpha_slave,1,nSides,MPIRequest_FV_Elems(:,SEND),MPIRequest_FV_Elems(:,RECV),SendID=2)
+#endif
+    CALL FV_alpha_Mortar(FV_alpha_master,FV_alpha_slave,doMPISides=.FALSE.)
+#if USE_MPI
+    CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_Elems)
+  
+    CALL StartExchange_FV_alpha(FV_alpha_master,1,nSides,MPIRequest_FV_Elems(:,SEND),MPIRequest_FV_Elems(:,RECV),SendID=1)
+    CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_Elems)
+#endif
+  
+    ! Compute maximum of neighbors across shared faces and scale with scaling factor
+    FV_alpha_current = 0.
+    CALL FV_ComputeExtendedAlpha(FV_alpha_master,FV_alpha_slave,FV_alpha_current,.FALSE.)
+    DO iElem = 1,nElems
+      FV_alpha(iElem) = MAX(FV_alpha(iElem),FV_alpha_ExtScale*FV_alpha_current(iElem))
+    END DO
+  END DO
+END IF
+END SUBROUTINE FV_ExtendAlpha
+
+!==================================================================================================================================
+!> Set FV_Alpha_slave and FV_Alpha_master information
+!==================================================================================================================================
+SUBROUTINE FV_ProlongFValphaToFace()
+! MODULES
+USE MOD_FV_Vars         ,ONLY: FV_alpha,FV_alpha_master,FV_alpha_slave
+USE MOD_Mesh_Vars       ,ONLY: SideToElem,nSides
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER :: iSide,ElemID,nbElemID
+!==================================================================================================================================
+! array not allocated in postiMode
+IF (.NOT.ALLOCATED(SideToElem)) RETURN
+
+! set information whether elements adjacent to a side are DG or FV elements
+DO iSide = 1,nSides
+  ElemID    = SideToElem(S2E_ELEM_ID   ,iSide)
+  nbElemID  = SideToElem(S2E_NB_ELEM_ID,iSide)
+  !master sides
+  IF(ElemID  .GT.0) FV_alpha_master(iSide) = FV_alpha(ElemID)
+  !slave side (ElemID,locSide and flip =-1 if not existing)
+  IF(nbElemID.GT.0) FV_alpha_slave( iSide) = FV_alpha(nbElemID)
+END DO
+END SUBROUTINE FV_ProlongFValphaToFace
+
+!==================================================================================================================================
+!> Check for indicator value in neighboring elements
+!==================================================================================================================================
+SUBROUTINE FV_ComputeExtendedAlpha(FV_alpha_master,FV_alpha_slave,FV_alpha_current,doMPISides)
+! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Mesh_Vars ,ONLY: SideToElem,nSides
+USE MOD_Mesh_Vars ,ONLY: firstMPISide_YOUR,lastMPISide_MINE
+USE MOD_Mesh_Vars ,ONLY: nSides,nElems
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+LOGICAL,INTENT(IN)   :: doMPISides  !<= .TRUE. only MPISides_YOUR+MPIMortar are filled
+
+REAL,INTENT(IN)      :: FV_alpha_master( 1:nSides) !< (IN)  FV_alpha on master side
+REAL,INTENT(IN)      :: FV_alpha_slave ( 1:nSides) !< (IN)  FV_alpha on slave side
+REAL,INTENT(INOUT)   :: FV_alpha_current(1:nElems) !< (OUT) FV_alpha in elem
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: ElemID,nbElemID,iSide
+INTEGER            :: firstSideID,lastSideID
+!==================================================================================================================================
+! array not allocated in postiMode
+IF (.NOT.ALLOCATED(SideToElem)) RETURN
+! TODO: is this the correct behavior?
+
+! set information whether elements adjacent to a side are DG or FV elements
+DO iSide = 1,nSides
+  ElemID    = SideToElem(S2E_ELEM_ID   ,iSide)
+  nbElemID  = SideToElem(S2E_NB_ELEM_ID,iSide)
+
+  ! master sides
+  IF(ElemID.GT.0)THEN
+    FV_alpha_current(ElemID)   = MAX(FV_alpha_current(ElemID)  ,MAX(FV_alpha_master(iSide),FV_alpha_slave(iSide)))
+  END IF
+
+  ! slave sides
+  IF(nbElemID.GT.0)THEN
+    FV_alpha_current(nbElemID) = MAX(FV_alpha_current(nbElemID),MAX(FV_alpha_master(iSide),FV_alpha_slave(iSide)))
+  END IF
+END DO
+END SUBROUTINE FV_ComputeExtendedAlpha
+
+END MODULE MOD_FV_Blending
+#endif /* FV_ENABLED */
