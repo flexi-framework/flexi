@@ -147,11 +147,17 @@ gnu_naca:
   script:
     - cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/naca -j 6
 
-gnu_fv:
+gnu_fv_switch:
   <<: *defaults_weekly
   stage: reggie_weekly
   script:
-    - cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/fv -j 6
+    - cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/fv_switch -j 6
+
+gnu_fv_blend:
+  <<: *defaults_weekly
+  stage: reggie_weekly
+  script:
+    - cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/fv_blend -j 6
 
 gnu_channelRANS:
   <<: *defaults_weekly
