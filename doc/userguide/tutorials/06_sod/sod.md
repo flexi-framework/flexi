@@ -19,10 +19,12 @@ This creates the mesh file *SOD_100_mesh.h5* in HDF5 format.
 ### Flow Simulation with FLEXI
 \label{sec:tut_sod_simulation}
 
-This example requires the Finite Volume shock capturing and the Euler equations. Therefore set the following options in cmake:
+This example requires the Finite Volume shock capturing and the Euler equations.
+In this tutorial we will investigate the shock capturing based on switching the DG representation to FV sub-cells.
+Therefore set the following options in cmake:
 
 ~~~~~~
-FLEXI_FV          ON 
+FLEXI_FV          SWITCH
 FLEXI_PARABOLIC   OFF
 ~~~~~~
 

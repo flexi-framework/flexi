@@ -67,8 +67,8 @@ USE MOD_FV_Limiter  ,ONLY: DefineParametersFV_Limiter
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection('FV')
+! FV Switching
 CALL prms%CreateLogicalOption('FV_SwitchConservative',"Perform FV/DG switch in reference element", '.TRUE.')
-#if FV_ENABLED == 1
 CALL prms%CreateLogicalOption('FV_IniSupersample'    ,"Supersample initial solution inside each sub-cell and take mean value \n&
                                                       & as average sub-cell value.", '.TRUE.')
 CALL prms%CreateLogicalOption('FV_IniSharp'          ,"Maintain a sharp interface in the initial solution in the FV region",&
@@ -82,7 +82,7 @@ CALL prms%CreateLogicalOption('FV_toDG_indicator'    ,"Apply additional Persson 
 CALL prms%CreateRealOption   ('FV_toDG_limit'        ,"Threshold for FV_toDG_indicator")
 CALL prms%CreateLogicalOption('FV_toDGinRK'          ,"Allow switching of FV elements to DG during Runge Kutta stages. \n"//&
                                                       "This may violated the DG timestep restriction of the element.", '.FALSE.')
-#elif FV_ENABLED == 2
+! FV Blending
 CALL prms%CreateRealOption(   'FV_alpha_min'          ,"Lower bound for alpha (all elements below threshold are treated as pure DG)"&
                                                       ,'0.01')
 CALL prms%CreateRealOption(   'FV_alpha_max'          ,"Maximum value for alpha",'0.5' )
@@ -90,7 +90,6 @@ CALL prms%CreateRealOption(   'FV_alpha_ExtScale'     ,"Scaling factor for elpha
 CALL prms%CreateIntOption(    'FV_nExtendAlpha'       ,"Number of times alpha should be passed to neighbor elements per timestep",&
                                                        '1' )
 CALL prms%CreateLogicalOption('FV_doExtendAlpha'      ,"Blending factor is prolongated into neighboring elements", '.FALSE.')
-#endif
 
 #if FV_RECONSTRUCT
 CALL DefineParametersFV_Limiter()
@@ -107,16 +106,16 @@ SUBROUTINE InitFV()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Basis               ,ONLY: InitializeVandermonde
-USE MOD_Filter_Vars         ,ONLY: NFilter
 USE MOD_FV_Vars
 USE MOD_FV_Basis
 #if FV_ENABLED == 1
+USE MOD_Filter_Vars         ,ONLY: NFilter
 USE MOD_Indicator_Vars      ,ONLY: nModes,IndicatorType
+USE MOD_Overintegration_Vars,ONLY: NUnder
 #endif
 USE MOD_IO_HDF5             ,ONLY: AddToElemData,ElementOut
 USE MOD_Mesh_Vars           ,ONLY: nElems,nSides
 USE MOD_ReadInTools
-USE MOD_Overintegration_Vars,ONLY: NUnder
 #if FV_RECONSTRUCT
 USE MOD_FV_Limiter
 #endif
