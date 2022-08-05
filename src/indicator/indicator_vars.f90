@@ -34,6 +34,7 @@ INTEGER,ALLOCATABLE    :: FVBoundaryType(:)           !< select at which kind of
 #if FV_ENABLED == 2
 REAL                   :: T_FV                        !< Blending FV variable
 REAL,PARAMETER         :: s_FV = 9.21024              !< Blending FV variable
+REAL                   :: sdT_FV                      !< Blending FV variable
 #endif
 !==================================================================================================================================
 END MODULE MOD_Indicator_Vars

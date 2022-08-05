@@ -173,7 +173,8 @@ CASE(INDTYPE_PERSSON)
   nModes = GETINT('nModes','2')
   nModes = MAX(1,nModes+PP_N-MIN(NUnder,NFilter))-1 ! increase by number of empty modes in case of overintegration
 #if FV_ENABLED == 2
-  T_FV = 0.5*10**(-1.8*(PP_N+1)**.25)
+  T_FV   = 0.5*10**(-1.8*(PP_N+1)**.25)
+  sdT_FV = s_FV/T_FV
 #if EQNSYSNR != 2 /* NOT NAVIER-STOKES */
   CALL Abort(__STAMP__, &
       "Persson indicator for FV-Blending only works with Navier-Stokes equations.")
@@ -218,7 +219,7 @@ USE MOD_Lifting_Vars     ,ONLY: gradUx,gradUy,gradUz
 #if FV_ENABLED == 2
 USE MOD_FV_Blending      ,ONLY: FV_ExtendAlpha
 USE MOD_FV_Vars          ,ONLY: FV_alpha,FV_alpha_min,FV_alpha_max,FV_doExtendAlpha
-USE MOD_Indicator_Vars   ,ONLY: s_FV,T_FV
+USE MOD_Indicator_Vars   ,ONLY: sdT_FV,T_FV
 #else
 USE MOD_FV_Vars          ,ONLY: FV_Elems,FV_sVdm
 #endif /*FV_ENABLED==2*/
@@ -253,7 +254,7 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
 #if FV_ENABLED == 2
   DO iElem=1,nElems
     IndValue(iElem) = IndPerssonBlend(U(:,:,:,:,iElem))
-    FV_alpha(iElem)  = 1. / (1. + EXP(-s_FV/T_FV * (IndValue(iElem) - T_FV)))
+    FV_alpha(iElem)  = 1. / (1. + EXP(-sdT_FV * (IndValue(iElem) - T_FV)))
     ! Limit to alpha_max
     FV_alpha(iElem) = MAX(FV_alpha(iElem),FV_alpha_max)
   END DO ! iElem
