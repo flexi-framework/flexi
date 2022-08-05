@@ -32,9 +32,10 @@ REAL                   :: IndStartTime                !< specify starting time o
 LOGICAL                :: FVBoundaries = .FALSE.      !< specify if fv element is set at boundaries
 INTEGER,ALLOCATABLE    :: FVBoundaryType(:)           !< select at which kind of BCs FV elements should be used
 #if FV_ENABLED == 2
-REAL                   :: T_FV                        !< Blending FV variable
-REAL,PARAMETER         :: s_FV = 9.21024              !< Blending FV variable
-REAL                   :: sdT_FV                      !< Blending FV variable
+REAL                   :: T_FV                        !< Threshold for FV blending as function of PP_N
+REAL,PARAMETER         :: s_FV = 9.21024              !< "Sharpness factor" for FV blending function according to
+                                                      !< Eq.(45) in: S. Hennemann et al., J.Comp.Phy., 2021
+REAL                   :: sdT_FV                      !< Precomputed variable for FV blending
 #endif
 !==================================================================================================================================
 END MODULE MOD_Indicator_Vars

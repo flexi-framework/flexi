@@ -173,7 +173,7 @@ CASE(INDTYPE_PERSSON)
   nModes = GETINT('nModes','2')
   nModes = MAX(1,nModes+PP_N-MIN(NUnder,NFilter))-1 ! increase by number of empty modes in case of overintegration
 #if FV_ENABLED == 2
-  T_FV   = 0.5*10**(-1.8*(PP_N+1)**.25)
+  T_FV   = 0.5*10**(-1.8*(PP_N+1)**.25) ! Eq.(42) in: S. Hennemann et al., J.Comp.Phy., 2021
   sdT_FV = s_FV/T_FV
 #if EQNSYSNR != 2 /* NOT NAVIER-STOKES */
   CALL Abort(__STAMP__, &

@@ -156,7 +156,28 @@ IF (IndicatorType.NE.2) THEN
   nModes = GETINT('nModes','2')
   nModes = MAX(1,nModes+PP_N-MIN(NUnder,NFilter))-1 ! increase by number of empty modes in case of overintegration
 END IF
-#endif
+
+! Options for initial solution
+FV_IniSharp       = GETLOGICAL("FV_IniSharp",'.FALSE.')
+IF (.NOT.FV_IniSharp) FV_IniSupersample = GETLOGICAL("FV_IniSupersample",'.TRUE.')
+
+#elif FV_ENABLED == 2
+! Initialize parameters for FV Blending
+FV_alpha_min = GETREAL('FV_alpha_min')
+FV_alpha_max = GETREAL('FV_alpha_max')
+FV_doExtendAlpha = GETLOGICAL('FV_doExtendAlpha')
+IF (FV_doExtendAlpha) THEN
+  FV_nExtendAlpha = GETINT('FV_nExtendAlpha')
+  FV_alpha_extScale = GETREAL('FV_alpha_extScale')
+  IF ((FV_alpha_extScale.GT.1.) .OR. (FV_alpha_extScale.LT.0.)) CALL ABORT(__STAMP__,&
+                                      'The parameter FV_alpha_extScale has to be between 0. and 1.!')
+ENDIF
+
+ALLOCATE(FV_alpha(1:nElems))
+ALLOCATE(FV_alpha_master(nSides))
+ALLOCATE(FV_alpha_slave( nSides))
+CALL AddToElemData(ElementOut,'FV_alpha',FV_alpha)
+#endif /*FV_ENABLED*/
 
 #if FV_RECONSTRUCT
 CALL InitFV_Limiter()
@@ -236,35 +257,6 @@ gradUeta_central =0.
 gradUzeta_central=0.
 #endif /* PARABOLIC */
 #endif /* FV_RECONSTRUCT */
-
-#if FV_ENABLED == 1
-! Options for initial solution
-FV_IniSharp       = GETLOGICAL("FV_IniSharp",'.FALSE.')
-IF (.NOT.FV_IniSharp) FV_IniSupersample = GETLOGICAL("FV_IniSupersample",'.TRUE.')
-#endif /*FV_ENABLED == 1*/
-
-! Initialize FV Blending
-#if FV_ENABLED == 2
-#if EQNSYSNR != 2 /* NOT NAVIER-STOKES */
-CALL Abort(__STAMP__, &
-    "FV blending only works with Navier-Stokes equations.")
-#endif /* EQNSYSNR != 2 */
-! Blending
-FV_alpha_min = GETREAL('FV_alpha_min')
-FV_alpha_max = GETREAL('FV_alpha_max')
-FV_doExtendAlpha = GETLOGICAL('FV_doExtendAlpha')
-IF (FV_doExtendAlpha) THEN
-  FV_nExtendAlpha = GETINT('FV_nExtendAlpha')
-  FV_alpha_extScale = GETREAL('FV_alpha_extScale')
-  IF ((FV_alpha_extScale.GT.1.) .OR. (FV_alpha_extScale.LT.0.)) CALL ABORT(__STAMP__,&
-                                      'The parameter FV_alpha_extScale has to be between 0. and 1.!')
-ENDIF
-
-ALLOCATE(FV_alpha(1:nElems))
-ALLOCATE(FV_alpha_master(nSides))
-ALLOCATE(FV_alpha_slave( nSides))
-CALL AddToElemData(ElementOut,'FV_alpha',FV_alpha)
-#endif /*FV_ENABLED==2*/
 
 FVInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT FV DONE!'
