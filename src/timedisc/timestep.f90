@@ -58,7 +58,7 @@ USE MOD_TimeDisc_Vars ,ONLY: dt,Ut_tmp,RKA,RKb,RKc,nRKStages,CurrentStage
 USE MOD_Indicator     ,ONLY: CalcIndicator
 #endif /*FV_ENABLED*/
 #if FV_ENABLED == 1
-USE MOD_FV            ,ONLY: FV_Switch
+USE MOD_FV_Switching  ,ONLY: FV_Switch
 USE MOD_FV_Vars       ,ONLY: FV_toDGinRK
 #endif /*FV_ENABLED==1*/
 #if PP_LIMITER
@@ -132,7 +132,7 @@ USE MOD_TimeDisc_Vars,ONLY: dt,UPrev,S2,RKdelta,RKg1,RKg2,RKg3,RKb,RKc,nRKStages
 USE MOD_Indicator     ,ONLY: CalcIndicator
 #endif /*FV_ENABLED*/
 #if FV_ENABLED == 1
-USE MOD_FV            ,ONLY: FV_Switch
+USE MOD_FV_Switching  ,ONLY: FV_Switch
 USE MOD_FV_Vars       ,ONLY: FV_toDGinRK
 #endif /*FV_ENABLED==1*/
 #if PP_LIMITER
@@ -227,7 +227,7 @@ USE MOD_TimeDisc_Vars     ,ONLY: DFLScale,DFLScale_Readin
 USE MOD_Indicator         ,ONLY: CalcIndicator
 #endif /*FV_ENABLED*/
 #if FV_ENABLED == 1
-USE MOD_FV                ,ONLY: FV_Switch
+USE MOD_FV_Switching      ,ONLY: FV_Switch
 #endif /*FV_ENABLED==1*/
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

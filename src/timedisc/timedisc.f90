@@ -63,9 +63,13 @@ USE MOD_TimeDisc_Vars       ,ONLY: TimeDiscType
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize,writeCounter,nCalcTimestep
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
 #if FV_ENABLED
-USE MOD_FV
 USE MOD_Indicator           ,ONLY: CalcIndicator
 #endif /*FV_ENABLED*/
+#if FV_ENABLED == 1
+USE MOD_FV_Switching        ,ONLY: FV_FillIni,FV_Switch,FV_Info
+#elif FV_ENABLED == 2
+USE MOD_FV_Blending         ,ONLY: FV_Info
+#endif /*FV_ENABLED == 1*/
 #if PP_LIMITER
 USE MOD_PPLimiter           ,ONLY: PPLimiter,PPLimiter_Info
 USE MOD_Filter_Vars         ,ONLY: DoPPLimiter

@@ -322,7 +322,7 @@ USE MOD_Restart_Vars
 USE MOD_FV_Vars,            ONLY: FV_Elems
 #endif
 #if FV_ENABLED == 1
-USE MOD_FV,                 ONLY: FV_ProlongFVElemsToFace
+USE MOD_FV_Switching,       ONLY: FV_ProlongFVElemsToFace
 USE MOD_Indicator_Vars,     ONLY: IndValue
 USE MOD_StringTools,        ONLY: STRICMP
 #endif /*FV_ENABLED==1*/

@@ -11,9 +11,7 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
-#if FV_ENABLED == 2
 #include "flexi.h"
-#include "eos.h"
 
 !==================================================================================================================================
 !> Module for the Finite Volume sub-cells shock capturing.
@@ -27,6 +25,7 @@ MODULE MOD_FV_Blending
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
+#if FV_ENABLED == 2
 
 INTERFACE FV_ExtendAlpha
   MODULE PROCEDURE FV_ExtendAlpha
@@ -40,13 +39,18 @@ INTERFACE FV_ProlongFValphaToFace
   MODULE PROCEDURE FV_ProlongFValphaToFace
 END INTERFACE
 
+INTERFACE FV_Info
+  MODULE PROCEDURE FV_Info
+END INTERFACE
+
 PUBLIC::FV_ExtendAlpha
+PUBLIC::FV_Info
 !==================================================================================================================================
 
 CONTAINS
 
 !==================================================================================================================================
-!> Extend the blending coefficient FV_alpha 
+!> Extend the blending coefficient FV_alpha
 !==================================================================================================================================
 SUBROUTINE FV_ExtendAlpha(FV_alpha)
 ! MODULES
@@ -74,11 +78,11 @@ IF (FV_doExtendAlpha) THEN
   ! Nullify arrays
   FV_alpha_master = 0.
   FV_alpha_slave  = 0.
-  
+
   DO i=1,FV_nExtendAlpha
     ! Prolong blending factor to faces
     CALL FV_ProlongFValphaToFace()
-  
+
     ! TODO: You get here two times the network latency. Could be optimized
 #if USE_MPI
     CALL FV_alpha_Mortar(FV_alpha_master,FV_alpha_slave,doMPISides=.TRUE.)
@@ -87,11 +91,11 @@ IF (FV_doExtendAlpha) THEN
     CALL FV_alpha_Mortar(FV_alpha_master,FV_alpha_slave,doMPISides=.FALSE.)
 #if USE_MPI
     CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_Elems)
-  
+
     CALL StartExchange_FV_alpha(FV_alpha_master,1,nSides,MPIRequest_FV_Elems(:,SEND),MPIRequest_FV_Elems(:,RECV),SendID=1)
     CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_Elems)
 #endif
-  
+
     ! Compute maximum of neighbors across shared faces and scale with scaling factor
     FV_alpha_current = 0.
     CALL FV_ComputeExtendedAlpha(FV_alpha_master,FV_alpha_slave,FV_alpha_current,.FALSE.)
@@ -175,5 +179,42 @@ DO iSide = 1,nSides
 END DO
 END SUBROUTINE FV_ComputeExtendedAlpha
 
-END MODULE MOD_FV_Blending
+!==================================================================================================================================
+!> Print information on the amount of FV blending
+!==================================================================================================================================
+SUBROUTINE FV_Info(iter)
+! MODULES
+USE MOD_Globals
+USE MOD_Mesh_Vars    ,ONLY: nGlobalElems
+USE MOD_FV_Vars      ,ONLY: FV_alpha
+USE MOD_Analyze_Vars ,ONLY: FV_totalAlpha
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER(KIND=8),INTENT(IN) :: iter !< number of iterations
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL              :: FV_alpha_range(3)
+!==================================================================================================================================
+FV_alpha_range(1) = MINVAL(FV_alpha)
+FV_alpha_range(2) = MAXVAL(FV_alpha)
+
+#if USE_MPI
+IF(MPIRoot)THEN
+  CALL MPI_REDUCE(MPI_IN_PLACE    ,FV_alpha_range(1),1,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE    ,FV_alpha_range(2),1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE    ,FV_totalAlpha    ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+ELSE
+  CALL MPI_REDUCE(FV_alpha_range(1),0               ,1,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(FV_alpha_range(2),0               ,1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(FV_totalAlpha    ,0               ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+END IF
+#endif /*USE_MPI*/
+SWRITE(UNIT_stdOut,'(A,F8.3,A,F5.3,A,ES18.9)') ' FV_alpha    : ',FV_alpha_range(1),' - ',FV_alpha_range(2),&
+                                              ', avg: '         ,FV_totalAlpha / REAL(nGlobalElems) / iter
+FV_totalAlpha   = 0.
+END SUBROUTINE FV_Info
+
 #endif /* FV_ENABLED */
+END MODULE MOD_FV_Blending
