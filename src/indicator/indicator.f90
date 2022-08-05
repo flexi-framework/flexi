@@ -256,7 +256,7 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
     IndValue(iElem) = IndPerssonBlend(U(:,:,:,:,iElem))
     FV_alpha(iElem)  = 1. / (1. + EXP(-sdT_FV * (IndValue(iElem) - T_FV)))
     ! Limit to alpha_max
-    FV_alpha(iElem) = MAX(FV_alpha(iElem),FV_alpha_max)
+    FV_alpha(iElem) = MIN(FV_alpha(iElem),FV_alpha_max)
   END DO ! iElem
   CALL FV_ExtendAlpha(FV_alpha)
   ! Do not compute FV contribution for elements below threshold
