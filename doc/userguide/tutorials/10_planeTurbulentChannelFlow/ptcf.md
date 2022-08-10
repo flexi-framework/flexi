@@ -113,3 +113,38 @@ In a second step, we run **FLEXI** with Smagorinsky's model and Van Driest dampi
 
 ![Mean velocity and Reynolds stress profiles (left) as well as turbulent energy spectra close to the centre of the channel (right} of a LES with Smagorinsky's model and vanDriest damping at $Re_{\tau}=180$. \label{fig:Re180_turbulentChannel_Smag}](tutorials/10_planeTurbulentChannelFlow/Re180_turbulentChannel_Smag.png)
 
+### Performance improvements
+\label{sec:tut_ptcf_performance}
+FLEXI comes with some advanced optimizations in order to increase its computational efficiency for compute-intesive simulations.
+These appear once the flag ``FLEXI_PERFORMANCE=ON`` is set.
+The first option is ``FLEXI_PERFORMANCE_OPTLIFT``, which can be activated to optimize the computation of the parabolic terms of the applied equation system.
+However, POSTI is not available if this option is enabled.
+The option ``FLEXI_PERFORMANCE_PGO=ON`` allows to enable profile-guided optimization (PGO).
+For PGO, the executable is first instrumented with some profiling tools by the compiler and then executed on a simple test case.
+The generated profiling data can be used by the compiler to identify bottlenecks and hotspots in the code that it cannot spot from the static source code by itself.
+The executable is thus compiled a second time using the gathered profiling data to perform these additional optimizations.
+In FLEXI, this two-step compilation works as follows.
+First, FLEXI is compiled with the following options.
+
+| Option                          | Value              | Comment      |
+| ------------------------------- |:-------------:     | ------------:|
+| CMAKE_BUILD_TYPE                | Profile/Release    |              |
+| FLEXI_EQYNSYSNAME               | navierstokes       |              |
+| FLEXI_PARABOLIC                 | ON                 |              |
+| LIBS_USE_MPI                    | ON                 |  optional    |
+| FLEXI_EDDYVISCOSITY             | ON                 |  optional    |
+| FLEXI_NODETYPE                  | GAUSS-LOBATTO      |              |
+| FLEXI_SPLIT_DG                  | ON                 |              |
+| FLEXI_TESTCASE                  | channel            |              |
+| FLEXI_PERFORMANCE               | ON                 |              |
+| FLEXI_PERFORMANCE_OPTLIFT       | ON                 |              |
+| FLEXI_PERFORMANCE_PGO           | ON                 |              |
+| POSTI                           | OFF                |              |
+
+Table: CMake options for the plane turbulent channel flow test case with additional performance flags enabled. \label{tab:ptcf_cmakeoptions_performance}
+
+For the first step, FLEXI havs to be compiled with ``CMAKE_BUILD_TYPE=Profile`` in order to activate the profiling.
+Then, FLEXI has to be executed on a simple test case like the freestream tutorial by following the instructions from Section \ref{sec:tut_freestream}.
+Finally, FLEXI is compiled a second time, but this time with the build type set to ``CMAKE_BUILD_TYPE=Release`` in order to incorporate the generated profiling data into the compilation process.
+Now, FLEXI can be executed as usual and should show a considerable performance improvement in comparison to the previous simulations.
+Please be aware, that PGO is currently only supported for the GNU compiler and that this two-step compilation process has to be performed each time the compile options, i.e. the FLEXI executable, are changed.

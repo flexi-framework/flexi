@@ -178,9 +178,9 @@ ENDIF()
 # =========================================================================
 # Reduced lifting in performance mode
 # =========================================================================
-CMAKE_DEPENDENT_OPTION(FLEXI_OPTLIFT "Lift only needed variables" OFF
-                                     "FLEXI_PERFORMANCE;NOT POSTI" OFF)
-IF(FLEXI_OPTLIFT)
+CMAKE_DEPENDENT_OPTION(FLEXI_PERFORMANCE_OPTLIFT "Lift only needed variables" OFF
+                                                 "FLEXI_PERFORMANCE;NOT POSTI" OFF)
+IF(FLEXI_PERFORMANCE_OPTLIFT)
   ADD_DEFINITIONS(-DPP_OPTLIFT=1)
 ELSE()
   ADD_DEFINITIONS(-DPP_OPTLIFT=0)

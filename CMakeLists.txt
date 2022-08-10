@@ -114,7 +114,9 @@ EXECUTE_PROCESS(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/setCommitHash.sh
 # Check IPO support:
 # =========================================================================
 # we need to have languages enabled and compilers defined for this
-IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.9.0"))
+OPTION(FLEXI_PERFORMANCE_IPO "Enable Interprocedural Optimization for build (if available)." ON)
+MARK_AS_ADVANCED(FORCE FLEXI_PERFORMANCE_IPO)
+IF(FLEXI_PERFORMANCE_IPO AND NOT(${CMAKE_VERSION} VERSION_LESS "3.9.0"))
   CMAKE_POLICY(SET CMP0069 NEW)
   INCLUDE(CheckIPOSupported)
   CHECK_IPO_SUPPORTED(RESULT HASIPO OUTPUT error)

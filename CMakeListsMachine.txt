@@ -222,14 +222,14 @@ ENDIF()
 # =========================================================================
 # Profile-Guided Optimization (PGO)
 # =========================================================================
-CMAKE_DEPENDENT_OPTION(USE_PGO "Enable profile-guided optimization (Only GNU Compiler supported)" OFF
-                               "FLEXI_PERFORMANCE" OFF)
-IF (USE_PGO)
+CMAKE_DEPENDENT_OPTION(FLEXI_PERFORMANCE_PGO "Enable profile-guided optimization (Only GNU Compiler supported)" OFF
+                                             "FLEXI_PERFORMANCE" OFF)
+IF (FLEXI_PERFORMANCE_PGO)
   IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
     SET(CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE} -fprofile-use")
     SET(CMAKE_Fortran_FLAGS_PROFILE "${CMAKE_Fortran_FLAGS_PROFILE} -fprofile-generate")
   ELSE()
-    MESSAGE( SEND_ERROR "Profile-guided optimization (PGO) currently only supported for GNU compiler. Either set USE_GPO=OFF or use the GNU compiler." )
+	  MESSAGE( SEND_ERROR "Profile-guided optimization (PGO) currently only supported for GNU compiler. Either set FLEXI_PERFORMANCE_PGO=OFF or use the GNU compiler." )
   ENDIF()
 ENDIF()
 
