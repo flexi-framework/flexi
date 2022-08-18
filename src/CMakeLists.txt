@@ -250,7 +250,7 @@ FILE(GLOB_RECURSE flexiF90 ./src/interpolation/*.f90
                            ./src/precond/*.f90
                            ./src/implicit/*.f90
                            ./src/testcase/${FLEXI_TESTCASE}/*.f90
-                           ./src/flexilib.f90
+                           # ./src/flexilib.f90
                            ./unitTests/unittest.f90
                            ./unitTests/unittest_vars.f90)
 
@@ -317,7 +317,7 @@ ENDIF()
 
 ADD_LIBRARY(userblocklib STATIC ./src/output/read_userblock.c)
 ADD_LIBRARY(stacksizelib STATIC ./src/globals/stacksize.c)
-SET_TARGET_PROPERTIES(stacksizelib userblocklib PROPERTIES LINKER_LANGUAGE C
+SET_TARGET_PROPERTIES(stacksizelib userblocklib PROPERTIES LANGUAGE C LINKER_LANGUAGE C
                                                            COMPILE_FLAGS "-fPIC")
 
 # we link the statically built libs

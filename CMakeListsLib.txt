@@ -48,7 +48,9 @@ ENDIF()
 # =========================================================================
 OPTION(LIBS_USE_MPI "Compile SINGLE or MPI version" ON)
 IF(LIBS_USE_MPI)
+  SET(MPI_DETERMINE_LIBRARY_VERSION TRUE)
   FIND_PACKAGE(MPI REQUIRED)
+
   IF (NOT MPI_Fortran_NO_INTERROGATE)
     FOREACH(DIR ${MPI_INCLUDE_PATH})
       INCLUDE_DIRECTORIES(${DIR})
@@ -58,13 +60,31 @@ IF(LIBS_USE_MPI)
     ENDFOREACH()
     LIST(APPEND linkedlibs ${MPI_Fortran_LIBRARIES})
   ENDIF()
+
   MARK_AS_ADVANCED(FORCE MPI_LIBRARY MPI_EXTRA_LIBRARY)
-  MESSAGE(STATUS "Building Flexi with MPI")
-  MESSAGE(STATUS "MPI Compiler: " ${MPI_Fortran_COMPILER})
-  # Detect HPE MPT implementation since if changes some MPI definitions
-  IF("${MPI_Fortran_COMPILER}" MATCHES "mpt")
+
+  # Detect MPI implementation and version since it changes some MPI definitions
+  IF(MPI_C_LIBRARY_VERSION_STRING MATCHES ".*CRAY MPICH.*" AND MPI_C_VERSION_MAJOR MATCHES "3")
+    SET(LIBS_MPI_NAME "Cray MPICH")
+    STRING(REGEX MATCH "([0-9]+)\\.([0-9]+)" MPI_C_LIBRARY_VERSION ${MPI_C_LIBRARY_VERSION_STRING})
+  ELSEIF(MPI_C_LIBRARY_VERSION_STRING MATCHES ".*MPICH.*" AND MPI_C_VERSION_MAJOR MATCHES "3")
+    SET(LIBS_MPI_NAME "MPICH")
+    STRING(REGEX MATCH "([0-9]+)\\.([0-9]+)" MPI_C_LIBRARY_VERSION ${MPI_C_LIBRARY_VERSION_STRING})
+  ELSEIF(MPI_C_LIBRARY_VERSION_STRING MATCHES ".*Open MPI.*" AND MPI_C_VERSION_MAJOR MATCHES "3")
+    SET(LIBS_MPI_NAME "OpenMPI")
+    STRING(REGEX MATCH "([0-9]+)\\.([0-9]+)\\.([0-9]+)" MPI_C_LIBRARY_VERSION ${MPI_C_LIBRARY_VERSION_STRING})
+  ELSEIF(MPI_C_LIBRARY_VERSION_STRING MATCHES ".*HPE MPT.*" AND MPI_C_VERSION_MAJOR MATCHES "3")
+    SET(LIBS_MPI_NAME "HPE MPT")
+    STRING(REGEX MATCH "([0-9]+)\\.([0-9]+)" MPI_C_LIBRARY_VERSION ${MPI_C_LIBRARY_VERSION_STRING})
     ADD_DEFINITIONS(-DLIBS_MPT=1)
+  ELSEIF(MPI_C_LIBRARY_VERSION_STRING MATCHES ".*Intel.*" AND MPI_C_VERSION_MAJOR MATCHES "3")
+    SET(LIBS_MPI_NAME "Intel MPI")
+    STRING(REGEX MATCH "([0-9]+)\\.([0-9]+)" MPI_C_LIBRARY_VERSION ${MPI_C_LIBRARY_VERSION_STRING})
+  ELSE()
+    MESSAGE(FATAL_ERROR "Cannot detect supported MPI type or version. Valid options are Cray MPICH, IntelMPI, MPICH, HPE MPT, and OpenMPI supporting MPI version 3.x")
   ENDIF()
+
+  MESSAGE(STATUS "Compiling with [${LIBS_MPI_NAME}] (v${MPI_C_LIBRARY_VERSION})")
   ADD_DEFINITIONS(-DUSE_MPI=1)
 ELSE()
   ADD_DEFINITIONS(-DUSE_MPI=0)
@@ -86,6 +106,12 @@ STRING(TOLOWER ${LIB_TYPE} SEARCH_TYPE)
 
 # Use system HDF5
 IF(NOT LIBS_BUILD_HDF5)
+  # Unset leftover paths from old CMake runs
+  UNSET(HDF5_LIBRARIES)
+  UNSET(HDF5_INCLUDE_DIR_FORTRAN)
+  UNSET(HDF5_INCLUDE_DIR)
+  UNSET(HDF5_DIFF_EXECUTABLE)
+
   # Try to find the CMake version
   SET(LIBS_HDF5_CMAKE TRUE)
   FIND_PACKAGE(HDF5 NAMES hdf5 COMPONENTS C Fortran ${SEARCH_TYPE} QUIET PATH_SUFFIXES share/cmake)
@@ -131,20 +157,16 @@ ELSE()
   #SET HDF5_TAG depending on MPI Version
   IF(LIBS_USE_MPI)
     # HDF5 1.12.0 and greater is compatible with OpenMPI 4.0.0 and greater
-    EXECUTE_PROCESS(COMMAND mpiexec --version COMMAND grep ^mpiexec COMMAND sed "s/^.* //g" OUTPUT_VARIABLE OPENMPI_VERSION)
-    IF (DEFINED OPENMPI_VERSION  AND NOT "${OPENMPI_VERSION}" STREQUAL "")
-      IF (${OPENMPI_VERSION} VERSION_GREATER_EQUAL "4.0.0")
+    IF("${LIBS_MPI_NAME}" MATCHES "OpenMPI" AND ${MPI_C_LIBRARY_VERSION} VERSION_GREATER_EQUAL "4.0.0")
         SET (HDF5_TAG "hdf5-1_12_0" CACHE STRING "HDF5 version tag")
       ELSE()
         SET (HDF5_TAG "hdf5-1_10_6" CACHE STRING "HDF5 version tag")
       ENDIF()
-    ELSE()
-      SET (HDF5_TAG "hdf5-1_10_6" CACHE STRING "HDF5 version tag")
-    ENDIF()
+    MESSAGE (STATUS "Setting HDF5 to tag ${HDF5_TAG} to be compatible with detected [${LIBS_MPI_NAME}] (v${MPI_C_LIBRARY_VERSION})")
   ELSE()
     SET (HDF5_TAG "hdf5-1_12_0" CACHE STRING "HDF5 version tag")
+    MESSAGE (STATUS "Setting HDF5 to tag ${HDF5_TAG} as no MPI support was requested")
   ENDIF()
-  MESSAGE (STATUS "Setting HDF5 to tag ${HDF5_TAG} to be compatible with detected MPI version")
   MARK_AS_ADVANCED(FORCE HDF5_TAG)
 
   # Set HDF5 build dir
@@ -162,6 +184,10 @@ ELSE()
       SET(LIBS_HDF5FC ${CMAKE_Fortran_COMPILER})
       SET(LIBS_HDF5CC ${CMAKE_C_COMPILER} )
     ENDIF()
+
+    # Set parallel build with maximum number of threads
+    INCLUDE(ProcessorCount)
+    PROCESSORCOUNT(N)
 
     # Optional Features:
     #   --enable-silent-rules   less verbose build output (undo: "make V=1")
@@ -186,12 +212,14 @@ ELSE()
       PREFIX ${LIBS_HDF5_DIR}
       UPDATE_COMMAND ""
       CONFIGURE_COMMAND FC=${LIBS_HDF5FC} CC=${LIBS_HDF5CC} ${LIBS_HDF5_DIR}/src/HDF5/configure --prefix=${LIBS_HDF5_DIR} --with-pic --enable-fortran ${LIBS_HDF5PARALLEL} --libdir=${LIBS_HDF5_DIR}/lib --enable-build-mode=production --enable-silent-rules --disable-dependency-tracking
-      BUILD_COMMAND ${MAKE}
+      BUILD_BYPRODUCTS ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.a ${LIBS_HDF5_DIR}/lib/libhdf5.a ${LIBS_HDF5_DIR}/bin/h5diff
+      # Configure explicitly requires GNU make
+      BUILD_COMMAND make -j${N}
     )
     SET(LIBS_HDF5_CMAKE FALSE)
 
     # CMake HDF5 is fast but not yet reliable. The following section can be enabled once HDF5 promotes the CMake option to stable
-    #ExternalProject_Add(HDF5
+    #EXTERNALPROJECT_ADD(HDF5
     #  GIT_REPOSITORY ${HDF5DOWNLOAD}
     #  GIT_TAG ${HDF5_TAG}
     #  GIT_PROGRESS TRUE
@@ -233,7 +261,11 @@ IF(LIBS_HDF5_CMAKE)
 # HDF5 build with configure
 ELSE()
   INCLUDE_DIRECTORIES (${HDF5_INCLUDE_DIR_FORTRAN} ${HDF5_INCLUDE_DIR})
-  MESSAGE(STATUS "Found HDF5 Libs: " ${HDF5_LIBRARIES})
+  IF(${HDF5_IS_PARALLEL})
+    MESSAGE(STATUS "Compiling with [HDF5] (v${HDF5_VERSION}) with parallel support")
+  ELSE()
+    MESSAGE(STATUS "Compiling with [HDF5] (v${HDF5_VERSION}) without parallel support")
+  ENDIF()
   LIST(APPEND linkedlibs ${HDF5_LIBRARIES} )
 ENDIF()
 
@@ -254,10 +286,10 @@ IF(NOT LIBS_BUILD_MATH_LIB)
   ENDIF()
 
   # Use Lapack/Blas for GNU
-  FIND_PACKAGE(LAPACK QUIET)
+  FIND_PACKAGE(LAPACK REQUIRED)
   IF (LAPACK_FOUND)
     LIST(APPEND linkedlibs ${LAPACK_LIBRARIES})
-    MESSAGE(STATUS "Using system BLAS/Lapack library")
+    MESSAGE(STATUS "Compiling with system [BLAS/Lapack]")
   ENDIF()
 
   # VDM inverse, replace lapack with analytical solution
@@ -315,6 +347,7 @@ ELSE()
         PREFIX ${LIBS_MATH_DIR}
         UPDATE_COMMAND ""
         CMAKE_ARGS -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_PREFIX=${LIBS_MATH_DIR} -DBLAS++=OFF -DLAPACK++=OFF -DBUILD_SHARED_LIBS=ON -DCBLAS=OFF -DLAPACKE=OFF -DBUILD_TESTING=OFF
+        BUILD_BYPRODUCTS ${LIBS_MATH_DIR}/lib/liblapack.so ${LIBS_MATH_DIR}/lib/libblas.so
       )
 
       LIST(APPEND SELFBUILTEXTERNALS ${LIBS_BUILD_MATH_LIB_VENDOR})
@@ -331,6 +364,7 @@ ELSE()
         PREFIX ${LIBS_MATH_DIR}
         UPDATE_COMMAND ""
         CONFIGURE_COMMAND ""
+        BUILD_BYPRODUCTS ${LIBS_MATH_DIR}/src/${LIBS_BUILD_MATH_LIB_VENDOR}/libopenblas.so
         BUILD_IN_SOURCE TRUE
         INSTALL_COMMAND ""
       )
@@ -355,7 +389,7 @@ ELSE()
     # Actually add the math lib paths to the linking paths
     INCLUDE_DIRECTORIES (${MATH_LIB_LIBRARIES})
     LIST(APPEND linkedlibs ${LAPACK_LIBRARY} ${BLAS_LIBRARY})
-    MESSAGE(STATUS "Using self-built LAPACK library")
+    MESSAGE(STATUS "Compiling with self-built [LAPACK]")
   ELSEIF (LIBS_BUILD_MATH_LIB_VENDOR MATCHES "OpenBLAS")
     # Set math lib paths
     SET(MATH_LIB_LIBRARIES              ${LIBS_MATH_DIR}/src/${LIBS_BUILD_MATH_LIB_VENDOR})
@@ -369,7 +403,7 @@ ELSE()
     # Actually add the math lib paths to the linking paths
     INCLUDE_DIRECTORIES (${MATH_LIB_LIBRARIES})
     LIST(APPEND linkedlibs ${LAPACK_LIBRARY} ${BLAS_LIBRARY})
-    MESSAGE(STATUS "Using self-built OpenBLAS library")
+    MESSAGE(STATUS "Compiling with self-built [OpenBLAS]")
   ENDIF()
 ENDIF()
 
@@ -383,7 +417,7 @@ IF(LIBS_USE_PAPI)
   ADD_DEFINITIONS(-DPAPI)
   LIST(APPEND linkedlibs ${PAPI_LIBRARIES})
   INCLUDE_DIRECTORIES(${PAPI_INCLUDE_DIRS})
-  MESSAGE(STATUS "Building Flexi with PAPI benchmark support.")
+  MESSAGE(STATUS "Compiling with [PAPI] benchmark support.")
 ENDIF()
 
 
@@ -402,6 +436,7 @@ IF(LIBS_USE_OPENMP)
   SET (CMAKE_CXX_FLAGS_RELEASE     "${CMAKE_CXX_FLAGS_RELEASE}     ${OpenMP_CXX_FLAGS}")
   SET (CMAKE_EXE_LINKER_FLAGS      "${CMAKE_EXE_LINKER_FLAGS}      ${OpenMP_EXE_LINKER_FLAGS}")
   ADD_DEFINITIONS(-DUSE_OPENMP=1)
+  MESSAGE(STATUS "Compiling with [OpenMP] (v${OpenMP_Fortran_VERSION})")
 ELSE()
   ADD_DEFINITIONS(-DUSE_OPENMP=0)
 ENDIF()
