@@ -90,12 +90,12 @@ git config --get remote.origin.url >> userblock.txt
 # change directory to cmake chache dir
 cd "$2/CMakeFiles"
 # copy compile flags of the flexi(lib) to userblock
-echo "{[( libflexistatic.dir/flags.make )]}" >> $1/userblock.txt
-cat libflexistatic.dir/flags.make            >> $1/userblock.txt
-echo "{[( libflexishared.dir/flags.make )]}" >> $1/userblock.txt
-cat libflexishared.dir/flags.make            >> $1/userblock.txt
-echo "{[( flexi.dir/flags.make )]}"          >> $1/userblock.txt
-cat flexi.dir/flags.make                     >> $1/userblock.txt
+[ -f "libflexistatic.dir/flags.make" ] && echo "{[( libflexistatic.dir/flags.make )]}" >> $1/userblock.txt
+[ -f "libflexistatic.dir/flags.make" ] && cat libflexistatic.dir/flags.make            >> $1/userblock.txt
+[ -f "libflexishared.dir/flags.make" ] && echo "{[( libflexishared.dir/flags.make )]}" >> $1/userblock.txt
+[ -f "libflexishared.dir/flags.make" ] && cat libflexishared.dir/flags.make            >> $1/userblock.txt
+[ -f "flexi.dir/flags.make"          ] && echo "{[( flexi.dir/flags.make )]}"          >> $1/userblock.txt
+[ -f "flexi.dir/flags.make"          ] && cat flexi.dir/flags.make                     >> $1/userblock.txt
 
 # change directory to actual cmake version
 cd "$3"
