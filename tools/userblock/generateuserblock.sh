@@ -100,8 +100,8 @@ cd "$2/CMakeFiles"
 # change directory to actual cmake version
 cd "$3"
 # copy detection of compiler to userblock
-echo "{[( COMPILER VERSIONS )]}"           >> $1/userblock.txt
-cat CMakeFortranCompiler.cmake             >> $1/userblock.txt
+[ -f "CMakeFortranCompiler.cmake"    ] && echo "{[( COMPILER VERSIONS )]}"             >> $1/userblock.txt
+[ -f "CMakeFortranCompiler.cmake"    ] && cat CMakeFortranCompiler.cmake               >> $1/userblock.txt
 
 cd "$1" # go back to the runtime output directory
 # Compress the userblock
