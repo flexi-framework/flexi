@@ -274,6 +274,8 @@ END SUBROUTINE CreateConnectivity
 SUBROUTINE WriteDataToVTK(nVal,NVisu,nElems,VarNames,Coord,Value,FileString,dim,DGFV,nValAtLastDimension,HighOrder,PostiParallel)
 ! MODULES
 USE MOD_Globals
+USE MOD_Restart_Vars   ,ONLY: RestartTime
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -396,6 +398,14 @@ IF((.NOT.PostiParallel_loc.AND.MPIRoot).OR.PostiParallel_loc)THEN
   Buffer='<VTKFile type="UnstructuredGrid" version="2.2" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)
   ! Specify file type
   Buffer='  <UnstructuredGrid>'//lf;WRITE(ivtk) TRIM(Buffer)
+  ! Specify output time
+  Buffer='    <FieldData>'//lf;WRITE(ivtk) TRIM(Buffer)
+  Buffer='      <DataArray type="Float64" Name="TimeValue" NumberOfTuples="1">'//lf;WRITE(ivtk) TRIM(Buffer)
+  WRITE(TempStr1,'(F17.9)')RestartTime
+  Buffer='        '//TRIM(ADJUSTL(TempStr1))//lf;WRITE(ivtk) TRIM(Buffer)
+  Buffer='      </DataArray>'//lf;WRITE(ivtk) TRIM(Buffer)
+  Buffer='    </FieldData>'//lf;WRITE(ivtk) TRIM(Buffer)
+  ! Specify field pieces
   WRITE(TempStr1,'(I16)')nVTKPoints
   WRITE(TempStr2,'(I16)')nVTKCells
   Buffer='    <Piece NumberOfPoints="'//TRIM(ADJUSTL(TempStr1))//'" &
@@ -644,6 +654,8 @@ END SUBROUTINE WriteVTKMultiBlockDataSet
 SUBROUTINE WriteParallelVTK(FileString,nVal,VarNames)
 ! MODULES
 USE MOD_Globals
+USE MOD_Restart_Vars   ,ONLY: RestartTime
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -655,7 +667,7 @@ CHARACTER(LEN=*),INTENT(IN) :: VarNames(nVal)       !< Names of all variables th
 INTEGER            :: ivtk, iVal, iProc
 CHARACTER(LEN=200) :: Buffer
 CHARACTER(LEN=1)   :: lf
-CHARACTER(LEN=35)  :: StrProc
+CHARACTER(LEN=35)  :: StrProc,TempStr1
 !===================================================================================================================================
 IF (MPIRoot) THEN
   ! write multiblock file
@@ -665,6 +677,13 @@ IF (MPIRoot) THEN
   Buffer='<VTKFile type="PUnstructuredGrid" version="1.0" byte_order="LittleEndian" header_type="UInt64">'//lf
   WRITE(ivtk) TRIM(BUFFER)
   Buffer='  <PUnstructuredGrid GhostLevel="0">'//lf;WRITE(ivtk) TRIM(BUFFER)
+  ! Specify output time
+  Buffer='    <FieldData>'//lf;WRITE(ivtk) TRIM(Buffer)
+  Buffer='      <DataArray type="Float64" Name="TimeValue" NumberOfTuples="1">'//lf;WRITE(ivtk) TRIM(Buffer)
+  WRITE(TempStr1,'(F17.9)')RestartTime
+  Buffer='        '//TRIM(ADJUSTL(TempStr1))//lf;WRITE(ivtk) TRIM(Buffer)
+  Buffer='      </DataArray>'//lf;WRITE(ivtk) TRIM(Buffer)
+  Buffer='    </FieldData>'//lf;WRITE(ivtk) TRIM(Buffer)
   ! Specify point data
   Buffer='    <PPointData>'//lf;WRITE(ivtk) TRIM(Buffer)
   DO iVal=1,nVal

@@ -223,19 +223,20 @@ USE MOD_PreProc
 USE MOD_DG_Vars             ,ONLY: U
 USE MOD_EOS                 ,ONLY: DefineParametersEos,InitEOS,PrimToCons
 USE MOD_Interpolation       ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
-USE MOD_HDF5_Input          ,ONLY: OpenDataFile,ReadArray,CloseDataFile
+USE MOD_HDF5_Input          ,ONLY: OpenDataFile,ReadAttribute,ReadArray,CloseDataFile
 USE MOD_IO_HDF5             ,ONLY: DefineParametersIO_HDF5,InitIOHDF5
 USE MOD_Mesh                ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Mesh_Vars           ,ONLY: nElems,offsetElem
 USE MOD_MPI                 ,ONLY: DefineParametersMPI
 USE MOD_ReadInTools         ,ONLY: prms
 USE MOD_ReadInTools         ,ONLY: FinalizeParameters
+USE MOD_Restart_Vars        ,ONLY: RestartTime
 USE MOD_Visu_Vars
 #if EQNSYSNR!=1
 USE MOD_HDF5_Input          ,ONLY: GetDataSize
 USE MOD_IO_HDF5             ,ONLY: File_ID,nDims,HSize
 USE MOD_Mesh_Vars           ,ONLY: nElems,nGlobalElems,offsetElem
-USE MOD_Restart_Vars        ,ONLY: RestartMode,RestartCons,RestartPrim,nVar_Restart
+USE MOD_Restart_Vars        ,ONLY: RestartMode,RestartCons,RestartPrim,nVar_Restart,RestartTime
 #endif /* EQNSYSNR!=1 */
 #if USE_MPI
 USE MOD_MPI,                 ONLY: FinalizeMPI
@@ -329,6 +330,7 @@ SELECT CASE(RestartMode)
   ! State file or no CheckRestartFile performed
   CASE(-1,1)
 #endif /* EQNSYSNR!=1 */
+    CALL ReadAttribute(File_ID,'Time',1,RealScalar=RestartTime)
     CALL ReadArray('DG_Solution',5,(/nVar_State,PP_N+1,PP_N+1,PP_NZ+1,nElems/),offsetElem,5,RealArray=U)
 #if EQNSYSNR!=1
   ! TimeAvg file

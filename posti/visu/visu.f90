@@ -616,7 +616,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   SWRITE (*,*) "changedPrmFile       ", changedPrmFile, TRIM(prmfile_old), " -> ", TRIM(prmfile)
   SWRITE (*,*) "changedBCnames       ", changedBCnames
   IF (changedStateFile.OR.changedWithDGOperator.OR.changedPrmFile.OR.changedDGonly) THEN
-      CALL ReadState(prmfile,statefile)
+    CALL ReadState(prmfile,statefile)
   END IF
 
   ! build mappings of BC sides for surface visualization
@@ -690,19 +690,14 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
    END IF
 #endif
 
-
   ! Convert coordinates to visu grid
-  IF (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly.OR.changedAvg2D) THEN
+  IF (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly.OR.changedAvg2D) &
     CALL BuildVisuCoords()
-  END IF
-  IF (doSurfVisu) THEN
+
+  IF (doSurfVisu .AND. &
     ! Convert surface coordinates to visu grid
-    IF (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly.OR.changedBCnames) THEN
-      CALL BuildSurfVisuCoords()
-    END IF
-  END IF
-
-
+    (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly.OR.changedBCnames)) &
+    CALL BuildSurfVisuCoords()
 END IF
 
 MeshFile_old          = MeshFile
@@ -721,6 +716,7 @@ RestartMode           = -1
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(*,*) "Visu finished for state file: ", TRIM(statefile)
 SWRITE(UNIT_stdOut,'(132("="))')
+
 END SUBROUTINE visu
 
 !===================================================================================================================================
