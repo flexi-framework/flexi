@@ -51,6 +51,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars   ,ONLY:withDGOperator
 USE MOD_ReadInTools ,ONLY:ExtractParameterFile
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -70,7 +71,8 @@ IF (LEN_TRIM(prmfile).EQ.0) THEN ! No seperate parameter file has been given
     CALL CollectiveStop(__STAMP__, "No userblock found in state file '"//TRIM(statefile)//"' and no parameter file specified.")
   END IF
 END IF
-SWRITE(*,*) "[ALL] get solution. withDGOperator = ", withDGOperator
+
+SWRITE(UNIT_stdOut,'(A,L1)') " [ALL] get solution. withDGOperator = ", withDGOperator
 IF (withDGOperator) THEN
   CALL ReadStateAndGradients(prmfile,statefile)
 ELSE
