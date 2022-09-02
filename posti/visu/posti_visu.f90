@@ -48,7 +48,7 @@ CHARACTER(LEN=255)             :: FileString_DG
 CHARACTER(LEN=255)             :: FileString_SurfDG
 REAL                           :: percent
 INTEGER                        :: tmpLength
-CHARACTER(LEN=255)             :: tmpString
+CHARACTER(LEN=255)             :: tmpString1,tmpString2
 #if FV_ENABLED
 CHARACTER(LEN=255)             :: FileString_FV
 CHARACTER(LEN=255)             :: FileString_SurfFV
@@ -110,8 +110,9 @@ IF(nProcessors.GT.1 .AND. MPIRoot) CALL SYSTEM('mkdir -p visu')
 DO iArg=1+skipArgs,nArgs
   statefile = TRIM(Args(iArg))
 
-  WRITE(tmpString,'(I0)') nArgs
-  tmpLength = 96 - 2*LEN(TRIM(tmpString))
+  WRITE(tmpString1,'(I0)') iArg-1-skipArgs
+  WRITE(tmpString2,'(I0)') nArgs -skipArgs
+  tmpLength = 96 - LEN(TRIM(tmpString1)) - LEN(TRIM(tmpString2))
   percent   = REAL(iArg-1-skipArgs)/REAL(nArgs-skipArgs)*100.
   SWRITE(UNIT_stdOut,'(132("-"))')
   SWRITE(UNIT_stdOut,'(A,I0,A,I0,A)',ADVANCE='NO') ' Processing file ',iArg-skipArgs,' of ',nArgs-skipArgs,' |'
