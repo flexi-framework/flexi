@@ -114,7 +114,7 @@ DO iArg=1+skipArgs,nArgs
   WRITE(tmpString2,'(I0)') nArgs -skipArgs
   tmpLength = 96 - LEN(TRIM(tmpString1)) - LEN(TRIM(tmpString2))
   percent   = REAL(iArg-1-skipArgs)/REAL(nArgs-skipArgs)*100.
-  SWRITE(UNIT_stdOut,'(132("-"))')
+  SWRITE(UNIT_stdOut,'(132("="))')
   SWRITE(UNIT_stdOut,'(A,I0,A,I0,A)',ADVANCE='NO') ' Processing file ',iArg-skipArgs,' of ',nArgs-skipArgs,' |'
   SWRITE(UNIT_stdOut,'(A,A1,A)'     ,ADVANCE='NO')  REPEAT('=',MAX(CEILING(percent*(tmpLength+1)/100.),0)),'>',&
                                                     REPEAT(' ',(tmpLength+1)-MAX(CEILING(percent*(tmpLength+1)/100.),0))
