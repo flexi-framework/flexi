@@ -72,7 +72,7 @@ IF (LEN_TRIM(prmfile).EQ.0) THEN ! No seperate parameter file has been given
   END IF
 END IF
 
-SWRITE(UNIT_stdOut,'(A,L1)') " [ALL] get solution. withDGOperator = ", withDGOperator
+SWRITE(UNIT_stdOut,'(A,L1)') " [ALL] get solution withDGOperator = ", withDGOperator
 IF (withDGOperator) THEN
   CALL ReadStateAndGradients(prmfile,statefile)
 ELSE
@@ -326,6 +326,8 @@ meshMode_old = meshMode_loc
 
 SDEALLOCATE(U)
 ALLOCATE(U(1:nVar_State,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+
+SWRITE(UNIT_stdOut,'(A,A,A)') ' READING FIELD FROM DATA FILE "',TRIM(statefile),'"...'
 CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 #if EQNSYSNR!=1
 SELECT CASE(RestartMode)
