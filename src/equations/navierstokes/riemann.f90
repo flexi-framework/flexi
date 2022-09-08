@@ -542,14 +542,14 @@ REAL    :: sMu_L,sMu_R
 ! HLLC flux
 
 ! Version A: Basic Davis estimate for wave speed
-!Ssl = U_LL(VEL1) - SPEEDOFSOUND_HE(U_LL)
-!Ssr = U_RR(VEL1) + SPEEDOFSOUND_HE(U_RR)
+!Ssl = U_LL(EXT_VEL1) - SPEEDOFSOUND_HE(U_LL)
+!Ssr = U_RR(EXT_VEL1) + SPEEDOFSOUND_HE(U_RR)
 
 ! Version B: Basic Davis estimate for wave speed
 !c_L = SPEEDOFSOUND_HE(U_LL)
 !c_R = SPEEDOFSOUND_HE(U_RR)
-!Ssl = MIN(U_LL(VEL1) - c_L,U_RR(VEL1) - c_R)
-!Ssr = MAX(U_LL(VEL1) + c_L,U_RR(VEL1) + c_R)
+!Ssl = MIN(U_LL(EXT_VEL1) - c_L,U_RR(EXT_VEL1) - c_R)
+!Ssr = MAX(U_LL(EXT_VEL1) + c_L,U_RR(EXT_VEL1) + c_R)
 
 ! Version C: Better Roe estimate for wave speeds Davis, Einfeldt
 H_L       = TOTALENTHALPY_HE(U_LL)
