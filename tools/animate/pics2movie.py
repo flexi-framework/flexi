@@ -53,7 +53,7 @@ for p in args.pictures :
 sys.stdout.write('\n')
     
 
-print 'Generate movie ....'
+print('Generate movie ....')
 cmd = ['mencoder']
 cmd.append('mf://%s/*%s' % (tmpdir ,ext))
 cmd.append('-mf')
@@ -71,7 +71,7 @@ elif args.codec == "h264" :
     cmd.append('preset=veryslow:tune=film:crf=15:frameref=15:fast_pskip=0:bitrate=%d:threads=auto' % args.bitrate)
 p = subprocess.Popen(cmd)
 p.wait()
-print 'done'
+print('done')
 
 shutil.rmtree(tmpdir)
 

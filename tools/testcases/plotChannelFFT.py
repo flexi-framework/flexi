@@ -4,7 +4,7 @@ import h5py
 import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser(description='ChannelFFT plotting routine')
-optional = parser._action_groups.pop() 
+optional = parser._action_groups.pop()
 required = parser.add_argument_group('required arguments')
 required.add_argument('-p' ,'--projectName',help='Project name of the ChannelFFT output HDF5 files.',required=True)
 required.add_argument('-t' ,'--time'       ,help='Time of the ChannelFFT output HDF5 files (arbitrary format float).',required=True)
@@ -52,4 +52,3 @@ if not args.noSpectra:
             plt.title('yPlus='+DatasetName.split(' ')[-1],fontsize=16)
             plt.savefig(args.projectName+"_EnergySpectra_"+dim+"_yPlus"+DatasetName.split(' ')[-1]+"_"+time+".png")
             plt.clf()
-

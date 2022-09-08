@@ -508,7 +508,7 @@ DO iBox=1,nBoxes
     ALLOCATE(Box%BLProps(nBLProps,1:Box%nRP(1),1:Box%nRP(3)))
     DO k=1,Box%nRP(3)
       DO i=1,Box%nRP(1)
-        CALL Calc_BLProps(Box%LocalCoord(:,i,:,k),Box%IDlist(i,:,k),Box%nRP(2),Box_BLvelScaling,Box%BLProps(:,i,k))
+        CALL Calc_BLProps(Box%LocalCoord(1:2,i,:,k),Box%IDlist(i,:,k),Box%nRP(2),Box_BLvelScaling,Box%BLProps(:,i,k))
       END DO
     END DO
   END IF!(Box%Type.EQ.2) THEN ! BLBox
@@ -526,7 +526,7 @@ USE MOD_ParametersVisu     ,ONLY: Mu0
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(INOUT)        :: LocalCoord(3,nRP)
+REAL,INTENT(INOUT)        :: LocalCoord(2,nRP)
 INTEGER,INTENT(IN)        :: IDlist(nRP)
 INTEGER                   :: nRP
 INTEGER                   :: Scaling

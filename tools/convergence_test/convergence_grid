@@ -20,23 +20,21 @@ def copy2temporary(tmp_dir, f) :
     shutil.copy(f, name)
     return name
 
-
 parser = argparse.ArgumentParser(description='Tool to calculate the convergence rate')
-parser.add_argument('--N', type=int, help='polynomial degree N')
-parser.add_argument('-m','--mortar', action='store_true', help='use non-conforming meshes')
-parser.add_argument('-d','--dim', type=int, default=3, help='number of spatial dimensions (1/2/3)')
-parser.add_argument('-p','--procs', type=int, default=1, help='number of processors used to run Flexi')
+parser.add_argument('--N',            type=int           , help='polynomial degree N')
+parser.add_argument('-m','--mortar',  action='store_true', help='use non-conforming meshes')
+parser.add_argument('-d','--dim',     type=int, default=3, help='number of spatial dimensions (1/2/3)')
+parser.add_argument('-p','--procs',   type=int, default=1, help='number of processors used to run Flexi')
 parser.add_argument('-g','--gnuplot', action='store_true', help='generate gnuplot pics (needs python-gnuplot package)')
 parser.add_argument('--printprmfile', action='store_true', help='output parameter file at the beginning')
-parser.add_argument('flexi', help='path to flexi executable')
-parser.add_argument('prm',   help='path to parameter file')
+parser.add_argument('flexi',                               help='path to flexi executable')
+parser.add_argument('prm',                                 help='path to parameter file')
 
 args = parser.parse_args()
 
 if not os.path.exists(args.prm) :
-    print "parameter-file '%s' not found" % args.prm
+    print("parameter-file {:s} not found".format(args.prm))
     sys.exit(1)
-
 
 # copy flexi executable and parameter file to a temporary directory
 tmp_dir = tempfile.mkdtemp()
@@ -46,7 +44,7 @@ args.prm = copy2temporary(tmp_dir, args.prm)
 #print parameter file
 if args.printprmfile :
     for line in open(args.prm, 'r').readlines() :
-        print line,
+        print(line)
 
 # get ProjectName
 projectname = read_prm(args.prm,'ProjectName')
@@ -61,29 +59,29 @@ else:
 EOC = args.N + 1
 
 # open file to print order of convergence
-convfile = open(projectname+'_hconvfile_N'+str(args.N)+'.csv','wb')
+convfile = open(projectname+'_hconvfile_N'+str(args.N)+'.csv','w')
 csvwriter=csv.writer(convfile, delimiter=',',quotechar='"',quoting=csv.QUOTE_MINIMAL)
 
 x_array = [1.,2.,4.,8.]
 if args.dim == 3 and not args.mortar:
-  grids = ['CART_HEX_PERIODIC_001_mesh.h5', \
-           'CART_HEX_PERIODIC_002_mesh.h5', \
-           'CART_HEX_PERIODIC_004_mesh.h5', \
-           'CART_HEX_PERIODIC_008_mesh.h5']
+    grids = ['CART_HEX_PERIODIC_001_mesh.h5', \
+             'CART_HEX_PERIODIC_002_mesh.h5', \
+             'CART_HEX_PERIODIC_004_mesh.h5', \
+             'CART_HEX_PERIODIC_008_mesh.h5']
 elif args.dim == 2 and not args.mortar:
-  grids = ['CART_HEX_PERIODIC_001_mesh.h5', \
-           'CART_HEX_PERIODIC_002_2D_mesh.h5', \
-           'CART_HEX_PERIODIC_004_2D_mesh.h5', \
-           'CART_HEX_PERIODIC_008_2D_mesh.h5']
+    grids = ['CART_HEX_PERIODIC_001_mesh.h5', \
+             'CART_HEX_PERIODIC_002_2D_mesh.h5', \
+             'CART_HEX_PERIODIC_004_2D_mesh.h5', \
+             'CART_HEX_PERIODIC_008_2D_mesh.h5']
 elif args.dim == 3 and args.mortar:
-  grids = ['CART_HEX_PERIODIC_MORTAR_002_mesh.h5', \
-           'CART_HEX_PERIODIC_MORTAR_004_mesh.h5', \
-           'CART_HEX_PERIODIC_MORTAR_008_mesh.h5']
+    grids = ['CART_HEX_PERIODIC_MORTAR_002_mesh.h5', \
+             'CART_HEX_PERIODIC_MORTAR_004_mesh.h5', \
+             'CART_HEX_PERIODIC_MORTAR_008_mesh.h5']
 elif args.dim == 2 and args.mortar:
-  grids = ['CART_HEX_PERIODIC_MORTAR_004_2D_mesh.h5', \
-           'CART_HEX_PERIODIC_MORTAR_008_2D_mesh.h5', \
-           'CART_HEX_PERIODIC_MORTAR_016_2D_mesh.h5', \
-           'CART_HEX_PERIODIC_MORTAR_032_2D_mesh.h5']
+    grids = ['CART_HEX_PERIODIC_MORTAR_004_2D_mesh.h5', \
+             'CART_HEX_PERIODIC_MORTAR_008_2D_mesh.h5', \
+             'CART_HEX_PERIODIC_MORTAR_016_2D_mesh.h5', \
+             'CART_HEX_PERIODIC_MORTAR_032_2D_mesh.h5']
 
 L2_array = []
 i=0
@@ -96,7 +94,7 @@ for grid in grids :
 
     # save last L2, Linf error for EOC computation
     if i > 1 :
-        last_L2 = L2
+        last_L2   = L2
         last_Linf = Linf
 
     # execute flexi and get L2, L_inf error
@@ -135,17 +133,17 @@ for grid in grids :
         vals = [x_array[i-1]]
         for j in range(len(L2)) :
             if L2[j]==0.:
-               convL2[j] = 0.
+                convL2[j] = 0.
             else:
-               convL2[j] = math.log(  last_L2[j] /   L2[j]) / math.log(x_array[i-1]/float(x_array[i-2]))
+                convL2[j] = math.log(  last_L2[j] /   L2[j]) / math.log(x_array[i-1]/float(x_array[i-2]))
 
             vals.append(L2[j])
             vals.append(convL2[j])
         for j in range(len(Linf)) :
             if L2[j]==0.:
-               convLinf[j] = 0.
+                convLinf[j] = 0.
             else:
-               convLinf[j] = math.log(last_Linf[j] / Linf[j]) / math.log(x_array[i-1]/float(x_array[i-2]))
+                convLinf[j] = math.log(last_Linf[j] / Linf[j]) / math.log(x_array[i-1]/float(x_array[i-2]))
 
             vals.append(Linf[j])
             vals.append(convLinf[j])
@@ -153,9 +151,9 @@ for grid in grids :
         csvwriter.writerow([x_array[i-1]]+L2+Linf+convL2+convLinf)
 
     if len(L2) < 5:
-      index = 0
+        index = 0
     else:
-      index = 1
+        index = 1
     L2_array.append(L2[index]) # x- Momentum
 
     #print end_time - start_time
@@ -183,6 +181,6 @@ if args.gnuplot :
         g('exact(x)=(1./x)**%d' % EOC)
         g.plot(gnuplot_data,'exact(x)')
     except ImportError:
-        print "No 'python-gnuplot' package found!"
+        print("No 'python-gnuplot' package found!")
 
 shutil.rmtree(tmp_dir)

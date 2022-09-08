@@ -75,9 +75,7 @@ BCIndex      =(/1,3,6,4,5,2/)        ! Indices of Boundary Conditions for  six B
 
 For example, the first boundary condition defined will be applied to the $z-$ face of the cube, while the third one will be applied to the $y-$ face and so on. The order $(z-,y-,x+,y+,x-,z+)$ is given by the CGNS standard and thus fixed, so if you keep this line as it is, the boundary conditions below can be defined in the (less confusing) order of  $(z-,z+,y-,y+,x-,x+)$.
 
-![BC Indices for the cube \label{fig:cavity_bcindex_front}](tutorials/01_cavity/bcindex_front.png)![BC Indices for the cube \label{fig:cavity_bcindex_back}](tutorials/01_cavity/bcindex_back.png)
-
-Figure: BC Indices for the cube, front and back view. \label{fig:cavity_bcindex}
+![BC Indices for the cube, front and back view.\label{fig:cavity_bcindex}](tutorials/01_cavity/bcindex_front_back.png)
 
 The boundary conditions are now assigned to faces in the following lines: 
 
@@ -105,9 +103,7 @@ In the $y-$direction, we choose an isothermal wall boundary condition at the low
 
 In the $x-$direction, the left and right walls are again chosen to be isothermal wall boundary conditions. 
 
-![BC Types for the lid driven cavity \label{fig:cavity_type_front}](tutorials/01_cavity/bctype_front.png)![BC Types for the lid driven cavity \label{fig:cavity_type_back}](tutorials/01_cavity/bctype_back.png)
-
-Figure: BC Types for the lid driven cavity, front and back view. \label{fig:cavity_bctype}
+![BC Types for the lid driven cavity, front and back view.\label{fig:cavity_bctype}](tutorials/01_cavity/bctype_front_back.png)
 
 For this basic tutorial, the simple meshes shown in picture (figure \ref{fig:cavity_meshes}) will be used. 
 

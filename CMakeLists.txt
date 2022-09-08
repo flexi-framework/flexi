@@ -71,7 +71,7 @@ OPTION(FLEXI_PERFORMANCE "Enable performance optimizations" OFF)
 EXECUTE_PROCESS(COMMAND ld.gold --version COMMAND grep "^GNU gold" COMMAND sed "s/^.* //g" OUTPUT_VARIABLE GNU_GOLD_VERSION)
 IF (DEFINED GNU_GOLD_VERSION  AND NOT "${GNU_GOLD_VERSION}" STREQUAL "")
   STRING(STRIP "${GNU_GOLD_VERSION}" GNU_GOLD_VERSION)
-  MESSAGE(STATUS "Setting linker to gold v${GNU_GOLD_VERSION}")
+  MESSAGE(STATUS "Setting linker to [gold] (v${GNU_GOLD_VERSION})")
   # Shift responsibility of driving the final stages of compilation from collect2 to gold via the linker plugin
   # More information at: https://gcc.gnu.org/wiki/LinkTimeOptimization
   IF(CMAKE_VERSION VERSION_GREATER_EQUAL 3.13)
@@ -114,7 +114,9 @@ EXECUTE_PROCESS(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/setCommitHash.sh
 # Check IPO support:
 # =========================================================================
 # we need to have languages enabled and compilers defined for this
-IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.9.0"))
+OPTION(FLEXI_PERFORMANCE_IPO "Enable Interprocedural Optimization for build (if available)." ON)
+MARK_AS_ADVANCED(FORCE FLEXI_PERFORMANCE_IPO)
+IF(FLEXI_PERFORMANCE_IPO AND NOT(${CMAKE_VERSION} VERSION_LESS "3.9.0"))
   CMAKE_POLICY(SET CMP0069 NEW)
   INCLUDE(CheckIPOSupported)
   CHECK_IPO_SUPPORTED(RESULT HASIPO OUTPUT error)
@@ -150,7 +152,6 @@ IF (NOT CMAKE_BUILD_TYPE)
      SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release Profile)
    ENDIF()
 ENDIF (NOT CMAKE_BUILD_TYPE)
-
 
 STRING(TOLOWER ${CMAKE_BUILD_TYPE} BUILD_TYPE_LC)
 IF (BUILD_TYPE_LC MATCHES "debug" OR BUILD_TYPE_LC MATCHES "sanitize")
@@ -201,14 +202,17 @@ ENDIF()
 # Location of binary and filenames
 # =========================================================================
 # append relative filename-macro for __FILENAME__ in Stamp of abort function (see flexi.h)
+# subst replacement is GNU make specific
+IF("${CMAKE_GENERATOR}" MATCHES "Unix Makefiles")
 SET(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -D__FILENAME__='\"$(subst ${CMAKE_SOURCE_DIR}/,,$(abspath $<))\"'")
+ENDIF()
 
 # add basedir for location of corresponding userblock-file
 ADD_DEFINITIONS("-DBASEDIR='\"${CMAKE_CURRENT_BINARY_DIR}/\"'")
 
-# -------------------------------------------------------------------------
+# =========================================================================
 # echo COMPILE_DEFINITIONS
-# -------------------------------------------------------------------------
+# =========================================================================
 GET_DIRECTORY_PROPERTY(comp_defs DIRECTORY ${CMAKE_SOURCE_DIR} COMPILE_DEFINITIONS )
 SET(comp_defs_str "COMPILE_DEFINITIONS = ")
 FOREACH (def ${comp_defs})
@@ -217,14 +221,14 @@ ENDFOREACH()
 ADD_CUSTOM_TARGET(preproc_defines COMMAND echo ${comp_defs_str})
 
 # =========================================================================
-# USERBLOCK + Preproc_flags
+# USERBLOCK + PREPROC_FLAGS
 # =========================================================================
 # A function to get all user defined variables with a specified prefix
-function (getListOfVarsStartingWith _prefix _varResult)
-    GET_CMAKE_PROPERTY(_vars CACHE_VARIABLES)
-    STRING(REGEX MATCHALL "(^|;)${_prefix}[A-Za-z0-9_]*" _matchedVars "${_vars}")
-    SET(${_varResult} ${_matchedVars} PARENT_SCOPE)
-endfunction()
+FUNCTION (GETLISTOFVARSSTARTINGWITH _PREFIX _VARRESULT)
+    GET_CMAKE_PROPERTY(_VARS CACHE_VARIABLES)
+    STRING(REGEX MATCHALL "(^|;)${_PREFIX}[A-Za-z0-9_]*" _MATCHEDVARS "${_VARS}")
+    SET(${_VARRESULT} ${_MATCHEDVARS} PARENT_SCOPE)
+ENDFUNCTION()
 
 # A function to get all user defined variables with a specified prefix
 SET(configuration ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/configuration.cmake)
@@ -267,10 +271,11 @@ ELSE()
 ENDIF()
 
 # =========================================================================
-# Userblock
+# USERBLOCK
 # =========================================================================
 ADD_CUSTOM_COMMAND(TARGET libflexistatic PRE_BUILD COMMAND
-   sh ${CMAKE_CURRENT_SOURCE_DIR}/tools/userblock/generateuserblock.sh ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} ${CMAKE_CACHEFILE_DIR} "${CMAKE_CACHE_MAJOR_VERSION}.${CMAKE_CACHE_MINOR_VERSION}.${CMAKE_CACHE_PATCH_VERSION}")
+  sh ${CMAKE_CURRENT_SOURCE_DIR}/tools/userblock/generateuserblock.sh ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} ${CMAKE_CACHEFILE_DIR} "${CMAKE_CACHE_MAJOR_VERSION}.${CMAKE_CACHE_MINOR_VERSION}.${CMAKE_CACHE_PATCH_VERSION}"
+  BYPRODUCTS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.o)
 
 # =========================================================================
 # Install

@@ -53,9 +53,6 @@ import os
 
 paraview.simple._DisableFirstRenderCameraReset()
 """)
-    if args.reader :
-        f.write("servermanager.LoadPlugin('%s')\n" % (args.reader))
-
     f.write("""servermanager.LoadState('%s')
 statefilename = GetSources()
 plotfilename = None
@@ -78,9 +75,15 @@ WriteImage('%s',  Magnification=%d)
 """ % (args.layout, p, of, args.scale))
     f.close()
     if args.mpi > 1 :
-        cmd = ['mpirun', '-np', str(args.mpi), 'pvbatch', '--use-offscreen-rendering', fn]
+        if args.reader :
+            cmd = ['env', 'PV_PLUGIN_PATH='+str(args.reader), 'mpirun', '-np', str(args.mpi), 'pvbatch', '--force-offscreen-rendering', fn]
+        else:
+            cmd = ['mpirun', '-np', str(args.mpi), 'pvbatch', '--force-offscreen-rendering', fn]
     else :
-        cmd = ['pvbatch', '--use-offscreen-rendering', fn]
+        if args.reader :
+            cmd = ['env', 'PV_PLUGIN_PATH='+str(args.reader), 'pvbatch', '--force-offscreen-rendering', fn]
+        else:
+            cmd = ['pvbatch', '--force-offscreen-rendering', fn]
     p = subprocess.Popen(cmd)
     p.wait()
     os.remove(fn)
@@ -88,7 +91,7 @@ sys.stdout.write('\n')
 
 
 if not args.nomovie :
-    print 'Generate movie ....'
+    print('Generate movie ....')
     cmd = ['mencoder']
     cmd.append('mf://%s/*%s.png' % (fp,args.output ))
     cmd.append('-mf')
@@ -101,5 +104,5 @@ if not args.nomovie :
     cmd.append('vcodec=msmpeg4v2:vbitrate=%d' % args.bitrate)
     p = subprocess.Popen(cmd)
     p.wait()
-    print 'done'
+    print('done')
 
