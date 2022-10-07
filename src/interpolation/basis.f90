@@ -337,7 +337,7 @@ END SUBROUTINE ClenshawCurtisNodesAndWeights
 !> Newton method is based on
 !> "Fast and accurate computation of Gauss-Legendre and Gauss-Jacobi quadrature nodes and weights" by Hale and Townsend.
 !==================================================================================================================================
-PPURE SUBROUTINE LegGaussRadauNodesAndWeights(N_in,xGP,wGP)
+SUBROUTINE LegGaussRadauNodesAndWeights(N_in,xGP,wGP)
 !MODULES
 USE MOD_Preproc
 USE MOD_Globals
