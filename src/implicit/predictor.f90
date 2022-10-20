@@ -14,7 +14,7 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Contains routines to predict the solution at the new stage. 
+!> Contains routines to predict the solution at the new stage.
 !> Four different approaches are implemented:
 !>  * Simply use the current solution (no predictor)
 !>  * Use the right hand side as a predictor
@@ -26,7 +26,7 @@ MODULE MOD_Predictor
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! Private Part ---------------------------------------------------------------------------------------------------------------------
 ! Public Part ----------------------------------------------------------------------------------------------------------------------
@@ -75,17 +75,17 @@ CHARACTER(LEN=*),INTENT(IN) :: TimeDiscMethod !< name of time discretization to 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 !===================================================================================================================================
 IF(TimeDiscType.EQ.'ESDIRK')THEN
-  PredictorType=GETINT('PredictorType','0')
+  PredictorType=GETINT('PredictorType')
 
   SELECT CASE(PredictorType)
   CASE(0) ! nothing to do
   CASE(1) ! use right hand side as predictor
     ALLOCATE(U_predictor(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
   CASE(2) ! Lagrange polynomial predictor
-    PredictorOrder=GETINT('PredictorOrder','1')
+    PredictorOrder=GETINT('PredictorOrder')
     ! For the extrapolation, we need values from old time steps. The extrapolaton will be done for each stage separately, so we need
     ! to store the solution and time instance at each stage. How many time steps we need to store depends on the polynomial order.
     ALLOCATE(t_old(0:PredictorOrder,2:nRKStages))
@@ -130,7 +130,7 @@ REAL,INTENT(IN)              :: t
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER                      :: i,iStage
 !===================================================================================================================================
 SELECT CASE(PredictorType)
@@ -168,7 +168,7 @@ INTEGER,INTENT(IN)           :: iStage
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER                      :: i,j,k,ii,jj,iElem
 REAL                         :: Lagrange(0:PredictorOrder)
 !===================================================================================================================================
@@ -185,7 +185,7 @@ CASE(2)
     Lagrange(:)=1.
     DO j=0,PredictorOrder
       DO i=0,PredictorOrder
-        IF(i.NE.j)THEN 
+        IF(i.NE.j)THEN
           Lagrange(j) = Lagrange(j)*((tStage-t_old(i,iStage))/(t_old(j,iStage)-t_old(i,iStage)))
         END IF
       END DO ! i
@@ -243,7 +243,7 @@ INTEGER,INTENT(IN)           :: iStage                                          
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER                      :: j
 !===================================================================================================================================
 SELECT CASE(PredictorType)
@@ -278,7 +278,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 !===================================================================================================================================
 SDEALLOCATE(Upast)
 SDEALLOCATE(t_old)

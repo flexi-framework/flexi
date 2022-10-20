@@ -170,7 +170,7 @@ CASE(INDTYPE_DUCROSTIMESJST)
 #endif /* EQNSYSNR != 2 */
 CASE(INDTYPE_PERSSON)
   ! number of modes to be checked by Persson indicator
-  nModes = GETINT('nModes','2')
+  nModes = GETINT('nModes')
   nModes = MAX(1,nModes+PP_N-MIN(NUnder,NFilter))-1 ! increase by number of empty modes in case of overintegration
 #if FV_ENABLED == 2
   T_FV   = 0.5*10**(-1.8*(PP_N+1)**.25) ! Eq.(42) in: S. Hennemann et al., J.Comp.Phy., 2021
@@ -189,10 +189,10 @@ ALLOCATE(IndValue(nElems))
 IndValue=0.
 CALL AddToElemData(ElementOut,'IndValue',RealArray=IndValue)
 
-IndVar = GETINT('IndVar','1')
+IndVar = GETINT('IndVar')
 
 ! FV element at boundaries
-FVBoundaries    = GETLOGICAL('FVBoundaries','F')
+FVBoundaries    = GETLOGICAL('FVBoundaries')
 nFVBoundaryType = CountOption('FVBoundaryType')
 ALLOCATE(FVBoundaryType(nFVBoundaryType))
 DO iBC=1,nFVBoundaryType

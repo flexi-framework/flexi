@@ -61,22 +61,23 @@ USE MOD_ReadInTools ,ONLY: prms
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Implicit")
-CALL prms%CreateLogicalOption('adaptepsNewton', "Adaptive Newton eps by Runge-Kutta error estimation", value='.FALSE.')
-CALL prms%CreateRealOption(   'EpsNewton',      "Newton tolerance, only used if adaptepsNewton=F", value='1.E-3')
-CALL prms%CreateIntOption(    'nNewtonIter',    "Maximum amount of Newton iterations", value='50')
-CALL prms%CreateLogicalOption('EisenstatWalker',"Adaptive abort criterion for GMRES", value='.FALSE.')
-CALL prms%CreateRealOption(   'gammaEW',        "Parameter for Eisenstat Walker adaptation", value='0.9')
-CALL prms%CreateRealOption(   'EpsGMRES',       "GMRES Tolerance, only used of EisenstatWalker=F", value='1.E-3')
-CALL prms%CreateIntOption(    'nRestarts',      "Maximum number of GMRES Restarts", value='10')
-CALL prms%CreateIntOption(    'nKDim',          "Maximum number of Krylov subspaces for GMRES, after that a restart is performed", &
-                                                 value='30')
-CALL prms%CreateIntOption(    'Eps_Method',     "Method of determining the step size of FD approximation of A*v in GMRES, &
-                                                &1: sqrt(machineAccuracy)*scaleps, 2: take norm of solution into account", value='2')
+CALL prms%CreateLogicalOption('adaptepsNewton', "Adaptive Newton eps by Runge-Kutta error estimation"            , value='.FALSE.')
+CALL prms%CreateRealOption(   'EpsNewton',      "Newton tolerance, only used if adaptepsNewton=F"                , value='1.E-3')
+CALL prms%CreateIntOption(    'nNewtonIter',    "Maximum amount of Newton iterations"                            , value='50')
+CALL prms%CreateLogicalOption('EisenstatWalker',"Adaptive abort criterion for GMRES"                             , value='.FALSE.')
+CALL prms%CreateRealOption(   'gammaEW',        "Parameter for Eisenstat Walker adaptation"                      , value='0.9')
+CALL prms%CreateRealOption(   'EpsGMRES',       "GMRES Tolerance, only used of EisenstatWalker=F"                , value='1.E-3')
+CALL prms%CreateIntOption(    'nRestarts',      "Maximum number of GMRES Restarts"                               , value='10')
+CALL prms%CreateIntOption(    'nKDim',          "Maximum number of Krylov subspaces for GMRES, after that a restart is performed" &
+                                                                                                                 , value='30')
+CALL prms%CreateIntOption(    'Eps_Method',     "Method of determining the step size of FD approximation of A*v in GMRES,         &
+                                                &1: sqrt(machineAccuracy)*scaleps, 2: take norm of solution into account"         &
+                                                                                                                 , value='2')
 CALL prms%CreateRealOption(   'scaleps',        "Scaling factor for step size in FD, mainly used in Eps_Method=1", value='1.')
-CALL prms%CreateIntOption(    'FD_Order',       "Order of FD approximation (1/2)", value='1')
+CALL prms%CreateIntOption(    'FD_Order',       "Order of FD approximation (1/2)"                                , value='1')
 CALL prms%CreateIntOption(    'PredictorType',  "Type of predictor to be used, 0: use current U, 1: use right hand side, 2: &
-                                                 &polynomial extrapolation, 3: dense output formula of RK scheme",value='0')
-CALL prms%CreateIntOption(    'PredictorOrder', "Order of predictor to be used (PredictorType=2)",value='0')
+                                                 &polynomial extrapolation, 3: dense output formula of RK scheme", value='0')
+CALL prms%CreateIntOption(    'PredictorOrder', "Order of predictor to be used (PredictorType=2)"                , value='1')
 
 END SUBROUTINE DefineParametersImplicit
 
@@ -132,28 +133,28 @@ IF(TimeDiscType.EQ.'ESDIRK') THEN
   R_Xk         = 0.
 
   ! Abort criterion for Newton
-  EpsNewton      = GETREAL('EpsNewton','0.001')
+  EpsNewton      = GETREAL('EpsNewton')
   ! Adaptive abort criterion, we need specific coefficients from the embedded RK scheme for this to work. Not available for all of
   ! them!
-  adaptepsNewton = GETLOGICAL('adaptepsNewton','.FALSE.')
+  adaptepsNewton = GETLOGICAL('adaptepsNewton')
   IF((.NOT.ALLOCATED(RKb_embedded)).AND.(adaptepsNewton.EQV..TRUE.))THEN
     SWRITE(UNIT_stdOut,'(A)') ' Attention, Newton abort criterium is not adaptive!'
     adaptepsNewton = .FALSE.
   END IF
-  nNewtonIter    = GETINT('nNewtonIter','50')
+  nNewtonIter    = GETINT('nNewtonIter')
   ! initialize identifier if Newton's method has failed
   NewtonConverged = .TRUE.
 
   ! Parameters for the finite difference approximation of A*v (matrix free GMRES)
-  scaleps        = GETREAL('scaleps','1.') ! (A*v = (R(Xk+eps)-R(Xk))/(scaleps*eps))
+  scaleps        = GETREAL('scaleps') ! (A*v = (R(Xk+eps)-R(Xk))/(scaleps*eps))
   ! Choose method how eps is calculated:
   ! 1: According to Qin,Ludlow,Shaw: A matrix-free preconditioned Newton/GMRES method for unsteady Navier-Stokes solutions (Eq. 13),
   !                                  Int.J.Numer.Meth.Fluids 33 (2000) 223-248
   ! 2: According to Knoll,Keyes: Jacobian-free Newton-Krylov methods: A survey of approaches and applications (Eq. (14)),
   !                              JCP 193 (2004) 357-397
-  Eps_Method     = GETINT('Eps_Method','2')
+  Eps_Method     = GETINT('Eps_Method')
   ! Choose order of finite difference
-  FD_Order       = GETINT('FD_Order','1')
+  FD_Order       = GETINT('FD_Order')
 
   ! Adapt machine epsilon to order of finite difference according to: An, Weng, Feng: On finite difference approximation of a
   ! matrix-vector product in the Jacobian-free Newton-Krylov method (Eqs. (11)-(13)), J.Comp.Appl.Math. 263 (2011) 1399-1409
@@ -178,11 +179,11 @@ IF(TimeDiscType.EQ.'ESDIRK') THEN
   ! Solution        y = dx
   ! Right Hand Side b = -F_Xk
   !========================================================================================
-  nRestarts       =GETINT    ('nRestarts','10')
-  nKDim           =GETINT    ('nKDim','30')
-  EisenstatWalker =GETLOGICAL('EisenstatWalker','.FALSE.')
-  gammaEW         =GETREAL   ('gammaEW','0.9')
-  IF (.NOT.EisenstatWalker) EpsGMRES = GETREAL('EpsGMRES','0.001')
+  nRestarts       =GETINT    ('nRestarts')
+  nKDim           =GETINT    ('nKDim')
+  EisenstatWalker =GETLOGICAL('EisenstatWalker')
+  gammaEW         =GETREAL   ('gammaEW')
+  IF (.NOT.EisenstatWalker) EpsGMRES = GETREAL('EpsGMRES')
 
   nGMRESIterGlobal    = 0
   nGMRESIterdt        = 0

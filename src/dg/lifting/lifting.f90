@@ -77,12 +77,12 @@ IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Lifting")
 CALL prms%CreateLogicalOption('doWeakLifting',         "Set true to perform lifting in weak form.", '.FALSE.')
-CALL prms%CreateLogicalOption('doConservativeLifting', "Set true to compute the volume contribution to the gradients in "//&
+CALL prms%CreateLogicalOption('doConservativeLifting', "Set true to compute the volume contribution to the gradients in "       //&
                                                        "conservative form, i.e. deriving the solution multiplied by the metric "//&
-                                                       "terms instead of deriving the solution and multiplying by the metrics.",&
+                                                       "terms instead of deriving the solution and multiplying by the metrics.",  &
                                                        '.FALSE.')
 #if PP_Lifting==2
-CALL prms%CreateRealOption(   'etaBR2',                "Lifting penalty for BR2. Increase improves stability at the cost of "//&
+CALL prms%CreateRealOption(   'etaBR2',                "Lifting penalty for BR2. Increase improves stability at the cost of "    //&
                                                        "performance and reduces jumps between two cells.", '2.')
 CALL prms%CreateRealOption(   'etaBR2_wall',           "Lifting penalty for BR2 at wall boundaries. Can be choosen different from"//&
                                                        "to decrease wall velocities.", '-1')
@@ -127,23 +127,23 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !==================================================================================================================================
 IF((.NOT.DGInitIsDone).OR.LiftingInitIsDone)THEN
-   SWRITE(*,*) "InitDG not ready to be called or already called."
-   RETURN
+  SWRITE(UNIT_stdOut,'(A)') "InitDG not ready to be called or already called."
+  RETURN
 END IF
 
 SWRITE(UNIT_stdOut,'(132("-"))')
 #if PP_Lifting==1
 SWRITE(UNIT_stdOut,'(A)') ' INIT LIFTING WITH BR1...'
-doWeakLifting=GETLOGICAL('doWeakLifting','.FALSE.')
+doWeakLifting         = GETLOGICAL('doWeakLifting')
 IF(.NOT.doWeakLifting)&
-  doConservativeLifting=GETLOGICAL('doConservativeLifting','.FALSE.')
+  doConservativeLifting = GETLOGICAL('doConservativeLifting')
 
 #elif PP_Lifting==2
 SWRITE(UNIT_stdOut,'(A)') ' INIT LIFTING WITH BR2 ...'
-doWeakLifting=.FALSE.
-doConservativeLifting=GETLOGICAL('doConservativeLifting','.FALSE.')
-etaBR2=GETREAL('etaBR2','2.')
-etaBR2_wall=GETREAL('etaBR2_wall','-1.')
+doWeakLifting         = .FALSE.
+doConservativeLifting = GETLOGICAL('doConservativeLifting')
+etaBR2                = GETREAL('etaBR2')
+etaBR2_wall           = GETREAL('etaBR2_wall')
 IF(etaBR2_wall .EQ. -1.) etaBR2_wall = etaBR2  !default etaBR2_wall == etaBR2
 
 ALLOCATE(FluxX(PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides))

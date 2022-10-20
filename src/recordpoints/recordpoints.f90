@@ -93,7 +93,7 @@ INTEGER               :: maxRP
 INTEGER               :: nVar_loc
 !==================================================================================================================================
 ! check if recordpoints are activated
-RP_inUse=GETLOGICAL('RP_inUse','.FALSE.')
+RP_inUse=GETLOGICAL('RP_inUse')
 IF(.NOT.RP_inUse) RETURN
 
 IF((.NOT.InterpolationInitIsDone) .OR. RecordPointsInitIsDone) &
@@ -115,8 +115,8 @@ ELSE
   nVar_loc = PP_nVar
 END IF
 
-RP_maxMemory      = GETINT('RP_MaxMemory','100')      ! Max buffer (100MB)
-RP_SamplingOffset = GETINT('RP_SamplingOffset','1')   ! Sampling offset (iteration)
+RP_maxMemory      = GETINT('RP_MaxMemory')            ! Max buffer (100MB)
+RP_SamplingOffset = GETINT('RP_SamplingOffset')       ! Sampling offset (iteration)
 IF(RP_onProc)THEN
   maxRP=nGlobalRP
 #if USE_MPI

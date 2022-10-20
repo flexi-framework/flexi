@@ -68,20 +68,26 @@ IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection('FV')
 ! FV Switching
-CALL prms%CreateLogicalOption('FV_SwitchConservative',"Perform FV/DG switch in reference element", '.TRUE.')
-CALL prms%CreateLogicalOption('FV_IniSupersample'    ,"Supersample initial solution inside each sub-cell and take mean value \n&
-                                                      & as average sub-cell value.", '.TRUE.')
-CALL prms%CreateLogicalOption('FV_IniSharp'          ,"Maintain a sharp interface in the initial solution in the FV region",&
-                                                      '.FALSE.')
-CALL prms%CreateRealOption(   'FV_IndUpperThreshold' ,"Upper threshold: Element is switched from DG to FV if indicator \n"//&
-                                                      "rises above this value" )
-CALL prms%CreateRealOption(   'FV_IndLowerThreshold' ,"Lower threshold: Element is switched from FV to DG if indicator \n"//&
-                                                      "falls below this value")
-CALL prms%CreateLogicalOption('FV_toDG_indicator'    ,"Apply additional Persson indicator to check if DG solution after switch \n&
-                                                      & from FV to DG is valid.", '.FALSE.')
+CALL prms%CreateLogicalOption('FV_SwitchConservative',"Perform FV/DG switch in reference element"                                 &
+                                                     ,'.TRUE.')
+CALL prms%CreateLogicalOption('FV_IniSupersample'    ,"Supersample initial solution inside each sub-cell and take mean value \n"//&
+                                                      " as average sub-cell value."                                               &
+                                                     ,'.TRUE.')
+CALL prms%CreateLogicalOption('FV_IniSharp'          ,"Maintain a sharp interface in the initial solution in the FV region"       &
+                                                     ,'.FALSE.')
+CALL prms%CreateRealOption(   'FV_IndUpperThreshold' ,"Upper threshold: Element is switched from DG to FV if indicator \n"      //&
+                                                      "rises above this value"                                                    &
+                                                     ,'99.')
+CALL prms%CreateRealOption(   'FV_IndLowerThreshold' ,"Lower threshold: Element is switched from FV to DG if indicator \n"      //&
+                                                      "falls below this value"                                                    &
+                                                     ,'-99.')
+CALL prms%CreateLogicalOption('FV_toDG_indicator'    ,"Apply additional Persson indicator to check if DG solution after \n"     //&
+                                                      " switch from FV to DG is valid."                                           &
+                                                     ,'.FALSE.')
 CALL prms%CreateRealOption   ('FV_toDG_limit'        ,"Threshold for FV_toDG_indicator")
-CALL prms%CreateLogicalOption('FV_toDGinRK'          ,"Allow switching of FV elements to DG during Runge Kutta stages. \n"//&
-                                                      "This may violated the DG timestep restriction of the element.", '.FALSE.')
+CALL prms%CreateLogicalOption('FV_toDGinRK'          ,"Allow switching of FV elements to DG during Runge Kutta stages. \n"      //&
+                                                      "This may violated the DG timestep restriction of the element."             &
+                                                     ,'.FALSE.')
 ! FV Blending
 CALL prms%CreateRealOption(   'FV_alpha_min'          ,"Lower bound for alpha (all elements below threshold are treated as pure DG)"&
                                                       ,'0.01')
@@ -138,8 +144,8 @@ switchConservative = GETLOGICAL("FV_SwitchConservative")
 
 #if FV_ENABLED == 1
 ! Read minimal and maximal threshold for the indicator
-FV_IndLowerThreshold = GETREAL('FV_IndLowerThreshold','-99.')
-FV_IndUpperThreshold = GETREAL('FV_IndUpperThreshold', '99.')
+FV_IndLowerThreshold = GETREAL('FV_IndLowerThreshold')
+FV_IndUpperThreshold = GETREAL('FV_IndUpperThreshold')
 
 ! Read flag indicating, if an additional Persson indicator should check if a FV sub-cells element really contains no oscillations
 ! anymore.
@@ -152,7 +158,7 @@ FV_toDGinRK = GETLOGICAL("FV_toDGinRK")
 
 ! If the main indicator is not already the persson indicator, then we need to read in the parameters
 IF (IndicatorType.NE.2) THEN
-  nModes = GETINT('nModes','2')
+  nModes = GETINT('nModes')
   nModes = MAX(1,nModes+PP_N-MIN(NUnder,NFilter))-1 ! increase by number of empty modes in case of overintegration
 END IF
 
@@ -257,6 +263,13 @@ gradUzeta_central=0.
 #endif /* PARABOLIC */
 #endif /* FV_RECONSTRUCT */
 
+<<<<<<< HEAD
+=======
+! Options for initial solution
+FV_IniSharp       = GETLOGICAL("FV_IniSharp")
+IF (.NOT.FV_IniSharp) FV_IniSupersample = GETLOGICAL("FV_IniSupersample")
+
+>>>>>>> ae7875d826 (Ensure parameter values are set during init, not readin)
 FVInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT FV DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')

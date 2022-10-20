@@ -97,17 +97,17 @@ IMPLICIT NONE
 INTEGER          :: i
 !==================================================================================================================================
 ! Get the various analysis/output variables
-doCalcBodyForces    =GETLOGICAL('CalcBodyForces'   ,'.FALSE.')
-doCalcBulkState     =GETLOGICAL('CalcBulkState'    ,'.FALSE.')
-doCalcMeanFlux      =GETLOGICAL('CalcMeanFlux'     ,'.FALSE.')
-doCalcWallVelocity  =GETLOGICAL('CalcWallVelocity' ,'.FALSE.')
-doCalcTotalStates   =GETLOGICAL('CalcTotalStates'  ,'.FALSE.')
-doWriteBodyForces   =GETLOGICAL('WriteBodyForces'  ,'.TRUE.')
-doWriteBulkState    =GETLOGICAL('WriteBulkState'   ,'.TRUE.')
-doWriteMeanFlux     =GETLOGICAL('WriteMeanFlux'    ,'.TRUE.')
-doWriteWallVelocity =GETLOGICAL('WriteWallVelocity','.TRUE.')
-doWriteTotalStates  =GETLOGICAL('WriteTotalStates' ,'.TRUE.')
-doCalcTimeAverage   =GETLOGICAL('CalcTimeAverage'  ,'.FALSE.')
+doCalcBodyForces    = GETLOGICAL('CalcBodyForces')
+doCalcBulkState     = GETLOGICAL('CalcBulkState')
+doCalcMeanFlux      = GETLOGICAL('CalcMeanFlux')
+doCalcWallVelocity  = GETLOGICAL('CalcWallVelocity')
+doCalcTotalStates   = GETLOGICAL('CalcTotalStates')
+doWriteBodyForces   = GETLOGICAL('WriteBodyForces')
+doWriteBulkState    = GETLOGICAL('WriteBulkState')
+doWriteMeanFlux     = GETLOGICAL('WriteMeanFlux')
+doWriteWallVelocity = GETLOGICAL('WriteWallVelocity')
+doWriteTotalStates  = GETLOGICAL('WriteTotalStates')
+doCalcTimeAverage   = GETLOGICAL('CalcTimeAverage')
 
 ! Generate wallmap
 ALLOCATE(isWall(nBCs))

@@ -203,7 +203,7 @@ DataSizeSidePrim  =PP_nVarPrim*(PP_N+1)*(PP_NZ+1)
 DataSizeSideGrad  =PP_nVarLifting*(PP_N+1)*(PP_NZ+1)
 
 ! split communicator into smaller groups (e.g. for local nodes)
-GroupSize=GETINT('GroupSize','0')
+GroupSize=GETINT('GroupSize')
 IF(GroupSize.LT.1)THEN ! group procs by node
   CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,myRank,0,MPI_COMM_NODE,iError)
 ELSE ! use groupsize
