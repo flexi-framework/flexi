@@ -319,11 +319,13 @@ USE MOD_Mesh_Vars,          ONLY: offsetElem,detJac_Ref,Ngeo
 USE MOD_Mesh_Vars,          ONLY: nElems,nGlobalElems
 USE MOD_Restart_Vars
 #if FV_ENABLED
-USE MOD_FV,                 ONLY: FV_ProlongFVElemsToFace
 USE MOD_FV_Vars,            ONLY: FV_Elems
+#endif
+#if FV_ENABLED == 1
+USE MOD_FV_Switching,       ONLY: FV_ProlongFVElemsToFace
 USE MOD_Indicator_Vars,     ONLY: IndValue
 USE MOD_StringTools,        ONLY: STRICMP
-#endif /*FV_ENABLED*/
+#endif /*FV_ENABLED==1*/
 #if PP_dim == 3
 USE MOD_2D,                 ONLY: ExpandArrayTo3D
 #else
@@ -345,11 +347,11 @@ REAL,ALLOCATABLE   :: JNR(:,:,:,:)
 REAL               :: Vdm_NRestart_N(0:PP_N,0:N_Restart)
 REAL               :: Vdm_3Ngeo_NRestart(0:N_Restart,0:3*NGeo)
 LOGICAL            :: doFlushFiles_loc
-#if FV_ENABLED
+#if FV_ENABLED == 1
 INTEGER             :: nVal(15)
 REAL,ALLOCATABLE    :: ElemData(:,:),tmp(:)
 CHARACTER(LEN=255),ALLOCATABLE :: VarNamesElemData(:)
-#endif /*FV_ENABLED*/
+#endif /*FV_ENABLED==1*/
 !==================================================================================================================================
 
 doFlushFiles_loc = MERGE(doFlushFiles,.TRUE.,PRESENT(doFlushFiles))
@@ -359,7 +361,7 @@ IF (DoRestart) THEN
   SWRITE(UNIT_stdOut,'(A)') ' PERFORMING RESTART...'
 
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-#if FV_ENABLED
+#if FV_ENABLED == 1
   ! Read FV element distribution and indicator values from elem data array if possible
   CALL GetArrayAndName('ElemData','VarNamesAdd',nVal,tmp,VarNamesElemData)
   IF (ALLOCATED(VarNamesElemData)) THEN
@@ -384,7 +386,7 @@ IF (DoRestart) THEN
   SDEALLOCATE(VarNamesElemData)
   SDEALLOCATE(tmp)
   CALL FV_ProlongFVElemsToFace()
-#endif
+#endif /*FV_ENABLED==1*/
 
   ! Mean files only have a dummy DG_Solution, we have to pick the "Mean" array in this case
   IF (RestartMode.GT.1) THEN

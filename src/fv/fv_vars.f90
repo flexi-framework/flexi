@@ -32,6 +32,7 @@ REAL                   :: FV_IndUpperThreshold   !< Upper threshold: Element is 
 REAL                   :: FV_IndLowerThreshold   !< Lower threshold: Element is switched from FV to DG if indicator
                                                  !< falls below this value
 
+#if FV_ENABLED == 1
 LOGICAL                :: FV_toDG_indicator      !< additional Persson indicator applied to DG solution after switch from FV to DG
                                                  !< to check if DG solution is valid
 REAL                   :: FV_toDG_limit          !< limit for ^ this indicator: If FV_toDG_indicator is above limit, keep FV
@@ -39,13 +40,15 @@ LOGICAL                :: FV_toDGinRK            !< Flag that allows switching o
                                                  !< This may violated the DG timestep restriction of the element.
 LOGICAL                :: FV_IniSharp            !< Maintain a sharp interface in the initial solution in the FV region
 LOGICAL                :: FV_IniSupersample      !< Supersample initial solution inside each sub-cell
+#endif /*FV_ENABLED*/
 LOGICAL                :: switchConservative     !< Perform DG/FV switch in reference element
 
 ! Limiting
 INTEGER                :: LimiterType            !< Readin variable for type of used fv limiter
 REAL                   :: FV_sweby_beta          !< parameter for Sweby limiter
 
-! FV/DG
+! FV/DG Switching
+! TODO: The following variables are only need for Switch-Type FV. Could be hidden behind correct preprocessor flags in the future
 INTEGER,ALLOCATABLE    :: FV_Elems(:)            !< indicates if DG element (0) or FV subcells (1) for each element
 INTEGER,ALLOCATABLE    :: FV_Elems_master(:)     !< prolongate FV_Elems to faces
 INTEGER,ALLOCATABLE    :: FV_Elems_slave(:)
@@ -57,14 +60,29 @@ INTEGER                :: FV_Switch_counter      !< counts how often FV_Switch i
                                                  !< should be identical to nTimesteps * nRkStages
 
 REAL,ALLOCATABLE       :: FV_Elems_Amount(:)     !< counts for every element the RK stages it was DG or FV, nullified after
+
+! FV/DG Blending
+#if FV_ENABLED == 2
+REAL,ALLOCATABLE       :: FV_alpha(:)            !< Blending coefficient
+REAL,ALLOCATABLE       :: FV_alpha_master(:)     !< Prolongated blending coefficient on master sides
+REAL,ALLOCATABLE       :: FV_alpha_slave( :)     !< Prolongated blending coefficient on slave  sides
+REAL                   :: FV_alpha_min           !< Minimal blending coefficient (all elems below are treated as pure DG)
+REAL                   :: FV_alpha_max           !< Maximal blending coefficient
+REAL                   :: FV_alpha_extScale      !< Amount alpha is scaled when extended into neighbouring elements.
+LOGICAL                :: FV_doExtendAlpha       !< Flag whether alpha should be extended into neighbouring elements
+INTEGER                :: FV_nExtendAlpha        !< Number of times alpha should be passed towards neighboring elements per timestep
+#endif /*FV_ENABLED==2*/
+
 ! FV variables on reference element
 REAL,ALLOCATABLE       :: FV_X(:)                !< positions of 'midpoints' of FV subcells in [-1,1]
 REAL,ALLOCATABLE       :: FV_BdryX(:)            !< positions of boundaries of FV subcells in [-1,1]
-REAL                   :: FV_w                   !< weights of FV subcells (lenght of subcell)
-REAL                   :: FV_w_inv               !< 1/FV_w
+REAL,ALLOCATABLE       :: FV_w(:)                !< weights of FV subcells (lenght of subcell)
+REAL,ALLOCATABLE       :: FV_w_inv(:)            !< 1/FV_w
 REAL,ALLOCATABLE       :: FV_Vdm(:,:)            !< Vandermonde to switch from DG to FV
 REAL,ALLOCATABLE       :: FV_sVdm(:,:)           !< Vandermonde to switch from FV to DG
-
+INTEGER                :: FV_CellType            !< Type of FV Cell: -1 = SAME              ,0 = EQUIDISTANT
+                                                 !<                   1 = LEGENDRE_GAUSS    ,2 = LEGENDRE_LOBATTO  
+                                                 !<                   3 = CHEBYSHEV_LOBATTO
 
 #if FV_RECONSTRUCT
 REAL,ALLOCATABLE,TARGET:: FV_surf_gradU(:,:,:,:) !< FD over DG interface

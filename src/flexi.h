@@ -120,11 +120,25 @@
 
 !#define DEBUGMESH
 
+#if FV_ENABLED
+#define FV_SIZE 1
+#else
+#define FV_SIZE 0
+#endif
+
 #if !(FV_ENABLED)
 #define FV_Elems(x) 0
 #define FV_Elems_master(x) 0
 #define FV_Elems_slave(x) 0
 #define FV_Elems_Sum(x) 0
+#endif
+
+! Compute viscous contributions in volume integral
+! NOT if FV-Blending or if non-parabolic
+#if (FV_ENABLED==2) || !PARABOLIC
+#define VOLINT_VISC 0
+#else
+#define VOLINT_VISC 1
 #endif
 
 #define KILL(x) SWRITE(*,*) __FILE__,__LINE__,x; stop

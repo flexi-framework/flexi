@@ -93,8 +93,10 @@ Ut = 0.
 
 #if FV_ENABLED
 FV_Ut = 0.
-FV_w  = 2.0 / (9+1) ! equidistant widths of FV-Subcells
-FV_w_inv = 1./FV_w
+ALLOCATE(FV_w(0:NRef))        ! 1D width of FV-Subcells
+ALLOCATE(FV_w_inv(0:NRef))
+FV_w(:)     = 2./(9+1) ! equidistant widths of FV-Subcells
+FV_w_inv(:) = 1./FV_w(:)
 ALLOCATE(FV_Elems(1:1))
 ALLOCATE(FV_Elems_master(1:nSidesRef))
 ALLOCATE(FV_Elems_slave (1:nSidesRef))

@@ -158,7 +158,7 @@ INTEGER,INTENT(IN) :: TP_nVar
 #endif
 INTEGER,INTENT(IN) :: Nloc
 REAL,INTENT(IN)    :: Flux(TP_nVar,0:Nloc,0:ZDIM(Nloc))
-REAL,INTENT(IN)    :: FV_w_inv
+REAL,INTENT(IN)    :: FV_w_inv(0:Nloc)
 INTEGER,INTENT(IN) :: locSideID
 REAL,INTENT(INOUT) :: Ut(TP_nVar,0:Nloc,0:Nloc,0:ZDIM(Nloc))
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -166,17 +166,17 @@ REAL,INTENT(INOUT) :: Ut(TP_nVar,0:Nloc,0:Nloc,0:ZDIM(Nloc))
 !==================================================================================================================================
 SELECT CASE(locSideID)
 CASE(XI_MINUS)
-  Ut(:,0,:,:)   =Ut(:,0,:,:)   +Flux*FV_w_inv
+  Ut(:,0,:,:)   =Ut(:,0,:,:)   +Flux*FV_w_inv(0)
 CASE(ETA_MINUS)
-  Ut(:,:,0,:)   =Ut(:,:,0,:)   +Flux*FV_w_inv
+  Ut(:,:,0,:)   =Ut(:,:,0,:)   +Flux*FV_w_inv(0)
 CASE(ZETA_MINUS)
-  Ut(:,:,:,0)   =Ut(:,:,:,0)   +Flux*FV_w_inv
+  Ut(:,:,:,0)   =Ut(:,:,:,0)   +Flux*FV_w_inv(0)
 CASE(XI_PLUS)
-  Ut(:,Nloc,:,:)=Ut(:,Nloc,:,:)+Flux*FV_w_inv
+  Ut(:,Nloc,:,:)=Ut(:,Nloc,:,:)+Flux*FV_w_inv(Nloc)
 CASE(ETA_PLUS)
-  Ut(:,:,Nloc,:)=Ut(:,:,Nloc,:)+Flux*FV_w_inv
+  Ut(:,:,Nloc,:)=Ut(:,:,Nloc,:)+Flux*FV_w_inv(Nloc)
 CASE(ZETA_PLUS)
-  Ut(:,:,:,Nloc)=Ut(:,:,:,Nloc)+Flux*FV_w_inv
+  Ut(:,:,:,Nloc)=Ut(:,:,:,Nloc)+Flux*FV_w_inv(Nloc)
 END SELECT !locSideID
 END SUBROUTINE SurfInt_FV
 #endif

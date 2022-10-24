@@ -138,7 +138,12 @@ SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT INDICATORS...'
 
 ! Read in  parameters
+#if FV_ENABLED == 2
+IndicatorType = INDTYPE_PERSSON
+#else
 IndicatorType = GETINTFROMSTR('IndicatorType')
+#endif
+
 SELECT CASE(IndicatorType)
 CASE(INDTYPE_JAMESON)
 #if EQNSYSNR != 2 /* NOT NAVIER-STOKES */
@@ -167,6 +172,14 @@ CASE(INDTYPE_PERSSON)
   ! number of modes to be checked by Persson indicator
   nModes = GETINT('nModes','2')
   nModes = MAX(1,nModes+PP_N-MIN(NUnder,NFilter))-1 ! increase by number of empty modes in case of overintegration
+#if FV_ENABLED == 2
+  T_FV   = 0.5*10**(-1.8*(PP_N+1)**.25) ! Eq.(42) in: S. Hennemann et al., J.Comp.Phy., 2021
+  sdT_FV = s_FV/T_FV
+#if EQNSYSNR != 2 /* NOT NAVIER-STOKES */
+  CALL Abort(__STAMP__, &
+      "Persson indicator for FV-Blending only works with Navier-Stokes equations.")
+#endif /* EQNSYSNR != 2 */
+#endif /*FV_ENABLED*/
 CASE(-1) ! legacy
   IndicatorType=INDTYPE_DG
 END SELECT
@@ -198,13 +211,19 @@ SUBROUTINE CalcIndicator(U,t)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Indicator_Vars ,ONLY: IndicatorType,IndValue,IndStartTime
-USE MOD_Mesh_Vars      ,ONLY: offsetElem,Elem_xGP,nElems
-USE MOD_FV_Vars        ,ONLY: FV_Elems,FV_sVdm
+USE MOD_Indicator_Vars   ,ONLY: IndicatorType,IndValue,IndStartTime
+USE MOD_Mesh_Vars        ,ONLY: offsetElem,Elem_xGP,nElems
 #if PARABOLIC && EQNSYSNR == 2
-USE MOD_Lifting_Vars   ,ONLY: gradUx,gradUy,gradUz
+USE MOD_Lifting_Vars     ,ONLY: gradUx,gradUy,gradUz
 #endif
-USE MOD_ChangeBasisByDim,ONLY:ChangeBasisVolume
+#if FV_ENABLED == 2
+USE MOD_FV_Blending      ,ONLY: FV_ExtendAlpha
+USE MOD_FV_Vars          ,ONLY: FV_alpha,FV_alpha_min,FV_alpha_max,FV_doExtendAlpha
+USE MOD_Indicator_Vars   ,ONLY: sdT_FV,T_FV
+#else
+USE MOD_FV_Vars          ,ONLY: FV_Elems,FV_sVdm
+#endif /*FV_ENABLED==2*/
+USE MOD_ChangeBasisByDim ,ONLY:ChangeBasisVolume
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -214,8 +233,10 @@ REAL,INTENT(IN)           :: t                                            !< Sim
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                   :: iElem
-REAL,TARGET               :: U_DG(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL,POINTER              :: U_P(:,:,:,:)
+#if !(FV_ENABLED == 2)
+REAL,TARGET               :: U_DG(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
+#endif
 !==================================================================================================================================
 
 ! if time is before IndStartTime return high Indicator value (FV)
@@ -230,6 +251,19 @@ CASE(INDTYPE_DG) ! no indicator, just a high value to trigger filtering
 CASE(INDTYPE_FV) ! indicator everywhere
   IndValue = 100
 CASE(INDTYPE_PERSSON) ! Modal Persson indicator
+#if FV_ENABLED == 2
+  DO iElem=1,nElems
+    IndValue(iElem) = IndPerssonBlend(U(:,:,:,:,iElem))
+    FV_alpha(iElem)  = 1. / (1. + EXP(-sdT_FV * (IndValue(iElem) - T_FV)))
+    ! Limit to alpha_max
+    FV_alpha(iElem) = MIN(FV_alpha(iElem),FV_alpha_max)
+  END DO ! iElem
+  CALL FV_ExtendAlpha(FV_alpha)
+  ! Do not compute FV contribution for elements below threshold
+  DO iElem=1,nElems
+    IF (FV_alpha(iElem) .LT. FV_alpha_min) FV_alpha(iElem) = 0.
+  END DO ! iElem
+#else
   DO iElem=1,nElems
     IF (FV_Elems(iElem).EQ.0) THEN ! DG Element
       U_P(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) => U(:,:,:,:,iElem)
@@ -239,6 +273,7 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
     END IF
     IndValue(iElem) = IndPersson(U_P)
   END DO ! iElem
+#endif /*FV_ENABLED==2*/
 #if EQNSYSNR == 2 /* NAVIER-STOKES */
 CASE(INDTYPE_JAMESON)
   IndValue = JamesonIndicator(U)
@@ -460,9 +495,11 @@ REAL                      :: UE(1:PP_2Var)
 INTEGER                   :: TMP(1:nElems)
 INTEGER                   :: TMP_master(1:nSides)
 INTEGER                   :: TMP_slave( 1:nSides)
-INTEGER                   :: DataSizeSide_loc
 INTEGER                   :: firstMortarSideID,lastMortarSideID
 INTEGER                   :: MortarSideID,tf
+#if USE_MPI
+INTEGER                   :: DataSizeSide_loc
+#endif
 !==================================================================================================================================
 ! Fill UJameson with conservative variable or pressure
 SELECT CASE(IndVar)
@@ -588,6 +625,57 @@ DO iElem=1,nElems
   IndValue(iElem) = IndValue(iElem) / ElemVol
 END DO ! iElem
 END FUNCTION JamesonIndicator
+
+#if FV_ENABLED == 2
+!==================================================================================================================================
+!> Determine, if given a modal representation solution "U_Modal" is oscillating
+!> Indicator value is scaled to \f$\sigma=0 \ldots 1\f$
+!> Suggested by Persson et al.
+!==================================================================================================================================
+FUNCTION IndPerssonBlend(U) RESULT(IndValue)
+USE MOD_PreProc
+USE MOD_Indicator_Vars,     ONLY: nModes
+USE MOD_Interpolation_Vars, ONLY: sVdm_Leg
+USE MOD_EOS_Vars
+USE MOD_ChangeBasisByDim,   ONLY: ChangeBasisVolume
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,INTENT(IN)    :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)          !< Solution
+REAL               :: IndValue                                  !< Value of the indicator (Return Value)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                               :: iDeg,iDeg2,i,j,k
+REAL                                  :: UE(1:PP_2Var)
+REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_NZ) :: U_loc,U_Modal
+!==================================================================================================================================
+DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+  UE(EXT_CONS)=U(:,i,j,k)
+  UE(EXT_SRHO)=1./UE(EXT_DENS)
+  UE(EXT_VELV)=VELOCITY_HE(UE)
+  U_loc(i,j,k)=PRESSURE_HE(UE)*UE(EXT_DENS)
+END DO; END DO; END DO! i,j,k=0,PP_N
+
+! Transform nodal solution to a modal representation
+CALL ChangeBasisVolume(PP_N,PP_N,sVdm_Leg,U_loc,U_Modal)
+
+IndValue=TINY(0.)
+DO iDeg=0,nModes
+  iDeg2=iDeg+1
+#if PP_dim == 3
+  IndValue=MAX(IndValue,(SUM(U_Modal(0:PP_N-iDeg,0:PP_N-iDeg,0:PP_N-iDeg)**2) - &
+                         SUM(U_Modal(0:PP_N-iDeg2,0:PP_N-iDeg2,0:PP_N-iDeg2)**2))/&
+                         SUM(U_Modal(0:PP_N,0:PP_N,0:PP_N)**2))
+#else
+  IndValue=MAX(IndValue,(SUM(U_Modal(0:PP_N-iDeg,0:PP_N-iDeg,0)**2) - &
+                         SUM(U_Modal(0:PP_N-iDeg2,0:PP_N-iDeg2,0)**2))/&
+                         SUM(U_Modal(0:PP_N,0:PP_N,0)**2))
+#endif
+END DO
+IF (IndValue .LT. EPSILON(1.)) IndValue = EPSILON(IndValue)
+
+END FUNCTION IndPerssonBlend
+#endif /*FV_ENABLED==2*/
 
 #endif /* EQNSYSNR == 2 */
 

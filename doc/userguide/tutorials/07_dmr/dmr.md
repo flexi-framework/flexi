@@ -28,15 +28,25 @@ This creates the mesh file *DMR_mesh.h5* in HDF5 format.
 ### Flow Simulation with FLEXI
 \label{sec:tut_dmr_simulation}
 
-This example requires the Finite Volume shock capturing. Therefore turn the option ``FLEXI_FV`` in the cmake configuration on. Additionally you should switch ``FLEXI_PARABOLIC`` off and recompile the **FLEXI** code.
-The simulation setup is defined in *parameter_flexi.ini* and includes options for the Finite Volume shock capturing.  
+This example requires the finite volume (FV) shock capturing.
+Two variants of the shock capturing are implemented in **FLEXI**, which are both based on the FV sub-cell technique.
+For this, the DG element is subdivided into finite volume sub-cells, where each sub-cell corresponds to one degree of freedom of the initial DG element.
+This allows to keep the total number of degrees of freedom in the simulation constant and to switch between the DG and the FV operator for each individual element.
+The first approach switches DG elements into the FV sub-cell representation such that each element is either represented by its DG solution and DG discretization operator or the element is represented by FV sub-cells, i.e. a piecewise constant representation, as detailed in [@sonntag2017efficient].
+The alternative is to blend the FV operator to the DG operator, while the solution itself always remains a DG polynomial.
+Please see [@hennemann2021provably] for more details.
+In the following, both approaches will be applied to simulate the Double Mach Reflection.
+
+#### Using the Finite Volume Switching
+First, set the option ``FLEXI_FV=SWITCH`` in the cmake configuration to enable the switching-based shock capturing. Additionally you should switch ``FLEXI_PARABOLIC`` off and recompile the **FLEXI** code.
+The simulation setup is defined in *parameter_flexi_switch.ini* and includes options for the shock capturing via switching.
 
 
 | Option                        | Value       | Description                                                  |
 | ----------------------------- | ----------- | -------------------------------------------------------------|
+| FV_LimiterType                | MinMod      |                                                              |
 | IndicatorType                 | Jameson     |                                                              |
 | IndVar                        | 6           | Pressure is used for indicator evaluation                    |
-| FV_LimiterType                | MinMod      |                                                              |
 | FV_IndUpperThreshold          | 0.010       | upper threshold (if IndValue above this value, switch to FV) |
 | FV_IndLowerThreshold          | 0.005       | lower threshold (if IndValue below this value, switch to DG) |
 | FV_toDG_indicator             | T           | enable an additional Persson indicator to check switch from FV to DG |
@@ -55,20 +65,61 @@ Explanation of the Finite Volume specific options (read also the explanations fo
 The command
 
 ~~~~~~~
-flexi parameter_flexi.ini 
+flexi parameter_flexi_switch.ini
 ~~~~~~~
 
-runs the code and generates 11 state files **dmr_State_TIMESTAMP.h5** for $t=0.0, 0.02, \ldots, 0.20$.
+runs the code and generates 11 state files **dmr_SWITCH_State_TIMESTAMP.h5** for $t=0.0, 0.02, \ldots, 0.20$.
 To visualize the solution, the *State*-files must be converted into a format suitable for **ParaView**. Execute the command 
 
 ~~~~~~~
-posti_visu parameter_postiVisu.ini parameter_flexi.ini dmr_State_0000000.0*
+posti_visu parameter_postiVisu.ini parameter_flexi_switch.ini dmr_SWITCH_State_0000000.0*
 ~~~~~~~
 to generate the corresponding *vtu*- and *vtm*-files, which can then be loaded into **ParaView**. 
 There are two types of *vtu*-files, which contain either the DG or the FV part of the solution. 
 The *vtm*-files combine the DG and FV *vtu*-file of every timestamp. Load the *vtm*-files into **ParaView**.
 
-The result at $t=0.2$ should look like in figure \ref{fig:dmr_result}.
+The result at $t=0.2$ should look like in figure \ref{fig:dmr_result_switch}.
 
-![Distribution of DG and FV elements (top) and density (bottom) of Double Mach Reflection at $t=0.2$.\label{fig:dmr_result}](tutorials/07_dmr/dmr_paraview_visualization.png)
+![Distribution of DG and FV elements (top) and density (bottom) of Double Mach Reflection at $t=0.2$.\label{fig:dmr_result_switch}](tutorials/07_dmr/dmr_paraview_visualization.png)
 
+#### Using the Finite Volume Blending
+Next, we will investigate the blending approach.
+For this, set the option ``FLEXI_FV=BLEND`` in the cmake configuration to enable the blending-based shock capturing.
+Moreover, the FV blending requires to set ``FLEXI_NODETYPE=GAUSS-LOBATTO``.
+Also enable the split-form DG with ``FLEXI_SPLIT_DG=ON`` and recompile **FLEXI**.
+More details on the split formulation are given later in Section \ref{sec:tut_ptcf}.
+In this tutorial we use an entropy-stable split formulation to ensure the stability of the FV blending approach.
+For the FV sub-cell blending, the elements are not switched completely to the FV operator, but instead the DG operator $R_{DG}$ and FV operator $R_{FV}$ are blended as
+$$ R = \alpha R_{FV} + (1-\alpha) R_{DG}$$
+with the blending coefficient $\alpha$.
+Instead of switching between a DG and a FV discretization, the blending allows a continuous transition between the DG and FV operators.
+The blending factor is computed based on the indicator proposed by [@hennemann2021provably], which is parameter-free and does not require any parameters to be tuned by the user.
+
+There are some specific options to for the FV blending that can be set in the parameter file.
+
+| Option                        | Value       | Description                                                  |
+| ----------------------------- | ----------- | -------------------------------------------------------------|
+| FV_LimiterType                | MinMod      |                                                              |
+| FV_alpha_min                  | 0.01        | All elements with a blending factor 'alpha' below this threshold are treated as pure DG elements. This improves the computational efficiency, since the FV discretization operator does not have to be computed for these element.                                                             |
+| FV_alpha_max                  | 0.5         | Maximum blending factor 'alpha'. All blending coefficients exceeding this value are clipped to FV_alpha_max |
+| FV_doExtendAlpha              | T           | If true, the blending factors are propagated to the neighboring elements |
+| FV_alpha_ExtScale             | 0.5         | Scaling factor by which the blending factor is scaled when propagated to its neighbor. Has to be between ``0`` and ``1`` |
+| FV_nExtendAlpha               | 1           | Number of times this propagation of the blending should be performed. Higher values correspond to a wider sphere of influence |
+
+Similarly to the switching-based approach, the command
+
+~~~~~~~
+flexi parameter_flexi_blend.ini
+~~~~~~~
+
+runs the code and generates 11 state files **dmr_BLEND_State_TIMESTAMP.h5** for $t=0.0, 0.02, \ldots, 0.20$.
+To visualize the solution, execute the command
+
+~~~~~~~
+posti_visu parameter_postiVisu.ini parameter_flexi_blend.ini dmr_BLEND_State_0000000.0*
+~~~~~~~
+to generate the corresponding *vtu*- and *vtm*-files, which can then be loaded into **ParaView**.
+
+The result at $t=0.2$ should look like in figure \ref{fig:dmr_result_blend}.
+
+![Distribution of the blending factor between the DG and FV operators ``FV_alpha`` (top) and density (bottom) of Double Mach Reflection at $t=0.2$.\label{fig:dmr_result_blend}](tutorials/07_dmr/dmr_paraview_visualization_blend.png)

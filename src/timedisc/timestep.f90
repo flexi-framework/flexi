@@ -55,10 +55,12 @@ USE MOD_DG_Vars       ,ONLY: U,Ut,nTotalU
 USE MOD_PruettDamping ,ONLY: TempFilterTimeDeriv
 USE MOD_TimeDisc_Vars ,ONLY: dt,Ut_tmp,RKA,RKb,RKc,nRKStages,CurrentStage
 #if FV_ENABLED
-USE MOD_FV            ,ONLY: FV_Switch
-USE MOD_FV_Vars       ,ONLY: FV_toDGinRK
 USE MOD_Indicator     ,ONLY: CalcIndicator
 #endif /*FV_ENABLED*/
+#if FV_ENABLED == 1
+USE MOD_FV_Switching  ,ONLY: FV_Switch
+USE MOD_FV_Vars       ,ONLY: FV_toDGinRK
+#endif /*FV_ENABLED==1*/
 #if PP_LIMITER
 USE MOD_PPLimiter     ,ONLY: PPLimiter
 USE MOD_Filter_Vars   ,ONLY: DoPPLimiter
@@ -99,10 +101,12 @@ DO iStage = 1,nRKStages
   ! Time needs to be evaluated at the next step because time integration was already performed
   ASSOCIATE(tFV => MERGE(t+dt,t,iStage.EQ.nRKStages))
   CALL CalcIndicator(U,tFV)
-  ! NOTE: Apply switch and update FV_Elems
-  CALL FV_Switch(U,Ut_tmp,AllowToDG=(iStage.EQ.nRKStages .OR. FV_toDGinRK))
   END ASSOCIATE
 #endif /*FV_ENABLED*/
+#if FV_ENABLED == 1
+  ! NOTE: Apply switch and update FV_Elems
+  CALL FV_Switch(U,Ut_tmp,AllowToDG=(iStage.EQ.nRKStages .OR. FV_toDGinRK))
+#endif /*FV_ENABLED==1*/
 #if PP_LIMITER
   IF(DoPPLimiter) CALL PPLimiter()
 #endif /*PP_LIMITER*/
@@ -125,10 +129,12 @@ USE MOD_DG           ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars      ,ONLY: U,Ut,nTotalU
 USE MOD_TimeDisc_Vars,ONLY: dt,UPrev,S2,RKdelta,RKg1,RKg2,RKg3,RKb,RKc,nRKStages,CurrentStage
 #if FV_ENABLED
-USE MOD_FV           ,ONLY: FV_Switch
-USE MOD_FV_Vars      ,ONLY: FV_toDGinRK
-USE MOD_Indicator    ,ONLY: CalcIndicator
+USE MOD_Indicator     ,ONLY: CalcIndicator
 #endif /*FV_ENABLED*/
+#if FV_ENABLED == 1
+USE MOD_FV_Switching  ,ONLY: FV_Switch
+USE MOD_FV_Vars       ,ONLY: FV_toDGinRK
+#endif /*FV_ENABLED==1*/
 #if PP_LIMITER
 USE MOD_PPLimiter    ,ONLY: PPLimiter
 USE MOD_Filter_Vars  ,ONLY: DoPPLimiter
@@ -176,9 +182,11 @@ DO iStage = 1,nRKStages
   ASSOCIATE(tFV => MERGE(t+dt,t,iStage.EQ.nRKStages))
   CALL CalcIndicator(U,tFV)
   ! NOTE: Apply switch and update FV_Elems
-  CALL FV_Switch(U,Uprev,S2,AllowToDG=(iStage.EQ.nRKStages .OR. FV_toDGinRK))
   END ASSOCIATE
 #endif /*FV_ENABLED*/
+#if FV_ENABLED == 1
+  CALL FV_Switch(U,Uprev,S2,AllowToDG=(iStage.EQ.nRKStages .OR. FV_toDGinRK))
+#endif /*FV_ENABLED==1*/
 #if PP_LIMITER
   IF(DoPPLimiter) CALL PPLimiter()
 #endif /*PP_LIMITER*/
@@ -216,9 +224,11 @@ USE MOD_TimeDisc_Vars     ,ONLY: RKb_implicit,RKb_embedded,safety,ESDIRK_gamma
 USE MOD_TimeDisc_Vars     ,ONLY: DFLScale,DFLScale_Readin
 #endif
 #if FV_ENABLED
-USE MOD_FV                ,ONLY: FV_Switch
 USE MOD_Indicator         ,ONLY: CalcIndicator
 #endif /*FV_ENABLED*/
+#if FV_ENABLED == 1
+USE MOD_FV_Switching      ,ONLY: FV_Switch
+#endif /*FV_ENABLED==1*/
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -280,9 +290,11 @@ IF (NewtonConverged) THEN
 #if FV_ENABLED
   ! Time needs to be evaluated at the next step
   CALL CalcIndicator(U,t+dt)
+#endif /*FV_ENABLED*/
+#if FV_ENABLED == 1
   ! NOTE: Apply switch and update FV_Elems
   CALL FV_Switch(U,AllowToDG=.TRUE.)
-#endif /*FV_ENABLED*/
+#endif /*FV_ENABLED==1*/
 ELSE
   ! repeat current timestep with decreased timestep size
   U = Un
