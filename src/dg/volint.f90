@@ -123,12 +123,19 @@ END SUBROUTINE VolInt_weakForm
 #ifdef SPLIT_DG
 !==================================================================================================================================
 !> Computes the advection and viscous part volume integral in SplitDG formulation
+!>
 !> Attention 1: 1/J(i,j,k) is not yet accounted for
 !> Attention 2: input Ut is overwritten with the volume flux derivatives
 !> Attention 3: the factor of 2 in front of the derivative matrix entries is incorporated into the split fluxes!
 !> Attention 4: This is the strong form of the DGSEM! Substracting the inner flux is incorporated into the used D matrix, which
-!> saves performance but only works for Gauss-Lobatto points. So no changes in the surface integral or fill flux routines are
-!> necessary.
+!>              saves performance but only works for Gauss-Lobatto points. So no changes in the surface integral or fill flux
+!>              routines are necessary. For Gauss-Lobatto points, these inner fluxes cancel exactly with the non-zero (consistent)
+!>              fluxes at the outer points [-1,1] of the volume integral, which is why these inner fluxes never have to be actuallys
+!>              computed.
+!> Attention 5: For Gauss-Lobatto points, the matrix DVolSurf will always be equal to 0 on the main diagonal for the inner points
+!>              and becomes 0 for the outer points at [-1,1] after considering the inner fluxes of the strong form (Attention 4).
+!>              Thus, the (consistent) fluxes will always be multiplied by zero and we don't have to take them into account at all.
+!>
 !> For details on the derivation see Gassner, Gregor J., Andrew R. Winters, and David A. Kopriva.
 !> "Split form nodal discontinuous Galerkin schemes with summation-by-parts property for the compressible Euler equations."
 !> Journal of Computational Physics 327 (2016): 39-66.
@@ -180,8 +187,6 @@ DO iElem=1,nElems
                                         Metrics_hTilde(:,:,:,:,iElem,0))
 #endif
 
-! For split DG, the matrix DVolSurf will always be equal to 0 on the main diagonal. Thus, the (consistent) fluxes will always be
-! multiplied by zero and we don't have to take them into account at all.
 #if PARABOLIC
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     ! Add the parabolic fluxes.

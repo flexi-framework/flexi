@@ -199,8 +199,9 @@ ALLOCATE(DVolSurf(0:N_in,0:N_in))
 DVolSurf = D_T
 ! Modify the D matrix here, the integral over the inner fluxes at the boundaries will then be automatically done in the volume
 ! integral. The factor 1/2 is needed since we incorporate a factor of 2 in the split fluxes themselves!
-DVolSurf(0,0) = DVolSurf(0,0) + 1.0/(2.0 * wGP(0))
-DVolSurf(N_in,N_in) = DVolSurf(N_in,N_in) - 1.0/(2.0 * wGP(N_in))
+! For Gauss-Lobatto points, these inner flux contributions cancel exactly with entries in the DVolSurf matrix, resulting in zeros.
+DVolSurf(   0,   0) = DVolSurf(   0   ,0) + 1.0/(2.0 * wGP(   0))  ! = 0. (for LGL)
+DVolSurf(N_in,N_in) = DVolSurf(N_in,N_in) - 1.0/(2.0 * wGP(N_in))  ! = 0. (for LGL)
 #endif /*SPLIT_DG*/
 
 ! interpolate to left and right face (1 and -1 in reference space) and pre-divide by mass matrix
