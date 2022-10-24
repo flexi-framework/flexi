@@ -88,12 +88,11 @@ INCLUDE(GNUInstallDirs)
 IF ("${CMAKE_HOSTNAME}" MATCHES "login")
   MARK_AS_ADVANCED(FORCE C_PATH CXX_PATH Fortran_PATH)
 
-  # HAWK and SuperMUC name their login nodes identically, so use OS distribution to identify
-  FIND_PROGRAM(LSB_RELEASE_EXEC lsb_release)
-  EXECUTE_PROCESS(COMMAND ${LSB_RELEASE_EXEC} -is OUTPUT_VARIABLE LSB_RELEASE_ID_SHORT OUTPUT_STRIP_TRAILING_WHITESPACE)
-  MARK_AS_ADVANCED(FORCE LSB_RELEASE_EXEC)
+  # HAWK and SuperMUC name their login nodes identically, so use the Fully Qualified Domain Name (FQDN) to identify
+  CMAKE_HOST_SYSTEM_INFORMATION(RESULT FQDN QUERY FQDN)
+  MARK_AS_ADVANCED(FORCE FQDN)
   # HLRS HAWK
-  IF (LSB_RELEASE_ID_SHORT MATCHES "CentOS")
+  IF (FQDN MATCHES "hawk.hww.hlrs.de")
     MESSAGE(STATUS "Compiling on Hawk")
     # Overwrite compiler target architecture
     IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang")
@@ -104,7 +103,7 @@ IF ("${CMAKE_HOSTNAME}" MATCHES "login")
     # Use AMD Optimized Lapack/BLAS
     # SET(BLA_VENDOR "FLAME")
   # SuperMUC
-  ELSEIF (LSB_RELEASE_ID_SHORT MATCHES "SUSE")
+  ELSEIF (FQDN MATCHES "sng.lrz.de")
     MESSAGE(STATUS "Compiling on SuperMUC")
     # Overwrite compiler target architecture
     IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang")
