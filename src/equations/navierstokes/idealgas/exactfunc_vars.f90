@@ -34,6 +34,9 @@ REAL              :: IniAmplitude      !< parameter used for Shu vortex
 REAL              :: IniHalfwidth      !< parameter used for Shu vortex
 REAL              :: P_Parameter       !< parameter for Couette-Poiseuille flow
 REAL              :: U_Parameter       !< parameter for Couette-Poiseuille flow
+REAL              :: eradius_in        !< radius of high energy area for Sedov
+REAL              :: leblanc_x0        !< Location of initial discontinuity for LeBlanc
+REAL              :: Hui_Data(2)       !< Orientation and Location of axis intercept for Hui problem
 #if PARABOLIC
 REAL              :: delta99_in        !< boundary layer thickness for Blasius solution
 REAL              :: x_in(2)           !< inflow position for Blasius solution
