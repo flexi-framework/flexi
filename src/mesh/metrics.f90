@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -267,34 +267,46 @@ Metrics_fTilde=0.
 Metrics_gTilde=0.
 Metrics_hTilde=0.
 
-! Initialize Vandermonde and D matrices
-! Only use modal Vandermonde for terms that need to be conserved as Jacobian if N_out>N_in
-! Always use interpolation for the rest!
+! 1.) Compute the Jacobian, at this point first the Vandermonde and D matrices are prepared
 
-! 1.a) NodeCoords: EQUI NGeo to CLNGeo and CLN
+! 1.a) Mapping NodeCoords defined on equidistant points (NodeTypeVISU) with NGeo (EQNGeo) to CL points with NGeo (CLNGeo) -> l_k^{EQUI} (s^{CLN})
 CALL GetVandermonde(    NGeo   , NodeTypeVISU, NGeo    , NodeTypeCL, Vdm_EQNGeo_CLNGeo , modal=.FALSE.)
 
-! 1.b) dXCL_NGeo:
+! 1.b) Switching from NGeo to PP_N still on CL points
+CALL GetVandermonde(    NGeo   , NodeTypeCL  , PP_N    , NodeTypeCL, Vdm_CLNGeo_CLN    , modal=.FALSE.)
+
+! 1.c) dXCL_NGeo: l_k'^{EQUI} (s^{CLN})
+! Get the derivative matrix at the NGeo points
 CALL GetDerivativeMatrix(NGeo  , NodeTypeCL  , DCL_NGeo)
 
-! 1.c) Jacobian: CLNGeo to NGeoRef, CLNGeoRef to N
+! 1.d) Interpolation from CL points to LG/LGL points (dX/dXi): Jacobian of the mapping
 CALL GetVandermonde(    NGeo   , NodeTypeCL  , NGeoRef , NodeType  , Vdm_CLNGeo_NGeoRef, modal=.FALSE.)
+
+! 1.f) Projection of the Jacobian from NGeo to PP_N
+! Switch from NGeoRef to PP_N still on LG/LGL points but we use a modal Vandermonde
+! This has to be done to conserve the Jacobian if N_out>N_in as PP_N > NGeo
 CALL GetVandermonde(    NGeoRef, NodeType    , PP_N    , NodeType  , Vdm_NGeoRef_N     , modal=.TRUE.)
+! Still 1.f) but only required for interpolate from tree
+! Compute the integration nodes and weights for NGeoRef on LG/LGL points
 CALL GetNodesAndWeights(NGeoRef, NodeType    , xiRef   , wIPBary=wBaryRef)
 
-! 1.d) derivatives (dXCL) by projection or by direct derivation (D_CL):
-CALL GetVandermonde(    NGeo   , NodeTypeCL  , PP_N    , NodeTypeCL, Vdm_CLNGeo_CLN    , modal=.FALSE.)
+
+! 2.) Compute metrics, at this point first the Vandermonde and D matrices are prepared
+! Get the derivative matrix at the CL points with PP_N points
 CALL GetDerivativeMatrix(PP_N  , NodeTypeCL  , DCL_N)
 
 ! 2.d) derivatives (dXCL) by projection or by direct derivation (D_CL):
+! Interpolation from CL to LG/LGL points (PP_N)
 CALL GetVandermonde(    PP_N   , NodeTypeCL  , PP_N    , NodeType,   Vdm_CLN_N         , modal=.FALSE.)
+! Compute the integration nodes and weights for PP_N on CL points
 CALL GetNodesAndWeights(PP_N   , NodeTypeCL  , xiCL_N  , wIPBary=wBaryCL_N)
 
 ! Outer loop over all elements
 detJac_Ref=0.
 dXCL_N=0.
 DO iElem=1,nElems
-  !1.a) Transform from EQUI_NGeo to CL points on NGeo and N
+  !1.a) Transform NodeCoords [\Gamma (s_k^{EQNGeo})] from EQNGeo to CLNGeo using Vdm_EQNGeo_CLNGeo to obtain XCL_NGeo
+  ! Equation: I_N \Gamma (s^{CLNGeo}) = \sum_{k=0}^{NGeo} \Gamma (s_k^{EQNGeo}) l_k^{EQNGeo} (s^{CLNGeo})
   IF(interpolateFromTree)THEN
     xi0   =xiMinMax(:,1,iElem)
     length=xiMinMax(:,2,iElem)-xi0
@@ -305,9 +317,11 @@ DO iElem=1,nElems
   ELSE
     CALL ChangeBasisVolume(3,NGeo,NGeo,Vdm_EQNGeo_CLNGeo,NodeCoords(:,:,:,:,iElem)            ,XCL_NGeo)
   END IF
+  !1.b) Switching XCL_NGeo from NGeo to PP_N to obtain XCL_N using Vdm_CLNGeo_CLN; still on CL points
   CALL   ChangeBasisVolume(3,NGeo,PP_N,Vdm_CLNGeo_CLN,   XCL_NGeo                             ,XCL_N)
 
-  !1.b) Jacobi Matrix of d/dxi_dd(X_nn): dXCL_NGeo(dd,nn,i,j,k))
+  !1.c) Jacobi Matrix of dX/dXi_dd(XCL_NGeo_nn): dXCL_NGeo(dd,nn,i,j,k))
+  ! d/dXi_dd(XCL_NGeo_nn) = DCL_NGeo
   dXCL_NGeo=0.
   DO k=0,ZDIM(NGeo); DO j=0,NGeo; DO i=0,NGeo
     ! Matrix-vector multiplication
@@ -320,14 +334,13 @@ DO iElem=1,nElems
     END DO !l=0,N
   END DO; END DO; END DO !i,j,k=0,NGeo
 
-  ! 1.c)Jacobians! grad(X_1) (grad(X_2) x grad(X_3))
-  ! Compute Jacobian on NGeo and then interpolate:
-  ! required to guarantee conservativity when restarting with N<NGeo
+  !1.d) Compute the Jacobian of the mapping (dX/dXi) from CL points to LG/LGL points: dX_NGeoRef
   CALL ChangeBasisVolume(PP_dim,NGeo,NGeoRef,Vdm_CLNGeo_NGeoRef,dXCL_NGeo(1:PP_dim,1,:,:,:),dX_NGeoRef(1:PP_dim,1,:,:,:))
   CALL ChangeBasisVolume(PP_dim,NGeo,NGeoRef,Vdm_CLNGeo_NGeoRef,dXCL_NGeo(1:PP_dim,2,:,:,:),dX_NGeoRef(1:PP_dim,2,:,:,:))
 #if (PP_dim == 3)
   CALL ChangeBasisVolume(3,NGeo,NGeoRef,Vdm_CLNGeo_NGeoRef,dXCL_NGeo(:,3,:,:,:),dX_NGeoRef(:,3,:,:,:))
 #endif
+  !1.e) Jacobian on NGeo = a_i (a_j x a_k) = d(X_1)/dXi_i (d(X_2)/dXi_j x d(X_3)/dXi_k): detJac_Ref
   DO k=0,ZDIM(NGeoRef)  ; DO j=0,NGeoRef; DO i=0,NGeoRef
 #if (PP_dim == 3)
     detJac_Ref(1,i,j,k,iElem)=detJac_Ref(1,i,j,k,iElem) &
@@ -340,6 +353,7 @@ DO iElem=1,nElems
 #endif
   END DO; END DO; END DO !i,j,k=0,NGeoRef
 
+  !1.f) Project the Jacobian from NGeo to PP_N using the modal Vandermonde to guarantee conservativity if N > NGeo
   IF(interpolateFromTree)THEN
     !interpolate detJac to the GaussPoints
     DO i=0,NGeoRef
@@ -359,7 +373,6 @@ DO iElem=1,nElems
                            tmp(:,:,:,0),DetJac_Ref(:,:,:,0,iElem))
 #endif
   END IF
-  ! project detJac_ref onto the solution basis
   CALL ChangeBasisVolume(1,NGeoRef,PP_N,Vdm_NGeoRef_N,DetJac_Ref(:,:,:,:,iElem),DetJac_N(:,:,:,:,iElem))
 
   ! assign to global Variable sJ
@@ -380,7 +393,7 @@ DO iElem=1,nElems
     END IF
   END DO; END DO; END DO !i,j,k=0,N
 
-  !2.a) Jacobi Matrix of d/dxi_dd(X_nn): dXCL_N(dd,nn,i,j,k))
+  !2.a) Jacobi Matrix of dX/dxi_dd(X_nn): covariant basis vector a_dd = dXCL_N(dd,nn,i,j,k))
   ! N>=NGeo: interpolate from dXCL_NGeo (default)
   ! N< NGeo: directly derive XCL_N
   IF(PP_N.GE.NGeo)THEN !compute first derivative on NGeo and then interpolate
@@ -404,13 +417,15 @@ DO iElem=1,nElems
     END DO; END DO; END DO !i,j,k=0,N
   END IF !N>=NGeo
 
+  !2.b) Compute metrics: Jacobian * contravariant basis vector = J*a^i
   JaCL_N=0.
 #if (PP_dim == 2)
   ! No need to differentiate between curl and cross product metrics in 2D, we can directly use the calculated derivatives
+  ! a^1 = JaCL_N(1,1:PP_dim,:,:,:); a^2 = JaCL_N(2,1:PP_dim,:,:,:)
   DO k=0,0; DO j=0,PP_N; DO i=0,PP_N
     JaCL_N(1,1,i,j,k)=  dXCL_N(2,2,i,j,k,iElem)
-    JaCL_N(2,1,i,j,k)=- dXCL_N(1,2,i,j,k,iElem)
     JaCL_N(1,2,i,j,k)=- dXCL_N(2,1,i,j,k,iElem)
+    JaCL_N(2,1,i,j,k)=- dXCL_N(1,2,i,j,k,iElem)
     JaCL_N(2,2,i,j,k)=  dXCL_N(1,1,i,j,k,iElem)
   END DO; END DO; END DO !i,j,k=0,N
 #else
@@ -470,7 +485,8 @@ DO iElem=1,nElems
   END IF !crossProductMetrics
 #endif
 
-
+  !2.c) Interpolate J*a^i (JaCL) from CL to LG/LGL points: Metrics_fTilde for i, ...
+  ! Calc metrics at the surface: NormVec, TangVec, SurfElem, ...
   IF(interpolateFromTree)THEN
     ! interpolate Metrics from Cheb-Lobatto N on tree level onto GaussPoints N on quad level
     DO i=0,PP_N
@@ -608,12 +624,12 @@ USE MOD_Mortar_Metrics   ,ONLY: Mortar_CalcSurfMetrics
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: Nloc                                !< (IN) polynomial degree
-INTEGER,INTENT(IN) :: FVE                                 !< (IN) Finite Volume enabled
-INTEGER,INTENT(IN) :: iElem                               !< (IN) element index
-REAL,INTENT(IN)    :: JaCL_N(  3,3,0:Nloc,0:Nloc,0:ZDIM(Nloc))  !< (IN) volume metrics of element
-REAL,INTENT(IN)    :: XCL_N(     3,0:Nloc,0:Nloc,0:ZDIM(Nloc))  !< (IN) element geo. interpolation points (CL)
-REAL,INTENT(IN)    :: Vdm_CLN_N(   0:Nloc,0:Nloc)         !< (IN) Vandermonde matrix from Cheby-Lob on N to final nodeset on N
+INTEGER,INTENT(IN) :: Nloc                                             !< (IN) polynomial degree
+INTEGER,INTENT(IN) :: FVE                                              !< (IN) Finite Volume enabled
+INTEGER,INTENT(IN) :: iElem                                            !< (IN) element index
+REAL,INTENT(IN)    :: JaCL_N(  3,3,0:Nloc,0:Nloc,0:ZDIM(Nloc))         !< (IN) volume metrics of element
+REAL,INTENT(IN)    :: XCL_N(     3,0:Nloc,0:Nloc,0:ZDIM(Nloc))         !< (IN) element geo. interpolation points (CL)
+REAL,INTENT(IN)    :: Vdm_CLN_N(   0:Nloc,0:Nloc)                      !< (IN) Vandermonde matrix from Cheby-Lob on N to final nodeset on N
 REAL,INTENT(OUT)   ::    NormVec(3,0:Nloc,0:ZDIM(Nloc),0:FVE,1:nSides) !< (OUT) element face normal vectors
 REAL,INTENT(OUT)   ::   TangVec1(3,0:Nloc,0:ZDIM(Nloc),0:FVE,1:nSides) !< (OUT) element face tangential vectors
 REAL,INTENT(OUT)   ::   TangVec2(3,0:Nloc,0:ZDIM(Nloc),0:FVE,1:nSides) !< (OUT) element face tangential vectors
@@ -738,15 +754,15 @@ END SUBROUTINE CalcSurfMetrics
 !==================================================================================================================================
 SUBROUTINE SurfMetricsFromJa(Nloc,NormalDir,TangDir,NormalSign,Ja_Face,NormVec,TangVec1,TangVec2,SurfElem)
 ! MODULES
-USE MOD_Mathtools,ONLY:CROSS
+USE MOD_Mathtools,   ONLY: CROSS
 !----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: Nloc                       !< polynomial degree
-INTEGER,INTENT(IN) :: NormalDir                  !< direction of normal vector
-INTEGER,INTENT(IN) :: TangDir                    !< direction of 1. tangential vector
-REAL,INTENT(IN)    :: NormalSign                 !< sign of normal vector
+INTEGER,INTENT(IN) :: Nloc                             !< polynomial degree
+INTEGER,INTENT(IN) :: NormalDir                        !< direction of normal vector
+INTEGER,INTENT(IN) :: TangDir                          !< direction of 1. tangential vector
+REAL,INTENT(IN)    :: NormalSign                       !< sign of normal vector
 REAL,INTENT(IN)    :: Ja_Face(3,3,0:Nloc,0:ZDIM(Nloc)) !< face metrics
 REAL,INTENT(OUT)   ::   NormVec(3,0:Nloc,0:ZDIM(Nloc)) !< element face normal vectors
 REAL,INTENT(OUT)   ::  TangVec1(3,0:Nloc,0:ZDIM(Nloc)) !< element face tangential vectors
@@ -757,6 +773,8 @@ REAL,INTENT(OUT)   ::  SurfElem(  0:Nloc,0:ZDIM(Nloc)) !< element face surface a
 INTEGER            :: p,q
 !==================================================================================================================================
 DO q=0,ZDIM(Nloc); DO p=0,Nloc
+  ! norm of the non-normalized physical normal vector
+  ! |n| = |J dX^-T n_ref| = |J (a^i)^T n_ref|
   SurfElem(  p,q) = SQRT(SUM(Ja_Face(NormalDir,1:PP_dim,p,q)**2))
   NormVec( :,p,q) = NormalSign*Ja_Face(NormalDir,:,p,q)/SurfElem(p,q)
   ! For two-dimensional computations, the normal direction will be 1 or 2. For the tangential direction
