@@ -529,7 +529,8 @@ REAL,INTENT(IN)             :: Time, StartTime !< Current simulation time and be
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL :: SimulationTime,mins,secs,hours,days
+REAL              :: SimulationTime,mins,secs,hours,days
+CHARACTER(LEN=60) :: hilf
 !===================================================================================================================================
 ! Return with all procs except root if not called during abort
 IF(.NOT.MPIRoot.AND.(Message.NE.'ABORTED')) RETURN
@@ -551,9 +552,10 @@ SimulationTime = SimulationTime / 24.
 days = SimulationTime
 
 ! Output message with all procs, as root might not be the calling process during abort
-WRITE(UNIT_stdOut,'(A,F16.2,A)',ADVANCE='NO')  ' FLEXI '//TRIM(Message)//'! [',Time-StartTime,' sec ]'
-WRITE(UNIT_stdOut,'(A2,I6,A1,I0.2,A1,I0.2,A1,I0.2,A1)') ' [',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),']'
-WRITE(UNIT_stdOut,'(132("="))')
+WRITE(hilf,'(F16.2)') Time-StartTime
+WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')  ' FLEXI '//TRIM(Message)//'! [ '//TRIM(ADJUSTL(hilf))//' sec ]'
+WRITE(UNIT_stdOut,'(A3,I0,A1,I0.2,A1,I0.2,A1,I0.2,A2)') ' [ ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),' ]'
+IF(MPIRoot.AND.(Message.NE.'ABORTED')) WRITE(UNIT_stdOut,'(132("="))')
 END SUBROUTINE DisplaySimulationTime
 
 
