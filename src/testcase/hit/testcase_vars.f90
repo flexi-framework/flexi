@@ -25,8 +25,6 @@ SAVE
 CHARACTER(LEN=255)        :: testcase = "hit"         !< name of testcase
 LOGICAL                   :: doTCSource=.TRUE.        !< compute source terms for testcase
 INTEGER                   :: nAnalyzeTestCase=9999999 !< call AnalyzeTestCase every *th time step. dummy variable
-
-LOGICAL                   :: InitHITDone
 !----------------------------------------------------------------------------------------------------------------------------------
 ! TESTCASE VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -38,8 +36,6 @@ REAL                      :: HIT_k                    !< target turbulent kineti
 REAL                      :: HIT_rho                  !< density for initialization
 REAL                      :: HIT_tauRMS               !< relaxation parameter for linear forcing
 REAL,ALLOCATABLE          :: HIT_RMS(:,:,:,:,:)       !< u_rms of current solution
-REAL,ALLOCATABLE          :: UPrim_temp(:,:,:,:,:)    !< temporal derivative of primitive variables
-!INTEGER                   :: HIT_nFilter              !< polynomial degree of cut-off filter
 REAL                      :: HIT_tFilter              !< filter width of temporal filter
 REAL                      :: A_ILF                    !< forcing coefficient
 !----------------------------------------------------------------------------------------------------------------------------------
