@@ -322,7 +322,7 @@ IF(ANY(.NOT.RPFound)) THEN
       END DO! j=0,NSuper
       ! get initial value of the functional G
 
-      CALL Newton(NSuper,(/0.,0./),dGmat,Xi_NSuper,wBary_NSuper,Gmat,Xi2)
+      CALL Newton(NSuper,(/0.,0./),dGmat,Xi_NSuper,wBary_NSuper,Gmat,Xi2,LagOut=Lag_NSuper)
 
       ! use Newton result if minimum is within parameter range, else see if supersampled
       ! initial guess is better than previous result
