@@ -101,9 +101,9 @@ SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT POSITIVITY-PRESERVING LIMITER...'
 
 ! Read in variables
-DoPPLimiter = GETLOGICAL('DoPPLimiter','.FALSE.')
-PPEpsFac    = GETREAL('PPThresholdFactor','1.E-10')
-iPPRefState = GETINT('PPRefState','1')
+DoPPLimiter = GETLOGICAL('DoPPLimiter')
+PPEpsFac    = GETREAL('PPThresholdFactor')
+iPPRefState = GETINT('PPRefState')
 !PPepsDens and PPepsPres are calculated in limiter, since RefStatePrim is needed from InitEquation
 
 ! Prepare PP Limiter

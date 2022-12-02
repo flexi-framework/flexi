@@ -151,7 +151,7 @@ validMesh = ISVALIDMESHFILE(MeshFile)
 IF(.NOT.validMesh) &
     CALL CollectiveStop(__STAMP__,'ERROR - Mesh file not a valid HDF5 mesh.')
 
-useCurveds=GETLOGICAL('useCurveds','.TRUE.')
+useCurveds=GETLOGICAL('useCurveds')
 CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL ReadAttribute(File_ID,'Ngeo',1,IntScalar=NGeo)
 CALL CloseDataFile()
@@ -173,7 +173,7 @@ NodeCoords(3,:,:,:,:) = 0.
 
 ! if trees are available: compute metrics on tree level and interpolate to elements
 interpolateFromTree=.FALSE.
-IF(isMortarMesh) interpolateFromTree=GETLOGICAL('interpolateFromTree','.TRUE.')
+IF(isMortarMesh) interpolateFromTree=GETLOGICAL('interpolateFromTree')
 IF(interpolateFromTree)THEN
 #if (PP_dim == 2)
   CALL CollectiveStop(__STAMP__,&
@@ -187,7 +187,7 @@ ELSE
   nElemsLoc=nElems
 ENDIF
 
-NGeoOverride=GETINT('NGeoOverride','-1')
+NGeoOverride=GETINT('NGeoOverride')
 IF(NGeoOverride.GT.0)THEN
   ALLOCATE(CoordsTmp(3,0:NGeoOverride,0:NGeoOverride,0:NGeoOverride,nElemsLoc))
   ALLOCATE(Vdm_EQNGeo_EQNGeoOverride(0:NGeoOverride,0:NGeo))
@@ -213,11 +213,11 @@ END IF
 SWRITE(UNIT_stdOut,'(a3,a30,a3,i0)')' | ','Ngeo',' | ', Ngeo
 
 ! scale and deform mesh if desired (warning: no mesh output!)
-meshScale=GETREAL('meshScale','1.0')
+meshScale=GETREAL('meshScale')
 IF(ABS(meshScale-1.).GT.1e-14)&
   Coords = Coords*meshScale
 
-IF(GETLOGICAL('meshdeform','.FALSE.'))THEN
+IF(GETLOGICAL('meshdeform'))THEN
   DO iElem=1,nElemsLoc
     DO k=0,ZDIM(NGeo); DO j=0,NGeo; DO i=0,NGeo
       x(:)=Coords(:,i,j,k,iElem)
@@ -367,7 +367,7 @@ IF (meshMode.GT.1) THEN
 
 #if (PP_dim == 3)
   ! compute metrics using cross product instead of curl form (warning: no free stream preservation!)
-  crossProductMetrics=GETLOGICAL('crossProductMetrics','.FALSE.')
+  crossProductMetrics=GETLOGICAL('crossProductMetrics')
 #endif
   SWRITE(UNIT_stdOut,'(A)') "NOW CALLING calcMetrics..."
   CALL CalcMetrics()     ! DG metrics
@@ -375,7 +375,7 @@ IF (meshMode.GT.1) THEN
   CALL InitFV_Metrics()  ! FV metrics
 #endif
   ! debugmesh: param specifies format to output, 0: no output, 1: tecplot ascii, 2: tecplot binary, 3: paraview binary
-  CALL WriteDebugMesh(GETINT('debugmesh','0'))
+  CALL WriteDebugMesh(GETINT('debugmesh'))
 END IF
 
 IF (meshMode.GT.0) THEN

@@ -55,20 +55,20 @@ USE MOD_ReadInTools ,ONLY: prms
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Preconditioner")
-CALL prms%CreateIntOption(    'PrecondType',     "Preconditioner Type (0: no Preconditioner, 1: analytic, 2: finite difference, 3:&
-                                                 & compute both and compare)", value='1')
-CALL prms%CreateIntOption(    'PrecondIter',     "Defines how often preconditioner is built", value='1')
-CALL prms%CreateIntOption(    'SolveSystem',     "Solver of the preconditioned system (0: exact LU inversion, 1: inexact ILU(0) &
-                                                 &inversion, always with NoFillIn=T)", value='1')
+CALL prms%CreateIntOption(    'PrecondType',     "Preconditioner Type (0: no Preconditioner, 1: analytic, 2: finite difference, 3: &
+                                                 & compute both and compare)"                                     , value='1')
+CALL prms%CreateIntOption(    'PrecondIter',     "Defines how often preconditioner is built"                      , value='1')
+CALL prms%CreateIntOption(    'SolveSystem',     "Solver of the preconditioned system (0: exact LU inversion, 1: inexact ILU(0)    &
+                                                 &inversion, always with NoFillIn=T)"                             , value='1')
 CALL prms%CreateIntOption(    'DebugMatrix',     "Write Jacobians to file for debug purposes (0: no output, 1: non-inverted matrix,&
-                                                 &2: additionally inverted matrix, 3: additionally check inversion accuracy)",&
-                                                  value='0')
-CALL prms%CreateLogicalOption('HyperbolicPrecond',    "Preconditioner only for the hyperbolic flux", value='.FALSE.')
+                                                 &2: additionally inverted matrix, 3: additionally check inversion accuracy)"      &
+                                                                                                                  , value='0')
+CALL prms%CreateLogicalOption('HyperbolicPrecond',"Preconditioner only for the hyperbolic flux"                   , value='.FALSE.')
 #if PARABOLIC
 CALL prms%CreateLogicalOption('NoFillIn'   ,     "Precond for parabolic system forced to have the same sparsity as the &
-                                                 &Euler Precond", value='.FALSE.')
+                                                 &Euler Precond"                                                  , value='.FALSE.')
 #endif
-CALL prms%CreateLogicalOption('DoDisplayPrecond',"Display building time of preconditioner",'.FALSE.')
+CALL prms%CreateLogicalOption('DoDisplayPrecond',"Display building time of preconditioner"                        , value='.FALSE.')
 
 END SUBROUTINE DefineParametersPrecond
 
@@ -107,15 +107,15 @@ END IF
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT PRECONDITIONER...'
 
-PrecondType       = GETINT(    'PrecondType',      '1' )
-PrecondIter       = GETINT(    'PrecondIter',      '1' )
-SolveSystem       = GETINT(    'SolveSystem',      '1' )
-DebugMatrix       = GETINT(    'DebugMatrix',      '0' )
-HyperbolicPrecond = GETLOGICAL('HyperbolicPrecond','.FALSE.')
+PrecondType       = GETINT(    'PrecondType')
+PrecondIter       = GETINT(    'PrecondIter')
+SolveSystem       = GETINT(    'SolveSystem')
+DebugMatrix       = GETINT(    'DebugMatrix')
+HyperbolicPrecond = GETLOGICAL('HyperbolicPrecond')
 #if PARABOLIC
-NoFillIn          = GETLOGICAL('NoFillIn',         '.FALSE.')
+NoFillIn          = GETLOGICAL('NoFillIn')
 #endif
-DoDisplayPrecond  = GETLOGICAL('DoDisplayPrecond', '.FALSE.')
+DoDisplayPrecond  = GETLOGICAL('DoDisplayPrecond')
 
 ! Allocate the preconditioner matrix
 ALLOCATE(Ploc(1:nDOFVarElem,1:nDOFVarElem))

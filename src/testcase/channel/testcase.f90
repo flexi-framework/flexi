@@ -98,10 +98,10 @@ USE MOD_ReadInTools ,ONLY: prms
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Testcase")
-CALL prms%CreateRealOption('ChannelMach', "Bulk mach number used in the channel testcase.", '0.1')
+CALL prms%CreateRealOption('ChannelMach', "Bulk mach number used in the channel testcase."                      , '0.1')
 CALL prms%CreateIntOption('nWriteStats', "Write testcase statistics to file at every n-th AnalyzeTestcase step.", '100')
 CALL prms%CreateIntOption('nAnalyzeTestCase', "Call testcase specific analysis routines every n-th timestep. "//&
-                                              "(Note: always called at global analyze level)", '1000')
+                                              "(Note: always called at global analyze level)"                   , '1000')
 END SUBROUTINE DefineParametersTestcase
 
 !==================================================================================================================================
@@ -134,12 +134,11 @@ SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE CHANNEL...'
 
 #if FV_ENABLED
-CALL CollectiveStop(__STAMP__, &
-  'The testcase has not been implemented for FV yet!')
+CALL CollectiveStop(__STAMP__,'The testcase has not been implemented for FV yet!')
 #endif
 
-nWriteStats  = GETINT('nWriteStats','100')
-nAnalyzeTestCase = GETINT( 'nAnalyzeTestCase','1000')
+nWriteStats      = GETINT('nWriteStats')
+nAnalyzeTestCase = GETINT( 'nAnalyzeTestCase')
 
 ! Compute initial guess for bulk velocity for given Re_tau to compute background pressure
 Re_tau  = 1./mu0
@@ -147,7 +146,7 @@ bulkVel = (Re_tau+c1)*LOG(Re_tau+c1) + 1.3064019*(Re_tau + 29.627395*EXP(-1./11.
 bulkVel = 1./Re_tau * (c1*bulkVel - 97.4857927165)
 
 ! Set the background pressure according to chosen bulk Mach number
-bulkMach                       = GETREAL('ChannelMach','0.1')
+bulkMach                       = GETREAL('ChannelMach')
 pressure                       = (bulkVel/bulkMach)**2*RefStatePrim(DENS,IniRefState)/kappa
 RefStatePrim(PRES,IniRefState) = pressure
 ! TODO: ATTENTION only sRho and Pressure of UE filled!!!

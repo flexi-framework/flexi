@@ -115,18 +115,18 @@ SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT ANALYZE...'
 
 ! Get the various analysis/output variables
-doCalcErrorNorms  =GETLOGICAL('CalcErrorNorms' ,'.TRUE.')
-doAnalyzeToFile   =GETLOGICAL('AnalyzeToFile','.FALSE.')
-AnalyzeExactFunc  =GETINT('AnalyzeExactFunc',INTTOSTR(IniExactFunc))
-AnalyzeRefState   =GETINT('AnalyzeRefState' ,INTTOSTR(IniRefState))
+doCalcErrorNorms = GETLOGICAL('CalcErrorNorms')
+doAnalyzeToFile  = GETLOGICAL('AnalyzeToFile')
+AnalyzeExactFunc = GETINT('AnalyzeExactFunc',INTTOSTR(IniExactFunc))
+AnalyzeRefState  = GETINT('AnalyzeRefState' ,INTTOSTR(IniRefState))
 
-analyze_dt        =GETREAL('analyze_dt','0.0')
-nWriteData        =GETINT('nWriteData' ,'1')
-NAnalyze          =GETINT('NAnalyze'   ,INTTOSTR(2*(PP_N+1)))
+analyze_dt       = GETREAL('analyze_dt')
+nWriteData       = GETINT('nWriteData')
+NAnalyze         = GETINT('NAnalyze'   ,INTTOSTR(2*(PP_N+1)))
 #if PP_dim == 3
-NAnalyzeZ         =NAnalyze
+NAnalyzeZ        = NAnalyze
 #else
-NAnalyzeZ         =0
+NAnalyzeZ        = 0
 #endif
 ! If analyze_dt is set to 0 (default) or to a negative value, no analyze calls should be performed at all.
 ! To achieve this, analyze_dt is set to the final simulation time. This will prevent any calls of the analyze routine

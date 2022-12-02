@@ -129,13 +129,13 @@ SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TIMEDISC...'
 
 ! Read max number of iterations to perform
-maxIter = GETINT('maxIter','-1')
+maxIter = GETINT('maxIter')
 
 ! Get nCalcTimeStepMax: check if advanced settings should be used!
-nCalcTimeStepMax = GETINT('nCalcTimeStepMax','1')
+nCalcTimeStepMax = GETINT('nCalcTimeStepMax')
 
 ! Get TimeDisc Method
-TimeDiscMethod = GETSTR('TimeDiscMethod','Carpenter RK4-5')
+TimeDiscMethod = GETSTR('TimeDiscMethod')
 CALL StripSpaces(TimeDiscMethod)
 CALL LowCase(TimeDiscMethod)
 CALL SetTimeDiscCoefs(TimeDiscMethod)

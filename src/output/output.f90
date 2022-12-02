@@ -148,7 +148,7 @@ ALLOCATE(Vdm_GaussN_NVisu(0:NVisu,0:PP_N))
 CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVISU,Vdm_GaussN_NVisu)
 
 ! Output polynomial degree (to reduce storage,e.g.in case of overintegration)
-NOut=GETINT('NOut','-1') ! -1: PP_N(off), >0:custom
+NOut=GETINT('NOut') ! -1: PP_N(off), >0:custom
 IF(NOut.EQ.-1)THEN
   NOut=PP_N
 END IF
@@ -159,9 +159,9 @@ IF(NOut.NE.PP_N)THEN
 END IF
 
 ! Name for all output files
-ProjectName=GETSTR('ProjectName')
-Logging    =GETLOGICAL('Logging')
-ErrorFiles =GETLOGICAL('ErrorFiles')
+ProjectName = GETSTR('ProjectName')
+Logging     = GETLOGICAL('Logging')
+ErrorFiles  = GETLOGICAL('ErrorFiles')
 
 doPrintStatusLine=GETLOGICAL("doPrintStatusLine")
 WriteStateFiles=GETLOGICAL("WriteStateFiles")
@@ -186,12 +186,12 @@ ASCIIOutputFormat = GETINTFROMSTR('ASCIIOutputFormat')
 ! Open file for logging
 IF(Logging)THEN
   WRITE(LogFile,'(A,A1,I6.6,A4)')TRIM(ProjectName),'_',myRank,'.log'
-  OPEN(UNIT=UNIT_logOut,  &
-       FILE=LogFile,      &
-       STATUS='UNKNOWN',  &
-       ACTION='WRITE',    &
-       POSITION='APPEND', &
-       IOSTAT=OpenStat)
+  OPEN(UNIT     = UNIT_logOut,  &
+       FILE     = LogFile,      &
+       STATUS   = 'UNKNOWN',    &
+       ACTION   = 'WRITE',      &
+       POSITION = 'APPEND',     &
+       IOSTAT   = OpenStat)
   CALL DATE_AND_TIME(StrDate,StrTime)
   WRITE(UNIT_logOut,*)
   WRITE(UNIT_logOut,'(132("#"))')

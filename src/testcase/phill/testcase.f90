@@ -92,10 +92,10 @@ USE MOD_ReadInTools ,ONLY: prms
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Testcase")
-CALL prms%CreateRealOption('massFlowRef',      "Prescribed massflow for testcase.", '1.')
+CALL prms%CreateRealOption('massFlowRef',      "Prescribed massflow for testcase."                                 , '1.')
 CALL prms%CreateRealOption('Forcing_MaxMemory',"Maximum amount of memory to be used to buffer testcase forcing log data. "//&
                                                "If memory is exceeded before analyze level, log files are written.", '100.')
-CALL prms%CreateStringOption('massFlowBCName', "Name of BC at which massflow is computed.", 'INFLOW')
+CALL prms%CreateStringOption('massFlowBCName', "Name of BC at which massflow is computed."                         , 'INFLOW')
 END SUBROUTINE DefineParametersTestcase
 
 
@@ -129,9 +129,9 @@ CALL CollectiveStop(__STAMP__, &
   'The testcase has not been implemented for FV yet!')
 #endif
 
-massFlowRef    = GETREAL('massFlowRef','1.')
-massFlowBCName = GETSTR( 'massFlowBCName','INFLOW')
-maxMemory      = GETREAL('Forcing_MaxMemory'     ,'100.') ! Max buffer (100MB)
+massFlowRef    = GETREAL('massFlowRef')
+massFlowBCName = GETSTR( 'massFlowBCName')
+maxMemory      = GETREAL('Forcing_MaxMemory')             ! Max buffer (100MB)
 MaxBuffer      = MaxMemory*131072/5                       != size in bytes/nLogVars
 massFlowPrev   = massFlowRef
 

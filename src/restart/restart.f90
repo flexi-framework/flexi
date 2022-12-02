@@ -253,7 +253,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
   ! Read in time from restart file
   CALL ReadAttribute(File_ID,'Time',1,RealScalar=RestartTime)
   ! Option to set the calculation time to 0 even tho performing a restart
-  ResetTime = GETLOGICAL('ResetTime','.FALSE.')
+  ResetTime = GETLOGICAL('ResetTime')
   IF(ResetTime) RestartTime=0.
   CALL CloseDataFile()
 
