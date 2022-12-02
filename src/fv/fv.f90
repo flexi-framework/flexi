@@ -163,8 +163,8 @@ IF (IndicatorType.NE.2) THEN
 END IF
 
 ! Options for initial solution
-FV_IniSharp       = GETLOGICAL("FV_IniSharp",'.FALSE.')
-IF (.NOT.FV_IniSharp) FV_IniSupersample = GETLOGICAL("FV_IniSupersample",'.TRUE.')
+FV_IniSharp       = GETLOGICAL("FV_IniSharp")
+IF (.NOT.FV_IniSharp) FV_IniSupersample = GETLOGICAL("FV_IniSupersample")
 
 #elif FV_ENABLED == 2
 ! Initialize parameters for FV Blending
@@ -263,13 +263,6 @@ gradUzeta_central=0.
 #endif /* PARABOLIC */
 #endif /* FV_RECONSTRUCT */
 
-<<<<<<< HEAD
-=======
-! Options for initial solution
-FV_IniSharp       = GETLOGICAL("FV_IniSharp")
-IF (.NOT.FV_IniSharp) FV_IniSupersample = GETLOGICAL("FV_IniSupersample")
-
->>>>>>> ae7875d826 (Ensure parameter values are set during init, not readin)
 FVInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT FV DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
