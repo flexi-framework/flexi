@@ -36,10 +36,11 @@ REAL,ALLOCATABLE   :: sVdm_Leg(:,:)               !< inverse of Legendre Vanderm
 !==================================================================================================================================
 CHARACTER(LEN=255),PARAMETER :: NodeTypeG    = 'GAUSS'                    !< Gauss nodes (-1,1)
 CHARACTER(LEN=255),PARAMETER :: NodeTypeGL   = 'GAUSS-LOBATTO'            !< Gauss-Lobatto nodes [-1,1]
+CHARACTER(LEN=255),PARAMETER :: NodeTypeGR   = 'GAUSS-RADAU'              !< Gauss-Radau nodes [-1,1)
 CHARACTER(LEN=255),PARAMETER :: NodeTypeCL   = 'CHEBYSHEV-GAUSS-LOBATTO'  !< Chabyshev-Gauss-Lobatto nodes [-1,1]
 CHARACTER(LEN=255),PARAMETER :: NodeTypeVISU = 'VISU'                     !< equidistant nodes [-1,1]
-CHARACTER(LEN=255),PARAMETER :: NodeTypeVISUInner = 'VISU_INNER'          !< inner visualization nodes
-CHARACTER(LEN=255),PARAMETER :: NodeTypeVISUFVEqui    = 'VISU_FVEQUI'     !< equidistant visualization nodes for FV
+CHARACTER(LEN=255),PARAMETER :: NodeTypeVISUInner  = 'VISU_INNER'         !< inner visualization nodes
+CHARACTER(LEN=255),PARAMETER :: NodeTypeVISUFVEqui = 'VISU_FVEQUI'        !< equidistant visualization nodes for FV
 !@}
 #if (PP_NodeType==1)
   CHARACTER(LEN=255),PARAMETER :: NodeType = 'GAUSS'

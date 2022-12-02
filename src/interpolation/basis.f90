@@ -52,6 +52,10 @@ INTERFACE LegGaussLobNodesAndWeights
    MODULE PROCEDURE LegGaussLobNodesAndWeights
 END INTERFACE
 
+INTERFACE LegGaussRadauNodesAndWeights
+   MODULE PROCEDURE LegGaussRadauNodesAndWeights
+END INTERFACE
+
 INTERFACE LegendrePolynomialAndDerivative
    MODULE PROCEDURE LegendrePolynomialAndDerivative
 END INTERFACE
@@ -71,6 +75,7 @@ END INTERFACE
 PUBLIC::BuildLegendreVdm
 PUBLIC::InitializeVandermonde
 PUBLIC::LegGaussLobNodesAndWeights
+PUBLIC::LegGaussRadauNodesAndWeights
 PUBLIC::LegendreGaussNodesAndWeights
 PUBLIC::ChebyshevGaussNodesAndWeights
 PUBLIC::ChebyGaussLobNodesAndWeights
@@ -324,6 +329,79 @@ ELSE
 END IF
 END SUBROUTINE ClenshawCurtisNodesAndWeights
 
+
+!==================================================================================================================================
+!> @brief Compute Legendre-Gauss-Radau nodes and integration weights
+!> Computes the Legendre-Gauss-Radau nodes and integration weights based on a Newton method following algorithm 25 of the Kopriva
+!> book. However, the q and L evaluation differs to the one used for the Legendre-Gauss-Lobatto points. The initial guess for the
+!> Newton method is based on
+!> "Fast and accurate computation of Gauss-Legendre and Gauss-Jacobi quadrature nodes and weights" by Hale and Townsend.
+!==================================================================================================================================
+SUBROUTINE LegGaussRadauNodesAndWeights(N_in,xGP,wGP)
+!MODULES
+USE MOD_Preproc
+USE MOD_Globals
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)        :: N_in              !< polynomial degree, (N_in+1) Gausspoints
+REAL,INTENT(OUT)          :: xGP(0:N_in)       !< Gauss point positions for the reference interval [-1,1]
+REAL,INTENT(OUT),OPTIONAL :: wGP(0:N_in)       !< Gauss point weights
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                   :: nIter = 10        ! max. number of newton iterations
+REAL                      :: Tol   = 1.E-15    ! tolerance for Newton iteration: TODO: use variable tolerance here!
+INTEGER                   :: iGP,iter
+REAL                      :: L_Np1,Lder_Np1    ! L_{N_in+1},Lder_{N_in+1}
+REAL                      :: q,qder,L          ! \f$ q=L_{N_in+1}-L_{N_in-1} \f$ ,qder is derivative, \f$ L=L_{N_in} \f$
+REAL                      :: dx                ! Newton step
+REAL                      :: xGP_init(1:N_in)  ! Initial guess for all inner nodes based on Hale and Townsend
+REAL                      :: rho,phi_k         ! temporary variables for evaluation of initial nodes positions
+!==================================================================================================================================
+xGP(0)=-1.
+IF(PRESENT(wGP))THEN
+  wGP(0)= 2./REAL((N_in+1)**2)
+END IF
+
+! Use initial guess by Hale and Townsend for roots of Jacobi polynomials of degree N_in-1 with alpha=0, beta=1 (page 18, bottom)
+rho = N_in+1
+DO iGP=1,N_in
+  phi_k = (REAL(iGP)-0.25)*(PP_PI/rho)
+  ! Formula gives nodes in descending order!
+  xGP_init(N_in+1-iGP) = COS( phi_k + 1./(4.*rho**2)*(0.25/TAN(0.5*phi_k)+0.75*TAN(0.5*phi_k)) ) ! Eq. (3.21)
+END DO
+
+DO iGP=1,N_in
+  xGP(iGP) = xGP_init(iGP)
+  ! Newton iteration
+  DO iter=0,nIter
+    CALL qAndLEvaluationRadau(N_in,xGP(iGP),q,qder,L)
+    dx=-q/qder
+    xGP(iGP)=xGP(iGP)+dx
+    IF(abs(dx).LT.Tol*abs(xGP(iGP))) EXIT
+  END DO ! iter
+  IF(iter.GT.nIter) THEN
+    SWRITE(*,*) 'maximum iteration steps >10 in Newton iteration for LGR point:'
+    xGP(iGP) = xGP_init(iGP)
+    ! Newton iteration
+    DO iter=0,nIter
+      SWRITE(*,*)'iter,x^i',iter,xGP(iGP)     !DEBUG
+      CALL qAndLEvaluationRadau(N_in,xGP(iGP),q,qder,L)
+      dx=-q/qder
+      xGP(iGP)=xGP(iGP)+dx
+      IF(abs(dx).LT.Tol*abs(xGP(iGP))) EXIT
+    END DO ! iter
+    CALL Abort(__STAMP__,&
+               'ERROR: Legendre Gauss Radau nodes could not be computed up to desired precision. Code stopped!')
+  END IF ! (iter.GT.nIter)
+  IF(PRESENT(wGP))THEN
+    wGP(iGP)=(1.-xGP(iGP))/((N_In+1)*L)**2
+  END IF
+END DO ! iGP
+
+END SUBROUTINE LegGaussRadauNodesAndWeights
+
+
 !==================================================================================================================================
 !> @brief Compute Legendre-Gauss nodes and integration weights (algorithm 23, Kopriva book)
 !>
@@ -400,6 +478,48 @@ IF(mod(N_in,2) .EQ. 0) THEN
 END IF ! (mod(N_in,2) .EQ. 0)
 END SUBROUTINE LegendreGaussNodesAndWeights
 
+
+
+!==================================================================================================================================
+!> Evaluate the polynomial q=L_{N_in+1}-L_{N_in} and its derivative at position x in [-1,1]
+!> Recursive algorithm using the N_in-1 N_in-2 Legendre polynomials. Adapted from (Algorithm 24, Kopriva book)
+!==================================================================================================================================
+ELEMENTAL SUBROUTINE qAndLEvaluationRadau(N_in,x,q,qder,L)
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: N_in                            !< polynomial degree
+REAL,INTENT(IN)    :: x                               !< coordinate value in the interval [-1,1]
+REAL,INTENT(OUT)   :: L                               !< \f$ L_N(\xi) \f$
+REAL,INTENT(OUT)   :: q                               !< \f$ q_N(\xi) \f$
+REAL,INTENT(OUT)   :: qder                            !< \f$ \partial/\partial\xi \; L_N(\xi) \f$
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: iLegendre
+REAL               :: L_Nm1,L_Nm2                     ! L_{N_in-2},L_{N_in-1}
+REAL               :: Lder_Nm1,Lder_Nm2               ! L_{N_in-2},L_{N_in-1}
+REAL               :: Lder
+!==================================================================================================================================
+L_Nm2=1.
+L_Nm1=x
+Lder_Nm2=0.
+Lder_Nm1=1.
+DO iLegendre=2,N_in
+  L    = (REAL(2*iLegendre-1)*x*L_Nm1 - REAL(iLegendre-1)*L_Nm2)/REAL(iLegendre)
+  Lder = Lder_Nm2 + REAL(2*iLegendre-1)*L_Nm1
+  L_Nm2 = L_Nm1
+  L_Nm1 = L
+  Lder_Nm2 = Lder_Nm1
+  Lder_Nm1 = Lder
+END DO ! iLegendre
+L = REAL(2*N_in+1)/REAL(N_in+1)*x*L_Nm1 - REAL(N_in)/REAL(N_in+1)*L_Nm2
+Lder = Lder_Nm2 + REAL(2*N_in+1)*L_Nm1
+
+q    = (L+L_Nm1)/(x+1.) ! Radau integration points are roots of q
+qder = ((Lder+Lder_Nm1)*(1.+x)-(L+L_Nm1))/(1.+x)**2
+
+L = L_Nm1 ! Value of Legendre poly. of degree N is returned!
+END SUBROUTINE qAndLEvaluationRadau
 
 
 !==================================================================================================================================
