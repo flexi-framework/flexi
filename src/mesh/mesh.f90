@@ -46,6 +46,7 @@ SUBROUTINE DefineParametersMesh()
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadInTools ,ONLY: prms
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Mesh")
@@ -112,6 +113,7 @@ USE MOD_IO_HDF5,            ONLY:AddToElemData,ElementOut
 #if (PP_dim == 2)
 USE MOD_2D
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -416,6 +418,7 @@ USE MOD_Mappings  ,ONLY:FinalizeMappings
 USE MOD_FV_Vars   ,ONLY:FV_Elems_master
 USE MOD_FV_Metrics,ONLY:FinalizeFV_Metrics
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !============================================================================================================================
 ! Deallocate global variables, needs to go somewhere else later
