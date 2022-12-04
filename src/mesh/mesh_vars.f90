@@ -299,8 +299,20 @@ DO iElem=FirstElemInd,LastElemInd
     aSide=>aElem%Side(iLocSide)%sp
     ! Free mortar sides
     DO iMortar=1,aSide%nMortars
-      NULLIFY(aSide%MortarSide(iMortar)%sp)
+      ! Free MPI connection
+      IF (ASSOCIATED(aSide%MortarSide(iMortar)%sp%connection) .AND. aSide%MortarSide(iMortar)%sp%NbProc.NE.-1) THEN
+        ! Free the connected elem
+        DO iNbLocSide=1,6
+          DEALLOCATE(aSide%MortarSide(iMortar)%sp%connection%Elem%Side(iNbLocSide)%sp)
+        END DO
+        DEALLOCATE(aSide%MortarSide(iMortar)%sp%connection%Elem%Side)
+        DEALLOCATE(aSide%MortarSide(iMortar)%sp%connection%Elem)
+        ! Free the connected size
+        DEALLOCATE(aSide%MortarSide(iMortar)%sp%connection)
+      END IF
+      DEALLOCATE(aSide%MortarSide(iMortar)%sp)
     END DO
+    IF(ASSOCIATED(aSide%MortarSide)) DEALLOCATE(aSide%MortarSide)
     ! Free MPI connection
     IF (ASSOCIATED(aSide%connection) .AND. aSide%NbProc.NE.-1) THEN
       ! Free the connected elem
