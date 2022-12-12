@@ -4,7 +4,7 @@
 
 FLEXI is a high-order numerical framework for solving PDEs,
 with a focus on Computational Fluid Dynamics.
-FLEXI based on the Discontinuous Galerkin Spectral Element
+FLEXI is based on the Discontinuous Galerkin Spectral Element
 Method (DGSEM), which allows for high-order of accuracy 
 and fully unstructured hexahedral meshes.
 The solver is parallelized very efficiently and scales up
@@ -23,12 +23,11 @@ our publications given in [references](REFERENCE.md).
 For installation instruction see [install](INSTALL.md).
 
 See the full documentation including usage instructions and
-turorial for FLEXI [here][flexi].
+tutorial for FLEXI [here][flexi].
  
-In case you have question regarding FLEXI, want to report bugs
-or contribute to the project you can use the mailing list
-<flexi@listserv.uni-stuttgart.de>.
-You can also subscribe to the mailing list [here][list].
+In case you have questions regarding FLEXI, want to report bugs
+or contribute to the project, feel free to open issue or pull
+request.
 
 ## License
 FLEXI is Copyright (C) 2016, Prof. Claus-Dieter Munz and is 
@@ -43,19 +42,17 @@ for their efforts they spent on building FLEXI.
 
 ## Used libraries
 
-FLEXI uses several external libraries as well as auxilliary functions from open source projects, including:
+FLEXI uses several external libraries as well as auxiliary functions from open source projects, including:
 * [HDF5](https://www.hdfgroup.org/)
 * [MPI](http://www.mcs.anl.gov/research/projects/mpi/)
 * [LAPACK](http://www.netlib.org/lapack/)
 * [PAPI](http://icl.cs.utk.edu/papi/)
-* [FOUL](http://foul.sourceforge.net/)
 * [OpenMP](http://www.openmp.org/)
 * [FFTW](http://www.fftw.org/)
 
 [nrg]:  https://www.iag.uni-stuttgart.de/arbeitsgruppen/numerische-methoden/
 [flexi]: https://www.flexi-project.org/
-[list]: https://listserv.uni-stuttgart.de/mailman/listinfo/flexi
 
 ## Regressioncheck
 
-For informations about the regressioncheck see [reggie](REGGIE.md).
+For information about the regression checks, see [reggie](REGGIE.md).
