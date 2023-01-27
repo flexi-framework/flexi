@@ -85,6 +85,7 @@ CALL prms%CreateRealOption(     "abortTolerance"     , "Tolerance used to decide
                                                        "RefState is given")
 CALL prms%CreateLogicalOption(  "ExtrudeTo3D"        , "Perform an extrusion of a one-layer mesh to the 3D version",'.FALSE.')
 CALL prms%CreateIntOption(      "ExtrudeK"           , "Layer which is used in extrusion")
+CALL prms%CreateLogicalOption(  "ExtrudePeriodic"    , "Perform a periodic extrusion of a 3D mesh to a mesh with extended z length",'.FALSE.') 
 
 ! Parse parameters
 ! check for command line argument --help or --markdown
