@@ -572,7 +572,7 @@ IF (doPrintHelp.GT.0) THEN
   STOP
 END IF
 
-SWRITE (*,*) "READING FROM: ", TRIM(statefile)
+SWRITE(UNIT_stdOut,'(A,A)') " READING FROM: ", TRIM(statefile)
 
 changedStateFile      = .FALSE.
 changedMeshFile       = .FALSE.

@@ -48,9 +48,9 @@ END INTERFACE
 PUBLIC:: visu_requestInformation
 PUBLIC:: visu_CWrapper
 PUBLIC:: visu_dealloc_nodeids
+!===================================================================================================================================
 
 CONTAINS
-
 
 !===================================================================================================================================
 !> Function to convert a C string with length strlen to a FORTRAN character array with length 255.
@@ -72,6 +72,7 @@ cstrToChar255 = TRANSFER(tmp(1:strlen), cstrToChar255)
 cstrToChar255(strlen+1:255) = ' '
 END FUNCTION cstrToChar255
 
+
 !===================================================================================================================================
 !> Wrapper to visu_InitFile for Paraview plugin, returns the available variable names and boundary names.
 !===================================================================================================================================
@@ -84,9 +85,10 @@ USE MOD_Visu_Vars  ,ONLY: VarnamesAll,BCNamesAll,nVarIni
 USE MOD_Visu       ,ONLY: visu_getVarNamesAndFileType
 USE MOD_VTK        ,ONLY: CARRAY
 USE MOD_IO_HDF5    ,ONLY: InitMPIInfo
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                    :: mpi_comm_IN
 INTEGER,INTENT(IN)                    :: strlen_state
 TYPE(C_PTR),TARGET,INTENT(IN)         :: statefile_IN
@@ -127,6 +129,7 @@ ELSE
   bcnames%data = C_NULL_PTR
 END IF
 END SUBROUTINE visu_requestInformation
+
 
 !===================================================================================================================================
 !> C wrapper routine for the visu call from ParaView. The main visu routine is called with the parameter file created by the
@@ -244,6 +247,7 @@ CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToSurfVisuVars,varnamesSurf_out,
 
 END SUBROUTINE visu_CWrapper
 
+
 !===================================================================================================================================
 !> Deallocate the different NodeID arrays.
 !===================================================================================================================================
@@ -257,6 +261,10 @@ IMPLICIT NONE
 !===================================================================================================================================
 SDEALLOCATE(nodeids_DG)
 SDEALLOCATE(nodeids_FV)
+! surf
+SDEALLOCATE(nodeidsSurf_DG)
+SDEALLOCATE(nodeidsSurf_FV)
+
 END SUBROUTINE visu_dealloc_nodeids
 
 END MODULE MOD_Visu_Cwrapper

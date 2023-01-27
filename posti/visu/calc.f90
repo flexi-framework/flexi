@@ -68,10 +68,10 @@ USE MOD_Mesh_Vars          ,ONLY: nElems
 USE MOD_DG_Vars            ,ONLY: U
 USE MOD_StringTools        ,ONLY: STRICMP
 #if PARABOLIC
+USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume
 USE MOD_Lifting_Vars       ,ONLY: gradUx,gradUy,gradUz
 USE MOD_Interpolation      ,ONLY: GetVandermonde
 USE MOD_Interpolation_Vars ,ONLY: NodeType
-USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume
 #endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

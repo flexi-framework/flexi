@@ -21,15 +21,9 @@
 !===================================================================================================================================
 MODULE MOD_Posti_ConvertToVisu
 ! MODULES
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
-
 INTERFACE ConvertToVisu_DG
   MODULE PROCEDURE ConvertToVisu_DG
 END INTERFACE
@@ -85,7 +79,7 @@ IMPLICIT NONE
 INTEGER            :: iElem,iVar,iVarVisu,iVarCalc
 REAL,ALLOCATABLE   :: Vdm_NCalc_NVisu(:,:)                  ! Vandermonde from state to visualisation nodes
 !===================================================================================================================================
-SWRITE(*,*) "[DG] convert to visu grid"
+SWRITE(UNIT_stdOut,'(A)') " [DG] convert to visu grid"
 
 ! compute UVisu_DG
 ALLOCATE(Vdm_NCalc_NVisu(0:NVisu,0:NCalc))
@@ -104,8 +98,9 @@ DO iVar=1,nVarDep
   END IF
 END DO
 
-SDEALLOCATE(Vdm_NCalc_NVisu)
+DEALLOCATE(Vdm_NCalc_NVisu)
 END SUBROUTINE ConvertToVisu_DG
+
 
 !===================================================================================================================================
 !> Perform a ChangeBasis of the calculated surface DG quantities to the visualization grid.
@@ -124,11 +119,12 @@ IMPLICIT NONE
 INTEGER            :: iSide,iVar,iVarVisu,iVarCalc
 REAL,ALLOCATABLE   :: Vdm_NCalc_NVisu(:,:)                  ! Vandermonde from state to visualisation nodes
 !===================================================================================================================================
-SWRITE(*,*) "[DG] convert to surface visu grid"
+SWRITE(UNIT_stdOut,'(A)') " [DG] convert to surface visu grid"
 
 ! Prepare Vandermonde to interpolate the surface data from calculation grid to visualisation grid
 ALLOCATE(Vdm_NCalc_NVisu(0:NVisu,0:NCalc))
 CALL GetVandermonde(NCalc,NodeType,NVisu,NodeTypeVisuPosti,Vdm_NCalc_NVisu,modal=.FALSE.)
+
 ! convert surface DG solution to UVisu_DG
 SDEALLOCATE(USurfVisu_DG)
 ALLOCATE(USurfVisu_DG(0:NVisu,0:ZDIM(NVisu),0:0,nBCSidesVisu_DG,nVarSurfVisuAll))
@@ -141,8 +137,10 @@ DO iVar=1,nVarDep
     END DO
   END IF
 END DO
+
 DEALLOCATE(Vdm_NCalc_NVisu)
 END SUBROUTINE ConvertToSurfVisu_DG
+
 
 #if FV_ENABLED
 !===================================================================================================================================
@@ -165,7 +163,7 @@ INTEGER            :: iElem
 #endif
 INTEGER            :: iVarVisu,iVarCalc
 !===================================================================================================================================
-SWRITE(*,*) "[FV/FVRE] convert to visu grid"
+SWRITE(UNIT_stdOut,'(A)') " [FV/FVRE] convert to visu grid"
 
 SDEALLOCATE(UVisu_FV)
 ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:ZDIM(NVisu_FV),nElems_FV,nVarVisu))
@@ -173,7 +171,7 @@ ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:ZDIM(NVisu_FV),nElems_FV,nVarVisu))
 DO iVar=1,nVarDep
   iVarVisu = mapAllVarsToVisuVars(iVar)
   IF (iVarVisu.GT.0) THEN
-    SWRITE(*,*) "    ", TRIM(VarnamesAll(iVar))
+    SWRITE(UNIT_stdOut,'(A,A)') "  ", TRIM(VarnamesAll(iVar))
     iVarCalc = mapDepToCalc_FV(iVar)
 #if FV_RECONSTRUCT
     UVisu_FV(:,:,:,:,iVarVisu) = UCalc_FV(:,:,:,:,iVarCalc)
@@ -209,12 +207,13 @@ INTEGER            :: iVar,iVarVisu
 INTEGER            :: iSide,p,q
 #endif
 !===================================================================================================================================
-SWRITE(*,*) "[FV/FVRE] convert to surface visu grid"
+SWRITE(UNIT_stdOut,'(A)') " [FV/FVRE] convert to surface visu grid"
+
 ! compute UVisu_FV
 DO iVar=1,nVarDep
   iVarVisu = mapAllVarsToSurfVisuVars(iVar)
   IF (iVarVisu.GT.0) THEN
-    SWRITE(*,*) "    ", TRIM(VarnamesAll(iVar))
+    SWRITE(UNIT_stdOut,'(A,A)') "  ", TRIM(VarnamesAll(iVar))
 #if FV_RECONSTRUCT
     USurfVisu_FV(:,:,0,:,iVarVisu) = USurfCalc_FV(:,:,:,mapDepToCalc_FV(iVar))
 #else
@@ -229,7 +228,6 @@ DO iVar=1,nVarDep
 END DO
 
 END SUBROUTINE ConvertToSurfVisu_FV
-
 
 
 #if FV_RECONSTRUCT
@@ -298,10 +296,10 @@ DO iVar=1,nVarDep
     END IF
   END IF
 END DO
-SWRITE(*,*) "  nVarPrim", nVarPrim
-SWRITE(*,*) "  mapUPrim", mapUPrim(1:nVarPrim)
-SWRITE(*,*) "  mapUCalc", mapUCalc(1:nVarPrim)
 
+SWRITE(UNIT_stdOut,*) "  nVarPrim", nVarPrim
+SWRITE(UNIT_stdOut,*) "  mapUPrim", mapUPrim(1:nVarPrim)
+SWRITE(UNIT_stdOut,*) "  mapUCalc", mapUCalc(1:nVarPrim)
 
 DO iElem_FV=1,nElems_FV
   iElem = mapFVElemsToAllElems(iElem_FV)
@@ -367,11 +365,10 @@ IF (PRESENT(gradUx_calc).AND.PRESENT(gradUy_calc).AND.PRESENT(gradUz_calc)) THEN
 END IF
 #endif
 END SUBROUTINE ConvertToVisu_FV_Reconstruct
-
 #endif /* FV_RECONSTRUCT */
 
-#endif /* FV_ENABLED */
 
+#endif /* FV_ENABLED */
 !===================================================================================================================================
 !> This routine will read all variables that are not conservative or derived quantities and convert the ones that should be
 !> visualized to the visu grid.
@@ -385,6 +382,7 @@ END SUBROUTINE ConvertToVisu_FV_Reconstruct
 !> If surface visualization is needed, the quantities will simply be prolonged to the surfaces.
 !===================================================================================================================================
 SUBROUTINE ConvertToVisu_GenericData(statefile)
+! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars
@@ -400,6 +398,7 @@ USE MOD_Interpolation_Vars ,ONLY: L_Minus,L_Plus
 USE MOD_ProlongToFace      ,ONLY: EvalElemFace
 USE MOD_Mappings           ,ONLY: buildMappings
 USE MOD_Visu_Avg2D         ,ONLY: Average2D,BuildVandermonds_Avg2D
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -422,7 +421,7 @@ INTEGER                        :: mapVarIdentity(1)
 REAL,ALLOCATABLE               :: FieldData_DG(:,:,:,:,:),FieldData_FV(:,:,:,:,:)
 REAL,ALLOCATABLE               :: FVdouble(:,:)
 !===================================================================================================================================
-SWRITE(*,*) "Convert generic datasets to Visu grid"
+SWRITE(UNIT_stdOut,'(A)') " Convert generic datasets to Visu grid"
 ! Open HDF5 file
 CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
@@ -702,10 +701,8 @@ DO iVar=nVarDep+1,nVarAll
           END IF
         END SELECT
       END IF ! doSurfVisu
-
     END IF ! substring_count.GT.1
   END IF ! mapAllVarsToVisuVars(iVar).GT.0
-
 END DO !iVar=1,
 
 ! Close HDF5 file

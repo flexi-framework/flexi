@@ -186,31 +186,6 @@ DO iArg=1+skipArgs,nArgs
       ENDIF
 #endif
     END IF
-
-!ELSE IF (VisuDimension.EQ.1) THEN ! CSV along 1d line
-
-  !IF (nProcessors.GT.1) &
-    !CALL CollectiveStop(__STAMP__,"1D csv output along lines only supported for single execution")
-
-  !strOutputFile=TRIM(TIMESTAMP(TRIM(ProjectName)//'_extract1D',OutputTime))
-
-  !OPEN(NEWUNIT = iounit, STATUS='REPLACE',FILE=TRIM(strOutputFile)//'_DG.csv')
-  !DO iElem=1,nElems_DG
-    !DO i=0,NVisu
-      !WRITE(iounit,*) CoordsVisu_DG(1,i,0,0,iElem), UVisu_DG(i,0,0,iElem,:)
-    !END DO
-  !END DO
-  !CLOSE(iounit) ! close the file
-
-!#if FV_ENABLED
-  !OPEN(NEWUNIT = iounit, STATUS='REPLACE',FILE=TRIM(strOutputFile)//'_FV.csv')
-  !DO iElem=1,nElems_FV
-    !DO i=0,NVisu_FV
-      !WRITE(iounit,*) CoordsVisu_FV(1,i,0,0,iElem), UVisu_FV(i,0,0,iElem,:)
-    !END DO
-  !END DO
-  !CLOSE(iounit) ! close the file
-!#endif
   END IF
 
   DEALLOCATE(VarNames_loc)

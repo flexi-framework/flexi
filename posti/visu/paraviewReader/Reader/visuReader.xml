@@ -1,7 +1,9 @@
 <ServerManagerConfiguration>
    <ProxyGroup name="sources">
       <!-- ================================================================== -->
-      <SourceProxy name="visuReader" class="visuReader" label="visuReader">
+     <SourceProxy name="visuReader"
+                  class="visuReader"
+                  label="visuReader">
          <Documentation
             long_help="Read a Flexi state or mesh file ( h5 file )."
             short_help="Read a Flexi state or mesh file ( h5 file ).">
@@ -26,7 +28,7 @@
             animateable="0"
             name="NVisu"
             number_of_elements="1"
-            label="Polynomial degree for Supersampling">
+            label="Polynomial Degree for Supersampling">
             <IntRangeDomain name="range" />
             <Documentation>
                This property sets the polynomial degree of the
