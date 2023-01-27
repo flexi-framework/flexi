@@ -23,7 +23,7 @@ USE MOD_Globals
 USE MOD_Commandline_Arguments
 USE MOD_PreProc              ,ONLY: PP_N
 USE MOD_AnalyzeEquation_Vars ,ONLY: UAvg,UFluc
-USE MOD_HDF5_Input           ,ONLY: ReadAttribute,ReadArray,GetDataSize
+USE MOD_HDF5_Input           ,ONLY: ReadAttribute,ReadArray,GetDataSize,DatasetExists
 USE MOD_HDF5_Output          ,ONLY: WriteTimeAverage,WriteArray,WriteAttribute
 USE MOD_IO_HDF5              ,ONLY: HSIZE,File_ID,nDims
 USE MOD_IO_HDF5              ,ONLY: OpenDataFile,CloseDataFile
@@ -32,6 +32,9 @@ USE MOD_MPI                  ,ONLY: InitMPI
 USE MOD_Mesh_Vars            ,ONLY: offsetElem,nElems,nGlobalElems
 USE MOD_Output_Vars          ,ONLY: ProjectName
 USE MOD_StringTools          ,ONLY: STRICMP
+#if FV_ENABLED
+USE MOD_FV_Vars              ,ONLY: FV_X,FV_w
+#endif
 #if USE_MPI
 USE MOD_MPI                  ,ONLY: FinalizeMPI
 #endif
@@ -76,6 +79,9 @@ REAL                                 :: dt,AvgTime,TotalAvgTime,TotalAvgTimeGlob
 
 !> FV Elems
 INTEGER,ALLOCATABLE                  :: FV_Elems_loc(:)
+#if FV_ENABLED
+LOGICAL                              :: FV_exists
+#endif /*FV_ENABLED*/
 
 !> Input
 CHARACTER(LEN=255)                   :: InputFile
@@ -213,6 +219,20 @@ DO i = 1,ref%nDataSets
     END SELECT
   END IF
 END DO
+
+! Read FV position and weights or fill with dummy
+#if FV_ENABLED
+ALLOCATE(FV_X(0:PP_N))
+ALLOCATE(FV_w(0:PP_N))
+CALL DatasetExists(File_ID,'FV_X',FV_exists,attrib=.TRUE.)
+IF (FV_exists) THEN
+  CALL ReadAttribute(File_ID,'FV_X',PP_N+1,RealArray=FV_X)
+  CALL ReadAttribute(File_ID,'FV_w',PP_N+1,RealArray=FV_w)
+ELSE
+  FV_X = 0.
+  FV_w = 0.
+END IF
+#endif
 
 ! Start the averaging
 SWRITE(UNIT_stdOut,'(132("="))')
@@ -386,6 +406,11 @@ END DO
 SDEALLOCATE(UAvg)
 SDEALLOCATE(UFluc)
 SDEALLOCATE(FV_Elems_loc)
+
+#if FV_ENABLED
+SDEALLOCATE(FV_X)
+SDEALLOCATE(FV_w)
+#endif /*FV_ENABLED*/
 
 SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A,I5,A,I5,A,F10.5)') "Merging DONE: ",nFiles-nSkipped," of ",nFiles, &
