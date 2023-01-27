@@ -356,6 +356,7 @@ DO iFile = 1,nFiles
     ! Write file
     CALL WriteTimeAverage(MeshFileName = ref%MeshFile         &
                          ,OutputTime   = Time                 &
+                         ,FutureTime   = Time                 &
                          ,dtAvg        = TotalAvgTime         &
                          ,nVal         = nVarAvg(2:4)         &
                          ,nVarAvg      = nVarAvg(1)           &

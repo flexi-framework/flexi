@@ -218,6 +218,7 @@ END SUBROUTINE WriteState
 SUBROUTINE GatheredWriteArray(FileName,create,DataSetName,rank,nValGlobal,nVal,offset,collective,RealArray,IntArray,StrArray)
 ! MODULES
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -332,6 +333,7 @@ SUBROUTINE WriteAdditionalElemData(FileName,ElemList)
 ! MODULES
 USE MOD_Globals
 USE MOD_Mesh_Vars,ONLY: offsetElem,nGlobalElems,nElems
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -384,6 +386,7 @@ CALL GatheredWriteArray(FileName,create=.FALSE.,&
                         offset=    (/0   ,offSetElem  /),&
                         collective=.TRUE.,RealArray=ElemData)
 DEALLOCATE(ElemData,VarNames)
+
 END SUBROUTINE WriteAdditionalElemData
 
 
@@ -399,6 +402,7 @@ SUBROUTINE WriteAdditionalFieldData(FileName,FieldList)
 USE MOD_Preproc
 USE MOD_Globals
 USE MOD_Mesh_Vars,ONLY: offsetElem,nGlobalElems,nElems
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -450,17 +454,19 @@ DO WHILE(ASSOCIATED(f))
       CALL f%eval(tmp)
       NodeData=>tmp
     END IF
-    CALL GatheredWriteArray(FileName,create=.FALSE.,&
-                            DataSetName=f%DatasetName, rank=5, &
-                            nValGlobal=(/f%nVal,nGlobalElems/),&
-                            nVal=      (/f%nVal,nElems      /),&
-                            offset=    (/0,0,0,0,  offsetElem  /),&
-                            collective=.TRUE.,RealArray=NodeData)
+    CALL GatheredWriteArray(FileName                              ,&
+                            create      = .FALSE.                 ,&
+                            DataSetName = f%DatasetName           ,&
+                            rank        = 5                       ,&
+                            nValGlobal  = (/f%nVal ,nGlobalElems/),&
+                            nVal        = (/f%nVal ,nElems      /),&
+                            offset      = (/0,0,0,0,offsetElem  /),&
+                            collective  = .TRUE.                  ,&
+                            RealArray   = NodeData)
     IF(ASSOCIATED(f%Eval)) DEALLOCATE(tmp)
   END IF
   f=>f%next
 END DO
-
 
 ! --------------------------------------------------------------------------------------------- !
 ! Now process arrays with standard size PP_N
@@ -501,12 +507,15 @@ DO WHILE(ASSOCIATED(f))
   f=>f%next
 END DO
 ! Write the arrays (fixed size)
-CALL GatheredWriteArray(FileName,create=.FALSE.,&
-                        DataSetName='FieldData', rank=5,  &
-                        nValGlobal=(/nVar,PP_N+1,PP_N+1,PP_NZ+1,nGlobalElems/),&
-                        nVal=      (/nVar,PP_N+1,PP_N+1,PP_NZ+1,nElems      /),&
-                        offset=    (/0   ,0     ,0     ,0     ,offsetElem  /),&
-                        collective=.TRUE.,RealArray=tmp)
+CALL GatheredWriteArray(FileName                                                 ,&
+                        create      = .FALSE.                                    ,&
+                        DataSetName = 'FieldData'                                ,&
+                        rank        = 5                                          ,&
+                        nValGlobal  = (/nVar,PP_N+1,PP_N+1,PP_NZ+1,nGlobalElems/),&
+                        nVal        = (/nVar,PP_N+1,PP_N+1,PP_NZ+1,nElems      /),&
+                        offset      = (/0   ,0     ,0     ,0     ,offsetElem   /),&
+                        collective  = .TRUE.                                     ,&
+                        RealArray   = tmp)
 DEALLOCATE(VarNames,tmp)
 
 END SUBROUTINE WriteAdditionalFieldData
@@ -515,7 +524,7 @@ END SUBROUTINE WriteAdditionalFieldData
 !==================================================================================================================================
 !> Subroutine to write the baseflow to HDF5 format
 !==================================================================================================================================
-SUBROUTINE WriteBaseflow(MeshFileName,OutputTime)
+SUBROUTINE WriteBaseflow(MeshFileName,OutputTime,FutureTime)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
@@ -523,11 +532,13 @@ USE MOD_Output_Vars  ,ONLY: ProjectName
 USE MOD_Mesh_Vars    ,ONLY: offsetElem,nGlobalElems,nElems
 USE MOD_Sponge_Vars  ,ONLY: SpBaseFlow
 USE MOD_Equation_Vars,ONLY: StrVarNames
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName       !< Name of mesh file
 REAL,INTENT(IN)                :: OutputTime         !< Time of output
+REAL,INTENT(IN)                :: FutureTime         !< hint, when next file will be written
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)             :: FileName
@@ -545,7 +556,7 @@ END IF
 
 ! Generate skeleton for the file with all relevant data on a single proc (MPIRoot)
 FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_BaseFlow',OutputTime))//'.h5'
-IF(MPIRoot) CALL GenerateFileSkeleton(TRIM(FileName),'BaseFlow',PP_nVar,PP_N,StrVarNames,MeshFileName,OutputTime)
+IF(MPIRoot) CALL GenerateFileSkeleton(TRIM(FileName),'BaseFlow',PP_nVar,PP_N,StrVarNames,MeshFileName,OutputTime,FutureTime)
 
 #if PP_dim == 3
   UOut => SpBaseFlow
@@ -586,6 +597,7 @@ IF(MPIRoot)THEN
   GETTIME(EndT)
   WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',EndT-StartT,'s]'
 END IF
+
 END SUBROUTINE WriteBaseflow
 
 
@@ -602,6 +614,7 @@ USE MOD_Globals
 USE MOD_Output_Vars,ONLY: ProjectName,WriteTimeAvgFiles
 USE MOD_Mesh_Vars  ,ONLY: offsetElem,nGlobalElems,nElems
 USE MOD_2D         ,ONLY: ExpandArrayTo3D
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -616,7 +629,7 @@ REAL,INTENT(IN)                :: OutputTime                                   !
 REAL,INTENT(IN)                :: dtAvg                                        !< Timestep of averaging
 REAL,INTENT(IN),TARGET         :: UAvg(nVarAvg,nVal(1),nVal(2),nVal(3),nElems) !< Averaged Solution
 REAL,INTENT(IN),TARGET         :: UFluc(nVarFluc,nVal(1),nVal(2),nVal(3),nElems) !< Averaged Solution fluctuations
-REAL,INTENT(IN),OPTIONAL       :: FutureTime                                   !< Time of next output
+REAL,INTENT(IN)                :: FutureTime                                   !< Time of next output
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: Filename_In                            !< custom filename
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: NodeType_In                            !< custom node type
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -635,13 +648,13 @@ IF(ANY(nVal(1:PP_dim).EQ.0))       RETURN ! no time averaging
 IF(nVarAvg.EQ.0.AND.nVarFluc.EQ.0) RETURN ! no time averaging
 
 IF(MPIRoot)THEN
-  WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE TIME AVERAGED STATE TO HDF5 FILE...'
+  WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')' WRITE TIME AVERAGED STATE TO HDF5 FILE...'
   GETTIME(StartT)
 END IF
 
 ! Generate skeleton for the file with all relevant data on a single proc (MPIRoot)
 FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_TimeAvg',OutputTime))//'.h5'
-IF(PRESENT(Filename_In)) Filename=TRIM(Filename_In)
+IF(PRESENT(Filename_In)) FileName=TRIM(Filename_In)
 
 ! Write time averaged data --------------------------------------------------------------------------------------------------------
 IF(MPIRoot)THEN
@@ -677,14 +690,16 @@ IF(PRESENT(FV_Elems_In))THEN
 END IF
 
 DO i=1,2
-  nVar_loc =  MERGE(nVarAvg,nVarFluc,i.EQ.1)
-  IF(nVar_loc.EQ.0) CYCLE
-  DataSet  =  MERGE('Mean      ','MeanSquare',i.EQ.1)
   IF(i.EQ.1)THEN
     UOut   => UAvg
-  ELSE
+    nVar_loc = nVarAvg
+    DataSet  =  'Mean'
+  ELSE IF (i.EQ.2)THEN
     UOut   => UFluc
+    nVar_loc = nVarFluc
+    DataSet  =  'MeanSquare'
   END IF
+  IF(nVar_loc.EQ.0) CYCLE
   nVal_loc =  (/nVar_loc,nVal,nElems/)
 #if PP_dim == 2
   IF (.NOT.output2D) THEN
@@ -745,7 +760,7 @@ INTEGER,INTENT(IN)             :: NData              !< Polynomial degree of dat
 CHARACTER(LEN=255),INTENT(IN)  :: StrVarNames(nVar)  !< Variabel names
 CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName       !< Name of mesh file
 REAL,INTENT(IN)                :: OutputTime         !< Time of output
-REAL,INTENT(IN),OPTIONAL       :: FutureTime         !< Time of next output
+REAL,INTENT(IN)                :: FutureTime         !< Time of next output
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: Dataset      !< Name of the dataset
 LOGICAL,INTENT(IN),OPTIONAL    :: create             !< specify whether file should be newly created
 LOGICAL,INTENT(IN),OPTIONAL    :: withUserblock      !< specify whether userblock data shall be written or not
@@ -805,10 +820,8 @@ IF(create_loc)THEN
   CALL WriteAttribute(File_ID,'Time',1,RealScalar=OutputTime)
   tmp255=TRIM(MeshFileName)
   CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/tmp255/))
-  IF(PRESENT(FutureTime))THEN
-    MeshFile255=TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(TypeString),FutureTime))//'.h5'
-    CALL WriteAttribute(File_ID,'NextFile',1,StrScalar=(/MeshFile255/))
-  END IF
+  MeshFile255=TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(TypeString),FutureTime))//'.h5'
+  CALL WriteAttribute(File_ID,'NextFile',1,StrScalar=(/MeshFile255/))
   tmp255=TRIM(NodeType)
   IF(PRESENT(NodeTypeIn)) tmp255=TRIM(NodeTypeIn)
   CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/tmp255/))
@@ -840,6 +853,7 @@ END SUBROUTINE GenerateFileSkeleton
 !==================================================================================================================================
 SUBROUTINE MarkWriteSuccessfull(FileName)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -923,6 +937,7 @@ END SUBROUTINE FlushFiles
 SUBROUTINE WriteHeader(FileType_in,File_ID)
 ! MODULES
 USE MOD_Output_Vars,ONLY:ProgramName,FileVersion,ProjectName
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -953,6 +968,7 @@ SUBROUTINE WriteArray(DataSetName,rank,nValGlobal,nVal,offset,&
 ! MODULES
 USE MOD_Globals
 USE,INTRINSIC :: ISO_C_BINDING
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -1018,6 +1034,9 @@ IF(chunky)THEN
   CALL H5DSET_EXTENT_F(DSet_ID,Dimsf,iError) ! if resizable then dataset may need to be extended
 END IF
 
+! Dataset empty, return before allocating memory space
+IF (PRODUCT(nVal).EQ.0) RETURN
+
 ! Each process defines dataset in memory and writes it to the hyperslab in the file.
 Dimsf=nVal  ! Now we need the local array size
 OffsetHDF = Offset
@@ -1049,7 +1068,7 @@ END IF
 IF(PRESENT(IntArray))  buf=C_LOC(IntArray)
 IF(PRESENT(RealArray)) buf=C_LOC(RealArray)
 IF(PRESENT(StrArray))  buf=C_LOC(StrArray(1))
-CALL H5DWRITE_F(DSet_ID,Type_ID,buf,iError,file_space_id=FileSpace,mem_space_id=MemSpace,xfer_prp=PList_ID)
+CALL H5DWRITE_F(DSet_ID,Type_ID,buf,iError,file_space_id=filespace,mem_space_id=memspace,xfer_prp=PList_ID)
 
 IF(PRESENT(StrArray)) CALL H5TCLOSE_F(Type_ID, iError)
 ! Close the property list, dataspaces and dataset.
@@ -1060,6 +1079,7 @@ CALL H5SCLOSE_F(MemSpace, iError)
 CALL H5DCLOSE_F(DSet_ID, iError)
 
 LOGWRITE(*,*)'...DONE!'
+
 END SUBROUTINE WriteArray
 
 
@@ -1073,6 +1093,7 @@ SUBROUTINE WriteAttribute(Loc_ID_in,AttribName,nVal,DataSetname,&
 ! MODULES
 USE MOD_Globals
 USE,INTRINSIC :: ISO_C_BINDING
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
