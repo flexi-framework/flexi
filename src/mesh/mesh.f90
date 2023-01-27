@@ -107,7 +107,7 @@ USE MOD_Mappings,           ONLY:buildMappings
 USE MOD_Prepare_Mesh,       ONLY:exchangeFlip
 #endif
 #if FV_ENABLED
-USE MOD_FV_Metrics,         ONLY:InitFV_Metrics
+USE MOD_FV_Metrics,         ONLY:InitFV_Metrics,FV_CalcMetrics
 #endif
 USE MOD_IO_HDF5,            ONLY:AddToElemData,ElementOut
 #if (PP_dim == 2)
@@ -372,7 +372,8 @@ IF (meshMode.GT.1) THEN
   SWRITE(UNIT_stdOut,'(A)') "NOW CALLING calcMetrics..."
   CALL CalcMetrics()     ! DG metrics
 #if FV_ENABLED
-  CALL InitFV_Metrics()  ! FV metrics
+  CALL InitFV_Metrics()  ! Init FV metrics
+  CALL FV_CalcMetrics()  ! FV metrics
 #endif
   ! debugmesh: param specifies format to output, 0: no output, 1: tecplot ascii, 2: tecplot binary, 3: paraview binary
   CALL WriteDebugMesh(GETINT('debugmesh'))

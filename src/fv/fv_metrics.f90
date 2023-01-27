@@ -27,11 +27,16 @@ INTERFACE InitFV_Metrics
   MODULE PROCEDURE InitFV_Metrics
 END INTERFACE
 
+INTERFACE FV_CalcMetrics
+  MODULE PROCEDURE FV_CalcMetrics
+END INTERFACE
+
 INTERFACE FinalizeFV_Metrics
   MODULE PROCEDURE FinalizeFV_Metrics
 END INTERFACE
 
 PUBLIC::InitFV_Metrics
+PUBLIC::FV_CalcMetrics
 PUBLIC::FinalizeFV_Metrics
 !==================================================================================================================================
 
@@ -43,72 +48,15 @@ CONTAINS
 !==================================================================================================================================
 SUBROUTINE InitFV_Metrics()
 ! MODULES
-USE MOD_Globals
 USE MOD_PreProc
 USE MOD_FV_Vars
-USE MOD_FV_Basis
-USE MOD_Mesh_Vars          ,ONLY: nElems,nSides,firstMPISide_YOUR,lastMPISide_YOUR
-USE MOD_Mesh_Vars          ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,sJ
-USE MOD_Mesh_Vars          ,ONLY: NGeoRef,DetJac_Ref,MortarType,MortarInfo
-USE MOD_Mesh_Vars          ,ONLY: NormalDirs,TangDirs,NormalSigns,SideToElem
-USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face
-USE MOD_Mesh_Vars          ,ONLY: sJ_master,sJ_slave
-USE MOD_ChangeBasis        ,ONLY: ChangeBasis1D,ChangeBasis2D,ChangeBasis3D
-USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisSurf,ChangeBasisVolume
-USE MOD_Metrics            ,ONLY: SurfMetricsFromJa
-USE MOD_Interpolation      ,ONLY: GetVandermonde
-USE MOD_Interpolation_Vars ,ONLY: NodeType
-#if FV_RECONSTRUCT
-USE MOD_Mesh_Vars          ,ONLY: firstBCSide,lastBCSide,firstInnerSide,lastMPISide_MINE
-USE MOD_Mesh_Vars          ,ONLY: S2V2,ElemToSide,dXCL_N
-USE MOD_Interpolation      ,ONLY: GetNodesAndWeights
-USE MOD_Interpolation_Vars ,ONLY: NodeTypeCL,xGP,wGP,wBary
-#endif
-#if USE_MPI
-USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
-USE MOD_MPI_Vars           ,ONLY: nNbProcs
-USE MOD_Mesh_Vars          ,ONLY: firstMPISide_MINE
-#endif
-USE MOD_2D
-USE MOD_FillMortar1        ,ONLY: U_Mortar1
+USE MOD_Mesh_Vars          ,ONLY: nElems,nSides,lastMPISide_MINE
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                :: i,j,k,l,iSide,iElem,iLocSide
-INTEGER                                :: dd,NormalDir,TangDir
-REAL                                   :: NormalSign
-REAL                                   :: Vdm_Gauss_FVboundary(0:PP_N+1,0:PP_N)
-REAL                                   :: JaVol(3,3,0:PP_N+1,0:PP_N+1,0:PP_NZ+1)
-REAL                                   :: FV_Ja_Face(3,3,0:PP_N,0:PP_NZ)
-REAL,DIMENSION(0:PP_N,0:NgeoRef)       :: Vdm_NgeoRef_N,Vdm_NgeoRef_FV
-REAL                                   :: FV_DetJac(1,0:PP_N,0:PP_N,0:PP_NZ)
-INTEGER                                :: flip, SideID, iMortar
-#if FV_RECONSTRUCT
-INTEGER                                :: ijk(2),p,q,locSideID
-REAL                                   :: FV_dx_Face    (0:PP_N,0:PP_NZ,1:3)
-REAL                                   :: DG_dx_slave (1,0:PP_N,0:PP_NZ,1:nSides)
-REAL                                   :: DG_dx_master(1,0:PP_N,0:PP_NZ,1:nSides)
-REAL                                   :: tmp2(3,0:PP_N)
-REAL,DIMENSION(0:PP_N,0:PP_N)          :: Vdm_CLN_FV, Vdm_CLN_GaussN,length
-REAL,DIMENSION(3,0:PP_N,0:PP_N,0:PP_NZ):: FV_Path_XI, FV_Path_ETA, FV_Path_ZETA
-REAL                                   :: x0, xN
-REAL,POINTER                           :: FV_dx_P(:,:)
-#if USE_MPI
-INTEGER                                :: MPIRequest(nNbProcs,2)
-#endif
-#if PARABOLIC
-INTEGER                                :: d
-#endif
-#endif
-#if USE_MPI
-INTEGER                                :: MPIRequest_Geo(nNbProcs,2)
-REAL,ALLOCATABLE                       :: Geo(:,:,:,:)
-#endif
 !==================================================================================================================================
-SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') '  Build Metrics ...'
-
 #if FV_RECONSTRUCT
 ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! All the following distances are computed in PHYSICAL space, even so the variables are named in reference space notation.
@@ -193,6 +141,80 @@ ALLOCATE(FV_Metrics_hTilde_sJ(3,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 
 ALLOCATE(FV_Elems_master(1:nSides)) ! Moved from InitFV to here, since needed in U_Mortar below.
 
+END SUBROUTINE InitFV_Metrics
+
+!==================================================================================================================================
+!> Compute the remaining metric terms for FV subcells, that are not computed in metrics.f90.
+!> Normal, tangential vectors, SurfElems, ... for FV subcells.
+!==================================================================================================================================
+SUBROUTINE FV_CalcMetrics()
+! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_FV_Vars
+USE MOD_FV_Basis
+USE MOD_Mesh_Vars          ,ONLY: nElems,nSides,firstMPISide_YOUR,lastMPISide_YOUR
+USE MOD_Mesh_Vars          ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,sJ
+USE MOD_Mesh_Vars          ,ONLY: NGeoRef,DetJac_Ref,MortarType,MortarInfo
+USE MOD_Mesh_Vars          ,ONLY: NormalDirs,TangDirs,NormalSigns,SideToElem
+USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face
+USE MOD_Mesh_Vars          ,ONLY: sJ_master,sJ_slave
+USE MOD_ChangeBasis        ,ONLY: ChangeBasis1D,ChangeBasis2D,ChangeBasis3D
+USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisSurf,ChangeBasisVolume
+USE MOD_Metrics            ,ONLY: SurfMetricsFromJa
+USE MOD_Interpolation      ,ONLY: GetVandermonde
+USE MOD_Interpolation_Vars ,ONLY: NodeType
+#if FV_RECONSTRUCT
+USE MOD_Mesh_Vars          ,ONLY: firstBCSide,lastBCSide,firstInnerSide,lastMPISide_MINE
+USE MOD_Mesh_Vars          ,ONLY: S2V2,ElemToSide,dXCL_N
+USE MOD_Interpolation      ,ONLY: GetNodesAndWeights
+USE MOD_Interpolation_Vars ,ONLY: NodeTypeCL,xGP,wGP,wBary
+#endif
+#if USE_MPI
+USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
+USE MOD_MPI_Vars           ,ONLY: nNbProcs
+USE MOD_Mesh_Vars          ,ONLY: firstMPISide_MINE
+#endif
+USE MOD_2D
+USE MOD_FillMortar1        ,ONLY: U_Mortar1
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                                :: i,j,k,l,iSide,iElem,iLocSide
+INTEGER                                :: dd,NormalDir,TangDir
+REAL                                   :: NormalSign
+REAL                                   :: Vdm_Gauss_FVboundary(0:PP_N+1,0:PP_N)
+REAL                                   :: JaVol(3,3,0:PP_N+1,0:PP_N+1,0:PP_NZ+1)
+REAL                                   :: FV_Ja_Face(3,3,0:PP_N,0:PP_NZ)
+REAL,DIMENSION(0:PP_N,0:NgeoRef)       :: Vdm_NgeoRef_N,Vdm_NgeoRef_FV
+REAL                                   :: FV_DetJac(1,0:PP_N,0:PP_N,0:PP_NZ)
+INTEGER                                :: flip, SideID, iMortar
+#if FV_RECONSTRUCT
+INTEGER                                :: ijk(2),p,q,locSideID
+REAL                                   :: FV_dx_Face    (0:PP_N,0:PP_NZ,1:3)
+REAL                                   :: DG_dx_slave (1,0:PP_N,0:PP_NZ,1:nSides)
+REAL                                   :: DG_dx_master(1,0:PP_N,0:PP_NZ,1:nSides)
+REAL                                   :: tmp2(3,0:PP_N)
+REAL,DIMENSION(0:PP_N,0:PP_N)          :: Vdm_CLN_FV, Vdm_CLN_GaussN,length
+REAL,DIMENSION(3,0:PP_N,0:PP_N,0:PP_NZ):: FV_Path_XI, FV_Path_ETA, FV_Path_ZETA
+REAL                                   :: x0, xN
+REAL,POINTER                           :: FV_dx_P(:,:)
+#if USE_MPI
+INTEGER                                :: MPIRequest(nNbProcs,2)
+#endif
+#if PARABOLIC
+INTEGER                                :: d
+#endif
+#endif
+#if USE_MPI
+INTEGER                                :: MPIRequest_Geo(nNbProcs,2)
+REAL,ALLOCATABLE                       :: Geo(:,:,:,:)
+#endif
+!==================================================================================================================================
+SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') '  Build FV-Metrics ...'
+
 ! compute FV NormVec, TangVec,.. on boundary of DG-cells
 DO iSide=1,nSides
   IF(iSide.GE.firstMPISide_YOUR.AND.iSide.LE.lastMPISide_YOUR) CYCLE
@@ -238,7 +260,7 @@ Geo(8:10,:,:,:)=TangVec2(:,:,0:PP_NZ,1,firstMPISide_MINE:nSides)
 MPIRequest_Geo=MPI_REQUEST_NULL
 CALL StartReceiveMPIData(Geo,10*(PP_N+1)**(PP_dim-1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,RECV),SendID=1) ! Receive YOUR / Geo: master -> slave
 CALL StartSendMPIData(   Geo,10*(PP_N+1)**(PP_dim-1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,SEND),SendID=1) ! SEND MINE / Geo: master -> slave
-CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Geo) 
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Geo)
 SurfElem  (:,0:PP_NZ,1,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(1   ,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
 NormVec (:,:,0:PP_NZ,1,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(2:4 ,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
 TangVec1(:,:,0:PP_NZ,1,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(5:7 ,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
@@ -519,7 +541,7 @@ END DO
 
 SWRITE(UNIT_stdOut,'(A)')' Done !'
 
-END SUBROUTINE InitFV_Metrics
+END SUBROUTINE FV_CalcMetrics
 
 
 #if FV_RECONSTRUCT
