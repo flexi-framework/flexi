@@ -14,7 +14,7 @@ USE MOD_Unittest,           ONLY: ReadInReferenceElementData
 USE MOD_SurfIntCons,        ONLY: SurfIntCons
 ! Modules needed to read in reference element
 USE MOD_DG_Vars,            ONLY: L_HatPlus,L_HatMinus
-#if FV_ENABLED        
+#if FV_ENABLED
 USE MOD_FV_Vars,            ONLY: FV_w,FV_w_inv, FV_Elems, FV_Elems_master,FV_Elems_slave
 #endif
 IMPLICIT NONE
@@ -38,14 +38,24 @@ CHARACTER(LEN=255)             :: BinaryString,argument
 BinaryString='SurfInt_G3D.bin'
 #else
 BinaryString='SurfInt_G2D.bin'
-#endif
+#endif /*PP_dim*/
 #elif (PP_NodeType==2)
+#ifdef EXACT_MM
+#if PP_dim == 3
+BinaryString='SurfInt_GL3D_EMM.bin'
+#else
+BinaryString='SurfInt_GL2D_EMM.bin'
+#endif /*PP_dim*/
+#else
 #if PP_dim == 3
 BinaryString='SurfInt_GL3D.bin'
 #else
 BinaryString='SurfInt_GL2D.bin'
-#endif
-#endif
+#endif /*PP_dim*/
+#endif /*EXACT_MM*/
+#endif /*PP_NodeType*/
+
+WRITE(*,*) "Binary String: ",BinaryString
 
 ! Check for command line arguments to generate the reference solution
 nArgs=COMMAND_ARGUMENT_COUNT()
@@ -63,7 +73,7 @@ END IF
 
 IF (doGenerateFlux) THEN
   ! Generate a random flux
-  CALL RANDOM_NUMBER(Flux) 
+  CALL RANDOM_NUMBER(Flux)
   ! Save the calculated flux to a binary file for later input
   OPEN(UNIT = 10, STATUS='replace',FILE=TRIM(BinaryFluxString),FORM='unformatted')  ! replace an existing file or create a new one
   WRITE(10) Flux
@@ -85,7 +95,7 @@ ELSE
 END IF
 
 
-! Read in data from single curved element 
+! Read in data from single curved element
 CALL ReadInReferenceElementData()
 
 ! Initialize Ut
@@ -126,7 +136,7 @@ IF (doGenerateReference) THEN
 ELSE
   ! Check if binary results file exists
   INQUIRE(FILE=TRIM(BinaryString),EXIST=binaryExists)
-  
+
   IF (binaryExists) THEN
     ! Read the reference solution
     OPEN(UNIT = 10, STATUS='old',FILE=TRIM(BinaryString),FORM='unformatted')  ! open an existing file

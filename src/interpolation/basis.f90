@@ -72,6 +72,10 @@ INTERFACE LagrangeInterpolationPolys
    MODULE PROCEDURE LagrangeInterpolationPolys
 END INTERFACE
 
+INTERFACE PolynomialMassMatrix
+   MODULE PROCEDURE PolynomialMassMatrix
+END INTERFACE
+
 PUBLIC::BuildLegendreVdm
 PUBLIC::InitializeVandermonde
 PUBLIC::LegGaussLobNodesAndWeights
@@ -84,6 +88,7 @@ PUBLIC::LegendrePolynomialAndDerivative
 PUBLIC::PolynomialDerivativeMatrix
 PUBLIC::BarycentricWeights
 PUBLIC::LagrangeInterpolationPolys
+PUBLIC::PolynomialMassMatrix
 !==================================================================================================================================
 
 CONTAINS
@@ -749,5 +754,54 @@ DO iGP=0,N_in
 END DO
 END SUBROUTINE LagrangeInterpolationPolys
 
+!============================================================================================================================
+!> Computes the exact mass matrix for Gauss and Gauss-Lobatto nodes
+!> For details see paper 'Short note on the mass matrix for Gauss–Lobatto grid points' by Saul A.Teukolsky (JCP 2015)
+!============================================================================================================================
+SUBROUTINE PolynomialMassMatrix(N_in,xGP,wGP,M,Minv)
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)          :: N_in                 !< polynomial degree
+REAL,INTENT(IN)             :: xGP(0:N_in)          !< Gauss point positions for the reference interval [-1,1]
+REAL,INTENT(IN)             :: wGP(0:N_in)          !< Integration weights
+REAL,INTENT(OUT)            :: M(0:N_in,0:N_in)     !< mass Matrix
+REAL,INTENT(OUT)            :: Minv(0:N_in,0:N_in)  !< inverse mass Matrix
+!----------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+#ifdef EXACT_MM
+REAL               :: hN,gammaN,alpha,beta,pNi,pNider,pNj,pNjder,norm,dummy
+INTEGER            :: i,j
+#endif
+INTEGER            :: iMass
+!============================================================================================================================
+
+! prepare data structures
+M    = 0.
+Minv = 0.
+
+DO iMass=0,N_in
+  M(iMass,iMass)    = wGP(iMass)
+  Minv(iMass,iMass) = 1./wGP(iMass)
+END DO
+
+#if PP_NodeType == 2 && defined(EXACT_MM)
+hN = 2./(2.*N_in+1.)
+gammaN = 2./N_in
+
+CALL LegendrePolynomialAndDerivative(N_in,1.,norm,dummy)
+
+alpha =  (hN-gammaN)/(gammaN**2*norm**2)
+beta  = -(hN-gammaN)/(gammaN*hN*norm**2)
+
+DO i=0,N_in; DO j=0,N_in
+  CALL LegendrePolynomialAndDerivative(N_in,xGP(i),pNi,pNider)
+  CALL LegendrePolynomialAndDerivative(N_in,xGP(j),pNj,pNjder)
+  M(i,j)    = M(i,j)    + alpha*wGP(i)*wGP(j)*pNi*pNj
+  Minv(i,j) = Minv(i,j) + beta*pNi*pNj
+END DO; END DO
+#endif
+
+END SUBROUTINE PolynomialMassMatrix
 
 END MODULE MOD_Basis
