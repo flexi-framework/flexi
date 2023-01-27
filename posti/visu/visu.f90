@@ -65,7 +65,9 @@ USE MOD_StringTools    ,ONLY: STRICMP
 USE MOD_Restart        ,ONLY: InitRestartFile
 USE MOD_Restart_Vars   ,ONLY: RestartMode
 USE MOD_Visu_Vars      ,ONLY: FileType,VarNamesHDF5,nBCNamesAll,nVarIni,nVar_State
+! IMPLICIT VARIABLE HANDLINGs
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN)                       :: statefile
 CHARACTER(LEN=*)  ,INTENT(IN)                       :: meshfile
@@ -249,8 +251,10 @@ USE MOD_StringTools        ,ONLY: STRICMP,INTTOSTR
 USE MOD_ReadInTools        ,ONLY: prms,GETINT,GETLOGICAL,addStrListEntry,GETSTR,FinalizeParameters,CountOption
 USE MOD_Posti_Mappings     ,ONLY: Build_FV_DG_distribution,Build_mapDepToCalc_mapAllVarsToVisuVars
 USE MOD_Visu_Avg2D         ,ONLY: InitAverage2D,BuildVandermonds_Avg2D
-USE MOD_StringTools        ,ONLY: INTTOSTR
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN)    :: statefile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -437,25 +441,27 @@ SUBROUTINE visu(mpi_comm_IN, prmfile, postifile, statefile)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars
-USE MOD_MPI                 ,ONLY: InitMPI
 USE MOD_HDF5_Input          ,ONLY: ISVALIDMESHFILE,ISVALIDHDF5FILE,OpenDataFile,CloseDataFile
-USE MOD_Posti_ReadState     ,ONLY: ReadState
-USE MOD_Posti_VisuMesh      ,ONLY: VisualizeMesh
+USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeVISUFVEqui
+USE MOD_IO_HDF5             ,ONLY: InitMPIInfo
+USE MOD_MPI                 ,ONLY: InitMPI
 USE MOD_Posti_Calc          ,ONLY: CalcQuantities_DG,CalcSurfQuantities_DG
+USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG,ConvertToSurfVisu_DG,ConvertToVisu_GenericData
+USE MOD_Posti_ReadState     ,ONLY: ReadState
+USE MOD_Posti_Mappings      ,ONLY: Build_mapBCSides
+USE MOD_Posti_VisuMesh      ,ONLY: BuildVisuCoords,BuildSurfVisuCoords
+USE MOD_Posti_VisuMesh      ,ONLY: VisualizeMesh
+USE MOD_ReadInTools         ,ONLY: prms,FinalizeParameters,ExtractParameterFile,PrintDefaultParameterFile
+USE MOD_Restart_Vars        ,ONLY: RestartMode
+USE MOD_StringTools         ,ONLY: STRICMP,set_formatting,clear_formatting
+USE MOD_Visu_Avg2D          ,ONLY: Average2D,WriteAverageToHDF5
 #if FV_ENABLED
 USE MOD_Posti_Calc          ,ONLY: CalcQuantities_FV,CalcSurfQuantities_FV
 USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_FV,ConvertToSurfVisu_FV
-#endif
-USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG,ConvertToSurfVisu_DG,ConvertToVisu_GenericData
-USE MOD_ReadInTools         ,ONLY: prms,FinalizeParameters,ExtractParameterFile,PrintDefaultParameterFile
-USE MOD_StringTools         ,ONLY: STRICMP
-USE MOD_Posti_VisuMesh      ,ONLY: BuildVisuCoords,BuildSurfVisuCoords
-USE MOD_Posti_Mappings      ,ONLY: Build_mapBCSides
-USE MOD_Visu_Avg2D          ,ONLY: Average2D,WriteAverageToHDF5
-USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeVISUFVEqui
-USE MOD_IO_HDF5             ,ONLY: InitMPIInfo
-USE MOD_Restart_Vars        ,ONLY: RestartMode
+#endif /*FV_ENABLED*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)               :: mpi_comm_IN
 CHARACTER(LEN=255),INTENT(INOUT) :: prmfile
@@ -572,7 +578,7 @@ IF (doPrintHelp.GT.0) THEN
   STOP
 END IF
 
-SWRITE (*,*) "READING FROM: ", TRIM(statefile)
+SWRITE(UNIT_stdOut,'(A,A)') " READING FROM: ", TRIM(statefile)
 
 changedStateFile      = .FALSE.
 changedMeshFile       = .FALSE.
@@ -584,7 +590,7 @@ changedWithDGOperator = .FALSE.
 changedDGonly         = .FALSE.
 
 IF (ISVALIDMESHFILE(statefile)) THEN ! visualize mesh
-  SWRITE(*,*) "MeshFile Mode"
+  SWRITE(UNIT_stdOut,'(A3,A30,A3,A33,A13)')' | ','                   Mode ',' | ','Mesh',' | HDF5    |'
   MeshFileMode = .TRUE.
   MeshFile      = statefile
   nVar_State    = 0
@@ -593,7 +599,7 @@ IF (ISVALIDMESHFILE(statefile)) THEN ! visualize mesh
   CALL visu_getVarNamesAndFileType(MeshFile,'',VarNamesAll,BCNamesAll)
   CALL VisualizeMesh(postifile,MeshFile)
 ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
-  SWRITE(*,*) "State Mode"
+  SWRITE(UNIT_stdOut,'(A3,A30,A3,A33,A13)')' | ','                   Mode ',' | ','State',' | HDF5    |'
   MeshFileMode = .FALSE.
   ! initialize state file
   CALL visu_InitFile(statefile,postifile)
@@ -604,19 +610,37 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   ELSE
     changedPrmFile = (prmfile .NE. prmfile_old)
   END IF
-  SWRITE (*,*) "changedStateFile     ", changedStateFile
-  SWRITE (*,*) "changedMeshFile      ", changedMeshFile
-  SWRITE (*,*) "changedNVisu         ", changedNVisu
-  SWRITE (*,*) "changedNCalc         ", changedNCalc
-  SWRITE (*,*) "changedVarNames      ", changedVarNames
-  SWRITE (*,*) "changedFV_Elems      ", changedFV_Elems
-  SWRITE (*,*) "changedWithDGOperator", changedWithDGOperator
-  SWRITE (*,*) "changedDGonly        ", changedDGonly
-  SWRITE (*,*) "changedAvg2D         ", changedAvg2D
-  SWRITE (*,*) "changedPrmFile       ", changedPrmFile, TRIM(prmfile_old), " -> ", TRIM(prmfile)
-  SWRITE (*,*) "changedBCnames       ", changedBCnames
+
+  SWRITE(UNIT_StdOut,'(132("-"))')
+  SWRITE(UNIT_stdOut,'(A)') " DETECTING REQUIRED PARAMETERS..."
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | doSurfVisu              "
+  CALL set_formatting(MERGE("blue ","green",doSurfVisu))             ; SWRITE(UNIT_stdOut,'(L1)') doSurfVisu             ; CALL clear_formatting()
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedStateFile        "
+  CALL set_formatting(MERGE("blue ","green",changedStateFile))       ; SWRITE(UNIT_stdOut,'(L1)') changedStateFile       ; CALL clear_formatting()
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedMeshFile         "
+  CALL set_formatting(MERGE("blue ","green",changedMeshFile))        ; SWRITE(UNIT_stdOut,'(L1)') changedMeshFile        ; CALL clear_formatting()
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedNVisu            "
+  CALL set_formatting(MERGE("blue ","green",changedNVisu))           ; SWRITE(UNIT_stdOut,'(L1)') changedNVisu           ; CALL clear_formatting()
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedNCalc            "
+  CALL set_formatting(MERGE("blue ","green",changedNCalc))           ; SWRITE(UNIT_stdOut,'(L1)') changedNCalc           ; CALL clear_formatting()
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedVarNames         "
+  CALL set_formatting(MERGE("blue ","green",changedVarNames))        ; SWRITE(UNIT_stdOut,'(L1)') changedVarNames        ; CALL clear_formatting()
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedFV_Elems         "
+  CALL set_formatting(MERGE("blue ","green",changedFV_Elems))        ; SWRITE(UNIT_stdOut,'(L1)') changedFV_Elems        ; CALL clear_formatting()
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedWithDGOperator   "
+  CALL set_formatting(MERGE("blue ","green",changedWithDGOperator))  ; SWRITE(UNIT_stdOut,'(L1)') changedWithDGOperator  ; CALL clear_formatting()
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedDGonly           "
+  CALL set_formatting(MERGE("blue ","green",changedDGonly))          ; SWRITE(UNIT_stdOut,'(L1)') changedDGonly          ; CALL clear_formatting()
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedAvg2D            "
+  CALL set_formatting(MERGE("blue ","green",changedAvg2D))           ; SWRITE(UNIT_stdOut,'(L1)') changedAvg2D           ; CALL clear_formatting()
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedPrmFile          "
+  CALL set_formatting(MERGE("blue ","green",changedPrmFile))         ; SWRITE(UNIT_stdOut,'(L1)') changedPrmFile         ; CALL clear_formatting()
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedBCNames          "
+  CALL set_formatting(MERGE("blue ","green",changedBCNames))         ; SWRITE(UNIT_stdOut,'(L1)') changedBCNames         ; CALL clear_formatting()
+  SWRITE(UNIT_StdOut,'(132("-"))')
+
   IF (changedStateFile.OR.changedWithDGOperator.OR.changedPrmFile.OR.changedDGonly) THEN
-      CALL ReadState(prmfile,statefile)
+    CALL ReadState(prmfile,statefile)
   END IF
 
   ! build mappings of BC sides for surface visualization
@@ -690,19 +714,14 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
    END IF
 #endif
 
-
   ! Convert coordinates to visu grid
-  IF (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly.OR.changedAvg2D) THEN
+  IF (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly.OR.changedAvg2D) &
     CALL BuildVisuCoords()
-  END IF
-  IF (doSurfVisu) THEN
+
+  IF (doSurfVisu .AND. &
     ! Convert surface coordinates to visu grid
-    IF (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly.OR.changedBCnames) THEN
-      CALL BuildSurfVisuCoords()
-    END IF
-  END IF
-
-
+    (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly.OR.changedBCnames)) &
+    CALL BuildSurfVisuCoords()
 END IF
 
 MeshFile_old          = MeshFile
@@ -719,14 +738,16 @@ NState_old            = PP_N
 RestartMode           = -1
 
 SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(*,*) "Visu finished for state file: ", TRIM(statefile)
-SWRITE(UNIT_stdOut,'(132("="))')
+SWRITE(UNIT_stdOut,'(A,A)') " Visu finished for state file: ", TRIM(statefile)
+SWRITE(UNIT_stdOut,'(132("-"))')
+
 END SUBROUTINE visu
 
 !===================================================================================================================================
 !> Deallocate arrays used by visu.
 !===================================================================================================================================
 SUBROUTINE FinalizeVisu()
+! MODULES
 USE MOD_Globals
 USE MOD_Commandline_Arguments,ONLY: FinalizeCommandlineArguments
 USE MOD_DG                   ,ONLY: FinalizeDG
@@ -752,10 +773,14 @@ USE MOD_FV_Basis             ,ONLY: FinalizeFV_Basis
 #if USE_MPI
 USE MOD_MPI                  ,ONLY: FinalizeMPI
 #endif /* USE_MPI */
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL :: Time,SimulationTime,mins,secs,hours,days
 !===================================================================================================================================
-
-SWRITE (UNIT_stdOut,'(A)') 'VISU FINALIZE'
 
 IF(MPIRoot)THEN
   IF(FILEEXISTS('.posti.ini'))THEN
@@ -837,6 +862,25 @@ SDEALLOCATE(mapAllBCNamesToVisuBCNames_old)
 SDEALLOCATE(mapAllBCNamesToVisuBCNames)
 SDEALLOCATE(nSidesPerBCNameVisu_DG)
 SDEALLOCATE(nSidesPerBCNameVisu_FV)
+
+! Calculate simulation time
+Time = FLEXITIME()
+SimulationTime = Time-StartTime
+
+! Get secs, mins, hours and days
+secs = MOD(SimulationTime,60.)
+SimulationTime = SimulationTime / 60.
+mins = MOD(SimulationTime,60.)
+SimulationTime = SimulationTime / 60.
+hours = MOD(SimulationTime,24.)
+SimulationTime = SimulationTime / 24.
+!days = MOD(SimulationTime,365.) ! Use this if years are also to be displayed
+days = SimulationTime
+
+SWRITE(UNIT_stdOut,'(132("="))')
+SWRITE(UNIT_stdOut,'(A,F16.2,A)',ADVANCE='NO')  ' VISU  FINISHED! [',Time-StartTime,' sec ]'
+SWRITE(UNIT_stdOut,'(A2,I6,A1,I0.2,A1,I0.2,A1,I0.2,A1)') ' [',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),']'
+SWRITE(UNIT_stdOut,'(132("="))')
 
 #if USE_MPI
 CALL FinalizeMPI()
