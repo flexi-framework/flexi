@@ -267,6 +267,7 @@ USE MOD_MPI                 ,ONLY: StartExchange_FV_Elems
 USE MOD_FV_Vars             ,ONLY: gradUxi,gradUeta,gradUzeta
 #if PARABOLIC
 USE MOD_FV_Vars             ,ONLY: gradUxi_central,gradUeta_central,gradUzeta_central
+USE MOD_FV_Reconstruction   ,ONLY: FV_SurfCalcGradients_Parabolic
 #endif
 USE MOD_FV_Vars             ,ONLY: FV_surf_gradU,FV_multi_master,FV_multi_slave
 USE MOD_FV_ProlongToFace    ,ONLY: FV_ProlongToDGFace
@@ -516,6 +517,7 @@ CALL FinishExchangeMPIData(6*nNbProcs,MPIRequest_gradU) ! gradUx,y,z: slave -> m
 CALL FV_DGtoFV(PP_nVarLifting,gradUx_master,gradUx_slave)
 CALL FV_DGtoFV(PP_nVarLifting,gradUy_master,gradUy_slave)
 CALL FV_DGtoFV(PP_nVarLifting,gradUz_master,gradUz_slave)
+CALL FV_SurfCalcGradients_Parabolic()
 #endif
 
 CALL FV_DGtoFV(PP_nVar    ,U_master     ,U_slave     )

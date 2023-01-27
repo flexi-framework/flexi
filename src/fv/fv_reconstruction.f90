@@ -40,8 +40,17 @@ INTERFACE FV_SurfCalcGradients_BC
   MODULE PROCEDURE FV_SurfCalcGradients_BC
 END INTERFACE
 
+#if PARABOLIC
+INTERFACE FV_SurfCalcGradients_Parabolic
+  MODULE PROCEDURE FV_SurfCalcGradients_Parabolic
+END INTERFACE
+#endif
+
 PUBLIC::FV_PrepareSurfGradient
 PUBLIC::FV_SurfCalcGradients,FV_SurfCalcGradients_BC,FV_CalcGradients
+#if PARABOLIC
+PUBLIC::FV_SurfCalcGradients_Parabolic
+#endif
 #endif /* FV_RECONSTRUCT */
 !==================================================================================================================================
 
@@ -399,6 +408,16 @@ DO iElem=1,nElems
    END DO; END DO ! q, p
   END DO ! l
 #if PARABOLIC
+  CALL FV_CalcGradients_Parabolic(iElem,gradUxi_tmp,gradUeta_tmp &
+#if PP_dim==3
+                                       ,gradUzeta_tmp            &
+#endif
+                                 )
+  CALL FV_PrepareSurfGradient_Parabolic(iElem,gradUxi_tmp,gradUeta_tmp &
+#if PP_dim==3
+                                             ,gradUzeta_tmp            &
+#endif
+                                       )
   ! limit with central limiter for viscous fluxes
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     gradUxi_central  (:,i,j,k,iElem) = 0.5*(gradUxi_tmp  (PRIM_LIFT,j,k,i)+gradUxi_tmp  (PRIM_LIFT,j,k,i+1))
@@ -451,6 +470,456 @@ IF (flip.GT.0) THEN
 END IF
 END SUBROUTINE CopySurfaceToVolume
 
+#if PARABOLIC
+!==================================================================================================================================
+!> Calculate slopes across DG element interfaces (unlimited). Uses UPrim_master/UPrim_slave as well as
+!> FV_multi_master/FV_multi_slave. They are limited in the FV_ProlongToDGFace routine.
+!==================================================================================================================================
+SUBROUTINE FV_SurfCalcGradients_Parabolic()
+! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Lifting_Vars ,ONLY: gradUx_master,gradUx_slave,gradUy_master,gradUy_slave
+USE MOD_FV_Vars      ,ONLY: FV_Elems_Sum,FV_surf_gradU_master,FV_surf_gradU_slave
+!USE MOD_Mesh_Vars    ,ONLY: firstInnerSide,lastInnerSide,firstMPISide_MINE,lastMPISide_MINE
+USE MOD_Mesh_Vars    ,ONLY: nSides,NormVec,TangVec1,firstMortarInnerSide
+#if PP_dim==3
+USE MOD_Mesh_Vars    ,ONLY: TangVec2
+USE MOD_Lifting_Vars ,ONLY: gradUz_master,gradUz_slave
+#endif /* PP_dim==3 */
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER :: firstSideID,lastSideID,SideID,p,q
+!==================================================================================================================================
+
+!IF(doMPISides)THEN
+!  ! fill only flux for MINE MPISides
+!  firstSideID = firstMPISide_MINE
+!  lastSideID  = lastMPISide_MINE
+!ELSE
+!  ! fill only InnerSides
+!  firstSideID = firstInnerSide
+!  lastSideID  = lastInnerSide
+!END IF
+
+DO SideID = firstMortarInnerSide, nSides
+  SELECT CASE(FV_Elems_Sum(SideID))
+  CASE(0) ! both DG
+    CYCLE
+  CASE(1) ! master=FV, slave=DG
+    DO q=0,PP_NZ; DO p=0,PP_N
+#if PP_dim==3
+      gradUx_master(:,p,q,SideID) =0.5*(NormVec (1,p,q,1,SideID)*FV_surf_gradU_master(:,1,p,q,SideID)&
+                                       +TangVec1(1,p,q,1,SideID)*FV_surf_gradU_master(:,2,p,q,SideID)&
+                                       +TangVec2(1,p,q,1,SideID)*FV_surf_gradU_master(:,3,p,q,SideID)&
+                                       +gradUx_slave(:,p,q,SideID))
+      gradUy_master(:,p,q,SideID) =0.5*(NormVec (2,p,q,1,SideID)*FV_surf_gradU_master(:,1,p,q,SideID)&
+                                       +TangVec1(2,p,q,1,SideID)*FV_surf_gradU_master(:,2,p,q,SideID)&
+                                       +TangVec2(2,p,q,1,SideID)*FV_surf_gradU_master(:,3,p,q,SideID)&
+                                       +gradUy_slave(:,p,q,SideID))
+      gradUz_master(:,p,q,SideID) =0.5*(NormVec (3,p,q,1,SideID)*FV_surf_gradU_master(:,1,p,q,SideID)&
+                                       +TangVec1(3,p,q,1,SideID)*FV_surf_gradU_master(:,2,p,q,SideID)&
+                                       +TangVec2(3,p,q,1,SideID)*FV_surf_gradU_master(:,3,p,q,SideID)&
+                                       +gradUz_slave(:,p,q,SideID))
+#else
+      gradUx_master(:,p,q,SideID) =0.5*(NormVec (1,p,q,1,SideID)*FV_surf_gradU_master(:,1,p,q,SideID)&
+                                       +TangVec1(1,p,q,1,SideID)*FV_surf_gradU_master(:,2,p,q,SideID)&
+                                       +gradUx_slave(:,p,q,SideID))
+      gradUy_master(:,p,q,SideID) =0.5*(NormVec (2,p,q,1,SideID)*FV_surf_gradU_master(:,1,p,q,SideID)&
+                                       +TangVec1(2,p,q,1,SideID)*FV_surf_gradU_master(:,2,p,q,SideID)&
+                                       +gradUy_slave(:,p,q,SideID))
+#endif /* PP_dim==3 */
+    END DO; END DO ! p,q=0,PP_N
+  CASE(2) ! master=DG, slave=FV
+    DO q=0,PP_NZ; DO p=0,PP_N
+#if PP_dim==3
+      gradUx_master(:,p,q,SideID) =0.5*(NormVec (1,p,q,1,SideID)*FV_surf_gradU_slave(:,1,p,q,SideID)&
+                                       +TangVec1(1,p,q,1,SideID)*FV_surf_gradU_slave(:,2,p,q,SideID)&
+                                       +TangVec2(1,p,q,1,SideID)*FV_surf_gradU_slave(:,3,p,q,SideID)&
+                                       +gradUx_master(:,p,q,SideID))
+      gradUy_master(:,p,q,SideID) =0.5*(NormVec (2,p,q,1,SideID)*FV_surf_gradU_slave(:,1,p,q,SideID)&
+                                       +TangVec1(2,p,q,1,SideID)*FV_surf_gradU_slave(:,2,p,q,SideID)&
+                                       +TangVec2(2,p,q,1,SideID)*FV_surf_gradU_slave(:,3,p,q,SideID)&
+                                       +gradUy_master(:,p,q,SideID))
+      gradUz_master(:,p,q,SideID) =0.5*(NormVec (3,p,q,1,SideID)*FV_surf_gradU_slave(:,1,p,q,SideID)&
+                                       +TangVec1(3,p,q,1,SideID)*FV_surf_gradU_slave(:,2,p,q,SideID)&
+                                       +TangVec2(3,p,q,1,SideID)*FV_surf_gradU_slave(:,3,p,q,SideID)&
+                                       +gradUz_master(:,p,q,SideID))
+#else /* PP_dim==3 */
+      gradUx_master(:,p,q,SideID) =0.5*(NormVec (1,p,q,1,SideID)*FV_surf_gradU_slave(:,1,p,q,SideID)&
+                                       +TangVec1(1,p,q,1,SideID)*FV_surf_gradU_slave(:,2,p,q,SideID)&
+                                       +gradUx_master(:,p,q,SideID))
+      gradUy_master(:,p,q,SideID) =0.5*(NormVec (2,p,q,1,SideID)*FV_surf_gradU_slave(:,1,p,q,SideID)&
+                                       +TangVec1(2,p,q,1,SideID)*FV_surf_gradU_slave(:,2,p,q,SideID)&
+                                       +gradUy_master(:,p,q,SideID))
+#endif /* PP_dim==3 */
+    END DO; END DO ! p,q=0,PP_N
+  CASE(3) ! both FV
+    DO q=0,PP_NZ; DO p=0,PP_N
+#if PP_dim==3
+      gradUx_master(:,p,q,SideID) =NormVec (1,p,q,1,SideID)*0.5*(FV_surf_gradU_master(:,1,p,q,SideID) &
+                                                                +FV_surf_gradU_slave (:,1,p,q,SideID))&
+                                  +TangVec1(1,p,q,1,SideID)*0.5*(FV_surf_gradU_master(:,2,p,q,SideID) &
+                                                                +FV_surf_gradU_slave (:,2,p,q,SideID))&
+                                  +TangVec2(1,p,q,1,SideID)*0.5*(FV_surf_gradU_master(:,3,p,q,SideID) &
+                                                                +FV_surf_gradU_slave (:,3,p,q,SideID))
+      gradUy_master(:,p,q,SideID) =NormVec (2,p,q,1,SideID)*0.5*(FV_surf_gradU_master(:,1,p,q,SideID) &
+                                                                +FV_surf_gradU_slave (:,1,p,q,SideID))&
+                                  +TangVec1(2,p,q,1,SideID)*0.5*(FV_surf_gradU_master(:,2,p,q,SideID) &
+                                                                +FV_surf_gradU_slave (:,2,p,q,SideID))&
+                                  +TangVec2(2,p,q,1,SideID)*0.5*(FV_surf_gradU_master(:,3,p,q,SideID) &
+                                                                +FV_surf_gradU_slave (:,3,p,q,SideID))
+      gradUz_master(:,p,q,SideID) =NormVec (3,p,q,1,SideID)*0.5*(FV_surf_gradU_master(:,1,p,q,SideID) &
+                                                                +FV_surf_gradU_slave (:,1,p,q,SideID))&
+                                  +TangVec1(3,p,q,1,SideID)*0.5*(FV_surf_gradU_master(:,2,p,q,SideID) &
+                                                                +FV_surf_gradU_slave (:,2,p,q,SideID))&
+                                  +TangVec2(3,p,q,1,SideID)*0.5*(FV_surf_gradU_master(:,3,p,q,SideID) &
+                                                                +FV_surf_gradU_slave (:,3,p,q,SideID))
+#else /* PP_dim==3 */
+      gradUx_master(:,p,q,SideID) = NormVec(1,p,q,1,SideID)*0.5*(FV_surf_gradU_master(:,1,p,q,SideID) &
+                                                                +FV_surf_gradU_slave (:,1,p,q,SideID))&
+                                 + TangVec1(1,p,q,1,SideID)*0.5*(FV_surf_gradU_master(:,2,p,q,SideID) &
+                                                                +FV_surf_gradU_slave (:,2,p,q,SideID))
+      gradUy_master(:,p,q,SideID) = NormVec(2,p,q,1,SideID)*0.5*(FV_surf_gradU_master(:,1,p,q,SideID) &
+                                                                +FV_surf_gradU_slave (:,1,p,q,SideID))&
+                                 + TangVec1(2,p,q,1,SideID)*0.5*(FV_surf_gradU_master(:,2,p,q,SideID) &
+                                                                +FV_surf_gradU_slave (:,2,p,q,SideID))
+#endif /* PP_dim==3 */
+
+      END DO; END DO ! p,q=0,PP_N
+  CASE DEFAULT
+    CALL Abort(__STAMP__, "FV_Elems is not 0, 1, 2 or 3 somewhere!")
+  END SELECT
+  gradUx_slave(:,:,:,SideID) = gradUx_master(:,:,:,SideID)
+  gradUy_slave(:,:,:,SideID) = gradUy_master(:,:,:,SideID)
+#if PP_dim==3
+  gradUz_slave(:,:,:,SideID) = gradUz_master(:,:,:,SideID)
+#endif /* PP_dim==3 */
+END DO ! SideID = 1, nSides
+END SUBROUTINE FV_SurfCalcGradients_Parabolic
+
+!==================================================================================================================================
+!> Calculate gradients used for the viscous fluxes on faces
+!==================================================================================================================================
+SUBROUTINE FV_CalcGradients_Parabolic(iElem,gradUxi_tmp,gradUeta_tmp  &
+#if PP_dim==3
+                                           ,gradUzeta_tmp             &
+#endif
+                                     )
+  ! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_FV_Vars  ,ONLY: FV_Metrics_fTilde_sJ_xi,FV_Metrics_gTilde_sJ_xi
+USE MOD_FV_Vars  ,ONLY: FV_Metrics_fTilde_sJ_eta,FV_Metrics_gTilde_sJ_eta
+USE MOD_FV_Vars  ,ONLY: gradUx_xi  ,gradUy_xi
+USE MOD_FV_Vars  ,ONLY: gradUx_eta ,gradUy_eta
+#if (PP_dim==3)
+USE MOD_FV_Vars  ,ONLY: FV_Metrics_fTilde_sJ_zeta,FV_Metrics_gTilde_sJ_zeta
+USE MOD_FV_Vars  ,ONLY: FV_Metrics_hTilde_sJ_xi
+USE MOD_FV_Vars  ,ONLY: FV_Metrics_hTilde_sJ_eta
+USE MOD_FV_Vars  ,ONLY: FV_Metrics_hTilde_sJ_zeta
+USE MOD_FV_Vars  ,ONLY: gradUx_zeta ,gradUy_zeta ,gradUz_zeta,gradUz_xi,gradUz_eta
+#endif
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN)  :: iElem
+REAL,INTENT(IN)     :: gradUxi_tmp  (PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N+1)
+REAL,INTENT(IN)     :: gradUeta_tmp (PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N+1)
+#if PP_dim==3
+REAL,INTENT(IN)     :: gradUzeta_tmp(PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N+1)
+#endif
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER :: i,j,k
+REAL    :: gradUxi_central_face_xi    (PP_nVarLifting,0:PP_N-1,0:PP_N  ,0:PP_NZ  )
+REAL    :: gradUxi_central_face_eta   (PP_nVarLifting,0:PP_N  ,0:PP_N-1,0:PP_NZ  )
+REAL    :: gradUeta_central_face_xi   (PP_nVarLifting,0:PP_N-1,0:PP_N  ,0:PP_NZ  )
+REAL    :: gradUeta_central_face_eta  (PP_nVarLifting,0:PP_N  ,0:PP_N-1,0:PP_NZ  )
+REAL    :: gradUxi_central_face       (PP_nVarLifting,0:PP_N+1,0:PP_N  ,0:PP_NZ  )
+REAL    :: gradUeta_central_face      (PP_nVarLifting,0:PP_N  ,0:PP_N+1,0:PP_NZ  )
+#if (PP_dim==3)
+REAL    :: gradUxi_central_face_zeta  (PP_nVarLifting,0:PP_N  ,0:PP_N  ,0:PP_NZ-1)
+REAL    :: gradUeta_central_face_zeta (PP_nVarLifting,0:PP_N  ,0:PP_N  ,0:PP_NZ-1)
+REAL    :: gradUzeta_central_face_xi  (PP_nVarLifting,0:PP_N-1,0:PP_N  ,0:PP_NZ  )
+REAL    :: gradUzeta_central_face_eta (PP_nVarLifting,0:PP_N  ,0:PP_N-1,0:PP_NZ  )
+REAL    :: gradUzeta_central_face_zeta(PP_nVarLifting,0:PP_N  ,0:PP_N  ,0:PP_NZ-1)
+REAL    :: gradUzeta_central_face     (PP_nVarLifting,0:PP_N  ,0:PP_N  ,0:PP_NZ+1)
+#endif
+!==================================================================================================================================
+! NOTE: Main steps:
+! 1. map gradients form GRAD to PRIM to LIFT on faces for viscous fluxes
+! 2. Calculate the gradients in xi-, eta-, zeta-direction on all FV inner sides via aritmetic mean of four neighbour cells
+!    (use the "unlimited" central gradients and not the "limited" gradients)
+! 3. Calculate the gradients in x-,  y- ,  z-   direction on all FV inner sides with corresponding FV-metrics
+!----------------------------------------------------------------------------------------------------------------------------------
+
+! 1. map gradients on faces for viscous fluxes
+DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N+1
+  gradUxi_central_face(:,i,j,k)   = gradUxi_tmp(PRIM_LIFT,j,k,i)
+END DO; END DO; END DO! i,j,k=0,PP_N
+DO k=0,PP_NZ; DO j=0,PP_N+1; DO i=0,PP_N
+  gradUeta_central_face(:,i,j,k)  = gradUeta_tmp(PRIM_LIFT,i,k,j)
+END DO; END DO; END DO! i,j,k=0,PP_N
+#if PP_dim == 3
+DO k=0,PP_NZ+1; DO j=0,PP_N; DO i=0,PP_N
+  gradUzeta_central_face(:,i,j,k) = gradUzeta_tmp(PRIM_LIFT,i,j,k)
+END DO; END DO; END DO! i,j,k=0,PP_N
+#endif
+
+! 2. Calculate the gradients in xi-, eta-, zeta-direction on all FV inner sides via aritmetic mean of four neighbour cells
+DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N-1
+  gradUxi_central_face_xi(:,i,j,k)    = gradUxi_central_face(:,i+1,j,k)
+END DO; END DO; END DO
+
+DO k=0,PP_NZ; DO j=0,PP_N-1; DO i=0,PP_N
+  gradUeta_central_face_eta(:,i,j,k)  = gradUeta_central_face(:,i,j+1,k)
+END DO; END DO; END DO
+
+#if (PP_dim==3)
+DO k=0,PP_NZ-1; DO j=0,PP_N; DO i=0,PP_N
+  gradUzeta_central_face_zeta(:,i,j,k)= gradUzeta_central_face(:,i,j,k+1)
+END DO; END DO; END DO
+#endif
+
+DO k=0,PP_NZ; DO j=0,PP_N-1; DO i=0,PP_N
+  gradUxi_central_face_eta(:,i,j,k)   = 0.25*(gradUxi_central_face(:,i  ,j  ,k  ) + &
+                                              gradUxi_central_face(:,i+1,j  ,k  ) + &
+                                              gradUxi_central_face(:,i  ,j+1,k  ) + &
+                                              gradUxi_central_face(:,i+1,j+1,k  ))
+END DO; END DO; END DO
+
+DO k=0,PP_NZ; DO j=0,PP_N  ; DO i=0,PP_N-1
+  gradUeta_central_face_xi(:,i,j,k)   = 0.25*(gradUeta_central_face(:,i  ,j  ,k  ) + &
+                                              gradUeta_central_face(:,i+1,j  ,k  ) + &
+                                              gradUeta_central_face(:,i  ,j+1,k  ) + &
+                                              gradUeta_central_face(:,i+1,j+1,k  ))
+END DO; END DO; END DO
+
+#if (PP_dim==3)
+DO k=0,PP_NZ-1; DO j=0,PP_N; DO i=0,PP_N
+  gradUxi_central_face_zeta(:,i,j,k)  = 0.25*(gradUxi_central_face(:,i  ,j  ,k  ) + &
+                                              gradUxi_central_face(:,i+1,j  ,k  ) + &
+                                              gradUxi_central_face(:,i  ,j  ,k+1) + &
+                                              gradUxi_central_face(:,i+1,j  ,k+1))
+END DO; END DO; END DO
+
+DO k=0,PP_NZ-1  ; DO j=0,PP_N; DO i=0,PP_N
+  gradUeta_central_face_zeta(:,i,j,k) = 0.25*(gradUeta_central_face(:,i  ,j  ,k  ) + &
+                                              gradUeta_central_face(:,i  ,j  ,k+1) + &
+                                              gradUeta_central_face(:,i  ,j+1,k  ) + &
+                                              gradUeta_central_face(:,i  ,j+1,k+1))
+END DO; END DO; END DO
+
+DO k=0,PP_NZ; DO j=0,PP_N  ; DO i=0,PP_N-1
+  gradUzeta_central_face_xi(:,i,j,k)  = 0.25*(gradUzeta_central_face(:,i  ,j  ,k  ) + &
+                                              gradUzeta_central_face(:,i+1,j  ,k  ) + &
+                                              gradUzeta_central_face(:,i  ,j  ,k+1) + &
+                                              gradUzeta_central_face(:,i+1,j  ,k+1))
+END DO; END DO; END DO
+
+DO k=0,PP_NZ  ; DO j=0,PP_N-1; DO i=0,PP_N
+  gradUzeta_central_face_eta(:,i,j,k) = 0.25*(gradUzeta_central_face(:,i  ,j  ,k  ) + &
+                                              gradUzeta_central_face(:,i  ,j  ,k+1) + &
+                                              gradUzeta_central_face(:,i  ,j+1,k  ) + &
+                                              gradUzeta_central_face(:,i  ,j+1,k+1))
+END DO; END DO; END DO
+#endif
+
+! 3. Calculate the gradients in x-, y-, z-direction on all FV inner sides with corresponding FV-metrics
+DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N-1
+#if (PP_dim==3)
+  gradUx_xi(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_xi(1,i,j,k,iElem)*gradUxi_central_face_xi  (:,i,j,k) &
+                           + FV_Metrics_gTilde_sJ_xi(1,i,j,k,iElem)*gradUeta_central_face_xi (:,i,j,k) &
+                           + FV_Metrics_hTilde_sJ_xi(1,i,j,k,iElem)*gradUzeta_central_face_xi(:,i,j,k)
+  gradUy_xi(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_xi(2,i,j,k,iElem)*gradUxi_central_face_xi  (:,i,j,k) &
+                           + FV_Metrics_gTilde_sJ_xi(2,i,j,k,iElem)*gradUeta_central_face_xi (:,i,j,k) &
+                           + FV_Metrics_hTilde_sJ_xi(2,i,j,k,iElem)*gradUzeta_central_face_xi(:,i,j,k)
+  gradUz_xi(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_xi(3,i,j,k,iElem)*gradUxi_central_face_xi  (:,i,j,k) &
+                           + FV_Metrics_gTilde_sJ_xi(3,i,j,k,iElem)*gradUeta_central_face_xi (:,i,j,k) &
+                           + FV_Metrics_hTilde_sJ_xi(3,i,j,k,iElem)*gradUzeta_central_face_xi(:,i,j,k)
+#else
+  gradUx_xi(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_xi(1,i,j,k,iElem)*gradUxi_central_face_xi  (:,i,j,k) &
+                           + FV_Metrics_gTilde_sJ_xi(1,i,j,k,iElem)*gradUeta_central_face_xi (:,i,j,k)
+  gradUy_xi(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_xi(2,i,j,k,iElem)*gradUxi_central_face_xi  (:,i,j,k) &
+                           + FV_Metrics_gTilde_sJ_xi(2,i,j,k,iElem)*gradUeta_central_face_xi (:,i,j,k)
+#endif
+END DO; END DO; END DO! i,j,k=0,PP_N
+
+DO k=0,PP_NZ; DO j=0,PP_N-1; DO i=0,PP_N
+#if (PP_dim==3)
+  gradUx_eta(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_eta(1,i,j,k,iElem)*gradUxi_central_face_eta  (:,i,j,k) &
+                            + FV_Metrics_gTilde_sJ_eta(1,i,j,k,iElem)*gradUeta_central_face_eta (:,i,j,k) &
+                            + FV_Metrics_hTilde_sJ_eta(1,i,j,k,iElem)*gradUzeta_central_face_eta(:,i,j,k)
+  gradUy_eta(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_eta(2,i,j,k,iElem)*gradUxi_central_face_eta  (:,i,j,k) &
+                            + FV_Metrics_gTilde_sJ_eta(2,i,j,k,iElem)*gradUeta_central_face_eta (:,i,j,k) &
+                            + FV_Metrics_hTilde_sJ_eta(2,i,j,k,iElem)*gradUzeta_central_face_eta(:,i,j,k)
+  gradUz_eta(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_eta(3,i,j,k,iElem)*gradUxi_central_face_eta  (:,i,j,k) &
+                            + FV_Metrics_gTilde_sJ_eta(3,i,j,k,iElem)*gradUeta_central_face_eta (:,i,j,k) &
+                            + FV_Metrics_hTilde_sJ_eta(3,i,j,k,iElem)*gradUzeta_central_face_eta(:,i,j,k)
+#else
+  gradUx_eta(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_eta(1,i,j,k,iElem)*gradUxi_central_face_eta  (:,i,j,k) &
+                            + FV_Metrics_gTilde_sJ_eta(1,i,j,k,iElem)*gradUeta_central_face_eta (:,i,j,k)
+  gradUy_eta(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_eta(2,i,j,k,iElem)*gradUxi_central_face_eta  (:,i,j,k) &
+                            + FV_Metrics_gTilde_sJ_eta(2,i,j,k,iElem)*gradUeta_central_face_eta (:,i,j,k)
+#endif
+END DO; END DO; END DO! i,j,k=0,PP_N
+
+#if (PP_dim==3)
+DO k=0,PP_NZ-1; DO j=0,PP_N; DO i=0,PP_N
+  gradUx_zeta(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_zeta(1,i,j,k,iElem)*gradUxi_central_face_zeta  (:,i,j,k) &
+                             + FV_Metrics_gTilde_sJ_zeta(1,i,j,k,iElem)*gradUeta_central_face_zeta (:,i,j,k) &
+                             + FV_Metrics_hTilde_sJ_zeta(1,i,j,k,iElem)*gradUzeta_central_face_zeta(:,i,j,k)
+  gradUy_zeta(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_zeta(2,i,j,k,iElem)*gradUxi_central_face_zeta  (:,i,j,k) &
+                             + FV_Metrics_gTilde_sJ_zeta(2,i,j,k,iElem)*gradUeta_central_face_zeta (:,i,j,k) &
+                             + FV_Metrics_hTilde_sJ_zeta(2,i,j,k,iElem)*gradUzeta_central_face_zeta(:,i,j,k)
+  gradUz_zeta(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_zeta(3,i,j,k,iElem)*gradUxi_central_face_zeta  (:,i,j,k) &
+                             + FV_Metrics_gTilde_sJ_zeta(3,i,j,k,iElem)*gradUeta_central_face_zeta (:,i,j,k) &
+                             + FV_Metrics_hTilde_sJ_zeta(3,i,j,k,iElem)*gradUzeta_central_face_zeta(:,i,j,k)
+END DO; END DO; END DO! i,j,k=0,PP_N
+#endif
+
+END SUBROUTINE FV_CalcGradients_Parabolic
+
+!==================================================================================================================================
+!> Calculate gradients used for the viscous fluxes on faces
+!==================================================================================================================================
+SUBROUTINE FV_PrepareSurfGradient_Parabolic(iElem,gradUxi_tmp,gradUeta_tmp  &
+#if PP_dim==3
+                                           ,gradUzeta_tmp             &
+#endif
+                                     )
+  ! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_FV_Vars  ,ONLY: FV_Metrics_fTilde_sJ_xi,FV_Metrics_gTilde_sJ_xi
+USE MOD_FV_Vars  ,ONLY: FV_Metrics_fTilde_sJ_eta,FV_Metrics_gTilde_sJ_eta
+USE MOD_FV_Vars  ,ONLY: gradUx_xi  ,gradUy_xi
+USE MOD_FV_Vars  ,ONLY: gradUx_eta ,gradUy_eta
+#if (PP_dim==3)
+USE MOD_FV_Vars  ,ONLY: FV_Metrics_fTilde_sJ_zeta,FV_Metrics_gTilde_sJ_zeta
+USE MOD_FV_Vars  ,ONLY: FV_Metrics_hTilde_sJ_xi
+USE MOD_FV_Vars  ,ONLY: FV_Metrics_hTilde_sJ_eta
+USE MOD_FV_Vars  ,ONLY: FV_Metrics_hTilde_sJ_zeta
+USE MOD_FV_Vars  ,ONLY: gradUx_zeta ,gradUy_zeta ,gradUz_zeta,gradUz_xi,gradUz_eta
+USE MOD_FV_Vars   ,ONLY: FV_Metrics_TangVec2_slave,FV_Metrics_TangVec2_master
+#endif
+USE MOD_FV_Vars   ,ONLY: FV_Metrics_NormVec_slave,FV_Metrics_TangVec1_slave
+USE MOD_FV_Vars   ,ONLY: FV_Metrics_NormVec_master,FV_Metrics_TangVec1_master
+USE MOD_FV_Vars   ,ONLY: FV_surf_gradU_master,FV_surf_gradU_slave
+#if PARABOLIC
+USE MOD_Mesh_Vars          ,ONLY: ElemToSide,S2V
+#endif /* PARABOLIC */
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN)  :: iElem
+REAL,INTENT(IN)     :: gradUxi_tmp  (PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N+1)
+REAL,INTENT(IN)     :: gradUeta_tmp (PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N+1)
+#if PP_dim==3
+REAL,INTENT(IN)     :: gradUzeta_tmp(PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N+1)
+#endif
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER           :: locSideID,SideID,p,q,flip,ijk(3)
+REAL              :: gradMapPrim_XI(PP_nVarPrim),gradMapPrim_ETA(PP_nVarPrim)
+#if PP_dim==3
+REAL              :: gradMapPrim_Zeta(PP_nVarPrim)
+#endif /* PP_dim==3 */
+!==================================================================================================================================
+! NOTE: Main steps:
+! 1. map gradients form GRAD to PRIM to LIFT on faces for viscous fluxes
+! 2. Calculate the gradients in xi-, eta-, zeta-direction on all FV inner sides via aritmetic mean of four neighbour cells
+!    (use the "unlimited" central gradients and not the "limited" gradients)
+! 3. Calculate the gradients in x-,  y- ,  z-   direction on all FV inner sides with corresponding FV-metrics
+!----------------------------------------------------------------------------------------------------------------------------------
+#if PP_dim==3
+DO locSideID = 1, 6
+#else
+DO locSideID = 2, 5
+#endif /* PP_dim==3 */
+  SideID = ElemToSide(E2S_SIDE_ID,locSideID,iElem)
+  flip   = ElemToSide(E2S_FLIP   ,locSideID,iElem)
+  DO q=0,PP_NZ; DO p=0,PP_N
+    ijk = S2V(:,0,p,q,flip,locSideID)
+    SELECT CASE (locSideID)
+      CASE(XI_MINUS, XI_PLUS)
+        IF (locSideID .EQ. XI_MINUS) THEN
+          gradMapPrim_Xi = gradUxi_tmp(:,ijk(2),ijk(3),ijk(1))
+        ELSE
+          gradMapPrim_Xi = gradUxi_tmp(:,ijk(2),ijk(3),ijk(1)+1)
+        END IF
+        gradMapPrim_Eta  = 0.5*(gradUeta_tmp(:,ijk(1),ijk(3),ijk(2))+gradUeta_tmp(:,ijk(1),ijk(3),ijk(2)+1))
+#if PP_dim==3
+        gradMapPrim_Zeta = 0.5*(gradUzeta_tmp(:,ijk(1),ijk(2),ijk(3))+gradUzeta_tmp(:,ijk(1),ijk(2),ijk(3)+1))
+#endif /* PP_dim==3 */
+      CASE(ETA_MINUS, ETA_PLUS)
+        gradMapPrim_Xi   = 0.5*(gradUxi_tmp(:,ijk(2),ijk(3),ijk(1))+gradUxi_tmp(:,ijk(2),ijk(3),ijk(1)+1))
+        IF (locSideID .EQ. ETA_MINUS) THEN
+          gradMapPrim_Eta = gradUeta_tmp(:,ijk(1),ijk(3),ijk(2))
+        ELSE
+          gradMapPrim_Eta = gradUeta_tmp(:,ijk(1),ijk(3),ijk(2)+1)
+        END IF
+#if PP_dim==3
+        gradMapPrim_Zeta = 0.5*(gradUzeta_tmp(:,ijk(1),ijk(2),ijk(3))+gradUzeta_tmp(:,ijk(1),ijk(2),ijk(3)+1))
+#endif /* PP_dim==3 */
+#if PP_dim==3
+      CASE(ZETA_MINUS, ZETA_PLUS)
+        gradMapPrim_Xi   = 0.5*(gradUxi_tmp(:,ijk(2),ijk(3),ijk(1))+gradUxi_tmp(:,ijk(2),ijk(3),ijk(1)+1))
+        gradMapPrim_Eta  = 0.5*(gradUeta_tmp(:,ijk(1),ijk(3),ijk(2))+gradUeta_tmp(:,ijk(1),ijk(3),ijk(2)+1))
+        IF (locSideID .EQ. ETA_MINUS) THEN
+          gradMapPrim_Zeta = gradUeta_tmp(:,ijk(1),ijk(2),ijk(3))
+        ELSE
+          gradMapPrim_Zeta = gradUeta_tmp(:,ijk(1),ijk(2),ijk(3)+1)
+        END IF
+#endif /* PP_dim==3 */
+    END SELECT
+    ! Rotate from element local xi/eta/zeta sytem to normal system of master side
+    IF (flip.EQ.0) THEN
+      FV_surf_gradU_master (:,1,p,q,SideID)= FV_Metrics_NormVec_master (1,p,q,SideID)*gradMapPrim_XI (:)&
+                                          + FV_Metrics_NormVec_master (2,p,q,SideID)*gradMapPrim_ETA(:)
+
+      FV_surf_gradU_master (:,2,p,q,SideID)= FV_Metrics_TangVec1_master(1,p,q,SideID)*gradMapPrim_XI (:)&
+                                          + FV_Metrics_TangVec1_master(2,p,q,SideID)*gradMapPrim_ETA(:)
+#if PP_dim==3
+      FV_surf_gradU_master (:,1,p,q,SideID)= FV_surf_gradU_master (PRIM_LIFT,1,p,q,SideID) &
+                                          + FV_Metrics_NormVec_master(3,p,q,SideID)*gradMapPrim_ZETA(:)
+
+      FV_surf_gradU_master (:,2,p,q,SideID)= FV_surf_gradU_master (PRIM_LIFT,2,p,q,SideID) &
+                                          + FV_Metrics_TangVec1_master(3,p,q,SideID)*gradMapPrim_ZETA(:)
+
+      FV_surf_gradU_master (:,3,p,q,SideID)= FV_Metrics_TangVec2_master(1,p,q,SideID)*gradMapPrim_XI  (:)&
+                                                   + FV_Metrics_TangVec2_master(2,p,q,SideID)*gradMapPrim_ETA (:)&
+                                                   + FV_Metrics_TangVec2_master(3,p,q,SideID)*gradMapPrim_ZETA(:)
+#endif /* PP_dim==3 */
+    ELSE
+      FV_surf_gradU_slave (:,1,p,q,SideID)= FV_Metrics_NormVec_slave (1,p,q,SideID)*gradMapPrim_XI  (:)&
+                                                  + FV_Metrics_NormVec_slave (2,p,q,SideID)*gradMapPrim_ETA (:)
+      FV_surf_gradU_slave (:,2,p,q,SideID)= FV_Metrics_TangVec1_slave(1,p,q,SideID)*gradMapPrim_XI  (:)&
+                                                  + FV_Metrics_TangVec1_slave(2,p,q,SideID)*gradMapPrim_ETA (:)
+#if PP_dim==3
+      FV_surf_gradU_slave (:,1,p,q,SideID)= FV_surf_gradU_slave (PRIM_LIFT,1,p,q,SideID) &
+                                                  + FV_Metrics_NormVec_slave(3,p,q,SideID)*gradMapPrim_ZETA (:)
+
+      FV_surf_gradU_slave (:,2,p,q,SideID)= FV_surf_gradU_slave (PRIM_LIFT,2,p,q,SideID) &
+                                                  + FV_Metrics_TangVec1_slave(3,p,q,SideID)*gradMapPrim_ZETA(:)
+
+      FV_surf_gradU_slave (:,3,p,q,SideID)= FV_Metrics_TangVec2_slave(1,p,q,SideID)*gradMapPrim_XI  (:)&
+                                          + FV_Metrics_TangVec2_slave(2,p,q,SideID)*gradMapPrim_ETA (:)&
+                                          + FV_Metrics_TangVec2_slave(3,p,q,SideID)*gradMapPrim_ZETA(:)
+#endif /* PP_dim==3 */
+    END IF ! flip
+  END DO; END DO ! q,p = 0, PP_N
+END DO ! locSide
+
+END SUBROUTINE FV_PrepareSurfGradient_Parabolic
+#endif /* PARABOLIC */
 #endif /* FV_RECONSTRUCT */
 
 

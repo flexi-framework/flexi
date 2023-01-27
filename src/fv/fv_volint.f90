@@ -61,19 +61,25 @@ REAL,INTENT(INOUT) :: Ut(   PP_nVar    ,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)  !< time
                                                                          !< for FV elements
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                       :: i,j,k,p,q,iElem
-REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_NZ)    :: UPrim_L,UPrim_R
-REAL,DIMENSION(PP_nVar    ,0:PP_N,0:PP_NZ)    :: UCons_L,UCons_R
+INTEGER                                         :: i,j,k,p,q,iElem
+REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_NZ)      :: UPrim_L,UPrim_R
+REAL,DIMENSION(PP_nVar    ,0:PP_N,0:PP_NZ)      :: UCons_L,UCons_R
 #if VOLINT_VISC
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ,0:PP_N) :: diffFlux_x,diffFlux_y
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ,0:PP_N-1) :: diffFlux_x,diffFlux_y
+REAL,DIMENSION(PP_nVar,0:PP_N-1,0:PP_N,0:PP_NZ) :: f_xi,g_xi,h_xi
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N-1,0:PP_NZ) :: f_eta,g_eta,h_eta
+REAL                                            :: UPrim_xi  (PP_nVarPrim,0:PP_N-1,0:PP_N  ,0:PP_NZ  )
+REAL                                            :: UPrim_eta (PP_nVarPrim,0:PP_N  ,0:PP_N-1,0:PP_NZ  )
 #if PP_dim == 3
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ,0:PP_N) :: diffFlux_z
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ,0:PP_N-1) :: diffFlux_z
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ-1) :: f_zeta,g_zeta,h_zeta
+REAL                                            :: UPrim_zeta(PP_nVarPrim,0:PP_N  ,0:PP_N  ,0:PP_NZ-1)
 #endif /*PP_dim == 3*/
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ)        :: Fvisc_FV
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: f,g,h      !< viscous volume fluxes at GP
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ)          :: Fvisc_FV
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: f,g,h      !< viscous volume fluxes at GP
 #endif
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ)        :: F_FV
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: Ut_FV
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ)          :: F_FV
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: Ut_FV
 !==================================================================================================================================
 
 ! This routine works as follows:
@@ -97,17 +103,28 @@ DO iElem=1,nElems
 
 #if VOLINT_VISC
   ! 0. Eval viscous flux for all sub-cells
-  CALL EvalDiffFlux3D(UPrim(:,:,:,:,iElem), gradUx(:,:,:,:,iElem), gradUy(:,:,:,:,iElem), gradUz(:,:,:,:,iElem),f,g,h,iElem)
+  ! 0.1 Calculate mean states on the FV element faces
+  UPrim_xi   = 0.5*(UPrim(:,0:PP_N-1,:,:,iElem)+UPrim(:,1:PP_N,:,:,iElem))
+  UPrim_eta  = 0.5*(UPrim(:,:,0:PP_N-1,:,iElem)+UPrim(:,:,1:PP_N,:,iElem))
+#if (PP_dim==3)
+  UPrim_zeta = 0.5*(UPrim(:,:,:,0:PP_NZ-1,iElem)+UPrim(:,:,:,1:PP_NZ,iElem))
 #endif
+  ! 0.2 Calculate the viscous fluxes on all inner faces, here three times: xi-faces, eta-faces, zeta-faces
+  CALL EvalDiffFlux3D(UPrim_xi  ,gradUx_xi  (:,:,:,:,iElem),gradUy_xi  (:,:,:,:,iElem),gradUz_xi  (:,:,:,:,iElem),f_xi  ,g_xi  ,h_xi  ,iElem,PP_N-1,PP_N  ,PP_NZ  )
+  CALL EvalDiffFlux3D(UPrim_eta ,gradUx_eta (:,:,:,:,iElem),gradUy_eta (:,:,:,:,iElem),gradUz_eta (:,:,:,:,iElem),f_eta ,g_eta ,h_eta ,iElem,PP_N  ,PP_N-1,PP_NZ  )
+#if PP_dim==3
+  CALL EvalDiffFlux3D(UPrim_zeta,gradUx_zeta(:,:,:,:,iElem),gradUy_zeta(:,:,:,:,iElem),gradUz_zeta(:,:,:,:,iElem),f_zeta,g_zeta,h_zeta,iElem,PP_N  ,PP_N  ,PP_NZ-1)
+#endif
+#endif /*VOLINT_VISC*/
 
   ! === Xi-Direction ============
 #if VOLINT_VISC
   ! 1. copy viscous fluxes to temporary array (for performance)
-  DO i=0,PP_N
-    diffFlux_x(:,:,:,i) = f(:,i,:,:)
-    diffFlux_y(:,:,:,i) = g(:,i,:,:)
+  DO i=0,PP_N-1
+    diffFlux_x(:,:,:,i) = f_xi(:,i,:,:)
+    diffFlux_y(:,:,:,i) = g_xi(:,i,:,:)
 #if PP_dim == 3
-    diffFlux_z(:,:,:,i) = h(:,i,:,:)
+    diffFlux_z(:,:,:,i) = h_xi(:,i,:,:)
 #endif
   END DO ! i=0,PP_N
 #endif
@@ -137,10 +154,10 @@ DO iElem=1,nElems
 #if VOLINT_VISC
     ! 5. compute viscous flux in normal direction of the interface
     DO q=0,PP_NZ; DO p=0,PP_N
-      Fvisc_FV(:,p,q)=0.5*(FV_NormVecXi(1,p,q,i,iElem)*(diffFlux_x(:,p,q,i-1)+diffFlux_x(:,p,q,i)) &
-                          +FV_NormVecXi(2,p,q,i,iElem)*(diffFlux_y(:,p,q,i-1)+diffFlux_y(:,p,q,i)) &
+      Fvisc_FV(:,p,q)=0.5*(FV_NormVecXi(1,p,q,i,iElem)*diffFlux_x(:,p,q,i-1) &
+                          +FV_NormVecXi(2,p,q,i,iElem)*diffFlux_y(:,p,q,i-1) &
 #if PP_dim == 3
-                          +FV_NormVecXi(3,p,q,i,iElem)*(diffFlux_z(:,p,q,i-1)+diffFlux_z(:,p,q,i)) &
+                          +FV_NormVecXi(3,p,q,i,iElem)*diffFlux_z(:,p,q,i-1) &
 #endif
                           )
     END DO; END DO
@@ -158,11 +175,11 @@ DO iElem=1,nElems
   ! === Eta-Direction ===========
 #if VOLINT_VISC
   ! 1. copy fluxes to temporary array (for performance)
-  DO j=0,PP_N
-    diffFlux_x(:,:,:,j) = f(:,:,j,:)
-    diffFlux_y(:,:,:,j) = g(:,:,j,:)
+  DO j=0,PP_N-1
+    diffFlux_x(:,:,:,j) = f_eta(:,:,j,:)
+    diffFlux_y(:,:,:,j) = g_eta(:,:,j,:)
 #if PP_dim == 3
-    diffFlux_z(:,:,:,j) = h(:,:,j,:)
+    diffFlux_z(:,:,:,j) = h_eta(:,:,j,:)
 #endif
   END DO ! j=0,PP_N
 #endif
@@ -189,10 +206,10 @@ DO iElem=1,nElems
 #if VOLINT_VISC
     ! 5. compute viscous flux in normal direction of the interface
     DO q=0,PP_NZ; DO p=0,PP_N
-      Fvisc_FV(:,p,q)=0.5*(FV_NormVecEta(1,p,q,j,iElem)*(diffFlux_x(:,p,q,j-1)+diffFlux_x(:,p,q,j)) &
-                          +FV_NormVecEta(2,p,q,j,iElem)*(diffFlux_y(:,p,q,j-1)+diffFlux_y(:,p,q,j)) &
+      Fvisc_FV(:,p,q)=0.5*(FV_NormVecEta(1,p,q,j,iElem)*diffFlux_x(:,p,q,j-1) &
+                          +FV_NormVecEta(2,p,q,j,iElem)*diffFlux_y(:,p,q,j-1) &
 #if PP_dim == 3
-                          +FV_NormVecEta(3,p,q,j,iElem)*(diffFlux_z(:,p,q,j-1)+diffFlux_z(:,p,q,j)) &
+                          +FV_NormVecEta(3,p,q,j,iElem)*diffFlux_z(:,p,q,j-1) &
 #endif
                           )
     END DO; END DO
@@ -232,9 +249,9 @@ DO iElem=1,nElems
 #if VOLINT_VISC
     ! 5. compute viscous flux in normal direction of the interface
     DO q=0,PP_N; DO p=0,PP_N
-      Fvisc_FV(:,p,q)=0.5*(FV_NormVecZeta(1,p,q,k,iElem)*(f(:,p,q,k-1)+f(:,p,q,k)) &
-                          +FV_NormVecZeta(2,p,q,k,iElem)*(g(:,p,q,k-1)+g(:,p,q,k)) &
-                          +FV_NormVecZeta(3,p,q,k,iElem)*(h(:,p,q,k-1)+h(:,p,q,k)))
+      Fvisc_FV(:,p,q)=0.5*(FV_NormVecZeta(1,p,q,k,iElem)*f_zeta(:,p,q,k-1) &
+                          +FV_NormVecZeta(2,p,q,k,iElem)*g_zeta(:,p,q,k-1) &
+                          +FV_NormVecZeta(3,p,q,k,iElem)*h_zeta(:,p,q,k-1)
     END DO; END DO
     F_FV = F_FV + Fvisc_FV
 #endif /*VOLINT_VISC*/

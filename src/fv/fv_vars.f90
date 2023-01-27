@@ -81,7 +81,7 @@ REAL,ALLOCATABLE       :: FV_w_inv(:)            !< 1/FV_w
 REAL,ALLOCATABLE       :: FV_Vdm(:,:)            !< Vandermonde to switch from DG to FV
 REAL,ALLOCATABLE       :: FV_sVdm(:,:)           !< Vandermonde to switch from FV to DG
 INTEGER                :: FV_CellType            !< Type of FV Cell: -1 = SAME              ,0 = EQUIDISTANT
-                                                 !<                   1 = LEGENDRE_GAUSS    ,2 = LEGENDRE_LOBATTO  
+                                                 !<                   1 = LEGENDRE_GAUSS    ,2 = LEGENDRE_LOBATTO
                                                  !<                   3 = CHEBYSHEV_LOBATTO
 
 #if FV_RECONSTRUCT
@@ -119,6 +119,29 @@ REAL,ALLOCATABLE,TARGET:: gradUzeta(:,:,:,:,:)        !< FD in ZETA direction
 REAL,ALLOCATABLE       :: gradUxi_central  (:,:,:,:,:)!< FD in XI direction (central limited for viscous fluxes)
 REAL,ALLOCATABLE       :: gradUeta_central (:,:,:,:,:)!< FD in ETA direction (central limited for viscous fluxes)
 REAL,ALLOCATABLE       :: gradUzeta_central(:,:,:,:,:)!< FD in ZETA direction (central limited for viscous fluxes)
+REAL,ALLOCATABLE       :: gradUx_xi  (:,:,:,:,:)      !< FD in X direction on the XI-face of the FV subcell
+REAL,ALLOCATABLE       :: gradUx_eta (:,:,:,:,:)      !< FD in X direction on the ETA-face of the FV subcell
+REAL,ALLOCATABLE       :: gradUx_zeta(:,:,:,:,:)      !< FD in X direction on the ZETA-face of the FV subcell
+REAL,ALLOCATABLE       :: gradUy_xi  (:,:,:,:,:)      !< FD in Y direction on the XI-face of the FV subcell
+REAL,ALLOCATABLE       :: gradUy_eta (:,:,:,:,:)      !< FD in Y direction on the ETA-face of the FV subcell
+REAL,ALLOCATABLE       :: gradUy_zeta(:,:,:,:,:)      !< FD in Y direction on the ZETA-face of the FV subcell
+REAL,ALLOCATABLE       :: gradUz_xi  (:,:,:,:,:)      !< FD in Z direction on the XI-face of the FV subcell
+REAL,ALLOCATABLE       :: gradUz_eta (:,:,:,:,:)      !< FD in Z direction on the ETA-face of the FV subcell
+REAL,ALLOCATABLE       :: gradUz_zeta(:,:,:,:,:)      !< FD in Z direction on the ZETA-face of the FV subcell
+
+REAL,ALLOCATABLE       :: gradUxi_central_face   (:,:,:,:,:) !< FD in XI direction (central limited for viscous fluxes)
+REAL,ALLOCATABLE       :: gradUeta_central_face  (:,:,:,:,:) !< FD in ETA direction (central limited for viscous fluxes)
+REAL,ALLOCATABLE       :: gradUzeta_central_face (:,:,:,:,:) !< FD in ZETA direction (central limited for viscous fluxes)
+REAL,ALLOCATABLE       :: FV_Metrics_NormVec_master (:,:,:,:) !< Metrics from xi/eta/zeta to normal system of master side
+REAL,ALLOCATABLE       :: FV_Metrics_TangVec1_master(:,:,:,:) !< Metrics from xi/eta/zeta to normal system of master side
+REAL,ALLOCATABLE       :: FV_Metrics_NormVec_slave  (:,:,:,:) !< Metrics from xi/eta/zeta to normal system of master side
+REAL,ALLOCATABLE       :: FV_Metrics_TangVec1_slave (:,:,:,:) !< Metrics from xi/eta/zeta to normal system of master side
+#if PP_dim==3
+REAL,ALLOCATABLE       :: FV_Metrics_TangVec2_master(:,:,:,:) !< Metrics from xi/eta/zeta to normal system of master side
+REAL,ALLOCATABLE       :: FV_Metrics_TangVec2_slave (:,:,:,:) !< Metrics from xi/eta/zeta to normal system of master side
+#endif /* PP_dim==3 */
+REAL,ALLOCATABLE       :: FV_surf_gradU_master(:,:,:,:,:) !< FD over DG interface
+REAL,ALLOCATABLE       :: FV_surf_gradU_slave(:,:,:,:,:)  !< FD over DG interface
 #endif
 #endif
 
@@ -140,6 +163,16 @@ REAL,ALLOCATABLE       :: FV_TangVec2Zeta(:,:,:,:,:) !< Tangent2 vector for inne
 REAL,ALLOCATABLE       :: FV_Metrics_fTilde_sJ(:,:,:,:,:) !< Metrics for FV subcells multiplied with sJ
 REAL,ALLOCATABLE       :: FV_Metrics_gTilde_sJ(:,:,:,:,:) !< Metrics for FV subcells multiplied with sJ
 REAL,ALLOCATABLE       :: FV_Metrics_hTilde_sJ(:,:,:,:,:) !< Metrics for FV subcells multiplied with sJ
+
+REAL,ALLOCATABLE       :: FV_Metrics_fTilde_sJ_xi(:,:,:,:,:)   !< Metrics for FV subcells multiplied with sJ
+REAL,ALLOCATABLE       :: FV_Metrics_gTilde_sJ_xi(:,:,:,:,:)   !< Metrics for FV subcells multiplied with sJ
+REAL,ALLOCATABLE       :: FV_Metrics_hTilde_sJ_xi(:,:,:,:,:)   !< Metrics for FV subcells multiplied with sJ
+REAL,ALLOCATABLE       :: FV_Metrics_fTilde_sJ_eta(:,:,:,:,:)  !< Metrics for FV subcells multiplied with sJ
+REAL,ALLOCATABLE       :: FV_Metrics_gTilde_sJ_eta(:,:,:,:,:)  !< Metrics for FV subcells multiplied with sJ
+REAL,ALLOCATABLE       :: FV_Metrics_hTilde_sJ_eta(:,:,:,:,:)  !< Metrics for FV subcells multiplied with sJ
+REAL,ALLOCATABLE       :: FV_Metrics_fTilde_sJ_zeta(:,:,:,:,:) !< Metrics for FV subcells multiplied with sJ
+REAL,ALLOCATABLE       :: FV_Metrics_gTilde_sJ_zeta(:,:,:,:,:) !< Metrics for FV subcells multiplied with sJ
+REAL,ALLOCATABLE       :: FV_Metrics_hTilde_sJ_zeta(:,:,:,:,:) !< Metrics for FV subcells multiplied with sJ
 #endif
 
 #endif /* FV_ENABLED */
