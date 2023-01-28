@@ -554,12 +554,18 @@ DO i=1,nLines
   IF (LEN_TRIM(HelpStr).GT.2) THEN
     ! read the option
     IF (.NOT.this%read_option(HelpStr)) THEN
+      ! Ignore the warning if calling from posti
+      IF (postiMode) CYCLE
+
       IF (firstWarn) THEN
         firstWarn=.FALSE.
         SWRITE(UNIT_stdOut,'(100("!"))')
         SWRITE(UNIT_stdOut, *) "WARNING: The following options are unknown!"
       END IF
-      SWRITE(UNIT_stdOut,*) "   ", TRIM(HelpStr)
+
+      CALL set_formatting("blue")
+      SWRITE(UNIT_stdOut,*) '   ', TRIM(HelpStr)
+      CALL clear_formatting()
     END IF
   END IF
 END DO

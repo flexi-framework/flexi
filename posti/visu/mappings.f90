@@ -195,7 +195,7 @@ USE MOD_Globals
 USE MOD_Visu_Vars
 USE MOD_Restart_Vars    ,ONLY: RestartMode
 USE MOD_ReadInTools     ,ONLY: GETSTR,GETLOGICAL,CountOption
-USE MOD_StringTools     ,ONLY: STRICMP
+USE MOD_StringTools     ,ONLY: STRICMP,set_formatting,clear_formatting
 #if FV_RECONSTRUCT
 USE MOD_EOS_Posti       ,ONLY: AppendNeededPrims
 #endif
@@ -288,11 +288,13 @@ DO iVar=1,nVarDep
 END DO
 
 ! print the dependency table
-LOGWRITE(*,*) "Dependencies: ", withDGOperator
-WRITE(format,'(I2)') SIZE(DepTable,2)
-DO iVar=1,nVarDep
-  LOGWRITE (*,'('//format//'I2,A)') DepTable(iVar,:), " "//TRIM(VarnamesAll(iVar))
-END DO
+IF (.NOT.DependenciesOutputDone) THEN
+  SWRITE(UNIT_stdOut,'(A,L1)') "Dependencies: ", withDGOperator
+  WRITE(format,'(I2)') SIZE(DepTable,2)
+  DO iVar=1,nVarDep
+    SWRITE (UNIT_stdOut,'('//format//'I2,A)') DepTable(iVar,:), " "//TRIM(VarnamesAll(iVar))
+  END DO
+END IF
 
 ! Build :
 !   mapDepToCalc = map, which stores at position x the position/index of the x.th quantity in the UCalc array
@@ -336,13 +338,6 @@ nVarCalc_FV = nVarCalc
 IF (StateFileMode) CALL AppendNeededPrims(mapDepToCalc,mapDepToCalc_FV,nVarCalc_FV)
 #endif
 
-! print the mappings
-WRITE(format,'(I0)') nVarAll
-LOGWRITE (*,'(A,'//format//'I0)') "mapDepToCalc             ",mapDepToCalc
-LOGWRITE (*,'(A,'//format//'I0)') "mapDepToCalc_FV          ",mapDepToCalc_FV
-LOGWRITE (*,'(A,'//format//'I0)') "mapAllVarsToVisuVars     ",mapAllVarsToVisuVars
-LOGWRITE (*,'(A,'//format//'I0)') "mapAllVarsToSurfVisuVars ",mapAllVarsToSurfVisuVars
-
 !---------------------- Surface visualization ----------------------------!
 
 ! Build the mapping for the surface visualization
@@ -376,7 +371,16 @@ SDEALLOCATE(mapAllBCNamesToVisuBCNames_old)
 ALLOCATE(mapAllBCNamesToVisuBCNames_old(1:nBCNamesAll))
 mapAllBCNamesToVisuBCNames_old = mapAllBCNamesToVisuBCNames
 
-LOGWRITE (*,'(A,'//format//'I0)') "mapAllBCNamesToVisuBCNames ",mapAllBCNamesToVisuBCNames
+! print the mappings
+IF (.NOT.DependenciesOutputDone) THEN
+  WRITE(format,'(I0)') nVarAll
+  SWRITE (*,'(A,'//format//'I0)') "mapDepToCalc             ",mapDepToCalc
+  SWRITE (*,'(A,'//format//'I0)') "mapDepToCalc_FV          ",mapDepToCalc_FV
+  SWRITE (*,'(A,'//format//'I0)') "mapAllVarsToVisuVars     ",mapAllVarsToVisuVars
+  SWRITE (*,'(A,'//format//'I0)') "mapAllVarsToSurfVisuVars ",mapAllVarsToSurfVisuVars
+  SWRITE (*,'(A,'//format//'I0)') "mapAllBCNamesToVisuBCNames ",mapAllBCNamesToVisuBCNames
+  DependenciesOutputDone = .TRUE.
+END IF
 
 END SUBROUTINE Build_mapDepToCalc_mapAllVarsToVisuVars
 

@@ -148,7 +148,7 @@ SUBROUTINE InitDGbasis(N_in,xGP,wGP,L_Minus,L_Plus,D,D_T,D_Hat,D_Hat_T,L_HatMinu
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
 USE MOD_Interpolation,    ONLY: GetNodesAndWeights
-USE MOD_Basis,            ONLY: PolynomialDerivativeMatrix,LagrangeInterpolationPolys
+USE MOD_Basis,            ONLY: PolynomialDerivativeMatrix,LagrangeInterpolationPolys,PolynomialMassMatrix
 #ifdef SPLIT_DG
 USE MOD_DG_Vars,          ONLY: DVolSurf ! Transpose of differentiation matrix used for calculating the strong form
 #endif /*SPLIT_DG*/
@@ -172,7 +172,6 @@ REAL,ALLOCATABLE,DIMENSION(:)  ,INTENT(OUT)    :: L_HatPlus              !< Valu
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,DIMENSION(0:N_in,0:N_in)              :: M,Minv
-INTEGER                                    :: iMass
 !==================================================================================================================================
 
 ALLOCATE(L_HatMinus(0:N_in), L_HatPlus(0:N_in))
@@ -182,15 +181,12 @@ ALLOCATE(D_Hat(0:N_in,0:N_in), D_Hat_T(0:N_in,0:N_in))
 CALL PolynomialDerivativeMatrix(N_in,xGP,D)
 D_T=TRANSPOSE(D)
 
+!Build Mass Matrix
+CALL PolynomialMassMatrix(N_in,xGP,wGP,M,Minv)
+
 ! Build D_Hat matrix. D^ = - (M^(-1) * D^T * M)
-M=0.
-Minv=0.
-DO iMass=0,N_in
-  M(iMass,iMass)=wGP(iMass)
-  Minv(iMass,iMass)=1./wGP(iMass)
-END DO
 D_Hat  = -MATMUL(Minv,MATMUL(TRANSPOSE(D),M))
-D_Hat_T= TRANSPOSE(D_hat)
+D_Hat_T= TRANSPOSE(D_Hat)
 
 #ifdef SPLIT_DG
 ! Use a modified D matrix for the strong form volume integral, that incorporates the inner fluxes that are subtracted from the

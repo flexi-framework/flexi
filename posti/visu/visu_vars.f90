@@ -68,7 +68,7 @@ LOGICAL                           :: Avg2D                       !< Flag indicat
 LOGICAL                           :: Avg2D_old = .FALSE.         !< Previus state of Avg2D flag, used to check for change
 LOGICAL                           :: Avg2DHDF5Output             !< Flag indicating if the averaged solution should be written to a
                                                                  !< .h5 file
-
+LOGICAL                           :: DependenciesOutputDone=.FALSE. !< Flag indicating if dependency table was already written
 
 ! The following flags indicate if during successive visualizations of (different) state files the respective properties
 ! changed. For example the mesh file of different state files in a timeseries is the same ...
