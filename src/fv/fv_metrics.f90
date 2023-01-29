@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -132,7 +132,7 @@ ALLOCATE(FV_TangVec2Zeta(3,0:PP_N,0:PP_N ,1:PP_N,nElems))  !  -"-
 #endif
 
 #if FV_RECONSTRUCT
-#if PARABOLIC
+#if VOLINT_VISC
 ALLOCATE(FV_Metrics_fTilde_sJ(3,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 ALLOCATE(FV_Metrics_gTilde_sJ(3,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 #if (PP_dim == 3)
@@ -170,7 +170,7 @@ ALLOCATE(FV_Metrics_gTilde_sJ_zeta(3,0:PP_N  ,0:PP_N  ,0:PP_NZ-1,nElems))
 #if (PP_dim == 3)
 ALLOCATE(FV_Metrics_hTilde_sJ_zeta(3,0:PP_N  ,0:PP_N  ,0:PP_NZ-1,nElems))
 #endif
-#endif /* PARABOLIC */
+#endif /* VOLINT_VISC */
 #endif /* FV_RECONSTRUCT */
 
 ALLOCATE(FV_Elems_master(1:nSides)) ! Moved from InitFV to here, since needed in U_Mortar below.
@@ -203,9 +203,9 @@ USE MOD_Mesh_Vars          ,ONLY: firstBCSide,lastBCSide,firstInnerSide,lastMPIS
 USE MOD_Mesh_Vars          ,ONLY: S2V2,ElemToSide,dXCL_N
 USE MOD_Interpolation      ,ONLY: GetNodesAndWeights
 USE MOD_Interpolation_Vars ,ONLY: NodeTypeCL,xGP,wGP,wBary
-#if PARABOLIC
+#if VOLINT_VISC
 USE MOD_Mesh_Vars          ,ONLY: SideToElem,S2V
-#endif /* PARABOLIC */
+#endif /* VOLINT_VISC */
 #endif
 #if USE_MPI
 USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
@@ -242,7 +242,7 @@ REAL,POINTER                           :: FV_dx_P(:,:)
 #if USE_MPI
 INTEGER                                :: MPIRequest(nNbProcs,2)
 #endif
-#if PARABOLIC
+#if VOLINT_VISC
 INTEGER                                :: d,ijk2(3),ElemID,NB_ElemID
 #endif
 #endif
@@ -250,7 +250,7 @@ INTEGER                                :: d,ijk2(3),ElemID,NB_ElemID
 INTEGER                                :: MPIRequest_Geo(nNbProcs,2)
 REAL,ALLOCATABLE                       :: Geo(:,:,:,:)
 #endif
-#if PARABOLIC
+#if VOLINT_VISC
 REAL                                   :: dXFace  (3,3,0:PP_N  ,0:PP_NZ           )
 REAL                                   :: dXVol   (3,3,0:PP_N+1,0:PP_N+1,0:PP_NZ+1)
 REAL                                   :: Metrics_fTilde_xi(3,0:PP_N-1,0:PP_N,0:PP_NZ)
@@ -315,7 +315,7 @@ REAL                                   :: FV_dX_3_xi_FV_eta_BC_zeta_LG_Path_pq (
 REAL                                   :: FV_dX_3_xi_BC_eta_FV_zeta_LG_Path    (3,0:PP_N+1,0:PP_N   ,0:PP_NZ  )
 REAL                                   :: FV_dX_3_xi_BC_eta_FV_zeta_LG_Path_pq (3,0:PP_N  ,0:PP_N+1 ,0:PP_NZ  )
 #endif /*(PP_dim == 3)*/
-#endif /*PARABOLIC*/
+#endif /*VOLINT_VISC*/
 !==================================================================================================================================
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') '  Build FV-Metrics ...'
 
@@ -396,20 +396,20 @@ DO iElem=1,nElems
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_fTilde(:,:,j,k,iElem,0),JaVol(1,:,:,j,k))
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_gTilde(:,:,j,k,iElem,0),JaVol(2,:,:,j,k))
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_hTilde(:,:,j,k,iElem,0),JaVol(3,:,:,j,k))
-#if PARABOLIC
+#if VOLINT_VISC
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary,dXCL_N(1,:,:,j,k,iElem),dXVol(1,:,:,j,k))
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary,dXCL_N(2,:,:,j,k,iElem),dXVol(2,:,:,j,k))
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary,dXCL_N(3,:,:,j,k,iElem),dXVol(3,:,:,j,k))
-#endif /*PARABOLIC*/
+#endif /*VOLINT_VISC*/
   END DO; END DO ! j,k=0,PP_N
   DO l=1,PP_N
     ! at every inner interface/slice between FV subcells in XI direction:
     ! convert metrics in the other directions from DG to FV subcells
     DO dd=1,3
       CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,JaVol(dd,1:3,l,0:PP_N,0:PP_NZ),FV_Ja_Face(dd,:,:,:))
-#if PARABOLIC
+#if VOLINT_VISC
       CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,dXVol(dd,1:3,l,0:PP_N,0:PP_NZ),dXFace(dd,:,:,:))
-#endif /*PARABOLIC*/
+#endif /*VOLINT_VISC*/
     END DO
     ! use metrics to build normal/tangential vectors and surelem at the inner interfaces/slices
     NormalDir=NormalDirs(XI_PLUS); TangDir=TangDirs(XI_PLUS); NormalSign=NormalSigns(XI_PLUS)
@@ -420,7 +420,7 @@ DO iElem=1,nElems
         FV_SurfElemXi_sw(:,:,l,iElem))
     ! multiply FV_SurfElemXi with 1/FV_w
     !FV_SurfElemXi_sw(:,:,l,iElem) = FV_SurfElemXi_sw(:,:,l,iElem)*FV_w_inv
-#if PARABOLIC
+#if VOLINT_VISC
     DO dd=1,3
       DO k=0,PP_NZ; DO j=0,PP_N
         Metrics_fTilde_xi(dd,l-1,j,k)=FV_Ja_Face(1,dd,j,k)
@@ -431,7 +431,7 @@ DO iElem=1,nElems
         dX_xi          (3,dd,l-1,j,k)=dXFace    (3,dd,j,k)
       END DO; END DO ! j,k=0,PP_N
     END DO
-#endif /*PARABOLIC*/
+#endif /*VOLINT_VISC*/
   END DO
 
   ! Eta direction
@@ -440,20 +440,20 @@ DO iElem=1,nElems
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_fTilde(:,i,:,k,iElem,0),JaVol(1,:,i,:,k))
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_gTilde(:,i,:,k,iElem,0),JaVol(2,:,i,:,k))
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_hTilde(:,i,:,k,iElem,0),JaVol(3,:,i,:,k))
-#if PARABOLIC
+#if VOLINT_VISC
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary,dXCL_N(1,:,i,:,k,iElem),dXVol(1,:,i,:,k))
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary,dXCL_N(2,:,i,:,k,iElem),dXVol(2,:,i,:,k))
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary,dXCL_N(3,:,i,:,k,iElem),dXVol(3,:,i,:,k))
-#endif /*PARABOLIC*/
+#endif /*VOLINT_VISC*/
   END DO; END DO ! i,k=0,PP_N
   DO l=1,PP_N
     ! at every inner interface/slice between FV subcells in ETA direction:
     ! convert metrics in the other directions from DG to FV subcells
     DO dd=1,3
       CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,JaVol(dd,1:3,0:PP_N,l,0:PP_NZ),FV_Ja_Face(dd,:,:,:))
-#if PARABOLIC
+#if VOLINT_VISC
       CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,dXVol(dd,1:3,0:PP_N,l,0:PP_NZ),dXFace(dd,:,:,:))
-#endif /*PARABOLIC*/
+#endif /*VOLINT_VISC*/
     END DO
     ! use metrics to build normal/tangential vectors and surelem at the inner interfaces/slices
     NormalDir=NormalDirs(ETA_PLUS); TangDir=TangDirs(ETA_PLUS); NormalSign=NormalSigns(ETA_PLUS)
@@ -464,7 +464,7 @@ DO iElem=1,nElems
         FV_SurfElemEta_sw(:,:,l,iElem))
     ! multiply FV_SurfElemEta with 1/FV_w
     !FV_SurfElemEta_sw(:,:,l,iElem) = FV_SurfElemEta_sw(:,:,l,iElem)*FV_w_inv
-#if PARABOLIC
+#if VOLINT_VISC
     DO dd=1,3
       DO k=0,PP_NZ; DO i=0,PP_N
         Metrics_fTilde_eta(dd,i,l-1,k)=FV_Ja_Face(1,dd,i,k)
@@ -475,7 +475,7 @@ DO iElem=1,nElems
         dX_eta          (3,dd,i,l-1,k)=dXFace    (3,dd,i,k)
       END DO; END DO ! i,k=0,PP_N
     END DO
-#endif /*PARABOLIC*/
+#endif /*VOLINT_VISC*/
   END DO
 
 #if (PP_dim == 3)
@@ -485,20 +485,20 @@ DO iElem=1,nElems
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_fTilde(:,i,j,:,iElem,0),JaVol(1,:,i,j,:))
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_gTilde(:,i,j,:,iElem,0),JaVol(2,:,i,j,:))
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_hTilde(:,i,j,:,iElem,0),JaVol(3,:,i,j,:))
-#if PARABOLIC
+#if VOLINT_VISC
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary,dXCL_N(1,:,i,j,:,iElem),dXVol(1,:,i,j,:))
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary,dXCL_N(2,:,i,j,:,iElem),dXVol(2,:,i,j,:))
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary,dXCL_N(3,:,i,j,:,iElem),dXVol(3,:,i,j,:))
-#endif /*PARABOLIC*/
+#endif /*VOLINT_VISC*/
   END DO; END DO ! i,j=0,PP_N
   DO l=1,PP_N
     ! at every inner interface/slice between FV subcells in ZETA direction:
     ! convert metrics in the other directions from DG to FV subcells
     DO dd=1,3
       CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,JaVol(dd,1:3,0:PP_N,0:PP_N,l),FV_Ja_Face(dd,:,:,:))
-#if PARABOLIC
+#if VOLINT_VISC
       CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,dXVol(dd,1:3,0:PP_N,0:PP_N,l),dXFace(dd,:,:,:))
-#endif /*PARABOLIC*/
+#endif /*VOLINT_VISC*/
     END DO
     ! use metrics to build normal/tangential vectors and surelem at the inner interfaces/slices
     NormalDir=NormalDirs(ZETA_PLUS); TangDir=TangDirs(ZETA_PLUS); NormalSign=NormalSigns(ZETA_PLUS)
@@ -509,7 +509,7 @@ DO iElem=1,nElems
         FV_SurfElemZeta_sw(:,:,l,iElem))
     ! multiply FV_SurfElemZeta with 1/FV_w
     !FV_SurfElemZeta_sw(:,:,l,iElem) = FV_SurfElemZeta_sw(:,:,l,iElem)*FV_w_inv
-#if PARABOLIC
+#if VOLINT_VISC
     DO dd=1,3
       DO j=0,PP_N; DO i=0,PP_N
         Metrics_fTilde_zeta(dd,i,j,l-1)=FV_Ja_Face(1,dd,i,j)
@@ -520,11 +520,11 @@ DO iElem=1,nElems
         dX_zeta          (3,dd,i,j,l-1)=dXFace    (3,dd,i,j)
       END DO; END DO ! i,k=0,PP_N
     END DO
-#endif /*PARABOLIC*/
+#endif /*VOLINT_VISC*/
   END DO
 #endif /* PP_dim == 3 */
 
-#if PARABOLIC
+#if VOLINT_VISC
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N-1
 #if (PP_dim == 3)
     sJ_xi(i,j,k)= 1./ ( &
@@ -556,7 +556,7 @@ DO iElem=1,nElems
       + dX_zeta(3,1,i,j,k)*(dX_zeta(1,2,i,j,k)*dX_zeta(2,3,i,j,k) - dX_zeta(2,2,i,j,k)*dX_zeta(1,3,i,j,k))  )
   END DO; END DO; END DO
 #endif
-#endif /*PARABOLIC*/
+#endif /*VOLINT_VISC*/
   !==================================================================
   ! Compute FV NormVec,TangVec,.. at inner cell boundaries...DONE
   !==================================================================
@@ -612,7 +612,7 @@ DO iElem=1,nElems
   FV_sdx_ZETA(:,:,:,iElem) = 1. / (FV_dx_ZETA_R(:,:,0:PP_N-1,iElem) +  FV_dx_ZETA_L(:,:,1:PP_N,iElem)) ! 1 / FV_dx_ZETA
 #endif
 
-#if PARABOLIC
+#if VOLINT_VISC
   DO d=1,3
     DO i=0,PP_N
       FV_Metrics_fTilde_sJ(d,i,:,:,iElem)=FV_w_inv(i)*Metrics_fTilde(d,i,:,:,iElem,1)*&
@@ -632,7 +632,7 @@ DO iElem=1,nElems
     FV_Metrics_hTilde_sJ(d,:,:,:,iElem)=FV_Metrics_hTilde_sJ(d,:,:,:,iElem)*sJ(:,:,:,iElem,1)
 #endif
   END DO
-#endif /* PARABOLIC */
+#endif /* VOLINT_VISC */
 
   ! Calculate distance between first GaussPoint and interface
 #if PP_dim == 3
@@ -681,7 +681,7 @@ DO iElem=1,nElems
     END IF
   END DO
 
-#if PARABOLIC
+#if VOLINT_VISC
   DO q=0,PP_NZ; DO p=0,PP_N
     CALL ChangeBasis1D(3,PP_N,PP_N,Vdm_CLN_GaussN,dXCL_N(1,:,:,p,q,iElem), dX_1_xi_LG_eta_CL_zeta_CL_Path(:,:,p,q))
     CALL ChangeBasis1D(3,PP_N,PP_N,Vdm_CLN_GaussN,dXCL_N(2,:,p,:,q,iElem), dX_2_xi_CL_eta_LG_zeta_CL_Path(:,p,:,q))
@@ -692,6 +692,8 @@ DO iElem=1,nElems
 
   DO q=0,PP_NZ; DO p=0,PP_N
     CALL ChangeBasis1D(3,PP_N,PP_N  ,Vdm_CLN_FV        , dX_1_xi_LG_eta_CL_zeta_CL_Path(:,p,:,q), FV_dX_1_xi_LG_eta_FV_zeta_CL_Path(:,p,:,q))
+    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary, dX_1_xi_LG_eta_CL_zeta_CL_Path(:,p,:,q), FV_dX_1_xi_LG_eta_BC_zeta_CL_Path(:,p,:,q))
+
     CALL ChangeBasis1D(3,PP_N,PP_N  ,Vdm_CLN_FV        , dX_2_xi_CL_eta_LG_zeta_CL_Path(:,:,p,q), FV_dX_2_xi_FV_eta_LG_zeta_CL_Path(:,:,p,q))
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary, dX_2_xi_CL_eta_LG_zeta_CL_Path(:,:,p,q), FV_dX_2_xi_BC_eta_LG_zeta_CL_Path(:,:,p,q))
 
@@ -716,8 +718,7 @@ DO iElem=1,nElems
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary, FV_dX_2_xi_FV_eta_LG_zeta_CL_Path(:,p,q,:), FV_dX_2_xi_FV_eta_LG_zeta_BC_Path(:,p,q,:))
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary, FV_dX_3_xi_FV_eta_CL_zeta_LG_Path(:,p,:,q), FV_dX_3_xi_FV_eta_BC_zeta_LG_Path(:,p,:,q))
   END DO; END DO
-#endif
-#if (PP_dim == 2)
+#else
   DO q=0,PP_N+1; DO p=0,PP_N
     FV_dX_1_xi_LG_eta_BC_zeta_FV_Path(:,p,q,:)=FV_dX_1_xi_LG_eta_BC_zeta_CL_Path(:,p,q,:)
   END DO; END DO
@@ -867,12 +868,12 @@ DO iElem=1,nElems
     FV_Metrics_hTilde_sJ_zeta(d,:,:,:,iElem)=FV_Metrics_hTilde_sJ_zeta(d,:,:,:,iElem)*sJ_zeta(:,:,:,iElem)
 #endif
   END DO
-#endif /* PARABOLIC */
+#endif /* VOLINT_VISC */
 #endif /* FV_RECONSTRUCT */
 END DO
 
 #if FV_RECONSTRUCT
-#if PARABOLIC
+#if VOLINT_VISC
 ! Caluclate transformation matrix from xi/eta/zeta  to normal system of master side
 DO iSide = 1, nSides
   ! master
@@ -918,7 +919,7 @@ DO iSide = 1, nSides
     END DO; END DO ! p,q=0,PP_N
   END IF
 END DO ! iSide = 1, nSides
-#endif /* PARABOLIC */
+#endif /* VOLINT_VISC */
 
 ! distances at big mortar interfaces must be distributed to the smaller sides
 FV_Elems_master = 1 ! Force use of FV mortar matrices in U_Mortar routine
@@ -1014,7 +1015,7 @@ END DO; END DO! p,q=0,Nloc
 FV_Length=FV_Length*0.5*(xN-x0) ! *0.5 since reference element has width=2
 END SUBROUTINE Integrate_Path
 
-#if PARABOLIC
+#if VOLINT_VISC
 !==================================================================================================================================
 !> Computes the distance between two points along a path given in 1D reference coordinates
 !==================================================================================================================================
@@ -1091,7 +1092,7 @@ DO q=0,ZDIM(Nloc)+1; DO p=0,Nloc
 END DO; END DO! p,q=0,Nloc
 FV_Length=FV_Length*0.5*(xN-x0) ! *0.5 since reference element has width=2
 END SUBROUTINE Integrate_Path_BC_zeta
-#endif /*PARABOLIC*/
+#endif /*VOLINT_VISC*/
 #endif
 
 !==================================================================================================================================
@@ -1135,7 +1136,8 @@ SDEALLOCATE(FV_NormVecZeta)
 SDEALLOCATE(FV_TangVec1Zeta)
 SDEALLOCATE(FV_TangVec2Zeta)
 
-#if PARABOLIC
+#if FV_RECONSTRUCT
+#if VOLINT_VISC
 SDEALLOCATE(FV_Metrics_fTilde_sJ)
 SDEALLOCATE(FV_Metrics_gTilde_sJ)
 SDEALLOCATE(FV_Metrics_hTilde_sJ)
@@ -1164,7 +1166,8 @@ SDEALLOCATE(FV_Metrics_gTilde_sJ_zeta)
 #if (PP_dim == 3)
 SDEALLOCATE(FV_Metrics_hTilde_sJ_zeta)
 #endif
-#endif /* PARABOLIC */
+#endif /* VOLINT_VISC */
+#endif
 
 SDEALLOCATE(FV_Elems_master)
 END SUBROUTINE FinalizeFV_Metrics

@@ -154,12 +154,11 @@ DO iElem=1,nElems
 #if VOLINT_VISC
     ! 5. compute viscous flux in normal direction of the interface
     DO q=0,PP_NZ; DO p=0,PP_N
-      Fvisc_FV(:,p,q)=0.5*(FV_NormVecXi(1,p,q,i,iElem)*diffFlux_x(:,p,q,i-1) &
-                          +FV_NormVecXi(2,p,q,i,iElem)*diffFlux_y(:,p,q,i-1) &
+      Fvisc_FV(:,p,q)=FV_NormVecXi(1,p,q,i,iElem)*diffFlux_x(:,p,q,i-1) &
 #if PP_dim == 3
-                          +FV_NormVecXi(3,p,q,i,iElem)*diffFlux_z(:,p,q,i-1) &
+                     +FV_NormVecXi(3,p,q,i,iElem)*diffFlux_z(:,p,q,i-1) &
 #endif
-                          )
+                     +FV_NormVecXi(2,p,q,i,iElem)*diffFlux_y(:,p,q,i-1)
     END DO; END DO
     F_FV = F_FV + Fvisc_FV
 #endif /*VOLINT_VISC*/
@@ -206,12 +205,11 @@ DO iElem=1,nElems
 #if VOLINT_VISC
     ! 5. compute viscous flux in normal direction of the interface
     DO q=0,PP_NZ; DO p=0,PP_N
-      Fvisc_FV(:,p,q)=0.5*(FV_NormVecEta(1,p,q,j,iElem)*diffFlux_x(:,p,q,j-1) &
-                          +FV_NormVecEta(2,p,q,j,iElem)*diffFlux_y(:,p,q,j-1) &
+      Fvisc_FV(:,p,q)=FV_NormVecEta(1,p,q,j,iElem)*diffFlux_x(:,p,q,j-1) &
 #if PP_dim == 3
-                          +FV_NormVecEta(3,p,q,j,iElem)*diffFlux_z(:,p,q,j-1) &
+                     +FV_NormVecEta(3,p,q,j,iElem)*diffFlux_z(:,p,q,j-1) &
 #endif
-                          )
+                     +FV_NormVecEta(2,p,q,j,iElem)*diffFlux_y(:,p,q,j-1)
     END DO; END DO
     F_FV = F_FV + Fvisc_FV
 #endif /*VOLINT_VISC*/
@@ -249,9 +247,9 @@ DO iElem=1,nElems
 #if VOLINT_VISC
     ! 5. compute viscous flux in normal direction of the interface
     DO q=0,PP_N; DO p=0,PP_N
-      Fvisc_FV(:,p,q)=0.5*(FV_NormVecZeta(1,p,q,k,iElem)*f_zeta(:,p,q,k-1) &
-                          +FV_NormVecZeta(2,p,q,k,iElem)*g_zeta(:,p,q,k-1) &
-                          +FV_NormVecZeta(3,p,q,k,iElem)*h_zeta(:,p,q,k-1)
+      Fvisc_FV(:,p,q)=FV_NormVecZeta(1,p,q,k,iElem)*f_zeta(:,p,q,k-1) &
+                     +FV_NormVecZeta(2,p,q,k,iElem)*g_zeta(:,p,q,k-1) &
+                     +FV_NormVecZeta(3,p,q,k,iElem)*h_zeta(:,p,q,k-1)
     END DO; END DO
     F_FV = F_FV + Fvisc_FV
 #endif /*VOLINT_VISC*/

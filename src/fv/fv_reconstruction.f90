@@ -40,7 +40,7 @@ INTERFACE FV_SurfCalcGradients_BC
   MODULE PROCEDURE FV_SurfCalcGradients_BC
 END INTERFACE
 
-#if PARABOLIC
+#if VOLINT_VISC
 INTERFACE FV_SurfCalcGradients_Parabolic
   MODULE PROCEDURE FV_SurfCalcGradients_Parabolic
 END INTERFACE
@@ -48,7 +48,7 @@ END INTERFACE
 
 PUBLIC::FV_PrepareSurfGradient
 PUBLIC::FV_SurfCalcGradients,FV_SurfCalcGradients_BC,FV_CalcGradients
-#if PARABOLIC
+#if VOLINT_VISC
 PUBLIC::FV_SurfCalcGradients_Parabolic
 #endif
 #endif /* FV_RECONSTRUCT */
@@ -327,7 +327,7 @@ END SUBROUTINE FV_SurfCalcGradients_BC
 !> Additionally build central limited slopes for the computation of gradients used for the viscous fluxes.
 !==================================================================================================================================
 SUBROUTINE FV_CalcGradients(UPrim,FV_surf_gradU,gradUxi,gradUeta,gradUzeta &
-#if PARABOLIC
+#if VOLINT_VISC
         ,gradUxi_central,gradUeta_central,gradUzeta_central &
 #endif
     )
@@ -349,7 +349,7 @@ REAL,INTENT(IN)  :: FV_surf_gradU    (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)      
 REAL,INTENT(OUT) :: gradUxi          (PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N,nElems) !< physical slope in   xi-direction (TVD limited)
 REAL,INTENT(OUT) :: gradUeta         (PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N,nElems) !< physical slope in  eta-direction (TVD limited)
 REAL,INTENT(OUT) :: gradUzeta        (PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N,nElems) !< physical slope in zeta-direction (TVD limited)
-#if PARABOLIC
+#if VOLINT_VISC
 REAL,INTENT(OUT) :: gradUxi_central  (PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< physical slope in   xi-direction (mean value)
 REAL,INTENT(OUT) :: gradUeta_central (PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< physical slope in  eta-direction (mean value)
 REAL,INTENT(OUT) :: gradUzeta_central(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< physical slope in zeta-direction (mean value)
@@ -362,7 +362,7 @@ REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N+1) :: gradUeta_tmp
 REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N+1) :: gradUzeta_tmp
 #endif
 INTEGER                                             :: iElem,l,iVar,p,q
-#if PARABOLIC
+#if VOLINT_VISC
 INTEGER                                             :: i,j,k
 #endif
 !==================================================================================================================================
@@ -407,7 +407,7 @@ DO iElem=1,nElems
 #endif
    END DO; END DO ! q, p
   END DO ! l
-#if PARABOLIC
+#if VOLINT_VISC
   CALL FV_CalcGradients_Parabolic(iElem,gradUxi_tmp,gradUeta_tmp &
 #if PP_dim==3
                                        ,gradUzeta_tmp            &
@@ -470,7 +470,7 @@ IF (flip.GT.0) THEN
 END IF
 END SUBROUTINE CopySurfaceToVolume
 
-#if PARABOLIC
+#if VOLINT_VISC
 !==================================================================================================================================
 !> Calculate slopes across DG element interfaces (unlimited). Uses UPrim_master/UPrim_slave as well as
 !> FV_multi_master/FV_multi_slave. They are limited in the FV_ProlongToDGFace routine.
@@ -812,9 +812,9 @@ USE MOD_FV_Vars   ,ONLY: FV_Metrics_TangVec2_slave,FV_Metrics_TangVec2_master
 USE MOD_FV_Vars   ,ONLY: FV_Metrics_NormVec_slave,FV_Metrics_TangVec1_slave
 USE MOD_FV_Vars   ,ONLY: FV_Metrics_NormVec_master,FV_Metrics_TangVec1_master
 USE MOD_FV_Vars   ,ONLY: FV_surf_gradU_master,FV_surf_gradU_slave
-#if PARABOLIC
+#if VOLINT_VISC
 USE MOD_Mesh_Vars          ,ONLY: ElemToSide,S2V
-#endif /* PARABOLIC */
+#endif /* VOLINT_VISC */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -828,9 +828,9 @@ REAL,INTENT(IN)     :: gradUzeta_tmp(PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N+1)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: locSideID,SideID,p,q,flip,ijk(3)
-REAL              :: gradMapPrim_XI(PP_nVarPrim),gradMapPrim_ETA(PP_nVarPrim)
+REAL              :: gradMapPrim_XI(PP_nVarLifting),gradMapPrim_ETA(PP_nVarLifting)
 #if PP_dim==3
-REAL              :: gradMapPrim_Zeta(PP_nVarPrim)
+REAL              :: gradMapPrim_Zeta(PP_nVarLifting)
 #endif /* PP_dim==3 */
 !==================================================================================================================================
 ! NOTE: Main steps:
@@ -851,65 +851,66 @@ DO locSideID = 2, 5
     SELECT CASE (locSideID)
       CASE(XI_MINUS, XI_PLUS)
         IF (locSideID .EQ. XI_MINUS) THEN
-          gradMapPrim_Xi = gradUxi_tmp(:,ijk(2),ijk(3),ijk(1))
+          gradMapPrim_XI = gradUxi_tmp(PRIM_LIFT,ijk(2),ijk(3),ijk(1))
         ELSE
-          gradMapPrim_Xi = gradUxi_tmp(:,ijk(2),ijk(3),ijk(1)+1)
+          gradMapPrim_XI = gradUxi_tmp(PRIM_LIFT,ijk(2),ijk(3),ijk(1)+1)
         END IF
-        gradMapPrim_Eta  = 0.5*(gradUeta_tmp(:,ijk(1),ijk(3),ijk(2))+gradUeta_tmp(:,ijk(1),ijk(3),ijk(2)+1))
+        gradMapPrim_Eta  = 0.5*(gradUeta_tmp(PRIM_LIFT,ijk(1),ijk(3),ijk(2))&
+                               +gradUeta_tmp(PRIM_LIFT,ijk(1),ijk(3),ijk(2)+1))
 #if PP_dim==3
-        gradMapPrim_Zeta = 0.5*(gradUzeta_tmp(:,ijk(1),ijk(2),ijk(3))+gradUzeta_tmp(:,ijk(1),ijk(2),ijk(3)+1))
+        gradMapPrim_Zeta = 0.5*(gradUzeta_tmp(PRIM_LIFT,ijk(1),ijk(2),ijk(3))&
+                               +gradUzeta_tmp(PRIM_LIFT,ijk(1),ijk(2),ijk(3)+1))
 #endif /* PP_dim==3 */
       CASE(ETA_MINUS, ETA_PLUS)
-        gradMapPrim_Xi   = 0.5*(gradUxi_tmp(:,ijk(2),ijk(3),ijk(1))+gradUxi_tmp(:,ijk(2),ijk(3),ijk(1)+1))
+        gradMapPrim_XI   = 0.5*(gradUxi_tmp(PRIM_LIFT,ijk(2),ijk(3),ijk(1))&
+                               +gradUxi_tmp(PRIM_LIFT,ijk(2),ijk(3),ijk(1)+1))
         IF (locSideID .EQ. ETA_MINUS) THEN
-          gradMapPrim_Eta = gradUeta_tmp(:,ijk(1),ijk(3),ijk(2))
+          gradMapPrim_Eta = gradUeta_tmp(PRIM_LIFT,ijk(1),ijk(3),ijk(2))
         ELSE
-          gradMapPrim_Eta = gradUeta_tmp(:,ijk(1),ijk(3),ijk(2)+1)
+          gradMapPrim_Eta = gradUeta_tmp(PRIM_LIFT,ijk(1),ijk(3),ijk(2)+1)
         END IF
 #if PP_dim==3
-        gradMapPrim_Zeta = 0.5*(gradUzeta_tmp(:,ijk(1),ijk(2),ijk(3))+gradUzeta_tmp(:,ijk(1),ijk(2),ijk(3)+1))
+        gradMapPrim_Zeta = 0.5*(gradUzeta_tmp(PRIM_LIFT,ijk(1),ijk(2),ijk(3))&
+                               +gradUzeta_tmp(PRIM_LIFT,ijk(1),ijk(2),ijk(3)+1))
 #endif /* PP_dim==3 */
 #if PP_dim==3
       CASE(ZETA_MINUS, ZETA_PLUS)
-        gradMapPrim_Xi   = 0.5*(gradUxi_tmp(:,ijk(2),ijk(3),ijk(1))+gradUxi_tmp(:,ijk(2),ijk(3),ijk(1)+1))
-        gradMapPrim_Eta  = 0.5*(gradUeta_tmp(:,ijk(1),ijk(3),ijk(2))+gradUeta_tmp(:,ijk(1),ijk(3),ijk(2)+1))
-        IF (locSideID .EQ. ETA_MINUS) THEN
-          gradMapPrim_Zeta = gradUeta_tmp(:,ijk(1),ijk(2),ijk(3))
+        gradMapPrim_XI   = 0.5*(gradUxi_tmp(PRIM_LIFT,ijk(2),ijk(3),ijk(1))&
+                               +gradUxi_tmp(PRIM_LIFT,ijk(2),ijk(3),ijk(1)+1))
+        gradMapPrim_Eta  = 0.5*(gradUeta_tmp(PRIM_LIFT,ijk(1),ijk(3),ijk(2))&
+                               +gradUeta_tmp(PRIM_LIFT,ijk(1),ijk(3),ijk(2)+1))
+        IF (locSideID .EQ. ZETA_MINUS) THEN
+          gradMapPrim_Zeta = gradUeta_tmp(PRIM_LIFT,ijk(1),ijk(2),ijk(3))
         ELSE
-          gradMapPrim_Zeta = gradUeta_tmp(:,ijk(1),ijk(2),ijk(3)+1)
+          gradMapPrim_Zeta = gradUeta_tmp(PRIM_LIFT,ijk(1),ijk(2),ijk(3)+1)
         END IF
 #endif /* PP_dim==3 */
     END SELECT
     ! Rotate from element local xi/eta/zeta sytem to normal system of master side
     IF (flip.EQ.0) THEN
       FV_surf_gradU_master (:,1,p,q,SideID)= FV_Metrics_NormVec_master (1,p,q,SideID)*gradMapPrim_XI (:)&
-                                          + FV_Metrics_NormVec_master (2,p,q,SideID)*gradMapPrim_ETA(:)
-
+                                           + FV_Metrics_NormVec_master (2,p,q,SideID)*gradMapPrim_ETA(:)
       FV_surf_gradU_master (:,2,p,q,SideID)= FV_Metrics_TangVec1_master(1,p,q,SideID)*gradMapPrim_XI (:)&
-                                          + FV_Metrics_TangVec1_master(2,p,q,SideID)*gradMapPrim_ETA(:)
+                                           + FV_Metrics_TangVec1_master(2,p,q,SideID)*gradMapPrim_ETA(:)
 #if PP_dim==3
-      FV_surf_gradU_master (:,1,p,q,SideID)= FV_surf_gradU_master (PRIM_LIFT,1,p,q,SideID) &
-                                          + FV_Metrics_NormVec_master(3,p,q,SideID)*gradMapPrim_ZETA(:)
-
-      FV_surf_gradU_master (:,2,p,q,SideID)= FV_surf_gradU_master (PRIM_LIFT,2,p,q,SideID) &
-                                          + FV_Metrics_TangVec1_master(3,p,q,SideID)*gradMapPrim_ZETA(:)
-
+      FV_surf_gradU_master (:,1,p,q,SideID)= FV_surf_gradU_master (:,1,p,q,SideID) &
+                                           + FV_Metrics_NormVec_master(3,p,q,SideID)*gradMapPrim_ZETA(:)
+      FV_surf_gradU_master (:,2,p,q,SideID)= FV_surf_gradU_master (:,2,p,q,SideID) &
+                                           + FV_Metrics_TangVec1_master(3,p,q,SideID)*gradMapPrim_ZETA(:)
       FV_surf_gradU_master (:,3,p,q,SideID)= FV_Metrics_TangVec2_master(1,p,q,SideID)*gradMapPrim_XI  (:)&
-                                                   + FV_Metrics_TangVec2_master(2,p,q,SideID)*gradMapPrim_ETA (:)&
-                                                   + FV_Metrics_TangVec2_master(3,p,q,SideID)*gradMapPrim_ZETA(:)
+                                           + FV_Metrics_TangVec2_master(2,p,q,SideID)*gradMapPrim_ETA (:)&
+                                           + FV_Metrics_TangVec2_master(3,p,q,SideID)*gradMapPrim_ZETA(:)
 #endif /* PP_dim==3 */
     ELSE
       FV_surf_gradU_slave (:,1,p,q,SideID)= FV_Metrics_NormVec_slave (1,p,q,SideID)*gradMapPrim_XI  (:)&
-                                                  + FV_Metrics_NormVec_slave (2,p,q,SideID)*gradMapPrim_ETA (:)
+                                          + FV_Metrics_NormVec_slave (2,p,q,SideID)*gradMapPrim_ETA (:)
       FV_surf_gradU_slave (:,2,p,q,SideID)= FV_Metrics_TangVec1_slave(1,p,q,SideID)*gradMapPrim_XI  (:)&
-                                                  + FV_Metrics_TangVec1_slave(2,p,q,SideID)*gradMapPrim_ETA (:)
+                                          + FV_Metrics_TangVec1_slave(2,p,q,SideID)*gradMapPrim_ETA (:)
 #if PP_dim==3
-      FV_surf_gradU_slave (:,1,p,q,SideID)= FV_surf_gradU_slave (PRIM_LIFT,1,p,q,SideID) &
-                                                  + FV_Metrics_NormVec_slave(3,p,q,SideID)*gradMapPrim_ZETA (:)
-
-      FV_surf_gradU_slave (:,2,p,q,SideID)= FV_surf_gradU_slave (PRIM_LIFT,2,p,q,SideID) &
-                                                  + FV_Metrics_TangVec1_slave(3,p,q,SideID)*gradMapPrim_ZETA(:)
-
+      FV_surf_gradU_slave (:,1,p,q,SideID)= FV_surf_gradU_slave (:,1,p,q,SideID) &
+                                          + FV_Metrics_NormVec_slave(3,p,q,SideID)*gradMapPrim_ZETA (:)
+      FV_surf_gradU_slave (:,2,p,q,SideID)= FV_surf_gradU_slave (:,2,p,q,SideID) &
+                                          + FV_Metrics_TangVec1_slave(3,p,q,SideID)*gradMapPrim_ZETA(:)
       FV_surf_gradU_slave (:,3,p,q,SideID)= FV_Metrics_TangVec2_slave(1,p,q,SideID)*gradMapPrim_XI  (:)&
                                           + FV_Metrics_TangVec2_slave(2,p,q,SideID)*gradMapPrim_ETA (:)&
                                           + FV_Metrics_TangVec2_slave(3,p,q,SideID)*gradMapPrim_ZETA(:)
@@ -917,9 +918,8 @@ DO locSideID = 2, 5
     END IF ! flip
   END DO; END DO ! q,p = 0, PP_N
 END DO ! locSide
-
 END SUBROUTINE FV_PrepareSurfGradient_Parabolic
-#endif /* PARABOLIC */
+#endif /* VOLINT_VISC */
 #endif /* FV_RECONSTRUCT */
 
 
