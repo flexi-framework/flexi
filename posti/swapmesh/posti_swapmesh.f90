@@ -143,7 +143,6 @@ DO iArg=2,nArgs
   SWRITE(UNIT_stdOut,'(132("="))')
   CALL ReadOldStateFile(Args(iArg))
 
-
   SWRITE(UNIT_stdOut,'(A)') ' EVALUATING SOLUTION ON NEW MESH ...'
   CALL InterpolateSolution()
 

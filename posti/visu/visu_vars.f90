@@ -30,7 +30,7 @@ CHARACTER(LEN=255)                :: fileType = ''               !< possible val
                                                                  !< * 'Mesh'
 CHARACTER(LEN=255)                :: prmfile_old = ''            !< saves the filename of the previous FLEXI parameter file
 CHARACTER(LEN=255)                :: statefile_old = ''          !< saves the filename of the previous state (*.h5)
-CHARACTER(LEN=255)                :: MeshFile = ''               !< acutal filename of the mesh used for visualization
+CHARACTER(LEN=255)                :: MeshFile = ''               !< actual filename of the mesh used for visualization
 CHARACTER(LEN=255)                :: MeshFile_state = ''         !< filename of the mesh given in the state file
 CHARACTER(LEN=255)                :: MeshFile_old = ''           !< saves  previous MeshFile
 CHARACTER(LEN=255)                :: NodeTypeVisuPosti = "VISU"  !< NodeType used for visualization output

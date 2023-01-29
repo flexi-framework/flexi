@@ -62,6 +62,7 @@ CONTAINS
 SUBROUTINE AppendNeededPrims(mapDepToCalc,mapDepToCalc_FV,nVarCalc)
 ! MODULES
 USE MOD_EOS_Posti_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -100,6 +101,7 @@ FUNCTION GetMaskCons()
 USE MOD_EOS_Posti_Vars,ONLY: nVarDepEOS,DepTableEOS,DepNames
 USE MOD_Equation_Vars ,ONLY: StrVarNames
 USE MOD_StringTools   ,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -128,6 +130,7 @@ FUNCTION GetMaskPrim()
 USE MOD_EOS_Posti_Vars,ONLY: nVarDepEOS,DepTableEOS,DepNames
 USE MOD_Equation_Vars ,ONLY: StrVarNamesPrim
 USE MOD_StringTools   ,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
@@ -154,6 +157,7 @@ END FUNCTION GetMaskPrim
 FUNCTION GetMaskGrad()
 ! MODULES
 USE MOD_EOS_Posti_Vars,ONLY: nVarDepEOS,DepTableEOS
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
@@ -172,6 +176,7 @@ SUBROUTINE CalcQuantities(nVarCalc,nVal,mapCalcMeshToGlobalMesh,mapDepToCalc,UCa
 ! MODULES
 USE MOD_Globals
 USE MOD_EOS_Posti_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
@@ -228,6 +233,7 @@ USE MOD_PreProc
 USE MOD_EOS_Posti_Vars
 USE MOD_EOS_Vars
 USE MOD_StringTools     ,ONLY: LowCase,KEYVALUE
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
@@ -419,6 +425,7 @@ USE MOD_Preproc
 USE MOD_Globals
 USE MOD_Eos_Vars,ONLY:KappaM1
 USE MOD_DG_Vars ,ONLY:Ut,U
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -467,6 +474,7 @@ END SUBROUTINE FillPressureTimeDeriv
 !==================================================================================================================================
 PURE FUNCTION FillVorticity(dir,nVal,gradUx,gradUy,gradUz) RESULT(Vorticity)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -496,6 +504,7 @@ END FUNCTION FillVorticity
 !==================================================================================================================================
 FUNCTION FillLambda2(nVal,gradUx,gradUy,gradUz) RESULT(Lambda2)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -529,6 +538,7 @@ END FUNCTION FillLambda2
 !==================================================================================================================================
 PURE FUNCTION FillQcriterion(nVal,gradUx,gradUy,gradUz) RESULT(Qcriterion)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -561,10 +571,11 @@ END FUNCTION FillQcriterion
 !==================================================================================================================================
 !> Calculate the wall friction in direction dir.
 !==================================================================================================================================
-FUNCTION FillWallFriction(dir,nVal,Temperature,gradUx,gradUy,gradUz,NormVec) RESULT(WallFriction)
+PURE FUNCTION FillWallFriction(dir,nVal,Temperature,gradUx,gradUy,gradUz,NormVec) RESULT(WallFriction)
 ! MODULES
 USE MOD_Eos_Vars
 USE MOD_Viscosity
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -608,6 +619,7 @@ FUNCTION FillWallHeatTransfer(nVal,Temperature,gradUx,gradUy,gradUz,NormVec) RES
 ! MODULES
 USE MOD_Eos_Vars
 USE MOD_Viscosity
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -649,9 +661,7 @@ USE MOD_Eos_Vars
 USE MOD_Preproc
 USE MOD_Viscosity
 USE MOD_Mesh_Vars           ,ONLY: Elem_xGP,SideToElem,nBCSides
-USE MOD_Interpolation       ,ONLY: GetVandermonde
-USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeGL
-USE MOD_ChangeBasisByDim    ,ONLY: ChangeBasisVolume
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -671,18 +681,14 @@ REAL,INTENT(OUT)                                     :: wallDistance(0:Nloc,0:ZD
 REAL              :: mu,temp,fricVel
 INTEGER           :: iSide,p,q,iSideVisu,ElemID,locSideID
 REAL              :: xVec(3),yVec(3),yloc(3),tVec(3,2)
-REAL              :: CornerCoords(3,0:1,0:1,0:ZDIM(1))
-REAL              :: Vdm_G_Corner(0:1,0:PP_N)
 #if PP_dim==3
 INTEGER           :: i
 REAL              :: refVec(3),scalProd,scalProdMax,zVec(3)
 #endif
 !===================================================================================================================================
-! We need a Vandermonde matrix to get the GP coordinates on GL points, i.e. including the surface of the grid cells
-CALL GetVandermonde(PP_N,NodeType,1,NodeTypeGL,Vdm_G_Corner)
 
 ! Loop over all boundary sides
-DO iSide=1,nBCSides
+DO iSide = 1,nBCSides
   iSideVisu = mapBCSideToVisuSides(iSide) ! Index on visualization side
   IF (iSideVisu.GT.0) THEN ! Check if this side should be visualized
 #if PP_dim==2
@@ -694,68 +700,65 @@ DO iSide=1,nBCSides
     ElemID        = SideToElem(S2E_ELEM_ID,iSide)
     locSideID     = SideToElem(S2E_LOC_SIDE_ID,iSide)
 
-    ! Get element coordinates on GL points (they include the edges that we use to calculate the element length)
-    CALL ChangeBasisVolume(3,PP_N,1,Vdm_G_Corner,Elem_xGP(:,:,:,:,ElemID),CornerCoords)
-
     ! Depending in the local sideID, get the edge vectors of the element in wall-normal direction (stored in yVec) and for the two
-    ! wall-tangential directions (stored in tVec(:,1-2)). These vectors are the connection of the cell vertices, so they do not
-    ! include any information about curvature!!!!
+    ! wall-tangential directions (stored in tVec(:,1-2)).
+    ! ATTENTION: These vectors are the connection of the cell vertices, so they do not include any information about curvature!
     SELECT CASE(locSideID)
-    CASE(XI_MINUS,XI_PLUS)
-     yVec(:)   = CornerCoords(:,1,0,0)- CornerCoords(:,0,0,0)
-     tVec(:,1) = CornerCoords(:,0,1,0)- CornerCoords(:,0,0,0)
+      CASE(XI_MINUS,XI_PLUS)
+        yVec(:)   = NodeCoords(:,NGeo,0   ,0   ) - NodeCoords(:,0,0,0)
+        tVec(:,1) = NodeCoords(:,0   ,NGeo,0   ) - NodeCoords(:,0,0,0)
 #if PP_dim==3
-     tVec(:,2) = CornerCoords(:,0,0,1)- CornerCoords(:,0,0,0)
+        tVec(:,2) = NodeCoords(:,0   ,0   ,NGeo) - NodeCoords(:,0,0,0)
 #endif
-    CASE(ETA_MINUS,ETA_PLUS)
-     yVec(:)   = CornerCoords(:,0,1,0)- CornerCoords(:,0,0,0)
-     tVec(:,1) = CornerCoords(:,1,0,0)- CornerCoords(:,0,0,0)
+      CASE(ETA_MINUS,ETA_PLUS)
+        yVec(:)   = NodeCoords(:,0   ,NGeo,0   ) - NodeCoords(:,0,0,0)
+        tVec(:,1) = NodeCoords(:,NGeo,0   ,0   ) - NodeCoords(:,0,0,0)
 #if PP_dim==3
-     tVec(:,2) = CornerCoords(:,0,0,1)- CornerCoords(:,0,0,0)
-    CASE(ZETA_MINUS,ZETA_PLUS)
-     yVec(:)   = CornerCoords(:,0,0,1)- CornerCoords(:,0,0,0)
-     tVec(:,1) = CornerCoords(:,1,0,0)- CornerCoords(:,0,0,0)
-     tVec(:,2) = CornerCoords(:,0,1,0)- CornerCoords(:,0,0,0)
+        tVec(:,2) = NodeCoords(:,0   ,0   ,NGeo) - NodeCoords(:,0,0,0)
+      CASE(ZETA_MINUS,ZETA_PLUS)
+        yVec(:)   = NodeCoords(:,0   ,0   ,NGeo) - NodeCoords(:,0,0,0)
+        tVec(:,1) = NodeCoords(:,NGeo,0   ,0   ) - NodeCoords(:,0,0,0)
+        tVec(:,2) = NodeCoords(:,0   ,NGeo,0   ) - NodeCoords(:,0,0,0)
 #endif
     END SELECT
 
 #if PP_dim==3
     ! For the two tangential vectors, we try to find out which one is pointing in the physical x-direction
-    refVec=(/1.,0.,0./) ! Vector in x-direction
-    scalProdMax=0.
+    refVec      = (/1.,0.,0./) ! Vector in x-direction
+    scalProdMax = 0.
     ! Loop over both tangential vectors
-    DO i=1,2
+    DO i = 1,2
      ! Calculate absolute value of scalar product between vector in x-direction and the tangential vectors. This gives us
      ! an information about how much the current tangential vector is alinged with the x-direction.
-     scalProd=ABS(SUM(tVec(:,i)*refVec))
+     scalProd = ABS(SUM(tVec(:,i)*refVec))
      ! Check if this tangential vector is more aligned with the x-direction than the other one. Store the one
      ! that is most aligned in xVec.
-     IF(scalProd .GT. scalProdMax) THEN
-       scalProdMax=scalProd
-       xVec=tVec(:,i)
-       zVec=tVec(:,3-i)
+     IF (scalProd.GT.scalProdMax) THEN
+       scalProdMax = scalProd
+       xVec        = tVec(:,i)
+       zVec        = tVec(:,3-i)
      END IF
     END DO
 #else
-    xVec=tVec(:,1)
+    xVec = tVec(:,1)
 #endif
 
     ! Calculate lengths of the cell = lengths of the edge vectors
-    yloc(1)=NORM2(xVec)
-    yloc(2)=NORM2(yVec)
+    yloc(1) = NORM2(xVec)
+    yloc(2) = NORM2(yVec)
 #if PP_dim==3
-    yloc(3)=NORM2(zVec)
+    yloc(3) = NORM2(zVec)
 #endif
 
     ! Normalize the distances with the number of points per direction per cell
-    yloc(1:PP_dim)=yloc(1:PP_dim)/(PP_N+1)
+    yloc(1:PP_dim) = yloc(1:PP_dim)/(PP_N+1)
 
     ! Non-dimensional wall distance is calculated using  y+ = y * frictionVel / kinematicVisc
     ! where frictionVel = sqrt(WallFriction/rho)
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
-      fricVel=SQRT(WallFrictionMag(p,q,iSideVisu))
-      temp = Temperature(p,q,iSideVisu)
-      mu   = VISCOSITY_TEMPERATURE(temp)
+      fricVel = SQRT(WallFrictionMag(p,q,iSideVisu))
+      temp    = Temperature(p,q,iSideVisu)
+      mu      = VISCOSITY_TEMPERATURE(temp)
       wallDistance(p,q,iSideVisu) = yloc(dir)*fricVel*Density(p,q,iSideVisu)/mu
     END DO; END DO ! p,q=0,Nloc
 

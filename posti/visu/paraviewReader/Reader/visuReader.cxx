@@ -39,7 +39,7 @@
 #include <sstream>
 
 // MPI
-#include "vtkMultiProcessController.h"
+#include <vtkMultiProcessController.h>
 vtkStandardNewMacro(visuReader);
 vtkCxxSetObjectMacro(visuReader, Controller, vtkMultiProcessController);
 
@@ -303,7 +303,11 @@ int visuReader::RequestData(
    for (int i = 0; i< nVars; ++i)
    {
       const char* name = VarDataArraySelection->GetArrayName(i);
-      VarNames_selected[i] = VarDataArraySelection->ArrayIsEnabled(name);
+      if ((name != NULL) && (name[0] != '\0')) {
+        VarNames_selected[i] = VarDataArraySelection->ArrayIsEnabled(name);
+      } else {
+        VarNames_selected[i] = 0;
+      }
    }
 
    int nBCs = BCDataArraySelection->GetNumberOfArrays();
@@ -311,7 +315,11 @@ int visuReader::RequestData(
    for (int i = 0; i< nBCs; ++i)
    {
       const char* name = BCDataArraySelection->GetArrayName(i);
-      BCNames_selected[i] = BCDataArraySelection->ArrayIsEnabled(name);
+      if ((name != NULL) && (name[0] != '\0')) {
+        BCNames_selected[i] = BCDataArraySelection->ArrayIsEnabled(name);
+      } else {
+        BCNames_selected[i] = 0;
+      }
    }
 
    // Change to directory of state file (path of mesh file is stored relative to path of state file)
@@ -392,7 +400,6 @@ int visuReader::RequestData(
 
    MPI_Barrier(mpiComm); // wait until all processors returned from the Fortran Posti code
 
-
    // get the MultiBlockDataset
    vtkMultiBlockDataSet* mb = vtkMultiBlockDataSet::SafeDownCast(outInfoVolume->Get(vtkDataObject::DATA_OBJECT()));
    if (!mb) {
@@ -415,8 +422,6 @@ int visuReader::RequestData(
 
     // Insert FV data into output
    InsertData(mb, 1, &coords_FV, &values_FV, &nodeids_FV, &varnames);
-
-
 
    // get the MultiBlockDataset
    mb = vtkMultiBlockDataSet::SafeDownCast(outInfoSurface->Get(vtkDataObject::DATA_OBJECT()));

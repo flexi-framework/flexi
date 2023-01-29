@@ -150,6 +150,7 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       ~visuReader();
 
       virtual int FillOutputPortInformation(int port, vtkInformation* info);
+
    private:
       // MPI
       vtkMultiProcessController *Controller;

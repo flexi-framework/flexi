@@ -112,7 +112,7 @@ IF (.NOT.DGonly) THEN
     DEALLOCATE(ElemData_loc,VarNamesElemData_loc,tmp)
   END IF
 
-  nElems_FV = SUM(FV_Elems_loc)
+  nElems_FV = COUNT(FV_Elems_loc.EQ.1)
   nElems_DG = nElems - nElems_FV
 
   ! build the mapping, that holds the global indices of all FV elements
