@@ -73,16 +73,17 @@ REAL                          :: L_zeta(  0:NState,0:NInter,0:NInter,0:NInter)
 #endif
 REAL                          :: L_eta_zeta
 REAL                          :: xGP(0:NState),wBaryGP(0:NState)
-REAL                          :: Time
+REAL                          :: StartT,EndT
 INTEGER                       :: jElemNew,jElemOld,iElemExtrusion,iIter
 !===================================================================================================================================
 ! GPs and Barycentric weights for solution
 CALL GetNodesAndWeights(NState,NodeTypeState,xGP)
 CALL BarycentricWeights(NState,xGP,wBaryGP)
 
-SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' INTERPOLATE STATE TO NEW MESH...'
-Time=OMP_FLEXITIME()
-U=0.
+SWRITE(UNIT_stdOut,'(A,A)',ADVANCE='NO')' INTERPOLATE STATE TO NEW MESH ...',ACHAR(13)
+StartT = FLEXITIME()
+U      = 0.
+
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iElemNew,iElemOld,L_xi,ii,jj,kk,L_eta,L_zeta,L_eta_zeta,Utmp,i,j,k)
 !$OMP DO
 DO iElemNew=1,nElemsNew
@@ -94,7 +95,8 @@ DO iElemNew=1,nElemsNew
     ! Only the choosen layer is interpolated if an extrusion is performed
     IF (Elem_IJK(3,iElemNew).NE.ExtrudeK) CYCLE
   END IF
-  ! equal elements
+
+  ! Equal elements
   IF(equalElem(iElemNew).GT.0) THEN
     iElemOld=equalElem(iElemNew)
     IF(NState.EQ.NNew)THEN
@@ -105,7 +107,7 @@ DO iElemNew=1,nElemsNew
     CYCLE
   END IF
 
-  ! rest
+  ! -- Remaining elements
   ! Calculate basis function values for xiInter
   DO kk=0,ZDIM(NInter); DO jj=0,NInter; DO ii=0,NInter
     IF(.NOT.IPDone(ii,jj,kk,iElemNew)) CYCLE
@@ -126,6 +128,7 @@ DO iElemNew=1,nElemsNew
     ELSE
       Utmp(:,ii,jj,kk)=0.
     END IF
+
     iElemOld = InterToElem(ii,jj,kk,iElemNew)
     DO k=0,ZDIM(NState)
       DO j=0,NState
@@ -150,7 +153,8 @@ IF (ExtrudeTo3D) THEN
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iElemNew,iElemOld,L_xi,ii,jj,kk,L_eta,L_zeta,L_eta_zeta,Utmp,i,j,k)
 !$OMP DO
   DO iElemNew=1,nElemsNew
-    IF (Elem_IJK(3,iElemNew).EQ.ExtrudeK) CYCLE ! Skip the extrusion layer, already done
+    ! Skip the extrusion layer, already done
+    IF (Elem_IJK(3,iElemNew).EQ.ExtrudeK) CYCLE
     ! Search for the corresponding element in the extrusion layer
     DO jElemNew = 1, nElemsNew
       IF (ALL(Elem_IJK(:,jElemNew).EQ.(/Elem_IJK(1,iElemNew),Elem_IJK(2,iElemNew),ExtrudeK/))) THEN
@@ -158,6 +162,7 @@ IF (ExtrudeTo3D) THEN
         EXIT
       END IF
     END DO ! jElemNew = 1, nElemsNew
+
     ! Copy data
     U(:,:,:,:,iElemNew) = U(:,:,:,:,iElemExtrusion)
   END DO
@@ -182,8 +187,8 @@ IF (ExtrudePeriodic) THEN
   END DO
 END IF
 
-Time=OMP_FLEXITIME() -Time
-SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',Time,'s]'
+EndT = FLEXITIME()
+SWRITE(UNIT_stdOut,'(A,F0.3,A)')' INTERPOLATE STATE TO NEW MESH DONE  [',EndT-StartT,'s]'
 
 END SUBROUTINE InterpolateSolution
 

@@ -25,8 +25,8 @@ PROGRAM to3D
 USE MOD_Globals
 USE MOD_Commandline_Arguments
 USE MOD_IO_HDF5
-USE MOD_HDF5_Input
-USE MOD_HDF5_Output
+USE MOD_HDF5_Input,              ONLY: ReadArray,GetDataSize
+USE MOD_HDF5_Output,             ONLY: WriteArray
 USE MOD_MPI,                     ONLY: InitMPI
 #if USE_MPI
 USE MOD_MPI,                     ONLY: FinalizeMPI

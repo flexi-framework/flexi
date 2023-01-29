@@ -486,6 +486,7 @@ DEALLOCATE(VR)
 DEALLOCATE(eigSTilde)          
 END SUBROUTINE performDMD
 
+
 SUBROUTINE WriteDmdStateFile() 
 USE MOD_Globals
 USE MOD_PreProc
