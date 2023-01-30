@@ -150,17 +150,19 @@ FV_IndUpperThreshold = GETREAL('FV_IndUpperThreshold')
 ! Read flag indicating, if an additional Persson indicator should check if a FV sub-cells element really contains no oscillations
 ! anymore.
 FV_toDG_indicator = GETLOGICAL('FV_toDG_indicator')
-IF (FV_toDG_indicator) FV_toDG_limit = GETREAL('FV_toDG_limit')
+IF (FV_toDG_indicator) THEN
+  FV_toDG_limit = GETREAL('FV_toDG_limit')
+  ! If the main indicator is not already the persson indicator, then we need to read in the parameters
+  IF (IndicatorType .NE. 2) THEN
+    nModes = GETINT('nModes')
+    nModes = MAX(1,MIN(PP_N-1,nModes+PP_N-MIN(NUnder,NFilter)))
+    SWRITE(UNIT_stdOut,'(A,I0)') ' | nModes = ', nModes
+  END IF
+END IF
 
 ! Read flag, which allows switching from FV to DG between the stages of a Runge-Kutta time step
 ! (this might lead to instabilities, since the time step for a DG element is smaller)
 FV_toDGinRK = GETLOGICAL("FV_toDGinRK")
-
-! If the main indicator is not already the persson indicator, then we need to read in the parameters
-IF (IndicatorType.NE.2) THEN
-  nModes = GETINT('nModes')
-  nModes = MAX(1,nModes+PP_N-MIN(NUnder,NFilter))-1 ! increase by number of empty modes in case of overintegration
-END IF
 
 ! Options for initial solution
 FV_IniSharp       = GETLOGICAL("FV_IniSharp")

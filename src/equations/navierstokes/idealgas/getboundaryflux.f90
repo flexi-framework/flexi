@@ -489,7 +489,7 @@ END SUBROUTINE GetBoundaryState
 
 !==================================================================================================================================
 !> Computes the boundary fluxes for a given face (defined by SideID).
-!> Calls GetBoundaryState an directly uses the returned vales for all Riemann-type BCs.
+!> Calls GetBoundaryState and directly uses the returned values for all Riemann-type BCs.
 !> For other types of BCs, we directly compute the flux on the interface.
 !==================================================================================================================================
 SUBROUTINE GetBoundaryFlux(SideID,t,Nloc,Flux,UPrim_master,                   &
