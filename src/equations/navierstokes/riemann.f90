@@ -520,7 +520,7 @@ END SUBROUTINE Riemann_LF
 !=================================================================================================================================
 PPURE SUBROUTINE Riemann_HLLC(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
-USE MOD_EOS_Vars      ,ONLY: KappaM1
+USE MOD_EOS_Vars      ,ONLY: KappaM1!,kappa
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -562,8 +562,8 @@ RoeVel    = (SqrtRho_R*U_RR(EXT_VELV) + SqrtRho_L*U_LL(EXT_VELV)) * sSqrtRho
 RoeH      = (SqrtRho_R*H_R            + SqrtRho_L*H_L       )     * sSqrtRho
 absVel    = DOT_PRODUCT(RoeVel,RoeVel)
 Roec      = SQRT(KappaM1*(RoeH-0.5*absVel))
-Ssl = RoeVel(1) - Roec
-Ssr = RoeVel(1) + Roec
+Ssl       = RoeVel(1) - Roec
+Ssr       = RoeVel(1) + Roec
 
 ! positive supersonic speed
 IF(Ssl .GE. 0.)THEN
