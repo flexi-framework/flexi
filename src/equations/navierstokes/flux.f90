@@ -89,19 +89,19 @@ f(DENS) = U(MOM1)                             ! rho*u
 f(MOM1) = U(MOM1) * UPrim(VEL1) + UPrim(PRES) ! rho*u²+p
 f(MOM2) = U(MOM1) * UPrim(VEL2)               ! rho*u*v
 f(MOM3) = U(MOM1) * UPrim(VEL3)               ! rho*u*w
-f(PRES) = Ep * UPrim(VEL1)                    ! (rho*e+p)*u
+f(ENER) = Ep * UPrim(VEL1)                    ! (rho*e+p)*u
 ! Euler fluxes y-direction
 g(DENS) = U(MOM2)                             ! rho*v
 g(MOM1) = f(MOM2)                             ! rho*u*v
 g(MOM2) = U(MOM2) * UPrim(VEL2) + UPrim(PRES) ! rho*v²+p
 g(MOM3) = U(MOM2) * UPrim(VEL3)               ! rho*v*w
-g(PRES) = Ep * UPrim(VEL2)                    ! (rho*e+p)*v
+g(ENER) = Ep * UPrim(VEL2)                    ! (rho*e+p)*v
 ! Euler fluxes z-direction
 h(DENS) = U(MOM3)                             ! rho*v
 h(MOM1) = f(MOM3)                             ! rho*u*w
 h(MOM2) = g(MOM3)                             ! rho*v*w
 h(MOM3) = U(MOM3) * UPrim(VEL3) + UPrim(PRES) ! rho*v²+p
-h(PRES) = Ep * UPrim(VEL3)                    ! (rho*e+p)*w
+h(ENER) = Ep * UPrim(VEL3)                    ! (rho*e+p)*w
 #else
 
 ! Euler part
