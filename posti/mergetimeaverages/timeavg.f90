@@ -222,6 +222,7 @@ END DO
 
 ! Read FV position and weights or fill with dummy
 #if FV_ENABLED
+CALL OpenDataFile(InputFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 ALLOCATE(FV_X(0:PP_N))
 ALLOCATE(FV_w(0:PP_N))
 CALL DatasetExists(File_ID,'FV_X',FV_exists,attrib=.TRUE.)
@@ -232,6 +233,7 @@ ELSE
   FV_X = 0.
   FV_w = 0.
 END IF
+CALL CloseDataFile()
 #endif
 
 ! Start the averaging
