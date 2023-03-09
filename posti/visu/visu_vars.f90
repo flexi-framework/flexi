@@ -154,6 +154,7 @@ INTEGER,ALLOCATABLE,TARGET            :: nodeidsSurf_FV(:)            !< nodeIDs
 ! ==============================================================================================================================
 ! Avg2D
 ! ==============================================================================================================================
+LOGICAL                           :: IJK_exists                  !< IJK sorting of elements
 INTEGER,ALLOCATABLE               :: Elem_IJK(:,:)               !< IJK sorting of elements
 INTEGER,ALLOCATABLE               :: Elem_IJK_glob(:,:)          !< IJK sorting of global elements for parallel avgerage
 INTEGER                           :: nElems_IJK(3)               !< Number of elements in structured direction

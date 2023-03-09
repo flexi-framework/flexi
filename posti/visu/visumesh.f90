@@ -317,18 +317,18 @@ SUBROUTINE VisualizeMesh(postifile,meshfile_in)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars
+USE MOD_HDF5_Input    ,ONLY: ReadAttribute,ReadArray,File_ID,OpenDataFile,CloseDataFile
+USE MOD_Interpolation ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
+USE MOD_Mesh_Vars     ,ONLY: nElems,offsetElem,Ngeo,scaledJac
+USE MOD_Mesh          ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
+USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG
 USE MOD_ReadInTools   ,ONLY: prms,GETINT,GETSTR,GETLOGICAL,CountOption
 USE MOD_ReadInTools   ,ONLY: FinalizeParameters
 USE MOD_StringTools   ,ONLY: STRICMP
+USE MOD_VTK           ,ONLY: WriteCoordsToVTK_array
 #if USE_MPI
 USE MOD_MPI           ,ONLY: FinalizeMPI
 #endif
-USE MOD_Interpolation ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
-USE MOD_Mesh_Vars     ,ONLY: nElems,Ngeo,scaledJac
-USE MOD_Mesh          ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
-USE MOD_VTK           ,ONLY: WriteCoordsToVTK_array
-USE MOD_HDF5_Input    ,ONLY: ReadAttribute,File_ID,OpenDataFile,CloseDataFile
-USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN):: postifile
@@ -385,14 +385,20 @@ IF (nVarIni.GT.0) THEN
   ! A very simple mapping is build: There are two depending variables, either one or both of them can be visualized
   NCalc = PP_N
   nVarVisu = nVarIni
-  nVarDep = 2
-  nVarAll = 2
+  IF (IJK_exists) THEN
+    nVarDep = 5
+    nVarAll = 5
+  ELSE
+    nVarDep = 2
+    nVarAll = 2
+  END IF
   SDEALLOCATE(mapDepToCalc)
   SDEALLOCATE(mapAllVarsToVisuVars)
   SDEALLOCATE(mapAllVarsToSurfVisuVars)
   ALLOCATE(mapDepToCalc(nVarDep))
-  mapDepToCalc(1) = 1
-  mapDepToCalc(2) = 2
+  DO iVar = 1, nVarDep
+    mapDepToCalc(iVar) = iVar
+  END DO ! iVar
   ALLOCATE(mapAllVarsToVisuVars(nVarAll))
   mapAllVarsToVisuVars = 0
   ALLOCATE(mapAllVarsToSurfVisuVars(1:nVarAll))
@@ -409,10 +415,25 @@ IF (nVarIni.GT.0) THEN
   END DO ! iVar = 1, nVarIni
   SDEALLOCATE(UCalc_DG)
   ALLOCATE(UCalc_DG(0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems_DG,nVarDep))
+
+  ! Fill the array
   UCalc_DG(:,:,:,:,1) = scaledJac
   DO iElem=1,nElems
     UCalc_DG(:,:,:,iElem,2) = MINVAL(UCalc_DG(:,:,:,iElem,1))
   END DO ! iElem
+
+  IF (IJK_exists) THEN
+    ALLOCATE(Elem_IJK(3,nElems))
+    CALL OpenDataFile(meshfile_in,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+    CALL ReadArray('Elem_IJK',2,(/3,nElems/),offsetElem,2,IntArray=Elem_IJK)
+    DO iElem=1,nElems
+      UCalc_DG(:,:,:,iElem,3) = Elem_IJK(1,iElem)
+      UCalc_DG(:,:,:,iElem,4) = Elem_IJK(2,iElem)
+      UCalc_DG(:,:,:,iElem,5) = Elem_IJK(3,iElem)
+    END DO
+    DEALLOCATE(Elem_IJK)
+    CALL CloseDataFile()
+  END IF
 
   CALL ConvertToVisu_DG()
 ELSE
