@@ -24,7 +24,7 @@ PRIVATE
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ABSTRACT INTERFACE
-  SUBROUTINE RiemannInt(F_L,F_R,U_LL,U_RR,F)
+  PPURE SUBROUTINE RiemannInt(F_L,F_R,U_LL,U_RR,F)
     REAL,DIMENSION(PP_2Var),INTENT(IN) :: U_LL,U_RR
     REAL,DIMENSION(PP_nVar),INTENT(IN) :: F_L,F_R
     REAL,DIMENSION(PP_nVar),INTENT(OUT):: F
@@ -243,7 +243,7 @@ REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U_L        !< conservative solution a
 REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
 REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
 REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
-REAL,DIMENSION(3          ),INTENT(IN)  :: nv,t1,t2   !< normal vector and tangential vectors at side
+REAL,DIMENSION(          3),INTENT(IN)  :: nv,t1,t2   !< normal vector and tangential vectors at side
 REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: FOut       !< advective flux
 LOGICAL,INTENT(IN)                      :: doBC       !< marker whether side is a BC side
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -398,7 +398,7 @@ END SUBROUTINE ViscousFlux_Point
 !==================================================================================================================================
 !> Local Lax-Friedrichs (Rusanov) Riemann solver
 !==================================================================================================================================
-SUBROUTINE Riemann_LF(F_L,F_R,U_LL,U_RR,F)
+PPURE SUBROUTINE Riemann_LF(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa
 IMPLICIT NONE
@@ -425,7 +425,7 @@ END SUBROUTINE Riemann_LF
 !> Pelanti, Marica & Quartapelle, Luigi & Vigevano, L & Vigevano, Luigi. (2018):
 !>  A review of entropy fixes as applied to Roe's linearization.
 !=================================================================================================================================
-SUBROUTINE Riemann_RoeEntropyFix(F_L,F_R,U_LL,U_RR,F)
+PPURE SUBROUTINE Riemann_RoeEntropyFix(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa,KappaM1
 #ifdef SPLIT_DG
