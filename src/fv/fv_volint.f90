@@ -92,7 +92,7 @@ DO iElem=1,nElems
 #if FV_ENABLED == 1
   IF (FV_Elems(iElem) .EQ. 0) CYCLE ! DG Element
 #elif FV_ENABLED == 2
-  IF (FV_alpha(iElem) .LT. EPSILON(0.)) CYCLE
+  IF (FV_alpha(iElem) .LT. FV_alpha_min) CYCLE
 #endif
 
 #if VOLINT_VISC

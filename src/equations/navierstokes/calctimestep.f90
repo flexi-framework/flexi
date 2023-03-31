@@ -115,6 +115,9 @@ USE MOD_Viscosity
 #endif /*PARABOLIC*/
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems
+#if FV_ENABLED == 2
+USE MOD_FV_Vars      ,ONLY: FV_alpha,FV_alpha_min
+#endif
 #endif
 #if EDDYVISCOSITY
 USE MOD_EddyVisc_Vars, ONLY: muSGS
@@ -186,7 +189,7 @@ DO iElem=1,nElems
   END DO; END DO; END DO ! i,j,k
 
 #if FV_ENABLED == 2
-  dtElem(iElem)=MINVAL(CFLScale(:))*2./SUM(Max_Lambda)
+  dtElem(iElem)=MERGE(CFLScale(0),CFLScale(1),FV_alpha(iElem).LE.FV_alpha_min)*2./SUM(Max_Lambda)
 #else
   dtElem(iElem)=CFLScale(FVE)*2./SUM(Max_Lambda)
 #endif
