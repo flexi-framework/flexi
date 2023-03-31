@@ -44,6 +44,7 @@ CONTAINS
 !==================================================================================================================================
 FUNCTION INVERSE(A) RESULT(AINV)
 ! MODULES
+USE MOD_Globals, ONLY: Abort
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -88,17 +89,15 @@ ELSE
   ! using partial pivoting with row interchanges.
   CALL DGETRF(n, n, Ainv, n, ipiv, info)
 
-  IF(info.NE.0)THEN
-    STOP 'Matrix is numerically singular!'
-  END IF
+  IF(info.NE.0) &
+    CALL Abort(__STAMP__,'INVERSE(A): Matrix is numerically singular! INFO = ',IntInfo=INFO)
 
   ! DGETRI computes the inverse of a matrix using the LU factorization
   ! computed by DGETRF.
   CALL DGETRI(n, Ainv, n, ipiv, work, n, info)
 
-  IF(info.NE.0)THEN
-    STOP 'Matrix inversion failed!'
-  END IF
+  IF(info.NE.0) &
+    CALL Abort(__STAMP__,'INVERSE(A): Matrix inversion failed! INFO = ',IntInfo=INFO)
 END IF
 END FUNCTION INVERSE
 
