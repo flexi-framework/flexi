@@ -154,10 +154,10 @@ SUBROUTINE InitMPIVars()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_Interpolation_Vars,      ONLY: InterpolationInitIsDone
 USE MOD_MPI_Vars
 USE MOD_ReadinTools,             ONLY: GETINT
 ! IMPLICIT VARIABLE HANDLING
-USE MOD_Interpolation_Vars,      ONLY: InterpolationInitIsDone
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -214,6 +214,14 @@ CALL MPI_COMM_RANK(MPI_COMM_NODE,myLocalRank,iError)
 CALL MPI_COMM_SIZE(MPI_COMM_NODE,nLocalProcs,iError)
 MPILocalRoot=(myLocalRank .EQ. 0)
 
+IF (nProcessors.EQ.nLocalProcs) THEN
+  SWRITE(UNIT_stdOUt,'(A,I0,A,I0,A)') ' | Starting gathered I/O communication with ',nLocalProcs,' procs in ',1,' group'
+ELSE
+  SWRITE(UNIT_stdOUt,'(A,I0,A,I0,A,I0,A)') ' | Starting gathered I/O communication with ',nLocalProcs,' procs each in ',&
+                                                        nProcessors/nLocalProcs,' groups for a total number of ',&
+                                                        nProcessors,' procs'
+END IF
+
 ! now split global communicator into small group leaders and the others
 MPI_COMM_LEADERS=MPI_COMM_NULL
 MPI_COMM_WORKERS=MPI_COMM_NULL
@@ -231,7 +239,6 @@ ELSE
   nLeaderProcs=nProcessors-nWorkerProcs
 END IF
 END SUBROUTINE InitMPIvars
-
 
 
 !==================================================================================================================================
