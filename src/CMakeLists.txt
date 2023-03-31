@@ -300,6 +300,12 @@ ELSE()
   INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src/equations/${FLEXI_EQNSYSNAME}/)
 ENDIF()
 
+# >> remove F90 files of the splitflux from 'eqnsysF90'-list
+FILE(GLOB splitfluxF90 ./src/equations/${FLEXI_EQNSYSNAME}/splitflux.f90)
+IF (NOT FLEXI_SPLIT_DG)
+  LIST(REMOVE_ITEM eqnsysF90 ${splitfluxF90})
+ENDIF()
+
 # >> append F90 files of the eddy viscosity to 'eqnsysF90'-list
 IF (FLEXI_EDDYVISCOSITY)
   FILE(GLOB eddyviscF90 ./src/equations/${FLEXI_EQNSYSNAME}/eddyVisc/*.f90
@@ -311,6 +317,7 @@ IF (FLEXI_EDDYVISCOSITY)
 ENDIF()
 
 # >> append 'eqnsysF90'-list to 'flexiF90'-list
+LIST(REMOVE_DUPLICATES eqnsysF90)
 LIST(APPEND flexiF90 ${eqnsysF90})
 
 # >> collect F90 files of 'dg' directory (non-recursive) in a new list 'dgF90'
