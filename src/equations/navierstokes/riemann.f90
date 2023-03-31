@@ -410,7 +410,7 @@ Fout(MOMV)=nv(:)*F(MOM1)  &
 #if PP_dim==3
           +t2(:)*F(MOM3)
 #else
-          +0.
+          + 0.
 #endif
 Fout(ENER)=F(ENER)
 END SUBROUTINE Riemann_Point

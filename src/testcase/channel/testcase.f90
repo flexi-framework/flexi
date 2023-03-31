@@ -14,7 +14,7 @@
 #include "flexi.h"
 #include "eos.h"
 
-#if FV_ENABLED
+#if FV_ENABLED == 1
 #error "This testcase is not tested with FV"
 #endif
 
@@ -115,7 +115,7 @@ SUBROUTINE InitTestcase()
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_ReadInTools,        ONLY: GETINT,GETREAL,GETLOGICAL
+USE MOD_ReadInTools,        ONLY: GETINT,GETREAL
 USE MOD_Output_Vars,        ONLY: ProjectName
 USE MOD_Equation_Vars,      ONLY: RefStatePrim,IniRefState,RefStateCons
 USE MOD_EOS,                ONLY: PrimToCons
@@ -135,7 +135,7 @@ CHARACTER(LEN=7)         :: varnames(2)
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE CHANNEL...'
 
-#if FV_ENABLED
+#if FV_ENABLED == 1
 CALL CollectiveStop(__STAMP__,'The testcase has not been implemented for FV yet!')
 #endif
 
