@@ -217,16 +217,16 @@ SUBROUTINE InitRestart(RestartFile_in)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_HDF5_Input,         ONLY: ISVALIDHDF5FILE,GetVarNames,DatasetExists
+USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadAttribute,File_ID
+USE MOD_Interpolation_Vars, ONLY: InterpolationInitIsDone,NodeType
+USE MOD_Mesh_Vars,          ONLY: nGlobalElems,NGeo
+USE MOD_ReadInTools,        ONLY: GETLOGICAL,GETREAL,ExtractParameterFile,CompareParameterFile
 USE MOD_Restart_Vars
 #if FV_ENABLED
-USE MOD_StringTools,        ONLY: INTTOSTR
 USE MOD_ReadInTools,        ONLY: GETINT
-#endif
-USE MOD_HDF5_Input,         ONLY: ISVALIDHDF5FILE,GetVarNames,DatasetExists
-USE MOD_Interpolation_Vars, ONLY: InterpolationInitIsDone,NodeType
-USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadAttribute,File_ID
-USE MOD_ReadInTools,        ONLY: GETLOGICAL,GETREAL
-USE MOD_Mesh_Vars,          ONLY: nGlobalElems,NGeo
+USE MOD_StringTools,        ONLY: INTTOSTR
+#endif /*FV_ENABLED*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -234,12 +234,12 @@ IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN) :: RestartFile_in !< state file to restart from
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-LOGICAL            :: ResetTime,validHDF5
+LOGICAL            :: ResetTime,validHDF5,prmChanged,userblockFound
 REAL               :: StartT,EndT
+CHARACTER(LEN=255) :: ParameterFileOld
 !==================================================================================================================================
-IF((.NOT.InterpolationInitIsDone).OR.RestartInitIsDone)THEN
+IF(.NOT.InterpolationInitIsDone .OR. RestartInitIsDone) &
   CALL CollectiveStop(__STAMP__,'InitRestart not ready to be called or already called.')
-END IF
 
 ! If not done previously, check the restart file
 IF (RestartMode.EQ.-1) CALL InitRestartFile(RestartFile_in)
@@ -265,8 +265,23 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
   CALL ReadAttribute(File_ID,'Time',1,RealScalar=RestartTime)
   ! Option to set the calculation time to 0 even tho performing a restart
   ResetTime = GETLOGICAL('ResetTime')
-  IF(ResetTime) RestartTime=0.
-  CALL CloseDataFile()
+  IF (postiMode) ResetTime = .FALSE.
+
+  ! Ensure this is not the same run starting over with ResetTime=T
+  IF (ResetTime) THEN
+    IF (.NOT.GETLOGICAL('ResetTimeOverride')) THEN
+      ! Extract the old parameter file
+      ParameterFileOld = ".flexi.old.ini"
+      CALL ExtractParameterFile(RestartFile,ParameterFileOld,userblockFound)
+
+      ! Compare it against the current file
+      IF (userblockFound) THEN
+        CALL CompareParameterFile(ParameterFile,ParameterFileOld,prmChanged)
+        IF (.NOT.prmChanged) &
+          CALL CollectiveStop(__STAMP__,'Running simulation with ResetTime=T, same parameter file and ResetTimeOverride=F!')
+      END IF
+    END IF
+  END IF
 
   ! Check if number of elements match
   IF (nElems_Restart.NE.nGlobalElems) THEN
@@ -465,10 +480,7 @@ IF (DoRestart) THEN
 
   ! Write truncated array back to U_local
   IF (ALLOCATED(U_localNVar)) THEN
-    DEALLOCATE(U_local)
-    ALLOCATE(U_local(PP_nVar,0:HSize_proc(2)-1,0:HSize_proc(3)-1,0:HSize_proc(4)-1,nElems))
-    U_local = U_localNVar
-    DEALLOCATE(U_localNVar)
+    CALL MOVE_ALLOC(U_localNVar,U_local)
   END IF
 
   ! Read in state
@@ -509,10 +521,7 @@ IF (DoRestart) THEN
       ALLOCATE(U_local2(PP_nVar,0:N_Restart,0:N_Restart,0:N_Restart,nElems))
       CALL ExpandArrayTo3D(5,HSize_proc,4,N_Restart,U_local,U_local2)
       ! Reallocate 'U_local' to 3D and mv data from U_local2 to U_local
-      DEALLOCATE(U_local)
-      ALLOCATE(U_local(PP_nVar,0:N_Restart,0:N_Restart,0:N_Restart,nElems))
-      U_local = U_local2
-      DEALLOCATE(U_local2)
+      CALL MOVE_ALLOC(U_local2,U_local)
     END IF
 #else
     IF (HSize_proc(4).NE.1) THEN
@@ -520,6 +529,7 @@ IF (DoRestart) THEN
       CALL to2D_rank5((/1,0,0,0,1/),(/PP_nVar,N_Restart,N_Restart,N_Restart,nElems/),4,U_local)
     END IF
 #endif /*PP_dim == 3*/
+
     ! Transform solution to refspace and project solution to N
     ! For conservativity deg of detJac should be identical to EFFECTIVE polynomial deg of solution
     ! (e.g. beware when filtering the jacobian )
@@ -551,7 +561,7 @@ IF (DoRestart) THEN
 #endif
         END IF
       END DO
-    END IF
+    END IF ! N_Restart.GT.PP_N
 
     DEALLOCATE(U_local)
   END IF ! InterpolateSolution
