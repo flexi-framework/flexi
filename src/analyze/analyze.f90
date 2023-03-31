@@ -69,7 +69,7 @@ CALL prms%CreateIntOption(    'AnalyzeRefState' ,"Define state used for analyze 
                                                  "Default: Same as IniRefState")
 CALL prms%CreateLogicalOption('doMeasureFlops',  "Set true to measure flop count, if compiled with PAPI.",&
                                                  '.TRUE.')
-CALL prms%CreateRealOption(   'PIDkill',         'Kill FLEXI if PID gets below this value (optional)',&
+CALL prms%CreateRealOption(   'PIDkill',         'Kill FLEXI if PID gets above this value (optional)',&
                                                  '-1.0')
 CALL prms%CreateIntOption(    'NCalcPID'         ,'Compute PID after every Nth timestep.',&
                                                   '1')
@@ -368,8 +368,8 @@ END IF
 PIDTimeEnd = FLEXITIME()
 PID        = (PIDTimeEnd-PIDTimeStart)*REAL(nProcessors)/(REAL(nGlobalElems)*REAL((PP_N+1)**PP_dim))/nRKStages
 
-! Abort if PID is too low
-IF (PID.LT.PID_kill) &
+! Abort if PID is too high
+IF (PID.GT.PID_kill) &
   CALL CollectiveStop(__STAMP__,'Aborting due to low performance, PID',RealInfo=PID)
 
 PIDTimeStart = PIDTimeStart
