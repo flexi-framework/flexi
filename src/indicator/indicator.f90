@@ -129,7 +129,10 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                  :: iBC,nFVBoundaryType,nModes_In
+INTEGER                                  :: nModes_In
+#if FV_ENABLED == 1
+INTEGER                                  :: iBC,nFVBoundaryType
+#endif
 !==================================================================================================================================
 IF(IndicatorInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,&
@@ -198,6 +201,7 @@ CALL AddToElemData(ElementOut,'IndValue',RealArray=IndValue)
 
 IndVar = GETINT('IndVar')
 
+#if FV_ENABLED == 1
 ! FV element at boundaries
 FVBoundaries    = GETLOGICAL('FVBoundaries')
 nFVBoundaryType = CountOption('FVBoundaryType')
@@ -205,6 +209,7 @@ ALLOCATE(FVBoundaryType(nFVBoundaryType))
 DO iBC=1,nFVBoundaryType
   FVBoundaryType(iBC) = GETINT('FVBoundaryType','0')! which BCType should be at an FV element? Default value means every BC will be FV
 END DO
+#endif /* FV_ENABLED == 1 */
 
 IndicatorInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT INDICATOR DONE!'
@@ -241,15 +246,19 @@ REAL,INTENT(IN)           :: t                                            !< Sim
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                   :: iElem
+#if FV_ENABLED == 1
 REAL,POINTER              :: U_P(:,:,:,:)
-#if !(FV_ENABLED == 2)
 REAL,TARGET               :: U_DG(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 #endif
 !==================================================================================================================================
 
 ! if time is before IndStartTime return high Indicator value (FV)
 IF (t.LT.IndStartTime) THEN
+#if FV_ENABLED == 1
   IndValue = HUGE(1.)
+#elif FV_ENABLED == 2
+  FV_alpha = FV_alpha_max
+#endif /*FV_ENABLED*/
   RETURN
 END IF
 
@@ -283,8 +292,10 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
   END DO ! iElem
 #endif /*FV_ENABLED==2*/
 #if EQNSYSNR == 2 /* NAVIER-STOKES */
+#if FV_ENABLED
 CASE(INDTYPE_JAMESON)
   IndValue = JamesonIndicator(U)
+#endif
 #if PARABOLIC
 CASE(INDTYPE_DUCROS)
   IndValue = DucrosIndicator(gradUx,gradUy,gradUz)
@@ -314,8 +325,10 @@ CASE DEFAULT ! unknown Indicator Type
     "Unknown IndicatorType!")
 END SELECT
 
+#if FV_ENABLED == 1
 ! obtain indicator value for elements that contain domain boundaries
 CALL IndFVBoundaries(IndValue)
+#endif /*!FV_ENABLED == 1*/
 
 END SUBROUTINE CalcIndicator
 

@@ -196,7 +196,7 @@ USE MOD_DG_Vars       ,ONLY:U_slave,UPrim_slave
 USE MOD_FV_Vars       ,ONLY:FV_dx_master
 #endif /*FV_ENABLED*/
 #endif /*FV_RECONSTRUCT*/
-#endif /*MPI*/
+#endif /*USE_MPI*/
 #if FV_ENABLED && FV_RECONSTRUCT
 USE MOD_DG_Vars       ,ONLY:UPrim
 USE MOD_Jac_Ex_Reconstruction,ONLY:Fill_ExtendedState
@@ -219,7 +219,7 @@ REAL               :: Time
 INTEGER            :: ind(2)
 #if USE_MPI
 REAL               :: TimeMPI
-#endif /*MPI*/
+#endif /*USE_MPI*/
 !===================================================================================================================================
 IF(PrecondType.EQ.0) RETURN !NO PRECONDITIONER
 
@@ -279,8 +279,8 @@ CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U)                             
 CALL StartReceiveMPIData(UPrim_slave,DataSizeSidePrim,1,nSides,MPIRequest_U(:,SEND),SendID=1) ! Send MINE    / UPrim_slave
 CALL StartSendMPIData(   UPrim_slave,DataSizeSidePrim,1,nSides,MPIRequest_U(:,RECV),SendID=1) ! Receive YOUR / UPrim_slave
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U)                                           ! UPrim_slave: master -> slave
-#endif
-#endif
+#endif /*FV_ENABLED*/
+#endif /*FV_RECONSTRUCT*/
 #endif /*USE_MPI*/
 
 #if FV_ENABLED && FV_RECONSTRUCT
@@ -360,7 +360,7 @@ IF(DoDisplayPrecond)THEN
   IF(MPIRoot) THEN
     Time=TimeMPI
   END IF
-#endif /*MPI*/
+#endif /*USE_MPI*/
   SWRITE(UNIT_stdOut,'(A,F11.3,A)')' TOTAL DERIVATING & INVERTING TIME =[',Time,' ]'
   SWRITE(UNIT_stdOut,'(A)')' BUILD PRECONDITIONER DONE!'
   SWRITE(UNIT_stdOut,'(132("-"))')

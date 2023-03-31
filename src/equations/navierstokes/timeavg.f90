@@ -468,7 +468,7 @@ DO iElem=1,nElems
 
 #if PARABOLIC
   IF(CalcFluc(17).OR.CalcFluc(18))THEN  !'Dissipation via vel gradients'
-#if FV_ENABLED
+#if FV_ENABLED == 1
   STOP 'WriteTimeAverage for dissipation via vel gradients (DR_u / DR_S) not implemented yet for FV!'
 #endif
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N

@@ -519,7 +519,7 @@ IF (DoRestart) THEN
       ! FLEXI compiled 2D, but data is 3D => reduce third space dimension
       CALL to2D_rank5((/1,0,0,0,1/),(/PP_nVar,N_Restart,N_Restart,N_Restart,nElems/),4,U_local)
     END IF
-#endif
+#endif /*PP_dim == 3*/
     ! Transform solution to refspace and project solution to N
     ! For conservativity deg of detJac should be identical to EFFECTIVE polynomial deg of solution
     ! (e.g. beware when filtering the jacobian )

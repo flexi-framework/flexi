@@ -503,7 +503,9 @@ CHARACTER(LEN=255),DIMENSION(PRODUCT(nVal)),OPTIONAL,INTENT(OUT),TARGET :: StrAr
 INTEGER(HID_T)                 :: DSet_ID,Type_ID,MemSpace,FileSpace,PList_ID
 INTEGER(HSIZE_T)               :: Offset(Rank),Dimsf(Rank)
 TYPE(C_PTR)                    :: buf
+#if USE_MPI
 INTEGER(HID_T)                 :: driver
+#endif /*USE_MPI*/
 !==================================================================================================================================
 #if USE_MPI
 ! HDF5 with MPI can only read max. (32 bit signed integer / size of single element) elements (2GB per MPI rank)
