@@ -184,6 +184,7 @@ IF(HIT_Forcing) THEN
       END IF
 
       ALLOCATE(HIT_local(1:3,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
+      DEALLOCATE(HSize)
       CALL ReadArray('HIT',5,HSize_proc,OffsetElem,5,RealArray=HIT_local)
       ! No interpolation needed, read solution directly from file
       IF(.NOT. InterpolateSolution)THEN
