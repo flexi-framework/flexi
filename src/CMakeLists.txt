@@ -223,8 +223,20 @@ SET_PROPERTY(CACHE FLEXI_TESTCASE PROPERTY STRINGS ${TESTCASES})
 # =========================================================================
 # Unit test at end of compilation
 # =========================================================================
-OPTION(FLEXI_UNITTESTS "Enable unit tests after build" ON)
-MARK_AS_ADVANCED(FORCE FLEXI_UNITTESTS)
+# Check is unit tests can be activated
+IF(BUILD_TYPE_LC MATCHES "sanitize" AND LIBS_USE_MPI)
+  SET(ACTIVATE_UNIT_TEST OFF)
+  # Check if unit tests were previously activated
+  IF(FLEXI_UNITTESTS)
+    MESSAGE(WARNING "Unit tests automatically disabled (FLEXI_UNITTESTS=OFF) with\n CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}\n LIBS_USE_MPI = ${LIBS_USE_MPI}\nas the tests will always fail due to memory errors returned from the MPI library.")
+    SET(FLEXI_UNITTESTS OFF)
+  ENDIF()
+ELSE()
+  SET(ACTIVATE_UNIT_TEST ON)
+ENDIF()
+
+# Enable unit testing only when ACTIVATE_UNIT_TEST=ON
+CMAKE_DEPENDENT_OPTION(FLEXI_UNITTESTS "Enable unit tests after build" ON "ACTIVATE_UNIT_TEST" OFF)
 IF(FLEXI_UNITTESTS)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/unitTests/CMakeLists.txt)
 ENDIF()
