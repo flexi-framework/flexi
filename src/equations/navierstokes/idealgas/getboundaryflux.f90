@@ -254,13 +254,13 @@ SUBROUTINE GetBoundaryState(SideID,t,Nloc,UPrim_boundary,UPrim_master,NormVec,Ta
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
 USE MOD_PreProc
-USE MOD_Globals      ,ONLY: Abort
-USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
-USE MOD_EOS          ,ONLY: ConsToPrim,PrimtoCons
-USE MOD_EOS          ,ONLY: PRESSURE_RIEMANN
-USE MOD_EOS_Vars     ,ONLY: sKappaM1,Kappa,KappaM1,R
-USE MOD_ExactFunc    ,ONLY: ExactFunc
-USE MOD_Equation_Vars,ONLY: IniExactFunc,BCDataPrim,RefStatePrim
+USE MOD_Globals        ,ONLY: Abort
+USE MOD_Mesh_Vars      ,ONLY: BoundaryType,BC
+USE MOD_EOS            ,ONLY: ConsToPrim,PrimtoCons
+USE MOD_EOS            ,ONLY: PRESSURE_RIEMANN
+USE MOD_EOS_Vars       ,ONLY: sKappaM1,Kappa,KappaM1,R
+USE MOD_ExactFunc      ,ONLY: ExactFunc
+USE MOD_Equation_Vars  ,ONLY: IniExactFunc,BCDataPrim,RefStatePrim
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -379,6 +379,10 @@ CASE(3,4,9,91,23,24,25,27)
         pt=UPrim_boundary(PRES,p,q)*((1+0.5*(kappa-1)*Ma   *Ma)   **( kappa*sKappaM1))  ! adiabatic/isentropic => unstable
         !pt=prim(5)+0.5*prim(1)*vmag*vmag
         pb=pt     *(1+0.5*(kappa-1)*MaOut*MaOut)**(-kappa*sKappaM1)
+
+        ! use total temperature
+        tt=UPrim_boundary(6,p,q)*(1+0.5*(kappa-1)*Ma   *Ma)  ! adiabatic/isentropic => unstable
+        tb=tt     *(1+0.5*(kappa-1)*MaOut*MaOut)
       ELSE
         ! use total pressure for supersonic
         pb=UPrim_boundary(PRES,p,q)+0.5*UPrim_boundary(DENS,p,q)*vmag*vmag
@@ -434,6 +438,7 @@ CASE(3,4,9,91,23,24,25,27)
     Tt=RefStatePrim(1  ,BCState)
     nv=RefStatePrim(2:4,BCState)
     pt=RefStatePrim(5  ,BCState)
+
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
 
       ! Term A from paper with normal vector defined into the domain, dependent on p,q
@@ -457,6 +462,7 @@ CASE(3,4,9,91,23,24,25,27)
       Ma=SQRT(2./KappaM1*(Tt/Tb-1.))
       pb=pt*(1.+0.5*KappaM1*Ma**2)**(-kappa/kappam1)
       U=Ma*SQRT(Kappa*R*Tb)
+
       UPrim_boundary(DENS,p,q) = pb/(R*Tb)
       UPrim_boundary(PRES,p,q) = pb
 
@@ -857,8 +863,8 @@ SUBROUTINE Lifting_GetBoundaryFlux(SideID,t,UPrim_master,Flux,NormVec,TangVec1,T
 USE MOD_Globals      ,ONLY: Abort
 USE MOD_PreProc
 USE MOD_DG_Vars      ,ONLY: UPrim_Boundary
-USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
 USE MOD_Lifting_Vars ,ONLY: doWeakLifting
+USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
 USE MOD_TestCase     ,ONLY: Lifting_GetBoundaryFluxTestcase
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -967,7 +973,7 @@ INTEGER                       :: p,q,SideID,ElemID,locSide
 CHARACTER(LEN=255)            :: NodeType_HDF5
 LOGICAL                       :: InterpolateSolution
 !==================================================================================================================================
-SWRITE(UNIT_stdOut,'(A,A)')'  Read BC state from file "',FileName
+SWRITE(UNIT_stdOut,'(A,A)')'  Read BC state from file "',TRIM(FileName)
 CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL GetDataProps(nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5)
 

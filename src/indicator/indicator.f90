@@ -139,7 +139,7 @@ IF(IndicatorInitIsDone)THEN
     "InitIndicator not ready to be called or already called.")
 END IF
 SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT INDICATORS...'
+SWRITE(UNIT_stdOut,'(A)') ' INIT INDICATOR...'
 
 ! Read in  parameters
 #if FV_ENABLED == 2
@@ -235,8 +235,8 @@ USE MOD_FV_Vars          ,ONLY: FV_alpha,FV_alpha_min,FV_alpha_max,FV_doExtendAl
 USE MOD_Indicator_Vars   ,ONLY: sdT_FV,T_FV
 #else
 USE MOD_FV_Vars          ,ONLY: FV_Elems,FV_sVdm
+USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisVolume
 #endif /*FV_ENABLED==2*/
-USE MOD_ChangeBasisByDim ,ONLY:ChangeBasisVolume
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -483,7 +483,7 @@ FUNCTION JamesonIndicator(U) RESULT(IndValue)
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Indicator_Vars     ,ONLY: IndVar
-USE MOD_EOS_Vars           ,ONLY: KappaM1
+USE MOD_EOS_Vars           ,ONLY: sKappaM1,KappaM1,R
 USE MOD_Interpolation_Vars ,ONLY: L_Minus,L_Plus
 USE MOD_Mesh_Vars          ,ONLY: nElems,nSides
 USE MOD_Mesh_Vars          ,ONLY: firstMortarInnerSide,lastMortarInnerSide,firstMortarMPISide,lastMortarMPISide
@@ -532,13 +532,24 @@ INTEGER                   :: DataSizeSide_loc
 SELECT CASE(IndVar)
 CASE(1:PP_nVar)
   UJameson(1,:,:,:,:) = U(IndVar,:,:,:,:)
-CASE(6)
+CASE(6) ! Pressure
   DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       UE(EXT_CONS)=U(:,i,j,k,iElem)
       UE(EXT_SRHO)=1./UE(EXT_DENS)
       UE(EXT_VELV)=VELOCITY_HE(UE)
       UJameson(1,i,j,k,iElem)=PRESSURE_HE(UE)
+    END DO; END DO; END DO! i,j,k=0,PP_N
+  END DO ! iElem
+CASE(7) ! Entropy
+  DO iElem=1,nElems
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+      UE(EXT_CONS) = U(:,i,j,k,iElem)
+      UE(EXT_SRHO) = 1./UE(EXT_DENS)
+      UE(EXT_VELV) = VELOCITY_HE(UE)
+      UE(EXT_PRES) = PRESSURE_HE(UE)
+      UE(EXT_TEMP) = TEMPERATURE_HE(UE)
+      UJameson(1,i,j,k,iElem) = ENTROPY_HE(UE)
     END DO; END DO; END DO! i,j,k=0,PP_N
   END DO ! iElem
 END SELECT
@@ -760,9 +771,11 @@ USE MOD_Indicator_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
-IndicatorInitIsDone=.FALSE.
 SDEALLOCATE(IndValue)
 SDEALLOCATE(FVBoundaryType)
+
+IndicatorInitIsDone=.FALSE.
+
 END SUBROUTINE FinalizeIndicator
 
 END MODULE MOD_Indicator

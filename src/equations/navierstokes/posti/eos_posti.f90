@@ -347,7 +347,8 @@ SELECT CASE(DepName_low)
   CASE("totaltemperature")
     UCalc(:,iVarCalc) = UCalc(:,iTemp)+UCalc(:,iVelM)**2/(2*cp)
   CASE("totalpressure")
-    UCalc(:,iVarCalc) = UCalc(:,iPres)+0.5*UCalc(:,iDens)*UCalc(:,iVelM)**2
+!    UCalc(:,iVarCalc) = UCalc(:,iPres)+0.5*UCalc(:,iDens)*UCalc(:,iVelM)**2
+    UCalc(:,iVarCalc) = UCalc(:,iPres)*(1+KappaM1*0.5*(UCalc(:,iVelM)/UCalc(:,iVelS))**2)**(Kappa/KappaM1)
   CASE("pressuretimederiv")
      CALL FillPressureTimeDeriv(nElems_loc,mapCalcMeshToGlobalMesh,Nloc,UCalc(:,iVarCalc))
 #if PARABOLIC
