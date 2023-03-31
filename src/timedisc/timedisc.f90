@@ -53,7 +53,7 @@ USE MOD_Overintegration_Vars,ONLY: OverintegrationType
 USE MOD_Predictor           ,ONLY: FillInitPredictor
 USE MOD_RecordPoints        ,ONLY: RecordPoints
 USE MOD_RecordPoints_Vars   ,ONLY: RP_onProc
-USE MOD_Restart_Vars        ,ONLY: DoRestart,RestartTime
+USE MOD_Restart_Vars        ,ONLY: DoRestart,RestartTime,FlushInitialState
 USE MOD_TestCase            ,ONLY: AnalyzeTestCase,CalcForcing
 USE MOD_TimeDisc_Functions  ,ONLY: InitTimeStep,UpdateTimeStep,AnalyzeTimeStep
 USE MOD_TimeStep            ,ONLY: TimeStep
@@ -91,6 +91,7 @@ SWRITE(UNIT_stdOut,'(132("-"))')
 CALL DATE_AND_TIME(values=TimeArray)
 SWRITE(UNIT_stdOut,'(A,I2.2,A1,I2.2,A1,I4.4,A1,I2.2,A1,I2.2,A1,I2.2)') &
   ' Sys date   :    ',timeArray(3),'.',timeArray(2),'.',timeArray(1),' ',timeArray(5),':',timeArray(6),':',timeArray(7)
+
 ! write number of grid cells and dofs only once per computation
 SWRITE(UNIT_stdOut,'(A13,ES16.7)')'#GridCells : ',REAL(nGlobalElems)
 SWRITE(UNIT_stdOut,'(A13,ES16.7)')'#DOFs      : ',REAL(nGlobalElems)*REAL((PP_N+1)**PP_dim)
@@ -143,7 +144,7 @@ IF(DoPPLimiter) CALL PPLimiter()
 
 IF(.NOT.DoRestart) THEN
   SWRITE(UNIT_stdOut,'(A)') ' WRITING INITIAL SOLUTION:'
-ELSE
+ELSEIF (FlushInitialState) THEN
   SWRITE(UNIT_stdOut,'(A)') ' REWRITING SOLUTION:'
 END IF
 

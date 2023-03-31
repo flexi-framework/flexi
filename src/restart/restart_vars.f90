@@ -27,6 +27,7 @@ INTEGER            :: N_Restart = 0                   !< polynomial degree of re
 INTEGER            :: nElems_Restart                  !< number of elements in restart file
 LOGICAl            :: RestartInitIsDone   = .FALSE.   !< flag if restart routines are finished
 LOGICAl            :: DoRestart           = .FALSE.   !< flag whether a restart should actually be performed
+LOGICAl            :: FlushInitialState   = .FALSE.   !< During restart delete the state restart file when FlushInitialState=T
 LOGICAL            :: InterpolateSolution = .FALSE.   !< flag whether restart solution should be interpolated
                                                       !< if node type or polynomial degree are different
 CHARACTER(LEN=255) :: RestartFile = ''                !< name of restart file

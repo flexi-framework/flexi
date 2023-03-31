@@ -876,8 +876,9 @@ END SUBROUTINE MarkWriteSuccessfull
 SUBROUTINE FlushFiles(FlushTime_In)
 ! MODULES
 USE MOD_Globals
-USE MOD_Output_Vars ,ONLY: ProjectName
-USE MOD_HDF5_Input  ,ONLY: GetNextFileName
+USE MOD_Output_Vars      ,ONLY: ProjectName,WriteStateFiles
+USE MOD_HDF5_Input       ,ONLY: GetNextFileName
+USE MOD_Restart_Vars     ,ONLY: DoRestart,FlushInitialState
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -888,21 +889,30 @@ REAL,INTENT(IN),OPTIONAL :: FlushTime_In     !< Time to start flush
 INTEGER                  :: stat,ioUnit
 REAL                     :: StartT,EndT
 REAL                     :: FlushTime
-CHARACTER(LEN=255)       :: FileName,InputFile,NextFile
+CHARACTER(LEN=255)       :: InputFile,NextFile
 !==================================================================================================================================
-IF(.NOT.MPIRoot) RETURN
+! Only MPI root does the flushing and only if DoWriteStateToHDF5 is true
+IF((.NOT.MPIRoot).OR.(.NOT.WriteStateFiles)) RETURN
 GETTIME(StartT)
 
-SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' DELETING OLD HDF5 FILES...'
+SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' DELETING OLD HDF5 FILES...'
 IF (.NOT.PRESENT(FlushTime_In)) THEN
   FlushTime=0.0
 ELSE
   FlushTime=FlushTime_In
 END IF
-FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_State',FlushTime))//'.h5'
 
 ! Delete state files
-InputFile=TRIM(FileName)
+NextFile=TRIM(TIMESTAMP(TRIM(ProjectName)//'_State',FlushTime))//'.h5'
+
+! If the original restart file is not to be deleted, skip this file and go to the next one
+IF (DoRestart.AND.(.NOT.FlushInitialState)) THEN
+  ! Set next file name
+  CALL GetNextFileName(Inputfile,NextFile,.TRUE.)
+END IF ! .NOT.FlushInitialState
+
+DO
+  InputFile=TRIM(NextFile)
 ! Read calculation time from file
 CALL GetNextFileName(Inputfile,NextFile,.TRUE.)
 ! Delete File - only root
@@ -914,19 +924,6 @@ OPEN ( NEWUNIT= ioUnit,         &
        ACCESS = 'SEQUENTIAL',   &
        IOSTAT = stat          )
 IF(stat .EQ. 0) CLOSE ( ioUnit,STATUS = 'DELETE' )
-DO
-  InputFile=TRIM(NextFile)
-  ! Read calculation time from file
-  CALL GetNextFileName(Inputfile,NextFile,.TRUE.)
-  ! Delete File - only root
-  stat=0
-  OPEN ( NEWUNIT= ioUnit,         &
-         FILE   = InputFile,      &
-         STATUS = 'OLD',          &
-         ACTION = 'WRITE',        &
-         ACCESS = 'SEQUENTIAL',   &
-         IOSTAT = stat          )
-  IF(stat .EQ. 0) CLOSE ( ioUnit,STATUS = 'DELETE' )
   IF(iError.NE.0) EXIT  ! iError is set in GetNextFileName !
 END DO
 
