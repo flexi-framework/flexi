@@ -115,13 +115,13 @@ SUBROUTINE InitTestcase()
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_ReadInTools,        ONLY: GETINT,GETREAL
+USE MOD_ReadInTools,        ONLY: GETINT,GETREAL,GETLOGICAL
 USE MOD_Output_Vars,        ONLY: ProjectName
 USE MOD_Equation_Vars,      ONLY: RefStatePrim,IniRefState,RefStateCons
+USE MOD_EOS,                ONLY: PrimToCons
 USE MOD_EOS_Vars,           ONLY: kappa,mu0,R
 USE MOD_Output,             ONLY: InitOutputToFile
 ! IMPLICIT VARIABLE HANDLING
-USE MOD_Eos,                ONLY: PrimToCons
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
