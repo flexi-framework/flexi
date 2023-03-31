@@ -105,6 +105,7 @@ LOGICAL            :: validHDF5
 LOGICAl            :: RestartMean,VarNamesExist
 INTEGER            :: iVar
 CHARACTER(LEN=255),ALLOCATABLE  :: VarNames_tmp(:)
+REAL                            :: StartT,EndT
 !==================================================================================================================================
 RestartFile = RestartFile_in
 
@@ -114,6 +115,8 @@ IF (LEN_TRIM(RestartFile).LE.0) RETURN
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' CHECK RESTART FILE...'
 SWRITE(UNIT_stdOut,'(A,A,A)')' | Checking restart from file "',TRIM(RestartFile),'":'
+GETTIME(StartT)
+
 ! Check if restart file is a valid state. This routine requires the file to be closed.
 validHDF5 = ISVALIDHDF5FILE(RestartFile)
 IF(.NOT.validHDF5) &
@@ -187,7 +190,8 @@ END IF
 
 CALL CloseDataFile()
 
-SWRITE(UNIT_stdOut,'(A)') ' CHECK RESTART FILE DONE'
+GETTIME(EndT)
+SWRITE(UNIT_stdOut,'(A,F0.3,A)') ' CHECK RESTART FILE DONE! [',EndT-StartT,'s]'
 SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitRestartFile
@@ -229,6 +233,7 @@ CHARACTER(LEN=255),INTENT(IN) :: RestartFile_in !< state file to restart from
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL            :: ResetTime,validHDF5
+REAL               :: StartT,EndT
 !==================================================================================================================================
 IF((.NOT.InterpolationInitIsDone).OR.RestartInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,'InitRestart not ready to be called or already called.')
@@ -239,6 +244,7 @@ IF (RestartMode.EQ.-1) CALL InitRestartFile(RestartFile_in)
 
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT RESTART...'
+GETTIME(StartT)
 
 ! Check if we want to perform a restart
 IF (LEN_TRIM(RestartFile).GT.0) THEN
@@ -282,8 +288,10 @@ ELSE
   InterpolateSolution=.FALSE.
 END IF
 
+RestartWallTime   = FLEXITIME()
 RestartInitIsDone = .TRUE.
-SWRITE(UNIT_stdOut,'(A)')' INIT RESTART DONE!'
+GETTIME(EndT)
+SWRITE(UNIT_stdOut,'(A,F0.3,A)')' INIT RESTART DONE! [',EndT-StartT,'s]'
 SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitRestart
@@ -356,6 +364,8 @@ INTEGER             :: nVal(15)
 REAL,ALLOCATABLE    :: ElemData(:,:),tmp(:)
 CHARACTER(LEN=255),ALLOCATABLE :: VarNamesElemData(:)
 #endif /*FV_ENABLED==1*/
+! Timers
+REAL                            :: StartT,EndT
 !==================================================================================================================================
 
 IF (PRESENT(doFlushFiles)) THEN; doFlushFiles_loc = doFlushFiles
@@ -365,6 +375,7 @@ END IF
 IF (DoRestart) THEN
   SWRITE(UNIT_stdOut,'(132("-"))')
   SWRITE(UNIT_stdOut,'(A)') ' PERFORMING RESTART...'
+  GETTIME(StartT)
 
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 #if FV_ENABLED == 1
@@ -549,6 +560,9 @@ IF (DoRestart) THEN
 
   ! Delete all files that will be rewritten
   IF (doFlushFiles_loc) CALL FlushFiles(RestartTime)
+  GETTIME(EndT)
+  SWRITE(UNIT_stdOut,'(A,F0.3,A)')' PERFORMING RESTART DONE! [',EndT-StartT,'s]'
+  SWRITE(UNIT_stdOut,'(132("-"))')
 ELSE
   ! Delete all files since we are doing a fresh start
   IF (doFlushFiles_loc) CALL FlushFiles()

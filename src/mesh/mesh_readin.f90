@@ -201,6 +201,7 @@ END SUBROUTINE ReadBCs
 SUBROUTINE ReadMesh(FileString)
 ! MODULES
 USE MOD_Globals
+USE MOD_Globals_Vars,       ONLY:ReadMeshWallTime
 USE MOD_Mesh_Vars,          ONLY:tElem,tSide
 USE MOD_Mesh_Vars,          ONLY:NGeo,NGeoTree
 USE MOD_Mesh_Vars,          ONLY:NodeCoords,TreeCoords
@@ -256,11 +257,7 @@ END IF
 
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES') ' READ MESH FROM DATA FILE "'//TRIM(FileString)//'" ...'
 SWRITE(UNIT_stdOut,'(132("-"))')
-#if USE_MPI
-StartT=MPI_WTIME()
-#else
-CALL CPU_TIME(StartT)
-#endif
+GETTIME(StartT)
 
 ! Open mesh file
 CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)

@@ -180,15 +180,12 @@ DO iSide=1,nSides
   END DO; END DO
 END DO
 #if USE_MPI
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,Vol ,1   ,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,Surf,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
 ! Communicate whether any processor has a surface at the respective boundary
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,hasAnalyzeSides,nBCs,MPI_LOGICAL,MPI_LOR,MPI_COMM_FLEXI,iError)
 #endif /*USE_MPI*/
-
 ! Prevent division by 0 if a BC has no sides associated with it (e.g. periodic)
-#if USE_MPI
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,Vol ,1   ,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,Surf,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
-#endif /*USE_MPI*/
 DO iSurf=1,nBCs
   IF (.NOT.hasAnalyzeSides(iSurf)) Surf(iSurf) = HUGE(1.)
 END DO
@@ -281,6 +278,7 @@ END SUBROUTINE InitAnalyzeBasis
 SUBROUTINE Analyze(Time,iter)
 ! MODULES
 USE MOD_Globals
+USE MOD_Globals_Vars,       ONLY: StartTime
 USE MOD_PreProc
 USE MOD_Analyze_Vars
 USE MOD_AnalyzeEquation,    ONLY: AnalyzeEquation
@@ -288,7 +286,7 @@ USE MOD_Benchmarking,       ONLY: Benchmarking
 USE MOD_Mesh_Vars,          ONLY: nGlobalElems
 USE MOD_Output,             ONLY: OutputToFile,PrintStatusLine
 USE MOD_Output_Vars,        ONLY: ProjectName
-USE MOD_TimeDisc_Vars,      ONLY: dt,tStart,tEnd
+USE MOD_TimeDisc_Vars,      ONLY: dt,tStart,tEnd,maxIter
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -327,7 +325,7 @@ CALL Benchmarking()
 
 IF(Time.GT.0.) THEN
   SWRITE(UNIT_stdOut,'(132("-"))')
-  CALL PrintStatusLine(time,dt,tStart,tEnd,doETA=.TRUE.)
+  CALL PrintStatusLine(time,dt,tStart,tEnd,iter,maxIter,doETA=.TRUE.)
   SWRITE(UNIT_stdOut,'(132("."))')
   SWRITE(UNIT_stdOut,'(A,A,A,F8.2,A)') ' FLEXI RUNNING ',TRIM(ProjectName),'... [',RunTime,' sec ]'
   SWRITE(UNIT_stdOut,'(132("-"))')

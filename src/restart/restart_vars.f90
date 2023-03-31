@@ -32,6 +32,8 @@ LOGICAL            :: InterpolateSolution = .FALSE.   !< flag whether restart so
 CHARACTER(LEN=255) :: RestartFile = ''                !< name of restart file
 CHARACTER(LEN=255) :: NodeType_Restart                !< node type of restart file
 REAL               :: RestartTime                     !< time at which computation is resumed
+REAL               :: RestartWallTime                 !< wall time at the beginning of a simulation OR
+                                                      !< when a restart is performed via Load Balance
 INTEGER            :: RestartMode         = -1        !< -1) Initial value, routines default to state file mode
                                                       !<  1) restart from State file
                                                       !<  2) restart from timeAvg file, conservative variables

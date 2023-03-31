@@ -35,7 +35,6 @@ LOGICAL           ::Logging                                                   !<
 LOGICAL           ::ErrorFiles                                                !< switch to turn error file writing on or of
 CHARACTER(LEN=255)::ErrorFileName='NOT_SET'                                   !< file to write error data into
 INTEGER           ::iError                                                    !< default error handle
-REAL              ::StartTime                                                 !< start time of the simulation
 INTEGER           ::myRank,myLocalRank,myLeaderRank,myWorkerRank
 INTEGER           ::nProcessors,nLocalProcs,nLeaderProcs,nWorkerProcs
 INTEGER           ::MPI_COMM_FLEXI !< Flexi MPI communicator
@@ -79,6 +78,10 @@ END INTERFACE
 
 INTERFACE FLEXITIME
   MODULE PROCEDURE FLEXITIME
+END INTERFACE
+
+INTERFACE DisplaySimulationTime
+  MODULE PROCEDURE DisplaySimulationTime
 END INTERFACE
 
 INTERFACE CreateErrFile
@@ -189,8 +192,8 @@ INTEGER,OPTIONAL                  :: ErrorCode       !< MPI Error info (integer)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=50)                 :: IntString,RealString
-INTEGER                           :: errOut          ! Output of MPI_ABORT
 #if USE_MPI
+INTEGER                           :: errOut          ! Output of MPI_ABORT
 INTEGER                           :: signalout       ! Output errorcode
 #endif
 !==================================================================================================================================
@@ -480,6 +483,49 @@ IF(PRESENT(Time2))THEN
 END IF
 TimeStamp=TRIM(Filename)//'_'//TRIM(TimeStamp)
 END FUNCTION TIMESTAMP
+
+
+SUBROUTINE DisplaySimulationTime(Time, StartTime, Message)
+!===================================================================================================================================
+! Finalizes variables necessary for analyse subroutines
+!===================================================================================================================================
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN) :: Message         !< Output message
+REAL,INTENT(IN)             :: Time, StartTime !< Current simulation time and beginning of simulation time
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL :: SimulationTime,mins,secs,hours,days
+!===================================================================================================================================
+! Return with all procs except root if not called during abort
+IF(.NOT.MPIRoot.AND.(Message.NE.'ABORTED')) RETURN
+
+! Output particle info
+WRITE(UNIT_stdOut,'(132("="))')
+
+! Calculate simulation time
+SimulationTime = Time-StartTime
+
+! Get secs, mins, hours and days
+secs = MOD(SimulationTime,60.)
+SimulationTime = SimulationTime / 60.
+mins = MOD(SimulationTime,60.)
+SimulationTime = SimulationTime / 60.
+hours = MOD(SimulationTime,24.)
+SimulationTime = SimulationTime / 24.
+!days = MOD(SimulationTime,365.) ! Use this if years are also to be displayed
+days = SimulationTime
+
+! Output message with all procs, as root might not be the calling process during abort
+WRITE(UNIT_stdOut,'(A,F16.2,A)',ADVANCE='NO')  ' FLEXI '//TRIM(Message)//'! [',Time-StartTime,' sec ]'
+WRITE(UNIT_stdOut,'(A2,I6,A1,I0.2,A1,I0.2,A1,I0.2,A1)') ' [',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),']'
+WRITE(UNIT_stdOut,'(132("="))')
+END SUBROUTINE DisplaySimulationTime
 
 
 !==================================================================================================================================

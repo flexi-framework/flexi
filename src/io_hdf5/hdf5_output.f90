@@ -596,7 +596,7 @@ IF(.NOT.output2D) DEALLOCATE(UOut)
 IF(MPIRoot)THEN
   CALL MarkWriteSuccessfull(FileName)
   GETTIME(EndT)
-  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',EndT-StartT,'s]'
+  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE! [',EndT-StartT,'s]'
 END IF
 
 END SUBROUTINE WriteBaseflow
@@ -886,10 +886,12 @@ REAL,INTENT(IN),OPTIONAL :: FlushTime_In     !< Time to start flush
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                  :: stat,ioUnit
+REAL                     :: StartT,EndT
 REAL                     :: FlushTime
 CHARACTER(LEN=255)       :: FileName,InputFile,NextFile
 !==================================================================================================================================
 IF(.NOT.MPIRoot) RETURN
+GETTIME(StartT)
 
 SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' DELETING OLD HDF5 FILES...'
 IF (.NOT.PRESENT(FlushTime_In)) THEN
@@ -928,7 +930,8 @@ DO
   IF(iError.NE.0) EXIT  ! iError is set in GetNextFileName !
 END DO
 
-WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')'DONE'
+GETTIME(EndT)
+WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DELETING OLD HDF5 FILES DONE! [',EndT-StartT,'s]'
 
 END SUBROUTINE FlushFiles
 

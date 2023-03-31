@@ -62,6 +62,7 @@ USE MOD_TimeDisc_Vars       ,ONLY: iter,iter_analyze,maxIter
 USE MOD_TimeDisc_Vars       ,ONLY: t,tStart,tEnd,dt,tAnalyze
 USE MOD_TimeDisc_Vars       ,ONLY: TimeDiscType
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize,writeCounter,nCalcTimestep
+USE MOD_TimeDisc_Vars       ,ONLY: time_start
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
 #if FV_ENABLED
 USE MOD_Indicator           ,ONLY: CalcIndicator
@@ -81,10 +82,15 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER                       :: TimeArray(8)              !< Array for system time
 !==================================================================================================================================
 
 SWRITE(UNIT_stdOut,'(132("-"))')
 
+! Get system time
+CALL DATE_AND_TIME(values=TimeArray)
+SWRITE(UNIT_stdOut,'(A,I2.2,A1,I2.2,A1,I4.4,A1,I2.2,A1,I2.2,A1,I2.2)') &
+  ' Sys date   :    ',timeArray(3),'.',timeArray(2),'.',timeArray(1),' ',timeArray(5),':',timeArray(6),':',timeArray(7)
 ! write number of grid cells and dofs only once per computation
 SWRITE(UNIT_stdOut,'(A13,ES16.7)')'#GridCells : ',REAL(nGlobalElems)
 SWRITE(UNIT_stdOut,'(A13,ES16.7)')'#DOFs      : ',REAL(nGlobalElems)*REAL((PP_N+1)**PP_dim)
@@ -172,6 +178,7 @@ CALL PPLimiter_Info(1_8)
 SWRITE(UNIT_stdOut,'(A)') ' CALCULATION RUNNING...'
 
 IF(TimeDiscType.EQ.'ESDIRK') CALL FillInitPredictor(t)
+CALL CPU_TIME(time_start)
 
 ! Run computation
 DO
@@ -192,7 +199,7 @@ DO
   ! Perform analysis at the end of the RK loop
   CALL AnalyzeTimeStep()
 
-  CALL PrintStatusLine(t,dt,tStart,tEnd)
+  CALL PrintStatusLine(t,dt,tStart,tEnd,iter,maxIter)
 
   IF(doFinalize) EXIT
 END DO

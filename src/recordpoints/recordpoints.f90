@@ -198,6 +198,8 @@ INTEGER                       :: nGlobalElems_RPList
 INTEGER                       :: iElem,iRP,iRP_glob
 INTEGER                       :: OffsetRPArray(2,nElems)
 REAL,ALLOCATABLE              :: xi_RP(:,:)
+! Timers
+REAL                          :: StartT,EndT
 !==================================================================================================================================
 
 IF(MPIRoot)THEN
@@ -205,6 +207,7 @@ IF(MPIRoot)THEN
           'RPList from data file "'//TRIM(FileString)//'" does not exist')
 END IF
 
+  GETTIME(StartT)
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')' Read recordpoint definitions from data file "'//TRIM(FileString)//'" ...'
 
 ! Open data file
@@ -297,7 +300,8 @@ IF(RP_onProc)THEN
 END IF
 DEALLOCATE(xi_RP)
 
-SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' DONE.'
+GETTIME(EndT)
+SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE [',EndT-StartT,'s]'
 
 END SUBROUTINE ReadRPList
 
@@ -536,7 +540,7 @@ IF(myRPrank.EQ.0)THEN
 #endif /* USE_MPI */
   CALL MarkWriteSuccessfull(Filestring)
   GETTIME(EndT)
-  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE  [',EndT-StartT,'s]'
+  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' WRITE RECORDPOINT DATA TO HDF5 FILE DONE! [',EndT-StartT,'s]'
 #if USE_MPI
 END IF
 #endif /* USE_MPI */

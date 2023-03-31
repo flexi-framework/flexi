@@ -37,6 +37,7 @@ CONTAINS
 SUBROUTINE InitFlexi(nArgs_In,Args_In,mpi_comm_loc)
 ! MODULES
 USE MOD_Globals
+USE MOD_Globals_Vars,      ONLY:InitializationWallTime,StartTime
 USE MOD_PreProc
 USE MOD_Commandline_Arguments
 USE MOD_Restart,           ONLY:DefineParametersRestart,InitRestart,Restart
@@ -83,7 +84,6 @@ CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: Args_In(*)
 INTEGER,INTENT(IN),OPTIONAL   :: mpi_comm_loc
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                    :: Time                              !< Used to measure simulation time
 LOGICAL                 :: userblockFound
 CHARACTER(LEN=255)      :: RestartFile_loc = ''
 !==================================================================================================================================
@@ -221,9 +221,9 @@ CALL IgnoredParameters()
 CALL Restart()
 
 ! Measure init duration
-Time=FLEXITIME()
+InitializationWallTime = FLEXITIME()-StartTime
 SWRITE(UNIT_stdOut,'(132("="))')
-SWRITE(UNIT_stdOut,'(A,F8.2,A)') ' INITIALIZATION DONE! [',Time-StartTime,' sec ]'
+SWRITE(UNIT_stdOut,'(A,F8.2,A)') ' INITIALIZATION DONE! [',InitializationWallTime,' sec ]'
 SWRITE(UNIT_stdOut,'(132("="))')
 
 ! Generate Unittest Data
@@ -243,6 +243,7 @@ END SUBROUTINE InitFlexi
 SUBROUTINE FinalizeFlexi()
 ! MODULES
 USE MOD_Globals
+USE MOD_Globals_Vars,      ONLY:StartTime
 USE MOD_Analyze,           ONLY:FinalizeAnalyze
 USE MOD_Commandline_Arguments,ONLY:FinalizeCommandlineArguments
 USE MOD_DG,                ONLY:FinalizeDG
@@ -311,9 +312,8 @@ CALL FinalizeCommandlineArguments()
 ! For flexilib MPI init/finalize is controlled by main program
 CALL FinalizeMPI()
 #endif
-SWRITE(UNIT_stdOut,'(132("="))')
-SWRITE(UNIT_stdOut,'(A,F8.2,A)') ' FLEXI FINISHED! [',Time-StartTime,' sec ]'
-SWRITE(UNIT_stdOut,'(132("="))')
+
+CALL DisplaySimulationTime(Time, StartTime, 'FINISHED')
 END SUBROUTINE FinalizeFlexi
 
 END MODULE MOD_Flexi
