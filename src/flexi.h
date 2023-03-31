@@ -36,6 +36,7 @@
 #endif
 
 #define SIZEOF_F(x) (STORAGE_SIZE(x)/8)
+#define NO_OP(x)    ASSOCIATE( x => x ); END ASSOCIATE
 
 #ifdef GNU
 #define CHECKSAFEINT(x,k)  IF(x>HUGE(INT( 1,KIND=k)).OR.x<-HUGE(INT( 1,KIND=k))) CALL Abort(__STAMP__,'Integer conversion failed: out of range!')
