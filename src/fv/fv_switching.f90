@@ -221,6 +221,7 @@ SUBROUTINE FV_Info(iter)
 USE MOD_Globals
 USE MOD_Mesh_Vars    ,ONLY: nGlobalElems
 USE MOD_Analyze_Vars ,ONLY: totalFV_nElems
+USE MOD_FV_Vars      ,ONLY: FV_Elems
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -229,6 +230,7 @@ INTEGER(KIND=8),INTENT(IN) :: iter !< number of iterations
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
+IF (iter.EQ.1_8) totalFV_nElems = SUM(FV_Elems) ! counter for output of FV amount during analyze
 #if USE_MPI
 IF(MPIRoot)THEN
   CALL MPI_REDUCE(MPI_IN_PLACE,totalFV_nElems,1,MPI_INTEGER8,MPI_SUM,0,MPI_COMM_FLEXI,iError)

@@ -98,7 +98,7 @@ REAL,INTENT(OUT)    :: URec_extended(PP_nVarPrim,-1:PP_N+1,-1:PP_N+1, 0:PP_NZ, 1
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:ZDIM(PP_N),1:nSides)  :: URec_master,URec_slave
+REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)       :: URec_master,URec_slave
 INTEGER                                                   :: p,q,l,i,j,k,ijk(3),locSideID,ElemID,SideID,flip,iElem
 REAL,DIMENSION(0:PP_N,0:PP_NZ,1:nSides)                   :: FV_sdx_Face_loc
 REAL,DIMENSION(0:PP_N,0:PP_NZ)                            :: FV_sdx_Face_tmp

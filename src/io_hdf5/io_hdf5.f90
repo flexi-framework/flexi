@@ -99,12 +99,24 @@ INTERFACE AddToElemData
   MODULE PROCEDURE AddToElemData
 END INTERFACE
 
+INTERFACE AddToFieldData
+  MODULE PROCEDURE AddToFieldData
+END INTERFACE
+
+INTERFACE RemoveFromElemData
+  MODULE PROCEDURE RemoveFromElemData
+END INTERFACE
+
+INTERFACE RemoveFromFieldData
+  MODULE PROCEDURE RemoveFromFieldData
+END INTERFACE
+
 INTERFACE FinalizeElemData
   MODULE PROCEDURE FinalizeElemData
 END INTERFACE
 
-INTERFACE AddToFieldData
-  MODULE PROCEDURE AddToFieldData
+INTERFACE FinalizeFieldData
+  MODULE PROCEDURE FinalizeFieldData
 END INTERFACE
 
 INTERFACE GetDatasetNamesInGroup
@@ -117,8 +129,11 @@ PUBLIC :: InitMPIInfo
 PUBLIC :: OpenDataFile
 PUBLIC :: CloseDataFile
 PUBLIC :: AddToElemData
-PUBLIC :: FinalizeElemData
 PUBLIC :: AddToFieldData
+PUBLIC :: RemoveFromElemData
+PUBLIC :: RemoveFromFieldData
+PUBLIC :: FinalizeElemData
+PUBLIC :: FinalizeFieldData
 PUBLIC :: GetDatasetNamesInGroup
 !==================================================================================================================================
 
@@ -442,6 +457,117 @@ ENDIF
 IF(nOpts.NE.1) CALL Abort(__STAMP__,&
   'More then one optional argument passed to AddToFieldData.')
 END SUBROUTINE AddToFieldData
+
+
+!==================================================================================================================================
+!>
+!==================================================================================================================================
+SUBROUTINE RemoveFromElemData(ElementOut_In,VarName)
+! MODULES
+USE MOD_Globals
+USE MOD_StringTools,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+TYPE(tElementOut),POINTER,INTENT(INOUT) :: ElementOut_In     !< Pointer list of element-wise data that is written to the state file
+CHARACTER(LEN=*),INTENT(IN)             :: VarName           !< Name of the current array/scalar
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+TYPE(tElementOut),POINTER          :: current,next
+!==================================================================================================================================
+
+IF(ASSOCIATED(ElementOut_In)) THEN
+  current => ElementOut_In
+
+  ! Loop over the next entry, so we can change the current%next pointer
+  IF (ASSOCIATED(current%next)) THEN
+    DO WHILE (ASSOCIATED(current%next))
+      next => current%next%next
+      IF (STRICMP(current%next%VarName,VarName)) THEN
+        IF (ASSOCIATED( current%next%RealArray  ))  NULLIFY(current%next%RealArray )
+        IF (ASSOCIATED( current%next%RealScalar ))  NULLIFY(current%next%RealScalar)
+        IF (ASSOCIATED( current%next%IntArray   ))  NULLIFY(current%next%IntArray  )
+        IF (ASSOCIATED( current%next%IntScalar  ))  NULLIFY(current%next%IntScalar )
+        IF (ASSOCIATED( current%next%eval       ))  NULLIFY(current%next%eval      )
+        IF (ASSOCIATED( current%next%next       ))  NULLIFY(current%next%next      )
+        DEALLOCATE(current%next)
+        NULLIFY(current%next)
+        RETURN
+      END IF
+    END DO
+
+  ! If the list has only one entry, check if it matches and remove
+  ELSE
+    IF (STRICMP(current%VarName,VarName)) THEN
+      IF (ASSOCIATED( current%RealArray         ))  NULLIFY(current%RealArray )
+      IF (ASSOCIATED( current%RealScalar        ))  NULLIFY(current%RealScalar)
+      IF (ASSOCIATED( current%IntArray          ))  NULLIFY(current%IntArray  )
+      IF (ASSOCIATED( current%IntScalar         ))  NULLIFY(current%IntScalar )
+      IF (ASSOCIATED( current%eval              ))  NULLIFY(current%eval      )
+      IF (ASSOCIATED( current%next              ))  NULLIFY(current%next      )
+      DEALLOCATE(current)
+      NULLIFY(current)
+      NULLIFY(ElementOut_In)
+      RETURN
+    END IF
+  END IF
+END IF
+
+END SUBROUTINE RemoveFromElemData
+
+
+!==================================================================================================================================
+!>
+!==================================================================================================================================
+SUBROUTINE RemoveFromFieldData(FieldOut_In,DatasetName)
+! MODULES
+USE MOD_Globals
+USE MOD_StringTools,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+TYPE(tFieldOut),POINTER,INTENT(INOUT)   :: FieldOut_In       !< Pointer list of field data that is written to the state file
+CHARACTER(LEN=*),INTENT(IN)             :: DatasetName       !< Name of the dataset
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+TYPE(tFieldOut),POINTER                 :: current,next
+!==================================================================================================================================
+
+IF(ASSOCIATED(FieldOut_In)) THEN
+  current => FieldOut_In
+
+  ! Loop over the next entry, so we can change the current%next pointer
+  IF (ASSOCIATED(current%next)) THEN
+    DO WHILE (ASSOCIATED(current%next))
+      next => current%next%next
+      IF (STRICMP(current%next%DatasetName,DatasetName)) THEN
+        IF (ASSOCIATED( current%next%RealArray  ))  NULLIFY(current%next%RealArray )
+        IF (ASSOCIATED( current%next%eval       ))  NULLIFY(current%next%eval      )
+        IF (ASSOCIATED( current%next%next       ))  NULLIFY(current%next%next      )
+        DEALLOCATE(current%next)
+        NULLIFY(current%next)
+        RETURN
+      END IF
+    END DO
+
+  ! If the list has only one entry, check if it matches and remove
+  ELSE IF (ASSOCIATED(current)) THEN
+    IF (STRICMP(current%DatasetName,DatasetName)) THEN
+      IF (ASSOCIATED( current%RealArray         ))  NULLIFY(current%RealArray )
+      IF (ASSOCIATED( current%eval              ))  NULLIFY(current%eval      )
+      IF (ASSOCIATED( current%next              ))  NULLIFY(current%next      )
+      DEALLOCATE(current)
+      NULLIFY(current)
+      NULLIFY(FieldOut_In)
+      RETURN
+    END IF
+  END IF
+END IF
+
+END SUBROUTINE RemoveFromFieldData
+
 
 !==================================================================================================================================
 !> Takes a group and reads the names of the datasets
