@@ -237,6 +237,7 @@ ENDIF()
 
 # Enable unit testing only when ACTIVATE_UNIT_TEST=ON
 CMAKE_DEPENDENT_OPTION(FLEXI_UNITTESTS "Enable unit tests after build" ON "ACTIVATE_UNIT_TEST" OFF)
+
 IF(FLEXI_UNITTESTS)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/unitTests/CMakeLists.txt)
 ENDIF()
@@ -252,6 +253,9 @@ FUNCTION(add_exec target)
   INSTALL(PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${target} DESTINATION bin)
   STRING(TOUPPER ${target} TARGETUP)
   ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --cyan "SUCCESS: ${TARGETUP} BUILD COMPLETE!")
+  # Strip executable/shared library when building in release mode
+  ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD DEPENDS "${target}" COMMAND $<$<CONFIG:release>:${CMAKE_STRIP}> ARGS --strip-unneeded $<TARGET_FILE:${target}>)
+  ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD DEPENDS "${target}" COMMAND $<$<CONFIG:release>:${CMAKE_STRIP}> ARGS --strip-unneeded $<TARGET_FILE:libflexishared>)
 ENDFUNCTION()
 
 FUNCTION(add_lib_shared target)
