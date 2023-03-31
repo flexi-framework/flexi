@@ -177,7 +177,12 @@ REAL                           :: g         ! auxiliary function
 !===================================================================================================================================
 
 IF(nuTilde.GE.0.)THEN
-  r = MIN(nuTilde/(STilde*(SAKappa**2)*(d**2)),rLim)
+  ! Avoid division by zero
+  IF(STilde.NE.0) THEN
+    r = MIN(nuTilde/(STilde*(SAKappa**2)*(d**2)),rLim)
+  ELSE
+    r = rlim
+  END IF
   g = r + cw2*((r**6)-r)
 
   fw = g*(((1+(cw3**6))/((g**6)+(cw3**6)))**(1./6.))
