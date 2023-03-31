@@ -398,7 +398,7 @@ CASE(3,4,9,91,23,24,25,27)
         IF (BCState.GT.0) THEN
           pb = RefStatePrim(5,BCState)
         ELSE
-          pb = RefStatePrim(5,MINLOC(ABS(RefStatePrim(5,:) - UPrim_boundary(5,p,q)),1))
+          pb = RefStatePrim(PRES,MINLOC(ABS(RefStatePrim(PRES,:) - UPrim_boundary(PRES,p,q)),1))
         END IF
         UPrim_boundary(DENS,p,q)=kappa*pb/c
         UPrim_boundary(PRES,p,q)=pb
@@ -892,12 +892,12 @@ ELSE
   CASE(3,4) ! No-slip wall BCs
     DO q=0,PP_NZ; DO p=0,PP_N
 #if PP_OPTLIFT == 0
-      Flux(LIFT_DENS,p,q) = UPrim_Boundary(1,p,q)
+      Flux(LIFT_DENS,p,q) = UPrim_Boundary(DENS,p,q)
       Flux(LIFT_VELV,p,q) = 0.
-      Flux(LIFT_TEMP,p,q) = UPrim_Boundary(6,p,q)
+      Flux(LIFT_TEMP,p,q) = UPrim_Boundary(TEMP,p,q)
 #else
       Flux(LIFT_VELV,p,q) = 0.
-      Flux(LIFT_TEMP,p,q) = UPrim_Boundary(6,p,q)
+      Flux(LIFT_TEMP,p,q) = UPrim_Boundary(TEMP,p,q)
 #endif
     END DO; END DO !p,q
   CASE(9,91)
@@ -906,12 +906,12 @@ ELSE
     DO q=0,PP_NZ; DO p=0,PP_N
       ! Compute Flux
 #if PP_OPTLIFT == 0
-      Flux(LIFT_DENS,p,q) = UPrim_master(1,p,q)
-      Flux(LIFT_VELV,p,q) = UPrim_boundary(2:4,p,q)
-      Flux(LIFT_TEMP,p,q) = UPrim_master(6,p,q)
+      Flux(LIFT_DENS,p,q) = UPrim_master(DENS,p,q)
+      Flux(LIFT_VELV,p,q) = UPrim_boundary(VELV,p,q)
+      Flux(LIFT_TEMP,p,q) = UPrim_master(TEMP,p,q)
 #else
-      Flux(LIFT_VELV,p,q) = UPrim_boundary(2:4,p,q)
-      Flux(LIFT_TEMP,p,q) = UPrim_master(6,p,q)
+      Flux(LIFT_VELV,p,q) = UPrim_boundary(VELV,p,q)
+      Flux(LIFT_TEMP,p,q) = UPrim_master(TEMP,p,q)
 #endif
     END DO; END DO !p,q
   CASE(1) !Periodic already filled!
