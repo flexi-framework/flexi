@@ -81,6 +81,7 @@ REAL,ALLOCATABLE :: UPrev (:,:,:,:,:)
 
 ! NOTE: using simple arrays to store coefs, if using classes or types performance seems to degrade
 CHARACTER(LEN=50)   :: TimeDiscName  !< name of specific time discretization scheme
+CHARACTER(LEN=255)  :: TimeDiscMethod!< general name of time  discretization scheme
 CHARACTER(LEN=50)   :: TimeDiscType  !< general type of time discretization scheme
 INTEGER             :: nRKStages     !< number of stages of Runge-Kutta method
 

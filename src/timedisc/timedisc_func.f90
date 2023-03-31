@@ -106,7 +106,7 @@ USE MOD_TimeDisc_Vars       ,ONLY: CFLScale
 USE MOD_TimeDisc_Vars       ,ONLY: dtElem,dt,tend,tStart,dt_dynmin,dt_kill
 USE MOD_TimeDisc_Vars       ,ONLY: Ut_tmp,UPrev,S2
 USE MOD_TimeDisc_Vars       ,ONLY: maxIter,nCalcTimeStepMax
-USE MOD_TimeDisc_Vars       ,ONLY: SetTimeDiscCoefs,TimeDiscName,TimeDiscType,TimeDiscInitIsDone
+USE MOD_TimeDisc_Vars       ,ONLY: SetTimeDiscCoefs,TimeDiscName,TimeDiscMethod,TimeDiscType,TimeDiscInitIsDone
 USE MOD_TimeStep            ,ONLY: SetTimeStep
 #if PARABOLIC
 USE MOD_TimeDisc_Vars       ,ONLY: DFLScale
@@ -117,7 +117,6 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-CHARACTER(LEN=255):: TimeDiscMethod
 INTEGER           :: NEff
 !==================================================================================================================================
 IF(TimeDiscInitIsDone)THEN
