@@ -26,4 +26,4 @@ python reggie.py --help
 
 see [the_reggie_repository][reggie]
 
-[reggie]: https://gitlabext.iag.uni-stuttgart.de/reggie/reggie/blob/master/
+[reggie]: https://gitlab.iag.uni-stuttgart.de/reggie/reggie/blob/master/
