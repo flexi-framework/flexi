@@ -26,32 +26,32 @@ fi
 
 # get branch name (only info)
 BRANCHNAME=$(git rev-parse --abbrev-ref HEAD)
-PARENTNAME=$BRANCHNAME
+PARENTNAME=${BRANCHNAME}
 PARENTCOMMIT=$(git show-ref | grep "origin/$BRANCHNAME$" | cut -b -40)
 
-if [ -z "$PARENTCOMMIT" ]; then
-  LOCBRANCHNAME=$BRANCHNAME
+if [ -z "${PARENTCOMMIT}" ]; then
+  LOCBRANCHNAME=${BRANCHNAME}
   # recursively search for parent branch
   FOUND=0
-  while [ $FOUND -eq 0 ]; do
+  while [ ${FOUND} -eq 0 ]; do
     # get commit on server, where branch started
     COLUMN=$((    $(git show-branch | grep '^[^\[]*\*'  | head -1 | cut -d* -f1 | wc -c) - 1 ))
     START_ROW=$(( $(git show-branch | grep -n "^[\-]*$" | cut -d: -f1) + 1 ))
-    PARENTNAME=$(   git show-branch | tail -n +$START_ROW | grep -v "^[^\[]*\[$LOCBRANCHNAME" | grep "^.\{$COLUMN\}[^ ]" | head -n1 | sed 's/.*\[\(.*\)\].*/\1/' | sed 's/[\^~].*//')
-    if [ -z "$PARENTNAME" ]; then
+    PARENTNAME=$(   git show-branch | tail -n +${START_ROW} | grep -v "^[^\[]*\[${LOCBRANCHNAME}" | grep "^.\{${COLUMN}\}[^ ]" | head -n1 | sed 's/.*\[\(.*\)\].*/\1/' | sed 's/[\^~].*//')
+    if [ -z "${PARENTNAME}" ]; then
       break
     fi
 
-    PARENTCOMMIT=$(git show-ref | grep "origin/$PARENTNAME$" | cut -b -40)
-    if [ -z "$PARENTCOMMIT" ]; then
-      LOCBRANCHNAME=$PARENTNAME
+    PARENTCOMMIT=$(git show-ref | grep "origin/${PARENTNAME}" | cut -b -40)
+    if [ -z "${PARENTCOMMIT}" ]; then
+      LOCBRANCHNAME=${PARENTNAME}
     else
       FOUND=1
       break
     fi
   done
 
-  if [ $FOUND -eq 0 ]; then
+  if [ ${FOUND} -eq 0 ]; then
     PARENTNAME='master'
     PARENTCOMMIT=$(git rev-parse origin/master)
     echo "WARNING: Could not find parent commit, creating userblock diff to master."
@@ -62,15 +62,15 @@ cd "$1"
 echo "{[( CMAKE )]}"               >  userblock.txt
 cat configuration.cmake            >> userblock.txt
 echo "{[( GIT BRANCH )]}"          >> userblock.txt
-echo "$BRANCHNAME"                 >> userblock.txt
+echo ${BRANCHNAME}                 >> userblock.txt
 echo $(git rev-parse HEAD)         >> userblock.txt
 
 # Reference is the start commit, which is either identical to
 # the branch, if it exists on the remote or points to the first
 # real parent in branch history available on remote.
 echo "{[( GIT REFERENCE )]}"       >> userblock.txt
-echo "$PARENTNAME"                 >> userblock.txt
-echo $PARENTCOMMIT                 >> userblock.txt
+echo ${PARENTNAME}                 >> userblock.txt
+echo ${PARENTCOMMIT}               >> userblock.txt
 
 #echo "{[( GIT FORMAT-PATCH )]}"    >> userblock.txt
 ## create format patch containing log info for commit changes
@@ -80,7 +80,7 @@ echo $PARENTCOMMIT                 >> userblock.txt
 # Also store binary changes in diff
 echo "{[( GIT DIFF )]}"            >> userblock.txt
 # commited changes
-git diff -p $PARENTCOMMIT..HEAD    >> userblock.txt
+git diff -p ${PARENTCOMMIT}..HEAD    >> userblock.txt
 # uncommited changes
 git diff -p                        >> userblock.txt
 
@@ -112,5 +112,5 @@ elf_format=$(objdump -i | head -2 | tail -1)
 elf_arch=$(  objdump -i | head -4 | tail -1 | xargs)
 
 # Build the module
-objcopy -I binary -O $elf_format -B $elf_arch --add-section ".note.GNU-stack"=/dev/null --redefine-sym _binary_userblock_tar_xz_start=userblock_start --redefine-sym _binary_userblock_tar_xz_end=userblock_end --redefine-sym _binary_userblock_tar_xz_size=userblock_size userblock.tar.xz userblock.o
+objcopy -I binary -O ${elf_format} -B ${elf_arch} --add-section ".note.GNU-stack"=/dev/null --redefine-sym _binary_userblock_tar_xz_start=userblock_start --redefine-sym _binary_userblock_tar_xz_end=userblock_end --redefine-sym _binary_userblock_tar_xz_size=userblock_size userblock.tar.xz userblock.o
 rm userblock.tar.xz

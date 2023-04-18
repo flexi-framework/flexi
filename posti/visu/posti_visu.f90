@@ -46,6 +46,9 @@ CHARACTER(LEN=255),TARGET      :: statefile
 INTEGER                        :: skipArgs
 CHARACTER(LEN=255)             :: FileString_DG
 CHARACTER(LEN=255)             :: FileString_SurfDG
+REAL                           :: percent
+INTEGER                        :: tmpLength
+CHARACTER(LEN=255)             :: tmpString1,tmpString2
 #if FV_ENABLED
 CHARACTER(LEN=255)             :: FileString_FV
 CHARACTER(LEN=255)             :: FileString_SurfFV
@@ -60,16 +63,17 @@ CHARACTER(LEN=255),ALLOCATABLE :: VarNamesSurf_loc(:)
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
 CALL ParseCommandlineArguments()
+
 IF (doPrintHelp.GT.0) THEN
   prmfile = ''
   CALL visu(MPI_COMM_WORLD, prmfile, prmfile, Args(1)) !pass first arg (section etc.) instead of statefile
 END IF
-IF (nArgs.LT.1) THEN
-  CALL CollectiveStop(__STAMP__,&
-      'ERROR - Invalid syntax. Please use: posti [posti-prm-file [flexi-prm-file]] statefile [statefiles]')
-END IF
 
-prmfile = ''
+IF (nArgs.LT.1) &
+  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: posti [posti-prm-file [flexi-prm-file]] statefile [statefiles]')
+
+StartTime = FLEXITIME()
+prmfile   = ''
 ! check if parameter file is given
 IF(STRICMP(GetFileExtension(Args(1)),'ini')) THEN
   skipArgs = 1 ! first argument is the parameter file
@@ -105,7 +109,17 @@ IF(nProcessors.GT.1 .AND. MPIRoot) CALL SYSTEM('mkdir -p visu')
 
 DO iArg=1+skipArgs,nArgs
   statefile = TRIM(Args(iArg))
-  SWRITE(UNIT_stdOut,'(A,A)') 'Processing state-file: ',TRIM(statefile)
+
+  WRITE(tmpString1,'(I0)') iArg-1-skipArgs
+  WRITE(tmpString2,'(I0)') nArgs -skipArgs
+  tmpLength = 96 - LEN(TRIM(tmpString1)) - LEN(TRIM(tmpString2))
+  percent   = REAL(iArg-1-skipArgs)/REAL(nArgs-skipArgs)*100.
+  SWRITE(UNIT_stdOut,'(132("="))')
+  SWRITE(UNIT_stdOut,'(A,I0,A,I0,A)',ADVANCE='NO') ' Processing file ',iArg-skipArgs,' of ',nArgs-skipArgs,' |'
+  SWRITE(UNIT_stdOut,'(A,A1,A)'     ,ADVANCE='NO')  REPEAT('=',MAX(CEILING(percent*(tmpLength+1)/100.),0)),'>',&
+                                                    REPEAT(' ',(tmpLength+1)-MAX(CEILING(percent*(tmpLength+1)/100.),0))
+  SWRITE(UNIT_stdOut,'(A3,F6.2,A3)' ,ADVANCE='YES') '| [',percent,'%] '
+  SWRITE(UNIT_stdOut,'(132("-"))')
 
   CALL visu(MPI_COMM_WORLD, prmfile, postifile, statefile)
 
@@ -186,31 +200,6 @@ DO iArg=1+skipArgs,nArgs
       ENDIF
 #endif
     END IF
-
-!ELSE IF (VisuDimension.EQ.1) THEN ! CSV along 1d line
-
-  !IF (nProcessors.GT.1) &
-    !CALL CollectiveStop(__STAMP__,"1D csv output along lines only supported for single execution")
-
-  !strOutputFile=TRIM(TIMESTAMP(TRIM(ProjectName)//'_extract1D',OutputTime))
-
-  !OPEN(NEWUNIT = iounit, STATUS='REPLACE',FILE=TRIM(strOutputFile)//'_DG.csv')
-  !DO iElem=1,nElems_DG
-    !DO i=0,NVisu
-      !WRITE(iounit,*) CoordsVisu_DG(1,i,0,0,iElem), UVisu_DG(i,0,0,iElem,:)
-    !END DO
-  !END DO
-  !CLOSE(iounit) ! close the file
-
-!#if FV_ENABLED
-  !OPEN(NEWUNIT = iounit, STATUS='REPLACE',FILE=TRIM(strOutputFile)//'_FV.csv')
-  !DO iElem=1,nElems_FV
-    !DO i=0,NVisu_FV
-      !WRITE(iounit,*) CoordsVisu_FV(1,i,0,0,iElem), UVisu_FV(i,0,0,iElem,:)
-    !END DO
-  !END DO
-  !CLOSE(iounit) ! close the file
-!#endif
   END IF
 
   DEALLOCATE(VarNames_loc)

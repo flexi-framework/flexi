@@ -103,7 +103,7 @@ muSGS_master=0.
 muSGS_slave =0.
 
 ! Turbulent Prandtl number
-PrSGS  = GETREAL('PrSGS','0.7')
+PrSGS  = GETREAL('PrSGS')
 
 SELECT CASE(eddyViscType)
   CASE(EDDYVISCTYPE_NONE) ! No eddy viscosity model, set function pointers to dummy subroutines which do nothing

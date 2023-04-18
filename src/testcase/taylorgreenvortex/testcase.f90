@@ -93,7 +93,7 @@ IMPLICIT NONE
 CALL prms%SetSection("Testcase")
 CALL prms%CreateIntOption('nWriteStats', "Write testcase statistics to file at every n-th AnalyzeTestcase step.", '100')
 CALL prms%CreateIntOption('nAnalyzeTestCase', "Call testcase specific analysis routines every n-th timestep. "//&
-                                              "(Note: always called at global analyze level)", '10')
+                                              "(Note: always called at global analyze level)"                   , '10')
 END SUBROUTINE DefineParametersTestcase
 
 
@@ -123,8 +123,8 @@ CALL CollectiveStop(__STAMP__, &
 #endif
 
 ! Length of Buffer for TGV output
-nWriteStats      = GETINT( 'nWriteStats','100')
-nAnalyzeTestCase = GETINT( 'nAnalyzeTestCase','10')
+nWriteStats      = GETINT( 'nWriteStats')
+nAnalyzeTestCase = GETINT( 'nAnalyzeTestCase')
 
 IF(MPIRoot)THEN
   ALLOCATE(Time(nWriteStats))

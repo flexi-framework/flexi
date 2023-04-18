@@ -83,7 +83,7 @@ CALL addStrListEntry('FilterType','cutoff',FILTERTYPE_CUTOFF)
 CALL addStrListEntry('FilterType','modal', FILTERTYPE_MODAL)
 CALL addStrListEntry('FilterType','laf',   FILTERTYPE_LAF)
 CALL prms%CreateIntOption(             'NFilter',           "Cut-off mode (FilterType==CutOff or LAF)")
-CALL prms%CreateRealOption(            'LAF_alpha',         "Relaxation factor for LAF, see Flad et al. JCP 2016")
+CALL prms%CreateRealOption(            'LAF_alpha',         "Relaxation factor for LAF, see Flad et al. JCP 2016",'1.0')
 CALL prms%CreateRealArrayOption(       'HestFilterParam',   "Parameters for Hesthaven filter (FilterType==Modal)")
 #if PP_LIMITER
 CALL DefineParametersPPLimiter()
@@ -150,8 +150,8 @@ IF(FilterType.GT.0) THEN
     CALL HestFilter()
 #if EQNSYSNR==2
   CASE (FILTERTYPE_LAF) ! Modal Filter cut-off, adaptive (LAF), only Euler/Navier-Stokes
-    NFilter = GETINT('NFilter')
-    LAF_alpha= GETREAL('LAF_alpha','1.0')
+    NFilter   = GETINT('NFilter')
+    LAF_alpha = GETREAL('LAF_alpha')
     ! LAF uses a special filter routine
     Filter_Pointer=>Filter_LAF
     DO iDeg=0,NFilter

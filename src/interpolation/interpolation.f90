@@ -194,7 +194,8 @@ SUBROUTINE GetNodesAndWeights(N_in,NodeType_in,xIP,wIP,wIPBary)
 ! MODULES
 USE MOD_Globals
 USE MOD_StringTools, ONLY: LowCase
-USE MOD_Basis,       ONLY: LegendreGaussNodesAndWeights,LegGaussLobNodesAndWeights,ChebyGaussLobNodesAndWeights,BarycentricWeights
+USE MOD_Basis,       ONLY: LegendreGaussNodesAndWeights,LegGaussLobNodesAndWeights,LegGaussRadauNodesAndWeights
+USE MOD_Basis,       ONLY: ChebyGaussLobNodesAndWeights,BarycentricWeights
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -218,6 +219,8 @@ IF(PRESENT(wIP))THEN
     CALL LegendreGaussNodesAndWeights(N_in,xIP,wIP)
   CASE('gauss-lobatto')
     CALL LegGaussLobNodesAndWeights(N_in,xIP,wIP)
+  CASE('gauss-radau')
+    CALL LegGaussRadauNodesAndWeights(N_in,xIP,wIP)
   CASE('chebyshev-gauss-lobatto')
     CALL ChebyGaussLobNodesAndWeights(N_in,xIP,wIP)
   CASE('visu')
@@ -253,6 +256,8 @@ ELSE
     CALL LegendreGaussNodesAndWeights(N_in,xIP)
   CASE('gauss-lobatto')
     CALL LegGaussLobNodesAndWeights(N_in,xIP)
+  CASE('gauss-radau')
+    CALL LegGaussRadauNodesAndWeights(N_in,xIP)
   CASE('chebyshev-gauss-lobatto')
     CALL ChebyGaussLobNodesAndWeights(N_in,xIP)
   CASE('visu')

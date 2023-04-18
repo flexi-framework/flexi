@@ -40,12 +40,12 @@ CONTAINS
 !> - apply fluxes to the left and right sub-cell of the slice
 !> are evaluated in the volume integral of the lifting procedure.
 !==================================================================================================================================
-SUBROUTINE FV_VolInt(UPrim,Ut_FV)
+SUBROUTINE FV_VolInt(UPrim,Ut)
 ! MODULES
 USE MOD_PreProc                         ! all PP_*** variables
 USE MOD_Flux         ,ONLY: EvalFlux3D  ! 3D fluxes
 USE MOD_FV_Vars
-#if PARABOLIC
+#if VOLINT_VISC
 USE MOD_Lifting_Vars ,ONLY: gradUx,gradUy,gradUz
 USE MOD_Flux         ,ONLY: EvalDiffFlux3D
 #endif
@@ -57,14 +57,14 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 REAL,INTENT(IN)    :: UPrim(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)  !< solution vector of primitive variables
-REAL,INTENT(INOUT) :: Ut_FV(PP_nVar    ,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)  !< time derivative of conservative solution vector
-                                                                        !< for FV elements
+REAL,INTENT(INOUT) :: Ut(   PP_nVar    ,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)  !< time derivative of conservative solution vector
+                                                                         !< for FV elements
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                       :: i,j,k,p,q,iElem
 REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_NZ)    :: UPrim_L,UPrim_R
 REAL,DIMENSION(PP_nVar    ,0:PP_N,0:PP_NZ)    :: UCons_L,UCons_R
-#if PARABOLIC
+#if VOLINT_VISC
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ,0:PP_N) :: diffFlux_x,diffFlux_y
 #if PP_dim == 3
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ,0:PP_N) :: diffFlux_z
@@ -73,6 +73,7 @@ REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ)        :: Fvisc_FV
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: f,g,h      !< viscous volume fluxes at GP
 #endif
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ)        :: F_FV
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: Ut_FV
 !==================================================================================================================================
 
 ! This routine works as follows:
@@ -88,15 +89,19 @@ REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ)        :: F_FV
 !   6. add flux to the left and right sub-cell of the interface
 
 DO iElem=1,nElems
-  IF (FV_Elems(iElem).EQ.0) CYCLE ! DG Element
+#if FV_ENABLED == 1
+  IF (FV_Elems(iElem) .EQ. 0) CYCLE ! DG Element
+#elif FV_ENABLED == 2
+  IF (FV_alpha(iElem) .LT. EPSILON(0.)) CYCLE
+#endif
 
-#if PARABOLIC
+#if VOLINT_VISC
   ! 0. Eval viscous flux for all sub-cells
   CALL EvalDiffFlux3D(UPrim(:,:,:,:,iElem), gradUx(:,:,:,:,iElem), gradUy(:,:,:,:,iElem), gradUz(:,:,:,:,iElem),f,g,h,iElem)
 #endif
 
   ! === Xi-Direction ============
-#if PARABOLIC
+#if VOLINT_VISC
   ! 1. copy viscous fluxes to temporary array (for performance)
   DO i=0,PP_N
     diffFlux_x(:,:,:,i) = f(:,i,:,:)
@@ -108,7 +113,7 @@ DO iElem=1,nElems
 #endif
   ! This is the only nullification we have to do, the rest will be overwritten accordingly. Nullify here to catch only the FV
   ! elements. Might be smarter to do this in a single, long operation?
-  Ut_FV(:,0,:,:,iElem) = 0.
+  Ut_FV(:,0,:,:) = 0.
   ! iterate over all inner slices in xi-direction
   DO i=1,PP_N
     DO q=0,PP_NZ; DO p=0,PP_N
@@ -129,7 +134,7 @@ DO iElem=1,nElems
     CALL Riemann(PP_N,F_FV,UCons_L,UCons_R,UPrim_L,UPrim_R,          &
         FV_NormVecXi (:,:,:,i,iElem), FV_TangVec1Xi(:,:,:,i,iElem), FV_TangVec2Xi(:,:,:,i,iElem),.FALSE.)
 
-#if PARABOLIC
+#if VOLINT_VISC
     ! 5. compute viscous flux in normal direction of the interface
     DO q=0,PP_NZ; DO p=0,PP_N
       Fvisc_FV(:,p,q)=0.5*(FV_NormVecXi(1,p,q,i,iElem)*(diffFlux_x(:,p,q,i-1)+diffFlux_x(:,p,q,i)) &
@@ -140,18 +145,18 @@ DO iElem=1,nElems
                           )
     END DO; END DO
     F_FV = F_FV + Fvisc_FV
-#endif /*PARABOLIC*/
+#endif /*VOLINT_VISC*/
 
     ! 6. apply flux to the sub-cells at the left and right side of the interface/slice
     DO k=0,PP_NZ; DO j=0,PP_N
-      Ut_FV(:,i-1,j,k,iElem) = Ut_FV(:,i-1,j,k,iElem) + F_FV(:,j,k) * FV_SurfElemXi_sw(j,k,i,iElem)
+      Ut_FV(:,i-1,j,k) = Ut_FV(:,i-1,j,k) + F_FV(:,j,k) * FV_SurfElemXi_sw(j,k,i,iElem) * FV_w_inv(i-1)
       ! During our first sweep, the DOF here has never been touched and can thus be overwritten
-      Ut_FV(:,i  ,j,k,iElem) =                     -1.* F_FV(:,j,k) * FV_SurfElemXi_sw(j,k,i,iElem)
+      Ut_FV(:,i  ,j,k) =               -1.* F_FV(:,j,k) * FV_SurfElemXi_sw(j,k,i,iElem) * FV_w_inv(i)
     END DO; END DO
   END DO ! i
 
   ! === Eta-Direction ===========
-#if PARABOLIC
+#if VOLINT_VISC
   ! 1. copy fluxes to temporary array (for performance)
   DO j=0,PP_N
     diffFlux_x(:,:,:,j) = f(:,:,j,:)
@@ -181,7 +186,7 @@ DO iElem=1,nElems
     ! 4. calculate advective part of the flux
     CALL Riemann(PP_N,F_FV,UCons_L,UCons_R,UPrim_L,UPrim_R,          &
         FV_NormVecEta (:,:,:,j,iElem), FV_TangVec1Eta(:,:,:,j,iElem), FV_TangVec2Eta(:,:,:,j,iElem),.FALSE.)
-#if PARABOLIC
+#if VOLINT_VISC
     ! 5. compute viscous flux in normal direction of the interface
     DO q=0,PP_NZ; DO p=0,PP_N
       Fvisc_FV(:,p,q)=0.5*(FV_NormVecEta(1,p,q,j,iElem)*(diffFlux_x(:,p,q,j-1)+diffFlux_x(:,p,q,j)) &
@@ -192,12 +197,12 @@ DO iElem=1,nElems
                           )
     END DO; END DO
     F_FV = F_FV + Fvisc_FV
-#endif /*PARABOLIC*/
+#endif /*VOLINT_VISC*/
 
     ! 6. apply flux to the sub-cells at the left and right side of the interface/slice
     DO k=0,PP_NZ; DO i=0,PP_N
-      Ut_FV(:,i,j-1,k,iElem) = Ut_FV(:,i,j-1,k,iElem) + F_FV(:,i,k) * FV_SurfElemEta_sw(i,k,j,iElem)
-      Ut_FV(:,i,j  ,k,iElem) = Ut_FV(:,i,j  ,k,iElem) - F_FV(:,i,k) * FV_SurfElemEta_sw(i,k,j,iElem)
+      Ut_FV(:,i,j-1,k) = Ut_FV(:,i,j-1,k) + F_FV(:,i,k) * FV_SurfElemEta_sw(i,k,j,iElem) * FV_w_inv(j-1)
+      Ut_FV(:,i,j  ,k) = Ut_FV(:,i,j  ,k) - F_FV(:,i,k) * FV_SurfElemEta_sw(i,k,j,iElem) * FV_w_inv(j)
     END DO; END DO
   END DO ! j
 
@@ -224,7 +229,7 @@ DO iElem=1,nElems
     ! 4. calculate advective part of the flux
     CALL Riemann(PP_N,F_FV,UCons_L,UCons_R,UPrim_L,UPrim_R,          &
         FV_NormVecZeta (:,:,:,k,iElem), FV_TangVec1Zeta(:,:,:,k,iElem), FV_TangVec2Zeta(:,:,:,k,iElem),.FALSE.)
-#if PARABOLIC
+#if VOLINT_VISC
     ! 5. compute viscous flux in normal direction of the interface
     DO q=0,PP_N; DO p=0,PP_N
       Fvisc_FV(:,p,q)=0.5*(FV_NormVecZeta(1,p,q,k,iElem)*(f(:,p,q,k-1)+f(:,p,q,k)) &
@@ -232,15 +237,22 @@ DO iElem=1,nElems
                           +FV_NormVecZeta(3,p,q,k,iElem)*(h(:,p,q,k-1)+h(:,p,q,k)))
     END DO; END DO
     F_FV = F_FV + Fvisc_FV
-#endif /*PARABOLIC*/
+#endif /*VOLINT_VISC*/
 
     ! 6. apply flux to the sub-cells at the left and right side of the interface/slice
     DO j=0,PP_N; DO i=0,PP_N
-      Ut_FV(:,i,j,k-1,iElem) = Ut_FV(:,i,j,k-1,iElem) + F_FV(:,i,j) * FV_SurfElemZeta_sw(i,j,k,iElem)
-      Ut_FV(:,i,j,k  ,iElem) = Ut_FV(:,i,j,k  ,iElem) - F_FV(:,i,j) * FV_SurfElemZeta_sw(i,j,k,iElem)
+      Ut_FV(:,i,j,k-1) = Ut_FV(:,i,j,k-1) + F_FV(:,i,j) * FV_SurfElemZeta_sw(i,j,k,iElem) * FV_w_inv(k-1)
+      Ut_FV(:,i,j,k  ) = Ut_FV(:,i,j,k  ) - F_FV(:,i,j) * FV_SurfElemZeta_sw(i,j,k,iElem) * FV_w_inv(k)
     END DO; END DO
   END DO ! k
 #endif /* PP_dim == 3 */
+
+#if FV_ENABLED == 2
+  ! Blend the solutions together
+  Ut(:,:,:,:,iElem) = (1 - FV_alpha(iElem)) * Ut(:,:,:,:,iElem) + FV_alpha(iElem)*Ut_FV
+#else
+  Ut(:,:,:,:,iElem) = Ut_FV
+#endif /*FV_BLENDING*/
 
 END DO ! iElem
 END SUBROUTINE FV_VolInt

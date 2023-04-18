@@ -60,9 +60,9 @@ CALL prms%CreateIntOption(      'IniRefState',  "Refstate required for initializ
 CALL prms%CreateRealArrayOption('RefState',     "State(s) in primitive variables (density, velx, vely, velz, pressure).",&
                                                 multiple=.TRUE.)
 CALL prms%CreateStringOption(   'BCStateFile',  "File containing the reference solution on the boundary to be used as BC.")
-CALL prms%CreateRealOption(     'PrTurb',       "Prandtl number", '0.9')
+CALL prms%CreateRealOption(     'PrTurb',       "Prandtl number"                                       , '0.9')
 CALL prms%CreateLogicalOption(  'includeTrip',  "Switch on to include a trip term in the SA equations.", '.FALSE.')
-CALL prms%CreateLogicalOption(  'DebugSA',      "Switch on to include debug output for SA equation.", '.FALSE.')
+CALL prms%CreateLogicalOption(  'DebugSA',      "Switch on to include debug output for SA equation."   , '.FALSE.')
 
 CALL DefineParametersRiemann()
 END SUBROUTINE DefineParametersEquation
@@ -136,9 +136,9 @@ CALL InitExactFunc()
 CALL InitEOS()
 
 ! SA-specific parameters
-includeTrip = GETLOGICAL('includeTrip','.FALSE.')
-PrTurb = GETREAL('PrTurb','0.9')
-ALLOCATE(SAd(0:PP_N,0:PP_N,0:PP_NZ,0:FV_ENABLED,nElems))
+includeTrip = GETLOGICAL('includeTrip')
+PrTurb      = GETREAL(   'PrTurb')
+ALLOCATE(SAd(0:PP_N,0:PP_N,0:PP_NZ,0:FV_SIZE,nElems))
 ! We choose a large number as our default for the walldistance, since it basically means we calculate free turbulence away from a
 ! wall. The square-root is taken since the value get's squared in the auxilliary functions, and this prevents errounus arithmetic
 ! operations to take place.
@@ -201,7 +201,7 @@ ELSE
 END IF
 
 IF (includeTrip) THEN
-  ALLOCATE(SAdt(0:PP_N,0:PP_N,0:PP_NZ,0:FV_ENABLED,nElems))
+  ALLOCATE(SAdt(0:PP_N,0:PP_N,0:PP_NZ,0:FV_SIZE,nElems))
   DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       SAdt(i,j,k,0,iElem) = NORM2(Elem_xGP(1:2,i,j,k,iElem)-TripX)
@@ -213,7 +213,7 @@ IF (includeTrip) THEN
 #endif
 END IF
 
-doSADebug = GETLOGICAL('DebugSA','.FALSE.')
+doSADebug = GETLOGICAL('DebugSA')
 IF (doSADebug) THEN
   ALLOCATE(SADebug(4,0:PP_N,0:PP_N,0:PP_NZ,nElems))
   CALL AddToFieldData(FieldOut,(/4,PP_N+1,PP_N+1,PP_NZ+1,nElems/),'SADebug',(/'Prod','Dest','Trip','Diff'/),RealArray=SADebug)

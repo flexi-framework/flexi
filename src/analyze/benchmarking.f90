@@ -58,7 +58,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !==================================================================================================================================
 #ifdef PAPI
-doMeasureFlops=GETLOGICAL('doMeasureFlops','.TRUE.')
+doMeasureFlops=GETLOGICAL('doMeasureFlops')
 #endif
 END SUBROUTINE InitBenchmarking
 

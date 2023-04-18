@@ -271,7 +271,9 @@ The currently implemented features of **FLEXI** include
 * Curved Meshes
 * Nonconforming Meshes via mortar interfaces [@koprivamortar2002]
 * Shock capturing
-    * Employing finite volume subcells
+    * Employing finite volume subcells by either
+        * switching to finite volume subcells [@sonntag2017efficient]
+        * blending the finite volume operator [@hennemann2021provably]
     * Several shock indicators available
 * Boundary conditions
     * Various subsonic inflow and outflow conditions [@carlson2011inflow]

@@ -22,6 +22,17 @@ MODULE MOD_FV_Basis
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
+
+INTEGER,PARAMETER      :: FV_NODETYPE_SAME              =-1
+INTEGER,PARAMETER      :: FV_NODETYPE_EQUIDISTANT       = 0
+INTEGER,PARAMETER      :: FV_NODETYPE_LEGENDRE_GAUSS    = 1
+INTEGER,PARAMETER      :: FV_NODETYPE_LEGENDRE_LOBATTO  = 2
+INTEGER,PARAMETER      :: FV_NODETYPE_CHEBYSHEV_LOBATTO = 3
+
+INTERFACE DefineParametersFV_Basis
+  MODULE PROCEDURE DefineParametersFV_Basis
+END INTERFACE
+
 INTERFACE InitFV_Basis
   MODULE PROCEDURE InitFV_Basis
 END INTERFACE
@@ -47,6 +58,7 @@ INTERFACE FinalizeFV_Basis
 END INTERFACE
 
 
+PUBLIC::DefineParametersFV_Basis
 PUBLIC::InitFV_Basis
 PUBLIC::FV_Build_X_w_BdryX
 PUBLIC::FV_Build_VisuVdm
@@ -58,6 +70,30 @@ PUBLIC::FinalizeFV_Basis
 CONTAINS
 
 !==================================================================================================================================
+!> Define parameters for FV basis
+!==================================================================================================================================
+SUBROUTINE DefineParametersFV_Basis()
+! MODULES
+USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!==================================================================================================================================
+CALL prms%SetSection('FV_Basis')
+CALL prms%CreateIntFromStringOption('FV_CellType',"Specify type of FV cell distribution to be used:&
+                                                                            & equidistant\n&
+                                                                            & same\n&
+                                                                            & legendre_gauss\n&
+                                                                            & legendre_lobatto\n&
+                                                                            & chebychev_lobatto"&
+                                                                            , value='equidistant')
+CALL addStrListEntry('FV_CellType','same',              FV_NODETYPE_SAME             )
+CALL addStrListEntry('FV_CellType','equidistant',       FV_NODETYPE_EQUIDISTANT      )
+CALL addStrListEntry('FV_CellType','legendre_gauss',    FV_NODETYPE_LEGENDRE_GAUSS   )
+CALL addStrListEntry('FV_CellType','legendre_lobatto',  FV_NODETYPE_LEGENDRE_LOBATTO )
+CALL addStrListEntry('FV_CellType','chebyshev_lobatto', FV_NODETYPE_CHEBYSHEV_LOBATTO)
+END SUBROUTINE DefineParametersFV_Basis
+
+!==================================================================================================================================
 !> Initialize sub-cells width/points/distances/... Vandermondes to switch between DG and FV ...
 !==================================================================================================================================
 SUBROUTINE InitFV_Basis()
@@ -65,6 +101,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_FV_Vars
 USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone,NodeType
+USE MOD_ReadInTools        ,ONLY: GETINTFROMSTR
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -84,6 +121,14 @@ CALL CollectiveStop(__STAMP__, &
 #endif
 #endif
 
+! The indicator value is used to decide where FV sub-cells are needed
+! TODO: Force overwrite not so nice....
+#if FV_ENABLED == 2
+  FV_CellType = FV_NODETYPE_SAME
+#else
+  FV_CellType = GETINTFROMSTR('FV_CellType')
+#endif /*FV_BLENDING*/
+
 ! DG reference element [-1,1] is subdivided into (N+1) sub-cells
 !
 ! -1                                       1
@@ -95,9 +140,11 @@ CALL CollectiveStop(__STAMP__, &
 ! allocate arrays for precomputed stuff on reference-element
 ALLOCATE(FV_BdryX(0:PP_N+1))  ! 1D boundary positions of FV-Subcells
 ALLOCATE(FV_X(0:PP_N))        ! 1D positions of support points of FV-Subcells
+ALLOCATE(FV_w(0:PP_N))        ! 1D width of FV-Subcells
+ALLOCATE(FV_w_inv(0:PP_N))    ! Inverse of 1D width of FV-Subcells
 
 ! precompute stuff on reference-element
-CALL FV_Build_X_w_BdryX(PP_N, FV_X, FV_w, FV_BdryX)
+CALL FV_Build_X_w_BdryX(PP_N, FV_X, FV_w, FV_BdryX, FV_CellType)
 
 ! equidistant FV needs Vdm-Matrix to interpolate/reconstruct between FV- and DG-Solution
 ALLOCATE(FV_Vdm(0:PP_N,0:PP_N))    ! used for DG -> FV
@@ -106,8 +153,7 @@ ALLOCATE(FV_sVdm(0:PP_N,0:PP_N))   ! used for FV -> DG
 CALL FV_GetVandermonde(PP_N,NodeType,FV_Vdm,FV_sVdm)
 
 ! calculate inverse FV-widths (little speedup)
-FV_w_inv = 1.0 / FV_w
-
+FV_w_inv      = 1.0 / FV_w
 
 FVInitBasisIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT FV DONE!'
@@ -125,6 +171,7 @@ USE MOD_Preproc
 USE MOD_Interpolation ,ONLY: GetVandermonde,GetNodesAndWeights
 USE MOD_Basis         ,ONLY: InitializeVandermonde
 USE MOD_Mathtools     ,ONLY: INVERSE
+USE MOD_FV_Vars       ,ONLY: FV_CellType
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -134,7 +181,7 @@ REAL,INTENT(OUT)              :: FV_Vdm(0:N_in,0:N_in)   !< Vandermonde matrix f
 REAL,INTENT(OUT),OPTIONAL     :: FV_sVdm(0:N_in,0:N_in)  !< Vandermonde matrix for converstion from FV to DG
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                   :: FV_X(0:N_in),FV_w,FV_BdryX(0:N_In+1)
+REAL                   :: FV_X(0:N_in),FV_w(0:N_in),FV_BdryX(0:N_In+1)
 REAL,DIMENSION(0:N_In) :: xGP,wGP,wBary
 REAL                   :: SubxGP(0:N_In)
 REAL                   :: VDM(0:N_In,0:N_In)
@@ -171,7 +218,7 @@ CALL GetNodesAndWeights(N_in,NodeType_in,xGP,wGP,wBary)
 !
 ! Algorithm :
 FV_Vdm = 0.0
-CALL FV_Build_X_w_BdryX(N_in, FV_X, FV_w, FV_BdryX)
+CALL FV_Build_X_w_BdryX(N_in, FV_X, FV_w, FV_BdryX, FV_CellType)
 !FV_BdryX = (FV_BdryX + 1.)/2. -1.
 DO i=0,N_in
   ! 1. Compute the Gauss points xFV_i in the i-th Subcell
@@ -197,26 +244,47 @@ END SUBROUTINE FV_GetVandermonde
 !==================================================================================================================================
 !> Build positions FV_X, widths, and boundary positions
 !==================================================================================================================================
+SUBROUTINE FV_Build_X_w_BdryX(N, FV_X, FV_w, FV_BdryX, FV_CellType)
 ! MODULES
-SUBROUTINE FV_Build_X_w_BdryX(N, FV_X, FV_w, FV_BdryX)
+USE MOD_Globals
+USE MOD_Basis
+USE MOD_Interpolation      ,ONLY: GetNodesAndWeights
+USE MOD_Interpolation_Vars ,ONLY: NodeType, NodeTypeG, NodeTypeGL, NodeTypeCL
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: N               !< polynomial degree of DG elements / number of sub-cells per direction (N+1)
 REAL,INTENT(OUT)   :: FV_X(0:N)       !< cell-centers of the sub-cells in reference space
-REAL,INTENT(OUT)   :: FV_w            !< width of the sub-cells in reference space
+REAL,INTENT(OUT)   :: FV_w(0:N)       !< width of the sub-cells in reference space
 REAL,INTENT(OUT)   :: FV_BdryX(0:N+1) !< positions of the boundaries of the sub-cells in reference space
+INTEGER,INTENT(IN) :: FV_CellType
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: i
 !==================================================================================================================================
-FV_w  = 2.0 / (N+1) ! equidistant widths of FV-Subcells
+! NOTE: calc different node distributions for fv subcell: default is the same as DG
+SELECT CASE (FV_CellType)
+CASE (FV_NODETYPE_EQUIDISTANT)
+  FV_w(:)  = 2.0 / (N+1)
+CASE (FV_NODETYPE_LEGENDRE_GAUSS)
+  CALL GetNodesAndWeights(N,NodeTypeG,FV_X,FV_w)
+CASE (FV_NODETYPE_LEGENDRE_LOBATTO)
+  CALL GetNodesAndWeights(N,NodeTypeGL,FV_X,FV_w)
+CASE (FV_NODETYPE_CHEBYSHEV_LOBATTO)
+  CALL GetNodesAndWeights(N,NodeTypeCL,FV_X,FV_w)
+CASE(FV_NODETYPE_SAME)
+  ! Set FV positions FV_X as the GLL/G nodes, and the FV cell width to be the GLL/G weights.
+  CALL GetNodesAndWeights(N,NodeType,FV_X,FV_w)
+CASE DEFAULT
+  CALL CollectiveStop(__STAMP__,"Nodetype for FV subcells unknown!")
+END SELECT
 
 ! calculate boundaries and nodes (midpoints) of FV-Subcells
 FV_BdryX(0) = -1.0
 DO i=1,N+1
-  FV_BdryX(i) = FV_BdryX(i-1) + FV_w
+  FV_BdryX(i) = FV_BdryX(i-1) + FV_w(i-1)
+  ! The following is for FVx at midpoint of cell.
   FV_X(i-1)   = (FV_BdryX(i-1) + FV_BdryX(i))/2.0
 END DO
 END SUBROUTINE FV_Build_X_w_BdryX
@@ -228,6 +296,7 @@ END SUBROUTINE FV_Build_X_w_BdryX
 SUBROUTINE FV_Build_VisuVdm(N, Vdm)
 ! MODULES
 USE MOD_Basis
+USE MOD_FV_Vars       ,ONLY: FV_CellType
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -238,7 +307,7 @@ REAL,INTENT(OUT)   :: Vdm(0:(N+1)*2-1,0:N) !< Vandermonde matrix
 ! LOCAL VARIABLES
 REAL,DIMENSION(0:PP_N) :: FV_X,xGP,wBary
 REAL                   :: X  (0:(N+1)*2-1)
-REAL                   :: FV_BdryX(0:N+1),FV_w
+REAL                   :: FV_BdryX(0:N+1),FV_w(0:N)
 INTEGER                :: i,l,k
 !==================================================================================================================================
 #if (PP_NodeType == 1)
@@ -248,7 +317,7 @@ INTEGER                :: i,l,k
 #endif
 CALL BarycentricWeights(N, xGP, wBary)
 
-CALL FV_Build_X_w_BdryX(N, FV_X, FV_w, FV_BdryX)
+CALL FV_Build_X_w_BdryX(N, FV_X, FV_w, FV_BdryX, FV_CellType)
 k = 0
 DO i=0,N
   DO l=0,1
@@ -266,6 +335,7 @@ END SUBROUTINE FV_Build_VisuVdm
 SUBROUTINE FV_Build_Vdm_Gauss_FVboundary(N, Vdm)
 ! MODULES
 USE MOD_Basis
+USE MOD_FV_Vars       ,ONLY: FV_CellType
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -275,7 +345,7 @@ REAL,INTENT(OUT)   :: Vdm(0:N+1,0:N) !< Vandermonde matrix
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,DIMENSION(0:PP_N) :: FV_X,xGP,wBary
-REAL                   :: FV_BdryX(0:N+1),FV_w
+REAL                   :: FV_BdryX(0:N+1),FV_w(0:N)
 !==================================================================================================================================
 #if (PP_NodeType == 1)
   CALL LegendreGaussNodesAndWeights(N, xGP, wBary)
@@ -283,7 +353,7 @@ REAL                   :: FV_BdryX(0:N+1),FV_w
   CALL LegGaussLobNodesAndWeights(N, xGP, wBary)
 #endif
 CALL BarycentricWeights(N, xGP, wBary)
-CALL FV_Build_X_w_BdryX(N, FV_X, FV_w, FV_BdryX)
+CALL FV_Build_X_w_BdryX(N, FV_X, FV_w, FV_BdryX, FV_CellType)
 CALL InitializeVandermonde(N,N+1,wBary,xGP,FV_BdryX,Vdm)
 END SUBROUTINE FV_Build_Vdm_Gauss_FVboundary
 
@@ -297,6 +367,8 @@ IMPLICIT NONE
 !==================================================================================================================================
 SDEALLOCATE(FV_BdryX)
 SDEALLOCATE(FV_X)
+SDEALLOCATE(FV_w)
+SDEALLOCATE(FV_w_inv)
 SDEALLOCATE(FV_Vdm)
 SDEALLOCATE(FV_sVdm)
 FVInitBasisIsDone=.FALSE.

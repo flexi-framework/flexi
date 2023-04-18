@@ -46,6 +46,7 @@ SUBROUTINE DefineParametersMesh()
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadInTools ,ONLY: prms
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Mesh")
@@ -112,6 +113,7 @@ USE MOD_IO_HDF5,            ONLY:AddToElemData,ElementOut
 #if (PP_dim == 2)
 USE MOD_2D
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -149,7 +151,7 @@ validMesh = ISVALIDMESHFILE(MeshFile)
 IF(.NOT.validMesh) &
     CALL CollectiveStop(__STAMP__,'ERROR - Mesh file not a valid HDF5 mesh.')
 
-useCurveds=GETLOGICAL('useCurveds','.TRUE.')
+useCurveds=GETLOGICAL('useCurveds')
 CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL ReadAttribute(File_ID,'Ngeo',1,IntScalar=NGeo)
 CALL CloseDataFile()
@@ -171,7 +173,7 @@ NodeCoords(3,:,:,:,:) = 0.
 
 ! if trees are available: compute metrics on tree level and interpolate to elements
 interpolateFromTree=.FALSE.
-IF(isMortarMesh) interpolateFromTree=GETLOGICAL('interpolateFromTree','.TRUE.')
+IF(isMortarMesh) interpolateFromTree=GETLOGICAL('interpolateFromTree')
 IF(interpolateFromTree)THEN
 #if (PP_dim == 2)
   CALL CollectiveStop(__STAMP__,&
@@ -185,7 +187,7 @@ ELSE
   nElemsLoc=nElems
 ENDIF
 
-NGeoOverride=GETINT('NGeoOverride','-1')
+NGeoOverride=GETINT('NGeoOverride')
 IF(NGeoOverride.GT.0)THEN
   ALLOCATE(CoordsTmp(3,0:NGeoOverride,0:NGeoOverride,0:NGeoOverride,nElemsLoc))
   ALLOCATE(Vdm_EQNGeo_EQNGeoOverride(0:NGeoOverride,0:NGeo))
@@ -211,11 +213,11 @@ END IF
 SWRITE(UNIT_stdOut,'(a3,a30,a3,i0)')' | ','Ngeo',' | ', Ngeo
 
 ! scale and deform mesh if desired (warning: no mesh output!)
-meshScale=GETREAL('meshScale','1.0')
+meshScale=GETREAL('meshScale')
 IF(ABS(meshScale-1.).GT.1e-14)&
   Coords = Coords*meshScale
 
-IF(GETLOGICAL('meshdeform','.FALSE.'))THEN
+IF(GETLOGICAL('meshdeform'))THEN
   DO iElem=1,nElemsLoc
     DO k=0,ZDIM(NGeo); DO j=0,NGeo; DO i=0,NGeo
       x(:)=Coords(:,i,j,k,iElem)
@@ -335,26 +337,26 @@ IF (meshMode.GT.1) THEN
 
   ! volume data
   ALLOCATE(      dXCL_N(3,3,0:PP_N,0:PP_N,0:PP_NZ,nElems)) ! temp
-  ALLOCATE(Metrics_fTilde(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_ENABLED))
-  ALLOCATE(Metrics_gTilde(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_ENABLED))
-  ALLOCATE(Metrics_hTilde(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_ENABLED))
-  ALLOCATE(            sJ(  0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_ENABLED))
+  ALLOCATE(Metrics_fTilde(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_SIZE))
+  ALLOCATE(Metrics_gTilde(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_SIZE))
+  ALLOCATE(Metrics_hTilde(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_SIZE))
+  ALLOCATE(            sJ(  0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_SIZE))
   ALLOCATE(     scaledJac(  0:PP_N,0:PP_N,0:PP_NZ,nElems))
   NGeoRef=3*NGeo ! build jacobian at higher degree
   ALLOCATE(    DetJac_Ref(1,0:NGeoRef,0:NGeoRef,0:ZDIM(NGeoRef),nElems))
 
   ! surface data
-  ALLOCATE(      Face_xGP(3,0:PP_N,0:PP_NZ,0:FV_ENABLED,1:nSides))
-  ALLOCATE(       NormVec(3,0:PP_N,0:PP_NZ,0:FV_ENABLED,1:nSides))
-  ALLOCATE(      TangVec1(3,0:PP_N,0:PP_NZ,0:FV_ENABLED,1:nSides))
-  ALLOCATE(      TangVec2(3,0:PP_N,0:PP_NZ,0:FV_ENABLED,1:nSides))
-  ALLOCATE(      SurfElem(  0:PP_N,0:PP_NZ,0:FV_ENABLED,1:nSides))
-  ALLOCATE(     Ja_Face(3,3,0:PP_N,0:PP_NZ,             1:nSides)) ! temp
+  ALLOCATE(      Face_xGP(3,0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
+  ALLOCATE(       NormVec(3,0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
+  ALLOCATE(      TangVec1(3,0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
+  ALLOCATE(      TangVec2(3,0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
+  ALLOCATE(      SurfElem(  0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
+  ALLOCATE(     Ja_Face(3,3,0:PP_N,0:PP_NZ,          1:nSides)) ! temp
 
 #if FV_ENABLED
   ! NOTE: initialize with 1 and not with 0
-  ALLOCATE(sJ_master(1,0:PP_N,0:PP_NZ,1:nSides,0:FV_ENABLED))
-  ALLOCATE(sJ_slave( 1,0:PP_N,0:PP_NZ,1:nSides,0:FV_ENABLED))
+  ALLOCATE(sJ_master(1,0:PP_N,0:PP_NZ,1:nSides,0:FV_SIZE))
+  ALLOCATE(sJ_slave( 1,0:PP_N,0:PP_NZ,1:nSides,0:FV_SIZE))
   sJ_master = 1.
   sJ_slave  = 1.
 #endif
@@ -365,7 +367,7 @@ IF (meshMode.GT.1) THEN
 
 #if (PP_dim == 3)
   ! compute metrics using cross product instead of curl form (warning: no free stream preservation!)
-  crossProductMetrics=GETLOGICAL('crossProductMetrics','.FALSE.')
+  crossProductMetrics=GETLOGICAL('crossProductMetrics')
 #endif
   SWRITE(UNIT_stdOut,'(A)') "NOW CALLING calcMetrics..."
   CALL CalcMetrics()     ! DG metrics
@@ -373,7 +375,7 @@ IF (meshMode.GT.1) THEN
   CALL InitFV_Metrics()  ! FV metrics
 #endif
   ! debugmesh: param specifies format to output, 0: no output, 1: tecplot ascii, 2: tecplot binary, 3: paraview binary
-  CALL WriteDebugMesh(GETINT('debugmesh','0'))
+  CALL WriteDebugMesh(GETINT('debugmesh'))
 END IF
 
 IF (meshMode.GT.0) THEN
@@ -416,6 +418,7 @@ USE MOD_Mappings  ,ONLY:FinalizeMappings
 USE MOD_FV_Vars   ,ONLY:FV_Elems_master
 USE MOD_FV_Metrics,ONLY:FinalizeFV_Metrics
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !============================================================================================================================
 ! Deallocate global variables, needs to go somewhere else later

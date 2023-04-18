@@ -63,9 +63,13 @@ USE MOD_TimeDisc_Vars       ,ONLY: TimeDiscType
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize,writeCounter,nCalcTimestep
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
 #if FV_ENABLED
-USE MOD_FV
 USE MOD_Indicator           ,ONLY: CalcIndicator
 #endif /*FV_ENABLED*/
+#if FV_ENABLED == 1
+USE MOD_FV_Switching        ,ONLY: FV_FillIni,FV_Switch,FV_Info
+#elif FV_ENABLED == 2
+USE MOD_FV_Blending         ,ONLY: FV_Info
+#endif /*FV_ENABLED == 1*/
 #if PP_LIMITER
 USE MOD_PPLimiter           ,ONLY: PPLimiter,PPLimiter_Info
 USE MOD_Filter_Vars         ,ONLY: DoPPLimiter
@@ -110,17 +114,22 @@ SELECT CASE(OverintegrationType)
     CALL Overintegration(U)
 END SELECT
 
+#if FV_ENABLED == 2
+! FV Blending requires the indicator before the DG operator
+CALL CalcIndicator(U,t)
+#endif
+
 ! Do first RK stage of first timestep to fill gradients
 CALL DGTimeDerivative_weakForm(t)
 
-#if FV_ENABLED
+#if FV_ENABLED == 1
 ! initial switch to FV sub-cells (must be called after DGTimeDerivative_weakForm, since indicator may require gradients)
 CALL CalcIndicator(U,t)
 IF(.NOT.DoRestart)  CALL FV_FillIni()
 ! FV_FillIni might still give invalid cells, switch again ...
 CALL CalcIndicator(U,t)
 CALL FV_Switch(U,AllowToDG=.FALSE.)
-#endif /*FV_ENABLED*/
+#endif /* FV_ENABLED == 1 */
 #if PP_LIMITER
 IF(DoPPLimiter) CALL PPLimiter()
 #endif /*PP_LIMITER*/

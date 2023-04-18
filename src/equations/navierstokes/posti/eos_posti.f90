@@ -62,6 +62,7 @@ CONTAINS
 SUBROUTINE AppendNeededPrims(mapDepToCalc,mapDepToCalc_FV,nVarCalc)
 ! MODULES
 USE MOD_EOS_Posti_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -100,6 +101,7 @@ FUNCTION GetMaskCons()
 USE MOD_EOS_Posti_Vars,ONLY: nVarDepEOS,DepTableEOS,DepNames
 USE MOD_Equation_Vars ,ONLY: StrVarNames
 USE MOD_StringTools   ,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -128,6 +130,7 @@ FUNCTION GetMaskPrim()
 USE MOD_EOS_Posti_Vars,ONLY: nVarDepEOS,DepTableEOS,DepNames
 USE MOD_Equation_Vars ,ONLY: StrVarNamesPrim
 USE MOD_StringTools   ,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
@@ -154,6 +157,7 @@ END FUNCTION GetMaskPrim
 FUNCTION GetMaskGrad()
 ! MODULES
 USE MOD_EOS_Posti_Vars,ONLY: nVarDepEOS,DepTableEOS
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
@@ -172,6 +176,7 @@ SUBROUTINE CalcQuantities(nVarCalc,nVal,mapCalcMeshToGlobalMesh,mapDepToCalc,UCa
 ! MODULES
 USE MOD_Globals
 USE MOD_EOS_Posti_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
@@ -228,6 +233,7 @@ USE MOD_PreProc
 USE MOD_EOS_Posti_Vars
 USE MOD_EOS_Vars
 USE MOD_StringTools     ,ONLY: LowCase,KEYVALUE
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
@@ -413,6 +419,7 @@ USE MOD_Preproc
 USE MOD_Globals
 USE MOD_Eos_Vars,ONLY:KappaM1
 USE MOD_DG_Vars ,ONLY:Ut,U
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -461,6 +468,7 @@ END SUBROUTINE FillPressureTimeDeriv
 !==================================================================================================================================
 PURE FUNCTION FillVorticity(dir,nVal,gradUx,gradUy,gradUz) RESULT(Vorticity)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -490,6 +498,7 @@ END FUNCTION FillVorticity
 !==================================================================================================================================
 FUNCTION FillLambda2(nVal,gradUx,gradUy,gradUz) RESULT(Lambda2)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -523,6 +532,7 @@ END FUNCTION FillLambda2
 !==================================================================================================================================
 PURE FUNCTION FillQcriterion(nVal,gradUx,gradUy,gradUz) RESULT(Qcriterion)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -559,6 +569,7 @@ PURE FUNCTION FillWallFriction(dir,nVal,Temperature,gradUx,gradUy,gradUz,NormVec
 ! MODULES
 USE MOD_Eos_Vars
 USE MOD_Viscosity
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -602,6 +613,7 @@ FUNCTION FillWallHeatTransfer(nVal,Temperature,gradUx,gradUy,gradUz,NormVec) RES
 ! MODULES
 USE MOD_Eos_Vars
 USE MOD_Viscosity
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -642,10 +654,9 @@ SUBROUTINE FillNonDimensionalGridSpacing(nSides_calc,mapBCSideToVisuSides,Nloc,d
 USE MOD_Eos_Vars
 USE MOD_Preproc
 USE MOD_Viscosity
-USE MOD_Mesh_Vars           ,ONLY: Elem_xGP,SideToElem,nBCSides
-USE MOD_Interpolation       ,ONLY: GetVandermonde
-USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeGL
-USE MOD_ChangeBasisByDim    ,ONLY: ChangeBasisVolume
+USE MOD_Mesh_Vars           ,ONLY: NGeo,NodeCoords
+USE MOD_Mesh_Vars           ,ONLY: SideToElem,nBCSides
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -665,15 +676,11 @@ REAL,INTENT(OUT)                                     :: wallDistance(0:Nloc,0:ZD
 REAL              :: mu,temp,fricVel
 INTEGER           :: iSide,p,q,iSideVisu,ElemID,locSideID
 REAL              :: xVec(3),yVec(3),yloc(3),tVec(3,2)
-REAL              :: CornerCoords(3,0:1,0:1,0:ZDIM(1))
-REAL              :: Vdm_G_Corner(0:1,0:PP_N)
 #if PP_dim==3
 INTEGER           :: i
 REAL              :: refVec(3),scalProd,scalProdMax,zVec(3)
 #endif
 !===================================================================================================================================
-! We need a Vandermonde matrix to get the GP coordinates on GL points, i.e. including the surface of the grid cells
-CALL GetVandermonde(PP_N,NodeType,1,NodeTypeGL,Vdm_G_Corner)
 
 ! Loop over all boundary sides
 DO iSide=1,nBCSides
@@ -688,28 +695,25 @@ DO iSide=1,nBCSides
     ElemID        = SideToElem(S2E_ELEM_ID,iSide)
     locSideID     = SideToElem(S2E_LOC_SIDE_ID,iSide)
 
-    ! Get element coordinates on GL points (they include the edges that we use to calculate the element length)
-    CALL ChangeBasisVolume(3,PP_N,1,Vdm_G_Corner,Elem_xGP(:,:,:,:,ElemID),CornerCoords)
-
     ! Depending in the local sideID, get the edge vectors of the element in wall-normal direction (stored in yVec) and for the two
-    ! wall-tangential directions (stored in tVec(:,1-2)). These vectors are the connection of the cell vertices, so they do not
-    ! include any information about curvature!!!!
+    ! wall-tangential directions (stored in tVec(:,1-2)).
+    ! ATTENTION: These vectors are the connection of the cell vertices, so they do not include any information about curvature!
     SELECT CASE(locSideID)
     CASE(XI_MINUS,XI_PLUS)
-     yVec(:)   = CornerCoords(:,1,0,0)- CornerCoords(:,0,0,0)
-     tVec(:,1) = CornerCoords(:,0,1,0)- CornerCoords(:,0,0,0)
+        yVec(:)   = NodeCoords(:,NGeo,0   ,0   ,ElemID) - NodeCoords(:,0,0,0,ElemID)
+        tVec(:,1) = NodeCoords(:,0   ,NGeo,0   ,ElemID) - NodeCoords(:,0,0,0,ElemID)
 #if PP_dim==3
-     tVec(:,2) = CornerCoords(:,0,0,1)- CornerCoords(:,0,0,0)
+        tVec(:,2) = NodeCoords(:,0   ,0   ,NGeo,ElemID) - NodeCoords(:,0,0,0,ElemID)
 #endif
     CASE(ETA_MINUS,ETA_PLUS)
-     yVec(:)   = CornerCoords(:,0,1,0)- CornerCoords(:,0,0,0)
-     tVec(:,1) = CornerCoords(:,1,0,0)- CornerCoords(:,0,0,0)
+        yVec(:)   = NodeCoords(:,0   ,NGeo,0   ,ElemID) - NodeCoords(:,0,0,0,ElemID)
+        tVec(:,1) = NodeCoords(:,NGeo,0   ,0   ,ElemID) - NodeCoords(:,0,0,0,ElemID)
 #if PP_dim==3
-     tVec(:,2) = CornerCoords(:,0,0,1)- CornerCoords(:,0,0,0)
+        tVec(:,2) = NodeCoords(:,0   ,0   ,NGeo,ElemID) - NodeCoords(:,0,0,0,ElemID)
     CASE(ZETA_MINUS,ZETA_PLUS)
-     yVec(:)   = CornerCoords(:,0,0,1)- CornerCoords(:,0,0,0)
-     tVec(:,1) = CornerCoords(:,1,0,0)- CornerCoords(:,0,0,0)
-     tVec(:,2) = CornerCoords(:,0,1,0)- CornerCoords(:,0,0,0)
+        yVec(:)   = NodeCoords(:,0   ,0   ,NGeo,ElemID) - NodeCoords(:,0,0,0,ElemID)
+        tVec(:,1) = NodeCoords(:,NGeo,0   ,0   ,ElemID) - NodeCoords(:,0,0,0,ElemID)
+        tVec(:,2) = NodeCoords(:,0   ,NGeo,0   ,ElemID) - NodeCoords(:,0,0,0,ElemID)
 #endif
     END SELECT
 
@@ -735,10 +739,10 @@ DO iSide=1,nBCSides
 #endif
 
     ! Calculate lengths of the cell = lengths of the edge vectors
-    yloc(1)=SQRT(DOT_PRODUCT(xVec,xVec))
-    yloc(2)=SQRT(DOT_PRODUCT(yVec,yVec))
+    yloc(1) = NORM2(xVec)
+    yloc(2) = NORM2(yVec)
 #if PP_dim==3
-    yloc(3)=SQRT(DOT_PRODUCT(zVec,zVec))
+    yloc(3) = NORM2(zVec)
 #endif
 
     ! Normalize the distances with the number of points per direction per cell

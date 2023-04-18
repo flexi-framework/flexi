@@ -1,7 +1,6 @@
 # =========================================================================
 # POSTI
 # =========================================================================
-
 CMAKE_DEPENDENT_OPTION(POSTI_VISU                  "Build the visu tool"                                ON  "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_MERGETIMEAVERAGES     "Build the time-averaging tool"                      OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_DMD                   "Build the DMD tool"                                 OFF "POSTI" OFF)
@@ -87,8 +86,9 @@ IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT OR POSTI_HIT_INIT OR POSTI_HIT_FILTER
   IF(SELFBUILTEXTERNALS)
     ADD_DEPENDENCIES(fftwlib ${SELFBUILTEXTERNALS})
   ENDIF()
+  MARK_AS_ADVANCED(FORCE FFTW_INCLUDES)
+  MARK_AS_ADVANCED(FORCE FFTW_LIBRARY)
 ENDIF()
-
 
 IF(POSTI_VISU)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/visu/CMakeLists.txt)

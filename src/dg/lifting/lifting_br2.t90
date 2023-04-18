@@ -248,9 +248,9 @@ DO SideID=firstSideID,lastSideID
       nblocSideID = SideToElem(S2E_NB_LOC_SIDE_ID,SideID)
       flip        = SideToElem(S2E_FLIP,SideID)
       DO q=0,PP_NZ; DO p=0,PP_N
-#if (PP_NodeType==1)
+#if (PP_NodeType==1 || (PP_NodeType==2 && defined(EXACT_MM)))
         DO l=0,PP_N
-#elif (PP_NodeType==2)
+#elif (PP_NodeType==2 && !defined(EXACT_MM))
         DO l=0,0 ! special mapping, returns 0 or PP_N dep. on locSideID and flip
 #endif
         ijk=S2V(1:3,l,p,q,flip,nblocSideID) ! get volume indices belonging to the local side indices p,q,l
@@ -292,9 +292,9 @@ DO SideID=firstSideID,lastSideID
       locSideID = SideToElem(S2E_LOC_SIDE_ID,SideID)
       flip      = 0
       DO q=0,PP_NZ; DO p=0,PP_N
-#if (PP_NodeType==1)
+#if (PP_NodeType==1 || (PP_NodeType==2 && defined(EXACT_MM)))
         DO l=0,PP_N
-#elif (PP_NodeType==2)
+#elif (PP_NodeType==2 && !defined(EXACT_MM))
         DO l=0,0 ! special mapping, returns 0 or PP_N dep. on locSideID and flip
 #endif
         ijk=S2V(1:3,l,p,q,flip,locSideID) ! get volume indices belonging to the local side indices p,q,l

@@ -51,6 +51,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars   ,ONLY:withDGOperator
 USE MOD_ReadInTools ,ONLY:ExtractParameterFile
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -70,7 +71,8 @@ IF (LEN_TRIM(prmfile).EQ.0) THEN ! No seperate parameter file has been given
     CALL CollectiveStop(__STAMP__, "No userblock found in state file '"//TRIM(statefile)//"' and no parameter file specified.")
   END IF
 END IF
-SWRITE(*,*) "[ALL] get solution. withDGOperator = ", withDGOperator
+
+SWRITE(UNIT_stdOut,'(A,L1)') " [ALL] get solution withDGOperator = ", withDGOperator
 IF (withDGOperator) THEN
   CALL ReadStateAndGradients(prmfile,statefile)
 ELSE
@@ -223,25 +225,26 @@ USE MOD_PreProc
 USE MOD_DG_Vars             ,ONLY: U
 USE MOD_EOS                 ,ONLY: DefineParametersEos,InitEOS,PrimToCons
 USE MOD_Interpolation       ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
-USE MOD_HDF5_Input          ,ONLY: OpenDataFile,ReadArray,CloseDataFile
+USE MOD_HDF5_Input          ,ONLY: OpenDataFile,ReadAttribute,ReadArray,CloseDataFile
 USE MOD_IO_HDF5             ,ONLY: DefineParametersIO_HDF5,InitIOHDF5
 USE MOD_Mesh                ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Mesh_Vars           ,ONLY: nElems,offsetElem
 USE MOD_MPI                 ,ONLY: DefineParametersMPI
 USE MOD_ReadInTools         ,ONLY: prms
 USE MOD_ReadInTools         ,ONLY: FinalizeParameters
+USE MOD_Restart_Vars        ,ONLY: RestartTime
 USE MOD_Visu_Vars
 #if EQNSYSNR!=1
 USE MOD_HDF5_Input          ,ONLY: GetDataSize
 USE MOD_IO_HDF5             ,ONLY: File_ID,nDims,HSize
 USE MOD_Mesh_Vars           ,ONLY: nElems,nGlobalElems,offsetElem
-USE MOD_Restart_Vars        ,ONLY: RestartMode,RestartCons,RestartPrim,nVar_Restart
+USE MOD_Restart_Vars        ,ONLY: RestartMode,RestartCons,RestartPrim,nVar_Restart,RestartTime
 #endif /* EQNSYSNR!=1 */
 #if USE_MPI
 USE MOD_MPI,                 ONLY: FinalizeMPI
 #endif
 #if FV_ENABLED
-USE MOD_FV_Basis            ,ONLY: InitFV_Basis,FinalizeFV_Basis
+USE MOD_FV_Basis            ,ONLY: InitFV_Basis,FinalizeFV_Basis,DefineParametersFV_Basis
 USE MOD_Mortar              ,ONLY: InitMortar,FinalizeMortar
 #endif
 IMPLICIT NONE
@@ -289,6 +292,9 @@ CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
 CALL DefineParametersInterpolation()
 CALL DefineParametersMesh()
+#if FV_ENABLED
+CALL DefineParametersFV_Basis()
+#endif
 CALL DefineParametersEOS()
 CALL prms%read_options(prmfile)
 
@@ -323,12 +329,15 @@ meshMode_old = meshMode_loc
 
 SDEALLOCATE(U)
 ALLOCATE(U(1:nVar_State,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+
+SWRITE(UNIT_stdOut,'(A,A,A)') ' READING FIELD FROM DATA FILE "',TRIM(statefile),'"...'
 CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 #if EQNSYSNR!=1
 SELECT CASE(RestartMode)
   ! State file or no CheckRestartFile performed
   CASE(-1,1)
 #endif /* EQNSYSNR!=1 */
+    CALL ReadAttribute(File_ID,'Time',1,RealScalar=RestartTime)
     CALL ReadArray('DG_Solution',5,(/nVar_State,PP_N+1,PP_N+1,PP_NZ+1,nElems/),offsetElem,5,RealArray=U)
 #if EQNSYSNR!=1
   ! TimeAvg file

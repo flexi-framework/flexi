@@ -92,7 +92,7 @@ ALLOCATE(L_Minus(0:NRef))
 ALLOCATE(L_Plus(0:NRef))
 ALLOCATE(L_HatMinus(0:NRef))
 ALLOCATE(L_HatPlus(0:NRef))
-ALLOCATE(sJ(0:NRef,0:NRef,0:NRefZ,0:FV_ENABLED,1:nElemsRef))
+ALLOCATE(sJ(0:NRef,0:NRef,0:NRefZ,0:FV_SIZE,1:nElemsRef))
 OPEN(UNIT = 10, STATUS='old',FILE=TRIM(Filename),FORM='unformatted')  ! open an existing file
 READ(10) nElems,SideToElem,firstMPISide_YOUR,lastMPISide_MINE,nSides,S2V2,L_Minus,L_Plus,L_HatPlus,L_HatMinus,sJ
 CLOSE(10) ! close the file

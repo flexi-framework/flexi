@@ -248,9 +248,9 @@ DO SideID=firstSideID,lastSideID
         ! note: for master sides, the mapping S2V2 should be a unit matrix
         FluxTmp(:,S2V2(1,p,q,flip,locSideID),S2V2(2,p,q,flip,locSideID)) = Flux(:,p,q,SideID)
       END DO; END DO ! p,q
-#if   (PP_NodeType==1)
+#if (PP_NodeType==1 || (PP_NodeType==2 && defined(EXACT_MM)))
       CALL DoSurfIntLifting(Nloc,FluxTmp,L_HatMinus,   L_HatPlus,      locSideID,gradU(:,:,:,:,ElemID))
-#elif (PP_NodeType==2)
+#elif (PP_NodeType==2 && !defined(EXACT_MM))
       CALL DoSurfIntLifting(Nloc,FluxTmp,L_HatMinus(0),L_HatPlus(Nloc),locSideID,gradU(:,:,:,:,ElemID))
 #endif
 #if FV_ENABLED
@@ -278,9 +278,9 @@ DO SideID=firstSideID,lastSideID
           FluxTmp(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID))= Flux(:,p,q,SideID)
         END DO; END DO ! p,q
       END IF
-#if   (PP_NodeType==1)
+#if (PP_NodeType==1 || (PP_NodeType==2 && defined(EXACT_MM)))
       CALL DoSurfIntLifting(Nloc,FluxTmp,L_HatMinus,   L_HatPlus,      nblocSideID,gradU(:,:,:,:,nbElemID))
-#elif (PP_NodeType==2)
+#elif (PP_NodeType==2 && !defined(EXACT_MM))
       CALL DoSurfIntLifting(Nloc,FluxTmp,L_HatMinus(0),L_HatPlus(Nloc),nblocSideID,gradU(:,:,:,:,nbElemID))
 #endif
 #if FV_ENABLED

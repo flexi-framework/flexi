@@ -148,7 +148,7 @@ SUBROUTINE InitDGbasis(N_in,xGP,wGP,L_Minus,L_Plus,D,D_T,D_Hat,D_Hat_T,L_HatMinu
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
 USE MOD_Interpolation,    ONLY: GetNodesAndWeights
-USE MOD_Basis,            ONLY: PolynomialDerivativeMatrix,LagrangeInterpolationPolys
+USE MOD_Basis,            ONLY: PolynomialDerivativeMatrix,LagrangeInterpolationPolys,PolynomialMassMatrix
 #ifdef SPLIT_DG
 USE MOD_DG_Vars,          ONLY: DVolSurf ! Transpose of differentiation matrix used for calculating the strong form
 #endif /*SPLIT_DG*/
@@ -172,7 +172,6 @@ REAL,ALLOCATABLE,DIMENSION(:)  ,INTENT(OUT)    :: L_HatPlus              !< Valu
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,DIMENSION(0:N_in,0:N_in)              :: M,Minv
-INTEGER                                    :: iMass
 !==================================================================================================================================
 
 ALLOCATE(L_HatMinus(0:N_in), L_HatPlus(0:N_in))
@@ -182,15 +181,12 @@ ALLOCATE(D_Hat(0:N_in,0:N_in), D_Hat_T(0:N_in,0:N_in))
 CALL PolynomialDerivativeMatrix(N_in,xGP,D)
 D_T=TRANSPOSE(D)
 
+!Build Mass Matrix
+CALL PolynomialMassMatrix(N_in,xGP,wGP,M,Minv)
+
 ! Build D_Hat matrix. D^ = - (M^(-1) * D^T * M)
-M=0.
-Minv=0.
-DO iMass=0,N_in
-  M(iMass,iMass)=wGP(iMass)
-  Minv(iMass,iMass)=1./wGP(iMass)
-END DO
 D_Hat  = -MATMUL(Minv,MATMUL(TRANSPOSE(D),M))
-D_Hat_T= TRANSPOSE(D_hat)
+D_Hat_T= TRANSPOSE(D_Hat)
 
 #ifdef SPLIT_DG
 ! Use a modified D matrix for the strong form volume integral, that incorporates the inner fluxes that are subtracted from the
@@ -199,8 +195,9 @@ ALLOCATE(DVolSurf(0:N_in,0:N_in))
 DVolSurf = D_T
 ! Modify the D matrix here, the integral over the inner fluxes at the boundaries will then be automatically done in the volume
 ! integral. The factor 1/2 is needed since we incorporate a factor of 2 in the split fluxes themselves!
-DVolSurf(0,0) = DVolSurf(0,0) + 1.0/(2.0 * wGP(0))
-DVolSurf(N_in,N_in) = DVolSurf(N_in,N_in) - 1.0/(2.0 * wGP(N_in))
+! For Gauss-Lobatto points, these inner flux contributions cancel exactly with entries in the DVolSurf matrix, resulting in zeros.
+DVolSurf(   0,   0) = DVolSurf(   0   ,0) + 1.0/(2.0 * wGP(   0))  ! = 0. (for LGL)
+DVolSurf(N_in,N_in) = DVolSurf(N_in,N_in) - 1.0/(2.0 * wGP(N_in))  ! = 0. (for LGL)
 #endif /*SPLIT_DG*/
 
 ! interpolate to left and right face (1 and -1 in reference space) and pre-divide by mass matrix
@@ -261,7 +258,7 @@ USE MOD_Mesh_Vars,           ONLY: nSides
 #if FV_ENABLED
 USE MOD_FV_Vars             ,ONLY: FV_Elems_master,FV_Elems_slave,FV_Elems_Sum
 USE MOD_FV_Mortar           ,ONLY: FV_Elems_Mortar
-USE MOD_FV                  ,ONLY: FV_DGtoFV
+USE MOD_FV                  ,ONLY: FV_DGtoFV,FV_ConsToPrim
 USE MOD_FV_VolInt           ,ONLY: FV_VolInt
 #if USE_MPI
 USE MOD_MPI                 ,ONLY: StartExchange_FV_Elems
@@ -293,19 +290,20 @@ REAL,INTENT(IN)                 :: t                      !< Current time
 ! -----------------------------------------------------------------------------
 ! MAIN STEPS        []=FV only
 ! -----------------------------------------------------------------------------
-! 1.  Filter solution vector
-! 2.  Convert volume solution to primitive
-! 3.  Prolong to face (fill U_master/slave)
-! 4.  ConsToPrim of face data (U_master/slave)
-![5.] Second order reconstruction for FV
-! 6.  Lifting
-! 7.  Volume integral (DG only)
-![8.] FV volume integral
-! 9.  IF EDDYVISCOSITY: Prolong muSGS to face and send from slave to master
-! 10. Fill flux (Riemann solver) + surface integral
-! 11. Ut = -Ut
-! 12. Sponge and source terms
-! 13. Perform overintegration and apply Jacobian
+! 1.   Filter solution vector
+! 2.   Convert volume solution to primitive
+! 3.   Prolong to face (fill U_master/slave)
+! 4.   ConsToPrim of face data (U_master/slave)
+![5. ] Second order reconstruction for FV
+! 6.   Lifting
+! 7.   IF EDDYVISCOSITY: Prolong muSGS to face and send from slave to master
+! 8.   Volume integral (DG only)
+![9. ] FV volume integral
+![10.] Volume integral (viscous contribution) if FV-blending
+! 11.  Fill flux (Riemann solver) + surface integral
+! 12.  Ut = -Ut
+! 13.  Sponge and source terms
+! 14.  Perform overintegration and apply Jacobian
 ! -----------------------------------------------------------------------------
 
 ! (0. Nullify arrays)
@@ -481,6 +479,11 @@ CALL VolInt(Ut)
 CALL FV_VolInt(UPrim,Ut)
 #endif
 
+#if (FV_ENABLED == 2) && PARABOLIC
+! [10. Compute viscous volume integral contribution separately and add to Ut (FV-blending only)]
+CALL VolInt_Visc(Ut)
+#endif
+
 #if PARABOLIC && USE_MPI
 #if EDDYVISCOSITY
 IF(CurrentStage.EQ.1) THEN
@@ -492,7 +495,7 @@ CALL FinishExchangeMPIData(6*nNbProcs,MPIRequest_gradU) ! gradUx,y,z: slave -> m
 #endif /*PARABOLIC && USE_MPI*/
 
 
-! 10. Fill flux and Surface integral
+! 11. Fill flux and Surface integral
 ! General idea: U_master/slave and gradUx,y,z_master/slave are filled and can be used to compute the Riemann solver
 !               and viscous flux at the faces. This is done for the MPI master sides first, to start communication early
 !               and then for all other sides.
@@ -500,15 +503,15 @@ CALL FinishExchangeMPIData(6*nNbProcs,MPIRequest_gradU) ! gradUx,y,z: slave -> m
 !               at mixed interfaces must be converted from DG to FV representation.
 !               After communication from master to slave the flux can be integrated over the faces.
 ! Steps:
-! * (step 10.2 is done for all MPI master sides first and then for all remaining sides)
-! * (step 10.3 and 10.4 are done for all other sides first and then for the MPI master sides)
-![10.1)] Change basis of DG solution and gradients at mixed FV/DG interfaces to the FV grid
-![10.2)] Convert primitive face solution to conservative at FV faces
-! 10.3)  Fill flux (Riemann solver + viscous flux)
-! 10.4)  Combine fluxes from the 2/4 small mortar sides to the flux on the big mortar side (when communication finished)
-! 10.5)  Compute surface integral
+! * (step 11.2 is done for all MPI master sides first and then for all remaining sides)
+! * (step 11.3 and 10.4 are done for all other sides first and then for the MPI master sides)
+![11.1)] Change basis of DG solution and gradients at mixed FV/DG interfaces to the FV grid
+![11.2)] Convert primitive face solution to conservative at FV faces
+! 11.3)  Fill flux (Riemann solver + viscous flux)
+! 11.4)  Combine fluxes from the 2/4 small mortar sides to the flux on the big mortar side (when communication finished)
+! 11.5)  Compute surface integral
 #if FV_ENABLED
-! 10.1)
+! 11.1)
 #if PARABOLIC
 CALL FV_DGtoFV(PP_nVarLifting,gradUx_master,gradUx_slave)
 CALL FV_DGtoFV(PP_nVarLifting,gradUy_master,gradUy_slave)
@@ -516,14 +519,15 @@ CALL FV_DGtoFV(PP_nVarLifting,gradUz_master,gradUz_slave)
 #endif
 
 CALL FV_DGtoFV(PP_nVar    ,U_master     ,U_slave     )
-CALL FV_DGtoFV(PP_nVarPrim,UPrim_master ,UPrim_slave )
-
+CALL FV_ConsToPrim(PP_nVarPrim,PP_nVar,UPrim_master,UPrim_slave,U_master,U_slave)
+#if FV_RECONSTRUCT
 ! 10.2)
 CALL GetConservativeStateSurface(UPrim_master, UPrim_slave, U_master, U_slave, FV_Elems_master, FV_Elems_slave, 1)
+#endif /*FV_RECONSTRUCT*/
 #endif /*FV_ENABLED*/
 
 #if USE_MPI
-! 10.3)
+! 11.3)
 CALL StartReceiveMPIData(Flux_slave, DataSizeSide, 1,nSides,MPIRequest_Flux( :,SEND),SendID=1)
                                                                               ! Receive YOUR / Flux_slave: master -> slave
 CALL FillFlux(t,Flux_master,Flux_slave,U_master,U_slave,UPrim_master,UPrim_slave,doMPISides=.TRUE.)
@@ -531,30 +535,30 @@ CALL StartSendMPIData(   Flux_slave, DataSizeSide, 1,nSides,MPIRequest_Flux( :,R
                                                                               ! Send MINE  /   Flux_slave: master -> slave
 #endif /*USE_MPI*/
 
-! 10.3)
+! 11.3)
 CALL FillFlux(t,Flux_master,Flux_slave,U_master,U_slave,UPrim_master,UPrim_slave,doMPISides=.FALSE.)
-! 10.4)
+! 11.4)
 CALL Flux_MortarCons(Flux_master,Flux_slave,doMPISides=.FALSE.,weak=.TRUE.)
-! 10.5)
+! 11.5)
 CALL SurfIntCons(PP_N,Flux_master,Flux_slave,Ut,.FALSE.,L_HatMinus,L_hatPlus)
 
 #if USE_MPI
-! 10.4)
+! 11.4)
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux )                       ! Flux_slave: master -> slave
 CALL Flux_MortarCons(Flux_master,Flux_slave,doMPISides=.TRUE.,weak=.TRUE.)
-! 10.5)
+! 11.5)
 CALL SurfIntCons(PP_N,Flux_master,Flux_slave,Ut,.TRUE.,L_HatMinus,L_HatPlus)
 #endif /*USE_MPI*/
 
-! 11. Swap to right sign :)
+! 12. Swap to right sign :)
 Ut=-Ut
 
-! 12. Compute source terms and sponge (in physical space, conversion to reference space inside routines)
+! 13. Compute source terms and sponge (in physical space, conversion to reference space inside routines)
 IF(doCalcSource) CALL CalcSource(Ut,t)
 IF(doSponge)     CALL Sponge(Ut)
 IF(doTCSource)   CALL TestcaseSource(Ut)
 
-! 13. Perform overintegration and apply Jacobian
+! 14. Perform overintegration and apply Jacobian
 ! Perform overintegration (projection filtering type overintegration)
 IF(OverintegrationType.GT.0) THEN
   CALL Overintegration(Ut)

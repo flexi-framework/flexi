@@ -64,8 +64,8 @@ REAL                         :: KappasPr_max
 #endif /*PARABOLIC*/
 !==================================================================================================================================
 
-ALLOCATE(MetricsAdv(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_ENABLED))
-DO FVE=0,FV_ENABLED
+ALLOCATE(MetricsAdv(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_SIZE))
+DO FVE=0,FV_SIZE
   DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       MetricsAdv(1,i,j,k,iElem,FVE)=sJ(i,j,k,iElem,FVE)*NORM2(Metrics_fTilde(:,i,j,k,iElem,FVE))
@@ -75,9 +75,9 @@ DO FVE=0,FV_ENABLED
   END DO
 END DO
 #if PARABOLIC
-ALLOCATE(MetricsVisc(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_ENABLED))
+ALLOCATE(MetricsVisc(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_SIZE))
 KappasPr_max=KAPPASPR_MAX_TIMESTEP_H()
-DO FVE=0,FV_ENABLED
+DO FVE=0,FV_SIZE
   DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       MetricsVisc(1,i,j,k,iElem,FVE)=KappasPR_max*(SUM((Metrics_fTilde(:,i,j,k,iElem,FVE)*sJ(i,j,k,iElem,FVE))**2))
@@ -183,7 +183,11 @@ DO iElem=1,nElems
 #endif /* PARABOLIC*/
   END DO; END DO; END DO ! i,j,k
 
+#if FV_ENABLED == 2
+  dtElem(iElem)=MINVAL(CFLScale(:))*2./SUM(Max_Lambda)
+#else
   dtElem(iElem)=CFLScale(FVE)*2./SUM(Max_Lambda)
+#endif
   TimeStepConv=MIN(TimeStepConv,dtElem(iElem))
   IF(IEEE_IS_NAN(TimeStepConv))THEN
     ERRWRITE(*,'(A,I0,A,I0)')'Convective timestep NaN on proc',myRank,' for element: ',iElem
@@ -194,8 +198,13 @@ DO iElem=1,nElems
 
 #if PARABOLIC
   IF(SUM(Max_Lambda_v).GT.0.)THEN
+#if FV_ENABLED == 2
+    dtElem(iElem)=MIN(dtElem(iElem),MINVAL(DFLScale(:))*4./SUM(Max_Lambda_v))
+    TimeStepVisc= MIN(TimeStepVisc, MINVAL(DFLScale(:))*4./SUM(Max_Lambda_v))
+#else
     dtElem(iElem)=MIN(dtElem(iElem),DFLScale(FVE)*4./SUM(Max_Lambda_v))
     TimeStepVisc= MIN(TimeStepVisc, DFLScale(FVE)*4./SUM(Max_Lambda_v))
+#endif
   END IF
   IF(IEEE_IS_NAN(TimeStepVisc))THEN
     ERRWRITE(*,'(A,I0,A,I0)')'Viscous timestep NaN on proc ',myRank,' for element: ', iElem

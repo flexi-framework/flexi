@@ -53,6 +53,12 @@ INTERFACE StartExchange_FV_Elems
 END INTERFACE
 #endif
 
+#if FV_ENABLED == 2
+INTERFACE StartExchange_FV_alpha
+  MODULE PROCEDURE StartExchange_FV_alpha
+END INTERFACE
+#endif
+
 INTERFACE FinalizeMPI
   MODULE PROCEDURE FinalizeMPI
 END INTERFACE
@@ -65,6 +71,9 @@ PUBLIC::StartReceiveMPIData
 PUBLIC::StartSendMPIData
 #if FV_ENABLED
 PUBLIC::StartExchange_FV_Elems
+#endif
+#if FV_ENABLED == 2
+PUBLIC::StartExchange_FV_alpha
 #endif
 PUBLIC::FinishExchangeMPIData
 PUBLIC::FinalizeMPI
@@ -194,7 +203,7 @@ DataSizeSidePrim  =PP_nVarPrim*(PP_N+1)*(PP_NZ+1)
 DataSizeSideGrad  =PP_nVarLifting*(PP_N+1)*(PP_NZ+1)
 
 ! split communicator into smaller groups (e.g. for local nodes)
-GroupSize=GETINT('GroupSize','0')
+GroupSize=GETINT('GroupSize')
 IF(GroupSize.LT.1)THEN ! group procs by node
   CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,myRank,0,MPI_COMM_NODE,iError)
 ELSE ! use groupsize
@@ -346,6 +355,56 @@ DO iNbProc=1,nNbProcs
 END DO !iProc=1,nNBProcs
 END SUBROUTINE StartExchange_FV_Elems
 #endif
+
+#if FV_ENABLED == 2
+!==================================================================================================================================
+!> Subroutine that performs the send and receive operations for the FV_elems information at the face
+!> that has to be exchanged between processors.
+!==================================================================================================================================
+SUBROUTINE StartExchange_FV_alpha(FV_alpha,LowerBound,UpperBound,SendRequest,RecRequest,SendID)
+! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_MPI_Vars
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN)    :: SendID                          !< defines the send / receive direction -> 1=send MINE/receive YOUR,
+                                                         !< 2=send YOUR / receive MINE
+INTEGER,INTENT(IN)    :: LowerBound                      !< lower side index for last dimension of FV_Elems
+INTEGER,INTENT(IN)    :: UpperBound                      !< upper side index for last dimension of FV_Elems
+INTEGER,INTENT(OUT)   :: SendRequest(nNbProcs)           !< communicatio handles for send
+INTEGER,INTENT(OUT)   :: RecRequest(nNbProcs)            !< communicatio handles for receive
+REAL,INTENT(INOUT)    :: FV_alpha(LowerBound:UpperBound) !< information about FV_Elems at faces to be communicated
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                     :: iNBProc
+!==================================================================================================================================
+DO iNbProc=1,nNbProcs
+  ! Start send face data
+  IF(nMPISides_send(iNbProc,SendID).GT.0)THEN
+    nSendVal    =nMPISides_send(iNbProc,SendID)
+    SideID_start=OffsetMPISides_send(iNbProc-1,SendID)+1
+    SideID_end  =OffsetMPISides_send(iNbProc,SendID)
+    CALL MPI_ISEND(FV_alpha(SideID_start:SideID_end),nSendVal,MPI_DOUBLE_PRECISION,  &
+                    nbProc(iNbProc),0,MPI_COMM_FLEXI,SendRequest(iNbProc),iError)
+  ELSE
+    SendRequest(iNbProc)=MPI_REQUEST_NULL
+  END IF
+  ! Start receive face data
+  IF(nMPISides_rec(iNbProc,SendID).GT.0)THEN
+    nRecVal     =nMPISides_rec(iNbProc,SendID)
+    SideID_start=OffsetMPISides_rec(iNbProc-1,SendID)+1
+    SideID_end  =OffsetMPISides_rec(iNbProc,SendID)
+    CALL MPI_IRECV(FV_alpha(SideID_start:SideID_end),nRecVal,MPI_DOUBLE_PRECISION,  &
+                    nbProc(iNbProc),0,MPI_COMM_FLEXI,RecRequest(iNbProc),iError)
+  ELSE
+    RecRequest(iNbProc)=MPI_REQUEST_NULL
+  END IF
+END DO !iProc=1,nNBProcs
+END SUBROUTINE StartExchange_FV_alpha
+#endif /*FV_ENABLED == 2*/
 
 
 
