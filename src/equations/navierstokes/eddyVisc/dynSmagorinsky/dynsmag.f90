@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -141,7 +141,7 @@ IF (.NOT.STRICMP(WallDistFile,'none')) THEN
       doFilterDir(:,iElem) = .TRUE.
       doAvgDir(   :,iElem) = .TRUE.
     ELSE ! in the boundary layer
-      ! Filter and average only the plane normal to the boundary 
+      ! Filter and average only the plane normal to the boundary
       ! i, average on the four edges
       vec = (Elem_xGP(:,PP_N,   0,   0,iElem) - Elem_xGP(:,0,   0,   0,iElem)) &
           + (Elem_xGP(:,PP_N,PP_N,   0,iElem) - Elem_xGP(:,0,PP_N,   0,iElem)) &
@@ -244,8 +244,8 @@ IF (doAvgDir(1,iElem).AND.doAvgDir(2,iElem).AND.doAvgDir(3,iElem)) THEN ! Volume
 END DO
 
 ! Compute filter widths in all three directions
-DO iElem=1,nElems                                        
-  ! i, average on the four edges                                       
+DO iElem=1,nElems
+  ! i, average on the four edges
   vec = (Elem_xGP(:,PP_N,   0,   0,iElem) - Elem_xGP(:,0,   0,   0,iElem)) &
       + (Elem_xGP(:,PP_N,PP_N,   0,iElem) - Elem_xGP(:,0,PP_N,   0,iElem)) &
       + (Elem_xGP(:,PP_N,   0,PP_N,iElem) - Elem_xGP(:,0,   0,PP_N,iElem)) &
@@ -261,7 +261,7 @@ DO iElem=1,nElems
   vec = vec/4. ! average vector of cell edges
   DeltaS_m(2,iElem) = NORM2(vec)/(PP_N+1)
 
-  ! k                                                                  
+  ! k
   vec = (Elem_xGP(:,   0,   0,PP_N,iElem) - Elem_xGP(:,   0,   0,0,iElem)) &
       + (Elem_xGP(:,PP_N,   0,PP_N,iElem) - Elem_xGP(:,PP_N,   0,0,iElem)) &
       + (Elem_xGP(:,   0,PP_N,PP_N,iElem) - Elem_xGP(:,   0,PP_N,0,iElem)) &
@@ -613,7 +613,7 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)  :: NVar                            !< Number of variables in the first dimension
 REAL,INTENT(IN)     :: FilterMat(0:PP_N,0:PP_N)        !< filter matrix to be used
 REAL,INTENT(INOUT)  :: U_in(NVar,0:PP_N,0:PP_N,0:PP_N) !< solution vector to be filtered
-LOGICAL,INTENT(IN)  :: doFilterDir(:)                   
+LOGICAL,INTENT(IN)  :: doFilterDir(:)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER      :: i,j,k,l
