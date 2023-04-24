@@ -270,7 +270,7 @@ ELSE
 END IF
 
 DO j=0,ZDIM(Nloc); DO i=0,Nloc
-  ! Momentum has to be rotatet using the normal system individual for each
+  ! Momentum has to be rotated using the normal system individual for each
   ! left state: U_L
   U_LL(EXT_DENS)=U_L(DENS,i,j)
   U_LL(EXT_SRHO)=1./U_LL(EXT_DENS)
@@ -359,13 +359,12 @@ ELSE
   Riemann_loc => Riemann_pointer
 END IF
 
-! Momentum has to be rotatet using the normal system individual for each
+! Momentum has to be rotated using the normal system individual for each
 ! left state: U_L
 U_LL(EXT_DENS)=U_L(DENS)
 U_LL(EXT_SRHO)=1./U_LL(EXT_DENS)
 U_LL(EXT_ENER)=U_L(ENER)
 U_LL(EXT_PRES)=UPrim_L(PRES)
-
 
 ! rotate velocity in normal and tangential direction
 U_LL(EXT_VEL1)=DOT_PRODUCT(UPrim_L(VELV),nv(:))

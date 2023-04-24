@@ -29,7 +29,7 @@ INTEGER                :: IndVar                      !< variable on which indic
 INTEGER                :: nModes                      !< number of modes to check for Persson modal indicator
 REAL,ALLOCATABLE       :: IndValue(:)                 !< indicator output
 REAL                   :: IndStartTime                !< specify starting time of indicator evaluation
-LOGICAL                :: FVBoundaries = .FALSE.      !< specify if fv element is set at boundaries
+LOGICAL                :: FVBoundaries = .FALSE.      !< specify if FV element is set at boundaries
 INTEGER,ALLOCATABLE    :: FVBoundaryType(:)           !< select at which kind of BCs FV elements should be used
 #if FV_ENABLED == 2
 REAL                   :: T_FV                        !< Threshold for FV blending as function of PP_N

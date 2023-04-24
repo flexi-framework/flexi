@@ -168,14 +168,12 @@ DO iSide = 1,nSides
   nbElemID  = SideToElem(S2E_NB_ELEM_ID,iSide)
 
   ! master sides
-  IF(ElemID.GT.0)THEN
+  IF (ElemID .GT. 0) &
     FV_alpha_current(ElemID)   = MAX(FV_alpha_current(ElemID)  ,MAX(FV_alpha_master(iSide),FV_alpha_slave(iSide)))
-  END IF
 
   ! slave sides
-  IF(nbElemID.GT.0)THEN
+  IF (nbElemID .GT. 0) &
     FV_alpha_current(nbElemID) = MAX(FV_alpha_current(nbElemID),MAX(FV_alpha_master(iSide),FV_alpha_slave(iSide)))
-  END IF
 END DO
 END SUBROUTINE FV_ComputeExtendedAlpha
 

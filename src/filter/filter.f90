@@ -202,11 +202,11 @@ IF(FilterType.GT.0) THEN
   END SELECT
 
   !INFO
-  SWRITE(*,'(A)',ADVANCE='NO')'FILTER DIAGONAL: '
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')'FILTER DIAGONAL: '
   DO iDeg=0,PP_N-1
-    SWRITE(*,'(F7.3)',ADVANCE='NO')FilterMat(iDeg,iDeg)
+    SWRITE(UNIT_stdOut,'(F7.3)',ADVANCE='NO')FilterMat(iDeg,iDeg)
   END DO
-  SWRITE(*,'(F7.3)')FilterMat(PP_N,PP_N)
+  SWRITE(UNIT_stdOut,'(F7.3)')FilterMat(PP_N,PP_N)
 
   ! Assemble filter matrix in nodal space
   FilterMat=MATMUL(MATMUL(Vdm_Leg,FilterMat),sVdm_Leg)

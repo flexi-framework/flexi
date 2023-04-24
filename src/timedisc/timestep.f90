@@ -320,7 +320,7 @@ IF (adaptepsNewton.AND.NewtonConverged) THEN
   CALL GlobalVectorDotProduct(delta_embedded,delta_embedded,nDOFVarProc,epsNewton)
   epsNewton = (MIN(dt*SQRT(epsNewton)/safety,1E-3))
 #if DEBUG
-  SWRITE(*,*) 'epsNewton = ',epsNewton
+  SWRITE(UNIT_stdOut,'(A,ES16.7)') 'epsNewton = ',epsNewton
 #endif
 END IF
 
@@ -351,7 +351,7 @@ ELSE
     CALL Abort(__STAMP__, &
     'Newton not converged with GMRES Iterations of last Newton step and CFL reduction',nInnerGMRES,CFLScale(0)/CFLScale_Readin(0))
   END IF
-  SWRITE(*,*) 'Attention: Timestep failed, repeating with dt/2!'
+  SWRITE(UNIT_stdOut,'(A)') 'Attention: Timestep failed, repeating with dt/2!'
 END IF
 
 nGMRESIterdt = 0

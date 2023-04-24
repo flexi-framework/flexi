@@ -258,7 +258,7 @@ ELSE
   Riemann_loc => Riemann_pointer
 END IF
 
-! Momentum has to be rotatet using the normal system individual for each
+! Momentum has to be rotated using the normal system individual for each
 ! left state: U_L
 U_LL(EXT_DENS)=U_L(DENS)
 U_LL(EXT_SRHO)=1./U_LL(EXT_DENS)
@@ -301,7 +301,7 @@ CALL EvalEulerFlux1D_fast(U_RR,F_R)
 
 CALL Riemann_loc(F_L,F_R,U_LL,U_RR,F)
 
-! Back Rotate the normal flux into Cartesian direction
+! Back rotate the normal flux into Cartesian direction
 Fout(DENS)=F(DENS)
 Fout(MOMV)=nv(:)*F(MOM1)     &
                 + t1(:)*F(MOM2)  &

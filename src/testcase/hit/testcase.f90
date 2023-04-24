@@ -142,7 +142,7 @@ INTEGER                  :: HSize_proc(5)
 REAL,ALLOCATABLE         :: HIT_local(:,:,:,:,:)
 CHARACTER(LEN=31)        :: varnames(nHITVars)
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE HOMOGENEOUS ISOTROPIC TURBULENCE...'
 
 #if FV_ENABLED
@@ -232,7 +232,8 @@ HIT_Avg = GETLOGICAL('HIT_Avg','.TRUE.')
 HIT_1st = GETLOGICAL('HIT_1st','.FALSE.')
 
 SWRITE(UNIT_stdOut,'(A)')' INIT TESTCASE HOMOGENEOUS ISOTROPIC TURBULENCE DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
+
 END SUBROUTINE InitTestcase
 
 

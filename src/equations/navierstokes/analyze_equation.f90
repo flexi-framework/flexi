@@ -185,8 +185,8 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Analyze_Vars
 USE MOD_AnalyzeEquation_Vars
-USE MOD_Mesh_Vars,          ONLY: BoundaryName,nBCs,BoundaryType
 USE MOD_CalcBodyForces,     ONLY: CalcBodyForces
+USE MOD_Mesh_Vars,          ONLY: BoundaryName,nBCs,BoundaryType
 USE MOD_Output,             ONLY: OutputToFile
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -275,7 +275,6 @@ USE MOD_PreProc
 USE MOD_Analyze_Vars,       ONLY: wGPVol,Vol
 USE MOD_Mesh_Vars,          ONLY: sJ,nElems
 USE MOD_DG_Vars,            ONLY: U,UPrim
-USE MOD_EOS,                ONLY: ConsToPrim
 #if FV_ENABLED
 USE MOD_FV_Vars,            ONLY: FV_Elems,FV_w
 #endif

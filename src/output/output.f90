@@ -685,6 +685,7 @@ LOGICAL                        :: file_exists     !< marker if file exists and i
 CHARACTER(LEN=255)             :: FileName_loc    !< FileName with data type extension
 !==================================================================================================================================
 IF(.NOT.MPIRoot) RETURN
+
 IF(PRESENT(lastLine)) lastLine=-HUGE(1.)
 
 ! Append data type extension to FileName
@@ -696,20 +697,20 @@ END IF
 
 ! Check for file
 file_exists = FILEEXISTS(FileName_loc)
-IF(RestartTime.LT.0.0) file_exists=.FALSE.
+IF (RestartTime.LT.0) file_exists = .FALSE.
 !! File processing starts here open old and extract information or create new file.
 ioUnit = 0
 
 IF(file_exists)THEN ! File exists and append data
   OPEN(NEWUNIT  = ioUnit             , &
-       FILE     = TRIM(Filename_loc) , &
+       FILE     = TRIM(FileName_loc) , &
        FORM     = 'FORMATTED'        , &
        STATUS   = 'OLD'              , &
        POSITION = 'APPEND'           , &
        RECL     = 50000              , &
        IOSTAT = stat                 )
   IF(stat.NE.0)THEN
-    WRITE(UNIT_stdOut,*)' File '//TRIM(FileName_loc)// ' is invalid. Rewriting file...'
+    WRITE(UNIT_stdOut,'(A)') ' File '//TRIM(FileName_loc)// ' is invalid. Rewriting file...'
     file_exists=.FALSE.
   END IF
 END IF
@@ -717,8 +718,8 @@ END IF
 IF(file_exists)THEN
   ! If we have a restart we need to find the position from where to move on.
   ! Read the values from the previous analyse interval, get the CPUtime
-  WRITE(UNIT_stdOut,*)' Opening file '//TRIM(FileName_loc)
-  WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')'Searching for time stamp...'
+  WRITE(UNIT_stdOut,'(A)')              ' | Opening file '//TRIM(FileName_loc)
+  WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' Searching file for time stamp...'
 
   REWIND(ioUnit)
   ! Loop over header and try to read the first data line. Header size depends on output format.
@@ -736,9 +737,9 @@ END IF
 
 IF(file_exists)THEN
   ! Loop until we have found the position
-  Dummytime = 0.0
+  Dummytime = 0.
   stat=0
-  DO WHILE ((Dummytime.LT.RestartTime) .AND. (stat.EQ.0))
+  DO WHILE (Dummytime.LT.RestartTime .AND. stat.EQ.0)
     READ(ioUnit,*,IOSTAT=stat) Dummytime
   END DO
   IF(stat.EQ.0)THEN
@@ -758,14 +759,12 @@ CLOSE(ioUnit)
 
 IF(.NOT.file_exists)THEN ! No restart create new file
   OPEN(NEWUNIT= ioUnit             ,&
-       FILE   = TRIM(Filename_loc) ,&
+       FILE   = TRIM(FileName_loc) ,&
        STATUS = 'UNKNOWN'          ,&
        ACCESS = 'SEQUENTIAL'       ,&
        IOSTAT = stat               )
-  IF (stat.NE.0) THEN
-    CALL Abort(__STAMP__, &
-      'ERROR: cannot open '//TRIM(Filename_loc))
-  END IF
+  IF (stat.NE.0) CALL Abort(__STAMP__,'ERROR: cannot open '//TRIM(FileName_loc))
+
   ! Create a new file with the CSV or Tecplot header
   IF (ASCIIOutputFormat.EQ.ASCIIOUTPUTFORMAT_CSV) THEN
     WRITE(ioUnit,'(A)',ADVANCE='NO') 'Time'

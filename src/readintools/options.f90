@@ -294,7 +294,7 @@ WRITE(fmtValue,*) maxValueLen
 ! print name
 IF (mode.EQ.0) THEN
   WRITE(fmtName,*) maxNameLen
-  SWRITE(UNIT_stdOut,'(a3)', ADVANCE='NO')  " | "
+  SWRITE(UNIT_stdOut,'(A3)', ADVANCE='NO')  " | "
   CALL set_formatting("blue")
   SWRITE(UNIT_stdOut,"(a"//fmtName//")", ADVANCE='NO') TRIM(this%name)
   CALL clear_formatting()
@@ -305,7 +305,7 @@ END IF
 ! print delimiter between name and value
 SELECT CASE(mode)
 CASE(0)
-  SWRITE(UNIT_stdOut,'(a3)',ADVANCE='NO')  " | "
+  SWRITE(UNIT_stdOut,'(A3)', ADVANCE='NO')  " | "
 CASE(1)
   SWRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') " = "
 CASE(2)
@@ -324,17 +324,17 @@ END IF
 IF (mode.EQ.0) THEN
   ! print DEFAULT/CUSTOM
   IF (this%isSet) THEN
-    SWRITE(UNIT_stdOut,"(a3)", ADVANCE='NO') ' | '
-    CALL set_formatting("green")
-    SWRITE(UNIT_stdOut,'(a7)', ADVANCE='NO')  "*CUSTOM"
+    SWRITE(UNIT_stdOut,"(A3)", ADVANCE='NO') ' | '
+    CALL set_formatting('green')
+    SWRITE(UNIT_stdOut,'(A7)', ADVANCE='NO')  "*CUSTOM"
     CALL clear_formatting()
-    SWRITE(UNIT_stdOut,"(a3)") ' | '
+    SWRITE(UNIT_stdOut,"(A3)") ' | '
   ELSE
-    SWRITE(UNIT_stdOut,"(a3)", ADVANCE='NO') ' | '
-    CALL set_formatting("red")
-    SWRITE(UNIT_stdOut,'(a7)', ADVANCE='NO')  "DEFAULT"
+    SWRITE(UNIT_stdOut,"(A3)", ADVANCE='NO') ' | '
+    CALL set_formatting('red')
+    SWRITE(UNIT_stdOut,'(A7)', ADVANCE='NO')  "DEFAULT"
     CALL clear_formatting()
-    SWRITE(UNIT_stdOut,"(a3)") ' | '
+    SWRITE(UNIT_stdOut,"(A3)") ' | '
   END IF
 ELSE
   ! print comment: this is complicated, since it includes line breaks for long comments
@@ -412,9 +412,9 @@ CLASS IS (RealOption)
     SWRITE(UNIT_stdOut,'(F'//fmtValue//'.'//fmtDigits//')',ADVANCE='NO') this%value
   ELSE IF (this%digits.LE.-1) THEN ! scientific (exponential) representation
     WRITE(fmtDigits,*) -this%digits
-    SWRITE(UNIT_stdOut,'(E'//fmtValue//'.'//fmtDigits//')',ADVANCE='NO') this%value
+    SWRITE(UNIT_stdOut,'(ES'//fmtValue//'.'//fmtDigits//')',ADVANCE='NO') this%value
   ELSE ! digits not given
-    SWRITE(UNIT_stdOut,'(E'//fmtValue//'.19)',ADVANCE='NO') this%value
+    SWRITE(UNIT_stdOut,'(ES'//fmtValue//'.19)',ADVANCE='NO') this%value
   END IF
 CLASS IS (StringOption)
   IF (TRIM(this%value).EQ."") THEN
@@ -471,7 +471,7 @@ CLASS IS (RealArrayOption)
     WRITE(fmtValue,*) (maxValueLen - length)
     SWRITE(UNIT_stdOut,'('//fmtValue//'(" "))',ADVANCE='NO')
   END IF
-  SWRITE(UNIT_stdOut,'(a3)',ADVANCE='NO') '(/ '
+  SWRITE(UNIT_stdOut,'(A3)',ADVANCE='NO') '(/ '
   DO i=1,SIZE(this%value)
     WRITE(fmtValue,*) GETSTRLENREAL(this%value(i), this%digits(i))
       IF (this%digits(i).GE.1) THEN ! floating point representation
@@ -487,7 +487,7 @@ CLASS IS (RealArrayOption)
       SWRITE(UNIT_stdOut,'(A2)',ADVANCE='NO') ', '
     END IF
   END DO
-  SWRITE(UNIT_stdOut,'(a3)',ADVANCE='NO') ' /)'
+  SWRITE(UNIT_stdOut,'(A3)',ADVANCE='NO') ' /)'
 !###
 ! TODO: Causes internal compiler error with GNU 6+ due to compiler bug (older GNU and Intel,Cray work). Uncomment as unused.
 !###
@@ -516,7 +516,7 @@ END SUBROUTINE printValue
 !==================================================================================================================================
 SUBROUTINE parse(this, rest_in)
 ! MODULES
-USE MOD_Globals, ONLY:abort
+USE MOD_Globals, ONLY:Abort
 USE MOD_ISO_VARYING_STRING
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -673,10 +673,7 @@ CLASS IS (RealArrayOption)
 CLASS DEFAULT
   STOP
 END SELECT
-IF(stat.GT.0)THEN
-  CALL Abort(__STAMP__,&
-    "Failed to parse: "//TRIM(this%name))
-END IF
+IF(stat.GT.0) CALL Abort(__STAMP__,"Failed to parse: "//TRIM(this%name))
 
 END SUBROUTINE parse
 
