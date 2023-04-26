@@ -26,7 +26,7 @@ MESSAGE(STATUS "Generating for [${CMAKE_GENERATOR}] build system")
 # > This block must be called before ENABLE_LANGUAGE
 # =========================================================================
 # HLRS HAWK / SuperMUC
-IF ("${CMAKE_HOSTNAME}" MATCHES "login")
+IF ("${CMAKE_HOSTNAME}" MATCHES "hawk-login")
   SET(CMAKE_C_COMPILER       mpicc)
   SET(CMAKE_CXX_COMPILER     mpicxx)
   SET(CMAKE_Fortran_COMPILER mpif90) # mpif08 wrapper seems to have issue
