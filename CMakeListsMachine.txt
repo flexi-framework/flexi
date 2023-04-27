@@ -26,10 +26,16 @@ MESSAGE(STATUS "Generating for [${CMAKE_GENERATOR}] build system")
 # > This block must be called before ENABLE_LANGUAGE
 # =========================================================================
 # HLRS HAWK / SuperMUC
-IF ("${CMAKE_HOSTNAME}" MATCHES "hawk-login")
-  SET(CMAKE_C_COMPILER       mpicc)
-  SET(CMAKE_CXX_COMPILER     mpicxx)
-  SET(CMAKE_Fortran_COMPILER mpif90) # mpif08 wrapper seems to have issue
+IF ("${CMAKE_HOSTNAME}" MATCHES "login")
+  # HAWK and SuperMUC name their login nodes identically, so use the Fully Qualified Domain Name (FQDN) to identify
+  CMAKE_HOST_SYSTEM_INFORMATION(RESULT FQDN QUERY FQDN)
+  MARK_AS_ADVANCED(FORCE FQDN)
+
+  IF (FQDN MATCHES "hawk.hww.hlrs.de")
+    SET(CMAKE_C_COMPILER       mpicc)
+    SET(CMAKE_CXX_COMPILER     mpicxx)
+    SET(CMAKE_Fortran_COMPILER mpif90) # mpif08 wrapper seems to have issue
+  ENDIF()
 # IAG Prandtl
 ELSEIF("${CMAKE_HOSTNAME}" MATCHES "^prandtl")
   SET(CMAKE_C_COMPILER       gcc)
@@ -87,10 +93,6 @@ INCLUDE(GNUInstallDirs)
 # HLRS HAWK / SuperMUC
 IF ("${CMAKE_HOSTNAME}" MATCHES "login")
   MARK_AS_ADVANCED(FORCE C_PATH CXX_PATH Fortran_PATH)
-
-  # HAWK and SuperMUC name their login nodes identically, so use the Fully Qualified Domain Name (FQDN) to identify
-  CMAKE_HOST_SYSTEM_INFORMATION(RESULT FQDN QUERY FQDN)
-  MARK_AS_ADVANCED(FORCE FQDN)
   # HLRS HAWK
   IF (FQDN MATCHES "hawk.hww.hlrs.de")
     MESSAGE(STATUS "Compiling on Hawk")
