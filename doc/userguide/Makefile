@@ -22,6 +22,9 @@ ifeq ($(shell expr $(PANDOCMINOR) \>= 11), 1)
 PANDOCFILTER:=--citeproc
 endif
 endif
+ifeq ($(shell expr $(PANDOCMAJOR) \>= 3), 1)
+PANDOCFILTER:=--citeproc
+endif
 
 # Update template to current version if possible
 TEMPLATE_INFO := $(shell pandoc -D latex > /dev/null; echo $$?)
