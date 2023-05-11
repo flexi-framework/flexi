@@ -253,6 +253,12 @@ ELSE()
   LIST(APPEND HDF5_LIBRARIES ${HDF5_hdf5_fortran_LIBRARY_RELEASE} ${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_z_LIBRARY_RELEASE} -ldl)
 ENDIF()
 
+# HDF5 1.14 references build directory
+# > https://github.com/HDFGroup/hdf5/issues/2422
+IF(${HDF5_VERSION} VERSION_EQUAL "1.14")
+  LIST(FILTER HDF5_INCLUDE_DIR EXCLUDE REGEX "src/H5FDsubfiling")
+ENDIF()
+
 # Actually add the HDF5 paths (system/custom built) to the linking paths
 # HDF5 build with CMake
 IF(LIBS_HDF5_CMAKE)
