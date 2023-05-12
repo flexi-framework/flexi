@@ -388,7 +388,9 @@ IF(MPIRoot)THEN
 #endif /*PP_LIMITER*/
 
   ! Status line or standard output
-  tmpString = MERGE('YES','NO ',PRESENT(doETA))
+  IF (PRESENT(doETA)) THEN; tmpString = 'YES'
+  ELSE                    ; tmpString = 'NO'
+  ENDIF
 
   WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A12,A,A1,A,A3,F6.2,A3,A1)',ADVANCE=tmpString)    &
     '   Time = ', t,'  dt = ', dt, ' ', ' ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),' |',     &
