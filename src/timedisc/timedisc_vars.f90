@@ -25,14 +25,6 @@ INTERFACE SetTimeDiscCoefs
   MODULE PROCEDURE SetTimeDiscCoefs
 END INTERFACE
 
-! > Dummy interface for time step function pointer
-ABSTRACT INTERFACE
-  SUBROUTINE TimeIntegrator(t)
-    REAL,INTENT(INOUT) :: t
-  END SUBROUTINE
-END INTERFACE
-
-
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -90,7 +82,6 @@ REAL,ALLOCATABLE :: UPrev (:,:,:,:,:)
 CHARACTER(LEN=50)   :: TimeDiscName  !< name of specific time discretization scheme
 CHARACTER(LEN=50)   :: TimeDiscType  !< general type of time discretization scheme
 INTEGER             :: nRKStages     !< number of stages of Runge-Kutta method
-PROCEDURE(TimeIntegrator),POINTER :: TimeStep !< pointer to timestepping routine, depends on td
 
 !> Runge-Kutta low storage coefficients for Williamson 2 register and Ketcheson 3 register schemes
 REAL,ALLOCATABLE    :: RKA(:),RKb(:),RKc(:),RKg1(:),RKg2(:),RKg3(:),RKdelta(:)
