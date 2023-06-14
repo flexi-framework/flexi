@@ -14,11 +14,6 @@
 #include "flexi.h"
 #include "eos.h"
 
-#if FV_ENABLED
-#error "The dynamic Smagorinsky model is not tested for FV!"
-#endif
-
-
 !===================================================================================================================================
 !> Subroutines used for calculation of dynamic Smagorinksy SGS model.
 !> See Germano, Massimo, et al. "A dynamic subgrid‐scale eddy viscosity model." Physics of Fluids A: Fluid Dynamics 3.7 (1991):
@@ -91,6 +86,10 @@ IF(((.NOT.InterpolationInitIsDone).AND.(.NOT.MeshInitIsDone)).OR.DynSmagorinskyI
 END IF
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT Dynamic Smagorinsky...'
+
+#if FV_ENABLED
+CALL CollectiveStop(__STAMP__,"The Dynamic Smagorinsky model is not tested for FV yet!.")
+#endif
 
 ! Allocate necessary arrays
 ALLOCATE(damp(1,0:PP_N,0:PP_N,0:PP_NZ,nElems))
