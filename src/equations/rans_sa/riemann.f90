@@ -43,18 +43,15 @@ INTERFACE InitRiemann
 END INTERFACE
 
 INTERFACE Riemann
-  MODULE PROCEDURE Riemann
-END INTERFACE
-
-INTERFACE Riemann_Point
   MODULE PROCEDURE Riemann_Point
+  MODULE PROCEDURE Riemann_Side
 END INTERFACE
 
 #if PARABOLIC
 INTERFACE ViscousFlux
-  MODULE PROCEDURE ViscousFlux
+  MODULE PROCEDURE ViscousFlux_Point
+  MODULE PROCEDURE ViscousFlux_Side
 END INTERFACE
-PUBLIC::ViscousFlux
 #endif
 
 INTERFACE FinalizeRiemann
@@ -62,13 +59,15 @@ INTERFACE FinalizeRiemann
 END INTERFACE
 
 
+PUBLIC::DefineParametersRiemann
 PUBLIC::InitRiemann
 PUBLIC::Riemann
-PUBLIC::Riemann_Point
 PUBLIC::FinalizeRiemann
+#if PARABOLIC
+PUBLIC::ViscousFlux
+#endif
 !==================================================================================================================================
 
-PUBLIC::DefineParametersRiemann
 CONTAINS
 
 
@@ -141,25 +140,24 @@ END SUBROUTINE InitRiemann
 !> Conservative States are rotated into normal direction in this routine and are NOT backrotated: don't use it after this routine!!
 !> Attention 2: numerical flux is backrotated at the end of the routine!!
 !==================================================================================================================================
-SUBROUTINE Riemann(Nloc,FOut,U_L,U_R,UPrim_L,UPrim_R,nv,t1,t2,doBC)
+SUBROUTINE Riemann_Side(Nloc,FOut,U_L,U_R,UPrim_L,UPrim_R,nv,t1,t2,doBC)
 ! MODULES
 USE MOD_Flux         ,ONLY:EvalEulerFlux1D_fast
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)                                   :: Nloc       !< local polynomial degree
-REAL,DIMENSION(CONS,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_L        !< conservative solution at left side of the interface
-REAL,DIMENSION(CONS,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
-REAL,DIMENSION(PRIM,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
-REAL,DIMENSION(PRIM,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
-!> normal vector and tangential vectors at side
-REAL,DIMENSION(   3,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv,t1,t2
-LOGICAL,INTENT(IN)                                   :: doBC       !< marker whether side is a BC side
-REAL,DIMENSION(CONS,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: FOut       !< advective flux
+INTEGER,INTENT(IN)                                          :: Nloc       !< local polynomial degree
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_L        !< conservative solution at left side of the interface
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
+REAL,DIMENSION(          3,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv,t1,t2   !> normal vector and tangential vectors at side
+LOGICAL,INTENT(IN)                                          :: doBC       !< marker whether side is a BC side
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: FOut       !< advective flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: i,j
-REAL,DIMENSION(CONS)    :: F_L,F_R,F
+REAL,DIMENSION(PP_nVar) :: F_L,F_R,F
 REAL,DIMENSION(PP_2Var) :: U_LL,U_RR
 PROCEDURE(RiemannInt),POINTER :: Riemann_loc !< pointer defining the standard inner Riemann solver
 !==================================================================================================================================
@@ -226,7 +224,7 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
   Fout(MUSA,i,j)=F(MUSA)
 END DO; END DO
 
-END SUBROUTINE Riemann
+END SUBROUTINE Riemann_Side
 
 !==================================================================================================================================
 !> Computes the numerical flux
@@ -243,10 +241,9 @@ REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U_L        !< conservative solution a
 REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
 REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
 REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
-!> normal vector and tangential vectors at side
-REAL,DIMENSION(          3),INTENT(IN)  :: nv,t1,t2
-LOGICAL,INTENT(IN)                      :: doBC       !< marker whether side is a BC side
+REAL,DIMENSION(3          ),INTENT(IN)  :: nv,t1,t2   !< normal vector and tangential vectors at side
 REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: FOut       !< advective flux
+LOGICAL,INTENT(IN)                      :: doBC       !< marker whether side is a BC side
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,DIMENSION(PP_nVar) :: F_L,F_R,F
@@ -318,11 +315,11 @@ END SUBROUTINE Riemann_Point
 
 #if PARABOLIC
 !==================================================================================================================================
-!> Computes the viscous RANS SA diffusion fluxes in all directions to approximate the numerical flux
+!> Computes the viscous NSE diffusion fluxes in all directions to approximate the numerical flux
 !> Actually not a Riemann solver, only here for coding reasons
 !==================================================================================================================================
-SUBROUTINE ViscousFlux(Nloc,F,UPrim_L,UPrim_R, &
-                       gradUx_L,gradUy_L,gradUz_L,gradUx_R,gradUy_R,gradUz_R,nv)
+SUBROUTINE ViscousFlux_Side(Nloc,F,UPrim_L,UPrim_R, &
+                            gradUx_L,gradUy_L,gradUz_L,gradUx_R,gradUy_R,gradUz_R,nv)
 ! MODULES
 USE MOD_Flux         ,ONLY: EvalDiffFlux3D
 USE MOD_Lifting_Vars ,ONLY: diffFluxX_L,diffFluxY_L,diffFluxZ_L
@@ -330,13 +327,13 @@ USE MOD_Lifting_Vars ,ONLY: diffFluxX_R,diffFluxY_R,diffFluxZ_R
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)                                            :: Nloc     !< local polynomial degree
-                                                              !> solution in primitive variables at left/right side of the interface
-REAL,DIMENSION(PRIM,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)           :: UPrim_L,UPrim_R
-                                                               !> solution gradients in x/y/z-direction left/right of the interface
-REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN) :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
-REAL,INTENT(IN)                                               :: nv(3,0:Nloc,0:ZDIM(Nloc)) !< normal vector
-REAL,INTENT(OUT)                                              :: F(PP_nVar,0:Nloc,0:ZDIM(Nloc)) !< viscous flux
+INTEGER,INTENT(IN)                                             :: Nloc     !< local polynomial degree
+                                                               !> solution in primitive variables at left/right side of interface
+REAL,DIMENSION(PP_nVarPrim   ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_L,UPrim_R
+                                                               !> solution gradients in x/y/z-direction left/right of interface
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
+REAL,DIMENSION(3             ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv  !< normal vector
+REAL,DIMENSION(PP_nVar       ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: F   !< viscous flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -345,17 +342,53 @@ INTEGER                                                       :: p,q
 !==================================================================================================================================
 ! Don't forget the diffusion contribution, my young padawan
 ! Compute NSE Diffusion flux
-  CALL EvalDiffFlux3D(Nloc,UPrim_L,gradUx_L,   gradUy_L,   gradUz_L, &
-                                diffFluxX_L,diffFluxY_L,diffFluxZ_L)
-  CALL EvalDiffFlux3D(Nloc,UPrim_R,gradUx_R,   gradUy_R,   gradUz_R, &
-                                diffFluxX_R,diffFluxY_R,diffFluxZ_R)
-! BR1 uses arithmetic mean of the fluxes
+CALL EvalDiffFlux3D(Nloc,UPrim_L,   gradUx_L,   gradUy_L,   gradUz_L  &
+                                ,diffFluxX_L,diffFluxY_L,diffFluxZ_L  )
+CALL EvalDiffFlux3D(Nloc,UPrim_R,   gradUx_R,   gradUy_R,   gradUz_R  &
+                                ,diffFluxX_R,diffFluxY_R,diffFluxZ_R  )
+! Arithmetic mean of the fluxes
 DO q=0,ZDIM(Nloc); DO p=0,Nloc
   F(:,p,q)=0.5*(nv(1,p,q)*(diffFluxX_L(:,p,q)+diffFluxX_R(:,p,q)) &
                +nv(2,p,q)*(diffFluxY_L(:,p,q)+diffFluxY_R(:,p,q)) &
                +nv(3,p,q)*(diffFluxZ_L(:,p,q)+diffFluxZ_R(:,p,q)))
 END DO; END DO
-END SUBROUTINE ViscousFlux
+END SUBROUTINE ViscousFlux_Side
+
+!==================================================================================================================================
+!> Computes the viscous NSE diffusion fluxes in all directions to approximate the numerical flux
+!> Actually not a Riemann solver, only here for coding reasons
+!==================================================================================================================================
+SUBROUTINE ViscousFlux_Point(F,UPrim_L,UPrim_R, &
+                             gradUx_L,gradUy_L,gradUz_L,gradUx_R,gradUy_R,gradUz_R,nv)
+! MODULES
+USE MOD_Flux         ,ONLY: EvalDiffFlux3D
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+                                           !> solution in primitive variables at left/right side of the interface
+REAL,DIMENSION(PP_nVarPrim   ),INTENT(IN)  :: UPrim_L,UPrim_R
+                                           !> solution gradients in x/y/z-direction left/right of the interface
+REAL,DIMENSION(PP_nVarLifting),INTENT(IN)  :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
+REAL,DIMENSION(3             ),INTENT(IN)  :: nv  !< normal vector
+REAL,DIMENSION(PP_nVar       ),INTENT(OUT) :: F   !< viscous flux
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL,DIMENSION(PP_nVar)  :: diffFluxX_L,diffFluxY_L,diffFluxZ_L
+REAL,DIMENSION(PP_nVar)  :: diffFluxX_R,diffFluxY_R,diffFluxZ_R
+!==================================================================================================================================
+! Don't forget the diffusion contribution, my young padawan
+! Compute NSE Diffusion flux
+CALL EvalDiffFlux3D(UPrim_L,   gradUx_L,   gradUy_L,   gradUz_L  &
+                           ,diffFluxX_L,diffFluxY_L,diffFluxZ_L  )
+CALL EvalDiffFlux3D(UPrim_R,   gradUx_R,   gradUy_R,   gradUz_R  &
+                           ,diffFluxX_R,diffFluxY_R,diffFluxZ_R  )
+! Arithmetic mean of the fluxes
+F(:)=0.5*(nv(1)*(diffFluxX_L(:)+diffFluxX_R(:)) &
+         +nv(2)*(diffFluxY_L(:)+diffFluxY_R(:)) &
+         +nv(3)*(diffFluxZ_L(:)+diffFluxZ_R(:)))
+END SUBROUTINE ViscousFlux_Point
 #endif /* PARABOLIC */
 
 !==================================================================================================================================
@@ -367,11 +400,9 @@ USE MOD_EOS_Vars      ,ONLY: Kappa
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-                                                !> extended solution vector on the left/right side of the interface
-REAL,DIMENSION(PP_2Var),INTENT(IN) :: U_LL,U_RR
-                                                !> advection fluxes on the left/right side of the interface
-REAL,DIMENSION(CONS),INTENT(IN)    :: F_L,F_R
-REAL,DIMENSION(CONS),INTENT(OUT)   :: F         !< resulting Riemann flux
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL,U_RR !> extended solution vector on the left/right side of the interface
+REAL,DIMENSION(PP_nVar),INTENT(IN)  :: F_L,F_R   !> advection fluxes on the left/right side of the interface
+REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F         !< resulting Riemann flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -398,11 +429,9 @@ USE MOD_SplitFlux ,ONLY: SplitDGSurface_pointer
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-                                               !> extended solution vector on the left/right side of the interface
-REAL,DIMENSION(PP_2Var),INTENT(IN) :: U_LL,U_RR
-                                               !> advection fluxes on the left/right side of the interface
-REAL,DIMENSION(CONS   ),INTENT(IN) :: F_L,F_R
-REAL,DIMENSION(CONS   ),INTENT(OUT):: F        !< resulting Riemann flux
+REAL,DIMENSION(PP_2Var),INTENT(IN) :: U_LL,U_RR !> extended solution vector on the left/right side of the interface
+REAL,DIMENSION(PP_nVar),INTENT(IN) :: F_L,F_R   !> advection fluxes on the left/right side of the interface
+REAL,DIMENSION(PP_nVar),INTENT(OUT):: F         !< resulting Riemann flux
 !---------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: iVar

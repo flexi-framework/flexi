@@ -131,7 +131,6 @@ CALL addStrListEntry('RiemannBC','avg',          PRM_RIEMANN_Average)
 CALL addStrListEntry('RiemannBC','same',         PRM_RIEMANN_SAME)
 END SUBROUTINE DefineParametersRiemann
 
-
 !==================================================================================================================================!
 !> Initialize Riemann solver routines, read inner and BC Riemann solver parameters and set pointers
 !==================================================================================================================================!
@@ -238,7 +237,6 @@ END SELECT
 #endif /*SPLIT_DG*/
 END SUBROUTINE InitRiemann
 
-
 !==================================================================================================================================
 !> Computes the numerical flux for a side calling the flux calculation pointwise.
 !> Conservative States are rotated into normal direction in this routine and are NOT backrotated: don't use it after this routine!!
@@ -250,14 +248,14 @@ USE MOD_Flux         ,ONLY:EvalEulerFlux1D_fast
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)                                             :: Nloc      !< local polynomial degree
-REAL,DIMENSION(PP_nVar       ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_L       !< conservative solution at left side of the interface
-REAL,DIMENSION(PP_nVar       ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_R       !< conservative solution at right side of the interface
-REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_L   !< primitive solution at left side of the interface
-REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_R   !< primitive solution at right side of the interface
-REAL,DIMENSION(3             ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv,t1,t2  !> normal vector and tangential vectors at side
-REAL,DIMENSION(PP_nVar       ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: FOut      !< advective flux
-LOGICAL,INTENT(IN)                                             :: doBC      !< marker whether side is a BC side
+INTEGER,INTENT(IN)                                          :: Nloc      !< local polynomial degree
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_L       !< conservative solution at left side of the interface
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_R       !< conservative solution at right side of the interface
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_L   !< primitive solution at left side of the interface
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_R   !< primitive solution at right side of the interface
+REAL,DIMENSION(3          ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv,t1,t2  !> normal vector and tangential vectors at side
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: FOut      !< advective flux
+LOGICAL,INTENT(IN)                                          :: doBC      !< marker whether side is a BC side
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: i,j
@@ -329,7 +327,6 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
   Fout(ENER,i,j)=F(ENER)
 END DO; END DO
 END SUBROUTINE Riemann_Side
-
 
 !==================================================================================================================================
 !> Computes the numerical flux
@@ -404,20 +401,19 @@ CALL EvalEulerFlux1D_fast(U_LL,F_L)
 CALL EvalEulerFlux1D_fast(U_RR,F_R)
 #endif /*SPLIT_DG*/
 
- CALL Riemann_loc(F_L,F_R,U_LL,U_RR,F)
+CALL Riemann_loc(F_L,F_R,U_LL,U_RR,F)
 
- ! Back Rotate the normal flux into Cartesian direction
- Fout(DENS)=F(DENS)
- Fout(MOMV)=nv(:)*F(MOM1)     &
-                 + t1(:)*F(MOM2)  &
+! Back rotate the normal flux into Cartesian direction
+Fout(DENS)=F(DENS)
+Fout(MOMV)=nv(:)*F(MOM1)  &
+          +t1(:)*F(MOM2)  &
 #if PP_dim==3
-                + t2(:)*F(MOM3)
+          +t2(:)*F(MOM3)
 #else
-                + 0.
+          +0.
 #endif
 Fout(ENER)=F(ENER)
 END SUBROUTINE Riemann_Point
-
 
 #if PARABOLIC
 !==================================================================================================================================
@@ -442,7 +438,7 @@ INTEGER,INTENT(IN)                                             :: Nloc     !< lo
 REAL,DIMENSION(PP_nVarPrim   ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_L,UPrim_R
                                                                !> solution gradients in x/y/z-direction left/right of interface
 REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
-REAL,DIMENSION(3             ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv(3,0:Nloc,0:ZDIM(Nloc)) !< normal vector
+REAL,DIMENSION(3             ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv(3,0:Nloc,0:ZDIM(Nloc))      !< normal vector
 REAL,DIMENSION(PP_nVar       ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: F(PP_nVar,0:Nloc,0:ZDIM(Nloc)) !< viscous flux
 #if EDDYVISCOSITY
 REAL,DIMENSION(1             ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: muSGS_L,muSGS_R   !> eddy viscosity left/right of the interface
@@ -474,7 +470,6 @@ DO q=0,ZDIM(Nloc); DO p=0,Nloc
                +nv(3,p,q)*(diffFluxZ_L(:,p,q)+diffFluxZ_R(:,p,q)))
 END DO; END DO
 END SUBROUTINE ViscousFlux_Side
-
 
 !==================================================================================================================================
 !> Computes the viscous NSE diffusion fluxes in all directions to approximate the numerical flux
@@ -528,7 +523,6 @@ F(:)=0.5*(nv(1)*(diffFluxX_L(:)+diffFluxX_R(:)) &
 END SUBROUTINE ViscousFlux_Point
 #endif /* PARABOLIC */
 
-
 !==================================================================================================================================
 !> Local Lax-Friedrichs (Rusanov) Riemann solver
 !==================================================================================================================================
@@ -563,7 +557,6 @@ CALL SplitDGSurface_pointer(U_LL,U_RR,F)
 F = F - 0.5*LambdaMax*(U_RR(CONS) - U_LL(CONS))
 #endif /*SPLIT_DG*/
 END SUBROUTINE Riemann_LF
-
 
 !=================================================================================================================================
 !> Harten-Lax-Van-Leer Riemann solver resolving contact discontinuity
@@ -637,7 +630,6 @@ ELSE
   END IF
 END IF ! subsonic case
 END SUBROUTINE Riemann_HLLC
-
 
 !=================================================================================================================================
 !> Roe's approximate Riemann solver
@@ -714,7 +706,6 @@ F = F - 0.5*(Alpha1*ABS(a(1))*r1 + &
              Alpha5*ABS(a(5))*r5)
 #endif /*SPLIT_DG*/
 END SUBROUTINE Riemann_Roe
-
 
 !=================================================================================================================================
 !> Roe's approximate Riemann solver using the Harten and Hymen II entropy fix, see
@@ -829,7 +820,6 @@ F= F - 0.5*(Alpha(1)*a(1)*r1 + &
 #endif /*SPLIT_DG*/
 END SUBROUTINE Riemann_RoeEntropyFix
 
-
 !=================================================================================================================================
 !> low mach number Roe's approximate Riemann solver according to Oßwald(2015)
 !=================================================================================================================================
@@ -913,7 +903,6 @@ F = F - 0.5*(Alpha1*ABS(a(1))*r1 + &
 #endif /*SPLIT_DG*/
 END SUBROUTINE Riemann_RoeL2
 
-
 !=================================================================================================================================
 !> Standard Harten-Lax-Van-Leer Riemann solver without contact discontinuity
 !=================================================================================================================================
@@ -964,7 +953,6 @@ ELSE
 END IF ! subsonic case
 END SUBROUTINE Riemann_HLL
 
-
 !=================================================================================================================================
 !> Harten-Lax-Van-Leer-Einfeldt Riemann solver
 !=================================================================================================================================
@@ -1013,7 +1001,6 @@ ELSE
   F=(Ssr*F_L-Ssl*F_R+Ssl*Ssr*(U_RR(EXT_CONS)-U_LL(EXT_CONS)))/(Ssr-Ssl)
 END IF ! subsonic case
 END SUBROUTINE Riemann_HLLE
-
 
 !=================================================================================================================================
 !> Harten-Lax-Van-Leer-Einfeldt-Munz Riemann solver
@@ -1078,7 +1065,6 @@ ELSE
 END IF ! subsonic case
 END SUBROUTINE Riemann_HLLEM
 
-
 #ifdef SPLIT_DG
 !==================================================================================================================================
 !> Riemann solver using purely the average fluxes
@@ -1102,7 +1088,6 @@ REAL,DIMENSION(PP_nVar),INTENT(OUT):: F         !< resulting Riemann flux
 ! get split flux
 CALL SplitDGSurface_pointer(U_LL,U_RR,F)
 END SUBROUTINE Riemann_FluxAverage
-
 
 !==================================================================================================================================
 !> kinetic energy preserving and entropy consistent flux according to Chandrashekar (2012)
@@ -1157,7 +1142,6 @@ F(ENER)      = F(ENER)      - 0.5*LambdaMax*( &
 
 END SUBROUTINE Riemann_CH
 #endif /*SPLIT_DG*/
-
 
 !==================================================================================================================================
 !> Finalize Riemann solver routines
