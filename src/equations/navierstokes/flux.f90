@@ -72,10 +72,9 @@ PPURE SUBROUTINE EvalFlux3D_Point(U,UPrim,f,g,h)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(CONS),INTENT(IN)  :: U        !< Conservative solution
-REAL,DIMENSION(PRIM),INTENT(IN)  :: UPrim    !< Primitive solution
-!> Physical fluxes in x/y/z direction
-REAL,DIMENSION(CONS),INTENT(OUT) :: f,g,h
+REAL,DIMENSION(PP_nVar)    ,INTENT(IN)  :: U        !< Conservative solution
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim    !< Primitive solution
+REAL,DIMENSION(PP_nVar)    ,INTENT(OUT) :: f,g,h    !> Physical fluxes in x/y/z direction
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                :: Ep
@@ -127,15 +126,13 @@ END SUBROUTINE EvalFlux3D_Point
 !==================================================================================================================================
 PPURE SUBROUTINE EvalFlux3D_Volume(Nloc,U,UPrim,f,g,h)
 ! MODULES
-USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER                                               ,INTENT(IN)  :: Nloc     !< Polynomial degree
 REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U        !< Conservative solution
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim    !< Primitive solution
-!> Physical fluxes in x,y,z directions
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: f,g,h
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: f,g,h    !> Physical fluxes in x,y,z directions
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: i,j,k
@@ -164,13 +161,11 @@ USE MOD_EddyVisc_Vars,ONLY: PrSGS
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PRIM),INTENT(IN)         :: UPrim                !< Solution vector
-!> Gradients in x,y,z directions
-REAL,DIMENSION(PP_nVarLifting),INTENT(IN)  :: gradUx,gradUy,gradUz
-!> Physical fluxes in x,y,z directions
-REAL,DIMENSION(CONS),INTENT(OUT)        :: f,g,h
+REAL,DIMENSION(PP_nVarPrim)   ,INTENT(IN)  :: UPrim                 !< Solution vector
+REAL,DIMENSION(PP_nVarLifting),INTENT(IN)  :: gradUx,gradUy,gradUz  !> Gradients in x,y,z directions
+REAL,DIMENSION(PP_nVar)       ,INTENT(OUT) :: f,g,h                 !> Physical fluxes in x,y,z directions
 #if EDDYVISCOSITY
-REAL                       ,INTENT(IN)  :: muSGS                !< SGS viscosity
+REAL                          ,INTENT(IN)  :: muSGS                 !< SGS viscosity
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -180,7 +175,6 @@ REAL                :: tau_xx,tau_yy,tau_xy
 REAL                :: tau_zz,tau_xz,tau_yz
 #endif
 !==================================================================================================================================
-! Viscous part
 ! ideal gas law
 muS    = VISCOSITY_PRIM(UPrim)
 lambda = THERMAL_CONDUCTIVITY_H(muS)
@@ -257,12 +251,10 @@ USE MOD_EddyVisc_Vars,ONLY: muSGS
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PRIM,0:PP_N,0:PP_N,0:PP_NZ),INTENT(IN)         :: UPrim                !< Solution vector
-!> Gradients in x,y,z directions
-REAL,DIMENSION(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ),INTENT(IN)  :: gradUx,gradUy,gradUz
-!> Physical fluxes in x,y,z directions
-REAL,DIMENSION(CONS,0:PP_N,0:PP_N,0:PP_NZ),INTENT(OUT)        :: f,g,h
-INTEGER, INTENT(IN)                                           :: iElem                !< element index in global array
+REAL,DIMENSION(PP_nVar,       0:PP_N,0:PP_N,0:PP_NZ),INTENT(IN)  :: UPrim                !< Solution vector
+REAL,DIMENSION(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ),INTENT(IN)  :: gradUx,gradUy,gradUz !> Gradients in x,y,z directions
+REAL,DIMENSION(PP_nVar,       0:PP_N,0:PP_N,0:PP_NZ),INTENT(OUT) :: f,g,h                !> Physical fluxes in x,y,z directions
+INTEGER                                             ,INTENT(IN)  :: iElem                !< element index in global array
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: i,j,k
@@ -286,24 +278,21 @@ PPURE SUBROUTINE EvalDiffFlux3D_Surface(Nloc,UPrim,gradUx,gradUy,gradUz,f,g,h &
 #endif
                                  )
 ! MODULES
-USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER                                        ,INTENT(IN)  :: Nloc                 !< Polynomial degree of input solution
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim                !< Solution vector
-!> Gradients in x,y,z directions
-REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUx,gradUy,gradUz
-!> Physical fluxes in x,y,z directions
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: f,g,h
+INTEGER                                           ,INTENT(IN)  :: Nloc                 !< Polynomial degree of input solution
+REAL,DIMENSION(PP_nVarPrim   ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim                !< Solution vector
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUx,gradUy,gradUz !> Gradients in x,y,z directions
+REAL,DIMENSION(PP_nVar       ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: f,g,h                !> Physical fluxes in x,y,z directions
 #if EDDYVISCOSITY
-REAL,DIMENSION(1          ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: muSGS                !< SGS viscosity
+REAL,DIMENSION(1             ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: muSGS                !< SGS viscosity
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: i,j
 !==================================================================================================================================
-DO j=0,ZDIM(Nloc); DO i=0,PP_N
+DO j=0,ZDIM(Nloc); DO i=0,Nloc
   CALL EvalDiffFlux3D_Point(Uprim(:,i,j),gradUx(:,i,j),gradUy(:,i,j),gradUz(:,i,j), &
                                                f(:,i,j),     g(:,i,j),     h(:,i,j)  &
 #if EDDYVISCOSITY
@@ -323,8 +312,8 @@ USE MOD_EOS_Vars ,ONLY:KappaM1
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)     :: U(CONS)      !< vector of conservative variables
-REAL,INTENT(OUT)    :: F(CONS)      !< Cartesian flux in "x" direction
+REAL,INTENT(IN)     :: U(PP_nVar)   !< vector of conservative variables
+REAL,INTENT(OUT)    :: F(PP_nVar)   !< Cartesian flux in "x" direction
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                :: UE(PP_2Var)  ! auxiliary variables
@@ -356,7 +345,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 REAL,INTENT(IN)     :: U(PP_2Var) !< vector of conservative and primitive variables
-REAL,INTENT(OUT)    :: F(CONS)    !< Cartesian flux in "x" direction
+REAL,INTENT(OUT)    :: F(PP_nVar) !< Cartesian flux in "x" direction
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
