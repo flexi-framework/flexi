@@ -251,7 +251,7 @@ USE MOD_EddyVisc_Vars,ONLY: muSGS
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_nVar,       0:PP_N,0:PP_N,0:PP_NZ),INTENT(IN)  :: UPrim                !< Solution vector
+REAL,DIMENSION(PP_nVarPrim,   0:PP_N,0:PP_N,0:PP_NZ),INTENT(IN)  :: UPrim                !< Solution vector
 REAL,DIMENSION(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ),INTENT(IN)  :: gradUx,gradUy,gradUz !> Gradients in x,y,z directions
 REAL,DIMENSION(PP_nVar,       0:PP_N,0:PP_N,0:PP_NZ),INTENT(OUT) :: f,g,h                !> Physical fluxes in x,y,z directions
 INTEGER                                             ,INTENT(IN)  :: iElem                !< element index in global array
