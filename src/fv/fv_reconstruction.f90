@@ -375,6 +375,7 @@ DO iElem=1,nElems
 #endif
     END DO
   END DO
+#if FV_ENABLED != 3
   ! 2. gradients of subcells at DG interface
   ! xi direction
   CALL CopySurfaceToVolume(FV_surf_gradU,gradUxi_tmp,iElem,XI_MINUS,0)
@@ -387,9 +388,15 @@ DO iElem=1,nElems
   CALL CopySurfaceToVolume(FV_surf_gradU,gradUzeta_tmp,iElem,ZETA_MINUS,0)
   CALL CopySurfaceToVolume(FV_surf_gradU,gradUzeta_tmp,iElem,ZETA_PLUS ,PP_N+1)
 #endif
+#endif /*FV_ENABLED != 3*/
 
   ! 3. limit
+#if FV_ENABLED != 3
   DO l=0,PP_N
+  ! 3. Outer subcells are not limited but retain zero slope due to conservativity
+#else
+  DO l=1,PP_N-1
+#endif /*FV_ENABLED != 3*/
    DO q=0,PP_NZ; DO p=0,PP_N
        CALL FV_Limiter(gradUxi_tmp  (:,p,q,l),gradUxi_tmp  (:,p,q,l+1),gradUxi  (:,p,q,l,iElem))
        CALL FV_Limiter(gradUeta_tmp (:,p,q,l),gradUeta_tmp (:,p,q,l+1),gradUeta (:,p,q,l,iElem))

@@ -222,7 +222,11 @@ USE MOD_Lifting_Vars ,ONLY: gradUx,gradUy,gradUz
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems
 #endif
-USE MOD_SplitFlux    ,ONLY:SplitDGVolume_pointer ! computes volume fluxes in split formulation
+#if FV_ENABLED == 3
+USE MOD_Interpolation_Vars, ONLY: wGP
+USE MOD_FV_Vars      ,ONLY: Ut_xi,Ut_eta,Ut_zeta
+#endif
+USE MOD_SplitFlux    ,ONLY: SplitDGVolume_pointer ! computes volume fluxes in split formulation
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -269,8 +273,12 @@ DO iElem=1,nElems
 #else /*VOLINT_VISC*/
   ! We need to nullify the Ut array
   Ut(:,:,:,:,iElem) = 0.
+#if FV_ENABLED==3
+  Ut_xi  (:,:,:,:,iElem) = 0.
+  Ut_eta (:,:,:,:,iElem) = 0.
+  Ut_zeta(:,:,:,:,iElem) = 0.
+#endif /*FV_ENABLED==3*/
 #endif /*VOLINT_VISC*/
-
 
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     DO l=i+1,PP_N
@@ -281,13 +289,20 @@ DO iElem=1,nElems
 #if VOLINT_VISC
        ! add up time derivative
        Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(l,i)*Flux(:) + D_Hat_T(l,i)*fv(:,l,j,k)
-       !symmetry
+       ! symmetry
        Ut(:,l,j,k,iElem) = Ut(:,l,j,k,iElem) + DVolSurf(i,l)*Flux(:) + D_Hat_T(i,l)*fv(:,i,j,k)
+#else
+#if FV_ENABLED == 3
+       ! 1.1 Compute the weighted flux
+       Ut_xi  (:,i,j,k,iElem) = Ut_xi  (:,i,j,k,iElem) + DVolSurf(l,i)*Flux(:)!*wGP(i)
+       ! symmetry
+       Ut_xi  (:,l,j,k,iElem) = Ut_xi  (:,l,j,k,iElem) + DVolSurf(i,l)*Flux(:)!*wGP(l)
 #else
        ! add up time derivative
        Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(l,i)*Flux(:)
-       !symmetry
+       ! symmetry
        Ut(:,l,j,k,iElem) = Ut(:,l,j,k,iElem) + DVolSurf(i,l)*Flux(:)
+#endif /*FV_ENABLED == 3*/
 #endif /*VOLINT_VISC*/
     END DO ! l
 
@@ -299,13 +314,20 @@ DO iElem=1,nElems
 #if VOLINT_VISC
        ! add up time derivative
        Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(l,j)*Flux(:) + D_Hat_T(l,j)*gv(:,i,l,k)
-       !symmetry
+       ! symmetry
        Ut(:,i,l,k,iElem) = Ut(:,i,l,k,iElem) + DVolSurf(j,l)*Flux(:) + D_Hat_T(j,l)*gv(:,i,j,k)
+#else
+#if FV_ENABLED == 3
+       ! 1.1 Compute the weighted flux
+       Ut_eta (:,i,j,k,iElem) = Ut_eta (:,i,j,k,iElem) + DVolSurf(l,j)*Flux(:)!*wGP(i)
+       ! symmetry
+       Ut_eta (:,i,l,k,iElem) = Ut_eta (:,i,l,k,iElem) + DVolSurf(j,l)*Flux(:)!*wGP(l)
 #else
        ! add up time derivative
        Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(l,j)*Flux(:)
-       !symmetry
+       ! symmetry
        Ut(:,i,l,k,iElem) = Ut(:,i,l,k,iElem) + DVolSurf(j,l)*Flux(:)
+#endif /*FV_ENABLED == 3*/
 #endif /*VOLINT_VISC*/
     END DO ! l
 
@@ -318,19 +340,27 @@ DO iElem=1,nElems
 #if VOLINT_VISC
        ! add up time derivative
        Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(l,k)*Flux(:) + D_Hat_T(l,k)*hv(:,i,j,l)
-       !symmetry
+       ! symmetry
        Ut(:,i,j,l,iElem) = Ut(:,i,j,l,iElem) + DVolSurf(k,l)*Flux(:) + D_Hat_T(k,l)*hv(:,i,j,k)
+#else
+#if FV_ENABLED == 3
+       ! 1.1 Compute the weighted flux
+       Ut_zeta(:,i,j,k,iElem) = Ut_zeta(:,i,j,k,iElem) + DVolSurf(l,k)*Flux(:)!*wGP(i)
+       ! symmetry
+       Ut_zeta(:,i,j,l,iElem) = Ut_zeta(:,i,j,l,iElem) + DVolSurf(k,l)*Flux(:)!*wGP(l)
 #else
        ! add up time derivative
        Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(l,k)*Flux(:)
-       !symmetry
+       ! symmetry
        Ut(:,i,j,l,iElem) = Ut(:,i,j,l,iElem) + DVolSurf(k,l)*Flux(:)
+#endif /*FV_ENABLED == 3*/
 #endif /*VOLINT_VISC*/
     END DO ! l
 #endif /*PP_dim==3*/
 
   END DO; END DO; END DO !i,j,k
 END DO ! iElem
+
 END SUBROUTINE VolInt_splitForm
 #endif /*SPLIT_DG*/
 

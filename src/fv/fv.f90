@@ -193,7 +193,19 @@ ENDIF
 ALLOCATE(FV_alpha(1:nElems))
 ALLOCATE(FV_alpha_master(nSides))
 ALLOCATE(FV_alpha_slave( nSides))
+FV_alpha = 0.
 CALL AddToElemData(ElementOut,'FV_alpha',FV_alpha)
+
+#elif FV_ENABLED == 3
+! Initialize parameters for FV Blending
+FV_alpha_min = GETREAL('FV_alpha_min')
+FV_alpha_max = GETREAL('FV_alpha_max')
+
+ALLOCATE(FV_alpha(       0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
+ALLOCATE(Ut_xi(  PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
+ALLOCATE(Ut_eta( PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
+ALLOCATE(Ut_zeta(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
+FV_alpha = 0.
 #endif /*FV_ENABLED*/
 
 #if FV_RECONSTRUCT
@@ -455,7 +467,12 @@ SDEALLOCATE(gradUzeta_central)
 SDEALLOCATE(FV_alpha)
 SDEALLOCATE(FV_alpha_slave )
 SDEALLOCATE(FV_alpha_master)
-#endif
+#elif FV_ENABLED == 3
+SDEALLOCATE(FV_alpha)
+SDEALLOCATE(Ut_xi)
+SDEALLOCATE(Ut_eta)
+SDEALLOCATE(Ut_zeta)
+#endif /*FV_ENABLED*/
 
 FVInitIsDone=.FALSE.
 END SUBROUTINE FinalizeFV

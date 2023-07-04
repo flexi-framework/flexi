@@ -319,7 +319,7 @@ USE MOD_TimeDisc_Vars       ,ONLY: iter,iter_analyze,maxIter
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize,writeCounter
 #if FV_ENABLED == 1
 USE MOD_FV_Switching        ,ONLY: FV_Info
-#elif FV_ENABLED == 2
+#elif FV_ENABLED == 2 || FV_ENABLED == 3
 USE MOD_FV_Blending         ,ONLY: FV_Info
 #endif
 #if PP_LIMITER

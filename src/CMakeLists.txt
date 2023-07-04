@@ -170,7 +170,7 @@ ENDIF()
 # FV subcell shock capturing
 # =========================================================================
 SET(FLEXI_FV "OFF" CACHE STRING "Enable Finite Volume subcell shock capturing")
-SET_PROPERTY(CACHE FLEXI_FV PROPERTY STRINGS OFF SWITCH BLEND)
+SET_PROPERTY(CACHE FLEXI_FV PROPERTY STRINGS OFF SWITCH BLEND SBLEND)
 
 CMAKE_DEPENDENT_OPTION(FLEXI_FV_RECONSTRUCTION "Enable 2nd order reconstruction for FV" ON
 	                                             "FLEXI_FV" ON) # Everyhting except "OFF" is logically "ON"
@@ -185,6 +185,13 @@ IF(NOT (FLEXI_FV STREQUAL "OFF"))
       MESSAGE(SEND_ERROR "FLEXI_FV=BLEND only works on FLEXI_NODETYPE==GAUSS-LOBATTO points.")
     ENDIF()
     ADD_DEFINITIONS(-DFV_ENABLED=2)
+  ELSEIF(FLEXI_FV STREQUAL "SBLEND")
+    IF(NOT FLEXI_EQNSYSNAME STREQUAL "navierstokes")
+      MESSAGE(SEND_ERROR "FLEXI_FV=SBLEND only works for FLEXI_EQNSYSNAME==navierstokes.")
+    ELSEIF(FLEXI_NODETYPE STREQUAL "GAUSS")
+      MESSAGE(SEND_ERROR "FLEXI_FV=SBLEND only works on FLEXI_NODETYPE==GAUSS-LOBATTO points.")
+    ENDIF()
+    ADD_DEFINITIONS(-DFV_ENABLED=3)
   ELSE()
     MESSAGE(SEND_ERROR "No such FV shock capturing known.")
   ENDIF()

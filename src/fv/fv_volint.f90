@@ -52,6 +52,9 @@ USE MOD_Flux         ,ONLY: EvalDiffFlux3D
 USE MOD_Riemann      ,ONLY: Riemann
 USE MOD_Mesh_Vars    ,ONLY: nElems
 USE MOD_EOS          ,ONLY: PrimToCons
+#if FV_ENABLED == 3
+USE MOD_Interpolation_Vars, ONLY: wGP
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -74,6 +77,14 @@ REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: f,g,h      !< viscous volume fl
 #endif
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ)        :: F_FV
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: Ut_FV
+#if FV_ENABLED==3
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: Flux_xi
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: Flux_eta
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: Flux_zeta
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: Ut_FV_xi
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: Ut_FV_eta
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: Ut_FV_zeta
+#endif /*FV_ENABLED==3*/
 !==================================================================================================================================
 
 ! This routine works as follows:
@@ -114,6 +125,11 @@ DO iElem=1,nElems
   ! This is the only nullification we have to do, the rest will be overwritten accordingly. Nullify here to catch only the FV
   ! elements. Might be smarter to do this in a single, long operation?
   Ut_FV(:,0,:,:) = 0.
+#if FV_ENABLED == 3
+  Ut_FV_xi  (:,:,:,:) = 0.
+  Ut_FV_eta (:,:,:,:) = 0.
+  Ut_FV_zeta(:,:,:,:) = 0.
+#endif /*FV_ENABLED*/
   ! iterate over all inner slices in xi-direction
   DO i=1,PP_N
     DO q=0,PP_NZ; DO p=0,PP_N
@@ -147,12 +163,20 @@ DO iElem=1,nElems
     F_FV = F_FV + Fvisc_FV
 #endif /*VOLINT_VISC*/
 
+#if FV_ENABLED <= 2
     ! 6. apply flux to the sub-cells at the left and right side of the interface/slice
     DO k=0,PP_NZ; DO j=0,PP_N
       Ut_FV(:,i-1,j,k) = Ut_FV(:,i-1,j,k) + F_FV(:,j,k) * FV_SurfElemXi_sw(j,k,i,iElem) * FV_w_inv(i-1)
       ! During our first sweep, the DOF here has never been touched and can thus be overwritten
       Ut_FV(:,i  ,j,k) =               -1.* F_FV(:,j,k) * FV_SurfElemXi_sw(j,k,i,iElem) * FV_w_inv(i)
     END DO; END DO
+#elif FV_ENABLED == 3
+    ! 6. apply flux to the sub-cells at the left and right side of the interface/slice
+    DO k=0,PP_NZ; DO j=0,PP_N
+      Ut_FV_xi  (:,i-1,j,k) = Ut_FV_xi  (:,i-1,j,k) + F_FV(:,j,k) * FV_SurfElemXi_sw(j,k,i,iElem) * FV_w_inv(i-1)
+      Ut_FV_xi  (:,i  ,j,k) =                    -1.* F_FV(:,j,k) * FV_SurfElemXi_sw(j,k,i,iElem) * FV_w_inv(i)
+    END DO; END DO
+#endif /*FV_ENABLED*/
   END DO ! i
 
   ! === Eta-Direction ===========
@@ -199,11 +223,19 @@ DO iElem=1,nElems
     F_FV = F_FV + Fvisc_FV
 #endif /*VOLINT_VISC*/
 
+#if FV_ENABLED <= 2
     ! 6. apply flux to the sub-cells at the left and right side of the interface/slice
     DO k=0,PP_NZ; DO i=0,PP_N
       Ut_FV(:,i,j-1,k) = Ut_FV(:,i,j-1,k) + F_FV(:,i,k) * FV_SurfElemEta_sw(i,k,j,iElem) * FV_w_inv(j-1)
       Ut_FV(:,i,j  ,k) = Ut_FV(:,i,j  ,k) - F_FV(:,i,k) * FV_SurfElemEta_sw(i,k,j,iElem) * FV_w_inv(j)
     END DO; END DO
+#elif FV_ENABLED == 3
+    ! 6. apply flux to the sub-cells at the left and right side of the interface/slice
+    DO k=0,PP_NZ; DO i=0,PP_N
+      Ut_FV_eta (:,i,j-1,k) = Ut_FV_eta (:,i,j-1,k) + F_FV(:,i,k) * FV_SurfElemEta_sw(i,k,j,iElem) * FV_w_inv(j-1)
+      Ut_FV_eta (:,i,j  ,k) = Ut_FV_eta (:,i,j  ,k) - F_FV(:,i,k) * FV_SurfElemEta_sw(i,k,j,iElem) * FV_w_inv(j)
+    END DO; END DO
+#endif /*FV_ENABLED*/
   END DO ! j
 
 #if PP_dim == 3
@@ -239,15 +271,74 @@ DO iElem=1,nElems
     F_FV = F_FV + Fvisc_FV
 #endif /*VOLINT_VISC*/
 
+#if FV_ENABLED <= 2
     ! 6. apply flux to the sub-cells at the left and right side of the interface/slice
     DO j=0,PP_N; DO i=0,PP_N
       Ut_FV(:,i,j,k-1) = Ut_FV(:,i,j,k-1) + F_FV(:,i,j) * FV_SurfElemZeta_sw(i,j,k,iElem) * FV_w_inv(k-1)
       Ut_FV(:,i,j,k  ) = Ut_FV(:,i,j,k  ) - F_FV(:,i,j) * FV_SurfElemZeta_sw(i,j,k,iElem) * FV_w_inv(k)
     END DO; END DO
+#elif FV_ENABLED == 3
+    ! 6. apply flux to the sub-cells at the left and right side of the interface/slice
+    DO j=0,PP_N; DO i=0,PP_N
+      Ut_FV_zeta(:,i,j,k-1) = Ut_FV_zeta(:,i,j,k-1) + F_FV(:,i,j) * FV_SurfElemZeta_sw(i,j,k,iElem) * FV_w_inv(k-1)
+      Ut_FV_zeta(:,i,j,k  ) = Ut_FV_zeta(:,i,j,k  ) - F_FV(:,i,j) * FV_SurfElemZeta_sw(i,j,k,iElem) * FV_w_inv(k)
+    END DO; END DO
+#endif /*FV_ENABLED*/
   END DO ! k
 #endif /* PP_dim == 3 */
 
-#if FV_ENABLED == 2
+#if FV_ENABLED == 3
+  ! 2. Blend the DG and the FV volume integral                     (Rueda-Ramírez, 2022; formula: 18)
+  ! 3. Calculate the volume integral from the blended inner fluxes (Rueda-Ramírez, 2022; formula: 17)
+  DO k=0,PP_NZ; DO j=0,PP_N
+    ! Blend in xi   direction
+    Flux_xi  (:,0,j,k)       = Ut_xi    (:,0,j,k,iElem)
+    Ut_xi    (:,0,j,k,iElem) = Flux_xi  (:,0,j,k      ) * (1.-FV_alpha(0,j,k,iElem))  + Ut_FV_xi  (:,0,j,k) * FV_alpha(0,j,k,iElem)
+    ! Ut       (:,0,j,k,iElem) = 1./wGP(0) * (                              Ut_xi  (:,0,j,k,iElem))
+    Ut       (:,0,j,k,iElem) = 1.        * (                              Ut_xi  (:,0,j,k,iElem))
+    DO i=1,PP_N-1
+      Flux_xi  (:,i,j,k)       = Flux_xi  (:,i-1,j,k)   + Ut_xi  (:,i,j,k,iElem)
+      Ut_xi    (:,i,j,k,iElem) = Flux_xi  (:,i  ,j,k) * (1.-FV_alpha(i,j,k,iElem))  + Ut_FV_xi  (:,i,j,k) * FV_alpha(i,j,k,iElem)
+      ! Ut       (:,i,j,k,iElem) = 1./wGP(i) * (-Ut_xi  (:,i-1,j,k,iElem) + Ut_xi  (:,i,j,k,iElem))
+      Ut       (:,i,j,k,iElem) = 1.        * (-Ut_xi  (:,i-1,j,k,iElem) + Ut_xi  (:,i,j,k,iElem))
+    END DO ! i
+    ! Calculate the volume integral from the blended inner fluxes (Rueda-Ramírez, 2022; formula: 17)
+    ! Ut  (:,PP_N,j,k,iElem) = 1./wGP(PP_N) * ( -Ut_xi  (:,PP_N-1,j,k,iElem))
+    Ut  (:,PP_N,j,k,iElem) = 1.           * ( -Ut_xi  (:,PP_N-1,j,k,iElem))
+  END DO; END DO ! j,k
+  DO k=0,PP_NZ; DO i=0,PP_N
+    ! Blend in eta  direction
+    Flux_eta (:,i,0,k)       = Ut_eta   (:,i,0,k,iElem)
+    Ut_eta   (:,i,0,k,iElem) = Flux_eta (:,i,0,k      ) * (1.-FV_alpha(i,0,k,iElem))  + Ut_FV_eta (:,i,0,k) * FV_alpha(i,0,k,iElem)
+    ! Ut       (:,i,0,k,iElem) = Ut       (:,i,0,k,iElem) + 1./wGP(0) * (                              Ut_eta (:,i,0,k,iElem))
+    Ut       (:,i,0,k,iElem) = Ut       (:,i,0,k,iElem) + 1.        * (                              Ut_eta (:,i,0,k,iElem))
+    DO j=1,PP_N-1
+      Flux_eta (:,i,j,k)       = Flux_eta (:,i,j-1,k)   + Ut_eta (:,i,j,k,iElem)
+      Ut_eta   (:,i,j,k,iElem) = Flux_eta (:,i,j  ,k) * (1.-FV_alpha(i,j,k,iElem))  + Ut_FV_eta (:,i,j,k) * FV_alpha(i,j,k,iElem)
+      ! Ut       (:,i,j,k,iElem) = Ut       (:,i,j,k,iElem) + 1./wGP(j) * (-Ut_eta (:,i,j-1,k,iElem) + Ut_eta (:,i,j,k,iElem))
+      Ut       (:,i,j,k,iElem) = Ut       (:,i,j,k,iElem) + 1         * (-Ut_eta (:,i,j-1,k,iElem) + Ut_eta (:,i,j,k,iElem))
+    END DO ! i
+    ! Calculate the volume integral from the blended inner fluxes (Rueda-Ramírez, 2022; formula: 17)
+    ! Ut  (:,i,PP_N,k,iElem) = Ut  (:,i,PP_N,k,iElem) + 1./wGP(PP_N) * ( -Ut_eta (:,i,PP_N-1,k,iElem))
+    Ut  (:,i,PP_N,k,iElem) = Ut  (:,i,PP_N,k,iElem) + 1.           * ( -Ut_eta (:,i,PP_N-1,k,iElem))
+  END DO; END DO ! j,k
+  DO j=0,PP_N; DO i=0,PP_N
+    ! Blend in zeta direction
+    Flux_zeta(:,i,j,0)       = Ut_zeta  (:,i,j,0,iElem)
+    Ut_zeta  (:,i,j,0,iElem) = Flux_zeta(:,i,j,0      ) * (1.-FV_alpha(i,j,0,iElem))  + Ut_FV_zeta(:,i,j,0) * FV_alpha(i,j,0,iElem)
+    ! Ut       (:,i,j,0,iElem) = Ut       (:,i,j,0,iElem) + 1./wGP(0) * (                              Ut_zeta(:,i,j,0,iElem))
+    Ut       (:,i,j,0,iElem) = Ut       (:,i,j,0,iElem) + 1.        * (                              Ut_zeta(:,i,j,0,iElem))
+    DO k=1,PP_NZ-1
+      Flux_zeta(:,i,j,k)       = Flux_zeta(:,i,j,k-1)   + Ut_zeta(:,i,j,k,iElem)
+      Ut_zeta  (:,i,j,k,iElem) = Flux_zeta(:,i,j,k  ) * (1.-FV_alpha(i,j,k,iElem))  + Ut_FV_zeta(:,i,j,k) * FV_alpha(i,j,k,iElem)
+      ! Ut       (:,i,j,k,iElem) = Ut       (:,i,j,k,iElem) + 1./wGP(k) * (-Ut_zeta(:,i,j,k-1,iElem) + Ut_zeta(:,i,j,k,iElem))
+      Ut       (:,i,j,k,iElem) = Ut       (:,i,j,k,iElem) + 1.        * (-Ut_zeta(:,i,j,k-1,iElem) + Ut_zeta(:,i,j,k,iElem))
+    END DO ! i
+    ! Calculate the volume integral from the blended inner fluxes (Rueda-Ramírez, 2022; formula: 17)
+    ! Ut  (:,i,j,PP_N,iElem) = Ut  (:,i,j,PP_N,iElem) + 1./wGP(PP_N) * ( -Ut_zeta(:,i,j,PP_N-1,iElem))
+    Ut  (:,i,j,PP_N,iElem) = Ut  (:,i,j,PP_N,iElem) + 1.           * ( -Ut_zeta(:,i,j,PP_N-1,iElem))
+  END DO; END DO ! j,k
+#elif FV_ENABLED == 2
   ! Blend the solutions together
   Ut(:,:,:,:,iElem) = (1 - FV_alpha(iElem)) * Ut(:,:,:,:,iElem) + FV_alpha(iElem)*Ut_FV
 #else

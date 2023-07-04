@@ -25,8 +25,8 @@ MODULE MOD_FV_Blending
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
-#if FV_ENABLED == 2
 
+#if FV_ENABLED == 2
 INTERFACE FV_ExtendAlpha
   MODULE PROCEDURE FV_ExtendAlpha
 END INTERFACE
@@ -38,17 +38,25 @@ END INTERFACE
 INTERFACE FV_ProlongFValphaToFace
   MODULE PROCEDURE FV_ProlongFValphaToFace
 END INTERFACE
+#endif
 
+#if FV_ENABLED == 2 || FV_ENABLED == 3
 INTERFACE FV_Info
   MODULE PROCEDURE FV_Info
 END INTERFACE
+#endif
 
+#if FV_ENABLED == 2
 PUBLIC::FV_ExtendAlpha
+#endif
+#if FV_ENABLED == 2 || FV_ENABLED == 3
 PUBLIC::FV_Info
+#endif
 !==================================================================================================================================
 
 CONTAINS
 
+#if FV_ENABLED == 2
 !==================================================================================================================================
 !> Extend the blending coefficient FV_alpha
 !==================================================================================================================================
@@ -106,6 +114,7 @@ IF (FV_doExtendAlpha) THEN
 END IF
 END SUBROUTINE FV_ExtendAlpha
 
+
 !==================================================================================================================================
 !> Set FV_Alpha_slave and FV_Alpha_master information
 !==================================================================================================================================
@@ -134,6 +143,7 @@ DO iSide = 1,nSides
   IF(nbElemID.GT.0) FV_alpha_slave( iSide) = FV_alpha(nbElemID)
 END DO
 END SUBROUTINE FV_ProlongFValphaToFace
+
 
 !==================================================================================================================================
 !> Check for indicator value in neighboring elements
@@ -178,7 +188,10 @@ DO iSide = 1,nSides
   END IF
 END DO
 END SUBROUTINE FV_ComputeExtendedAlpha
+#endif /* FV_ENABLED */
 
+
+#if FV_ENABLED == 2 || FV_ENABLED == 3
 !==================================================================================================================================
 !> Print information on the amount of FV blending
 !==================================================================================================================================

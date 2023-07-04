@@ -73,6 +73,16 @@ LOGICAL                :: FV_doExtendAlpha       !< Flag whether alpha should be
 INTEGER                :: FV_nExtendAlpha        !< Number of times alpha should be passed towards neighboring elements per timestep
 #endif /*FV_ENABLED==2*/
 
+! FV/DG Blending
+#if FV_ENABLED == 3
+REAL,ALLOCATABLE       :: FV_alpha( :,:,:,:)     !< Blending coefficient
+REAL                   :: FV_alpha_min           !< Minimal blending coefficient (all elems below are treated as pure DG)
+REAL                   :: FV_alpha_max           !< Maximal blending coefficient
+REAL,ALLOCATABLE       :: Ut_xi(  :,:,:,:,:)
+REAL,ALLOCATABLE       :: Ut_eta( :,:,:,:,:)
+REAL,ALLOCATABLE       :: Ut_zeta(:,:,:,:,:)
+#endif /*FV_ENABLED==3*/
+
 ! FV variables on reference element
 REAL,ALLOCATABLE       :: FV_X(:)                !< positions of 'midpoints' of FV subcells in [-1,1]
 REAL,ALLOCATABLE       :: FV_BdryX(:)            !< positions of boundaries of FV subcells in [-1,1]
@@ -81,7 +91,7 @@ REAL,ALLOCATABLE       :: FV_w_inv(:)            !< 1/FV_w
 REAL,ALLOCATABLE       :: FV_Vdm(:,:)            !< Vandermonde to switch from DG to FV
 REAL,ALLOCATABLE       :: FV_sVdm(:,:)           !< Vandermonde to switch from FV to DG
 INTEGER                :: FV_CellType            !< Type of FV Cell: -1 = SAME              ,0 = EQUIDISTANT
-                                                 !<                   1 = LEGENDRE_GAUSS    ,2 = LEGENDRE_LOBATTO  
+                                                 !<                   1 = LEGENDRE_GAUSS    ,2 = LEGENDRE_LOBATTO
                                                  !<                   3 = CHEBYSHEV_LOBATTO
 
 #if FV_RECONSTRUCT

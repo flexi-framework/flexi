@@ -224,6 +224,9 @@ USE MOD_Lifting_Vars     ,ONLY: gradUx,gradUy,gradUz
 USE MOD_FV_Blending      ,ONLY: FV_ExtendAlpha
 USE MOD_FV_Vars          ,ONLY: FV_alpha,FV_alpha_min,FV_alpha_max,FV_doExtendAlpha
 USE MOD_Indicator_Vars   ,ONLY: sdT_FV,T_FV
+#elif FV_ENABLED == 3
+USE MOD_FV_Vars          ,ONLY: FV_alpha,FV_alpha_min,FV_alpha_max
+USE MOD_Indicator_Vars   ,ONLY: sdT_FV,T_FV
 #else
 USE MOD_FV_Vars          ,ONLY: FV_Elems,FV_sVdm
 #endif /*FV_ENABLED==2*/
@@ -238,10 +241,13 @@ REAL,INTENT(IN)           :: t                                            !< Sim
 ! LOCAL VARIABLES
 INTEGER                   :: iElem
 REAL,POINTER              :: U_P(:,:,:,:)
-#if !(FV_ENABLED == 2)
+#if !(FV_ENABLED == 2 || FV_ENABLED == 3)
 REAL,TARGET               :: U_DG(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 #endif
 !==================================================================================================================================
+
+! FV_alpha = 1.0
+! return
 
 ! if time is before IndStartTime return high Indicator value (FV)
 IF (t.LT.IndStartTime) THEN
@@ -266,6 +272,19 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
   ! Do not compute FV contribution for elements below threshold
   DO iElem=1,nElems
     IF (FV_alpha(iElem) .LT. FV_alpha_min) FV_alpha(iElem) = 0.
+  END DO ! iElem
+#elif FV_ENABLED == 3
+  DO iElem=1,nElems
+    IndValue(iElem) = IndPerssonBlend(U(:,:,:,:,iElem))
+    IPWRITE(*,*) 'IndValue(iElem):', IndValue(iElem)
+    FV_alpha(:,:,:,iElem)  = 1. / (1. + EXP(-sdT_FV * (IndValue(iElem) - T_FV)))
+    ! Limit to alpha_max
+    FV_alpha(:,:,:,iElem) = MIN(FV_alpha(:,:,:,iElem),FV_alpha_max)
+  END DO ! iElem
+  ! CALL FV_ExtendAlpha(FV_alpha)
+  ! Do not compute FV contribution for elements below threshold
+  DO iElem=1,nElems
+    IF (MAXVAL(FV_alpha(:,:,:,iElem)) .LT. FV_alpha_min) FV_alpha(:,:,:,iElem) = 0.
   END DO ! iElem
 #else
   DO iElem=1,nElems
@@ -630,7 +649,8 @@ DO iElem=1,nElems
 END DO ! iElem
 END FUNCTION JamesonIndicator
 
-#if FV_ENABLED == 2
+
+#if FV_ENABLED == 2 || FV_ENABLED == 3
 !==================================================================================================================================
 !> Determine, if given a modal representation solution "U_Modal" is oscillating
 !> Indicator value is scaled to \f$\sigma=0 \ldots 1\f$
@@ -679,7 +699,7 @@ END DO
 IF (IndValue .LT. EPSILON(1.)) IndValue = EPSILON(IndValue)
 
 END FUNCTION IndPerssonBlend
-#endif /*FV_ENABLED==2*/
+#endif /*FV_ENABLED==2 || FV_ENABLED==3*/
 
 #endif /* EQNSYSNR == 2 */
 
