@@ -123,7 +123,7 @@ CALL CollectiveStop(__STAMP__, &
 
 ! The indicator value is used to decide where FV sub-cells are needed
 ! TODO: Force overwrite not so nice....
-#if FV_ENABLED == 2
+#if FV_ENABLED == 2 || FV_ENABLED == 3
   FV_CellType = FV_NODETYPE_SAME
 #else
   FV_CellType = GETINTFROMSTR('FV_CellType')

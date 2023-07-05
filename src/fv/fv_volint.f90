@@ -171,13 +171,19 @@ DO iElem=1,nElems
       Ut_FV(:,i  ,j,k) =               -1.* F_FV(:,j,k) * FV_SurfElemXi_sw(j,k,i,iElem) * FV_w_inv(i)
     END DO; END DO
 #elif FV_ENABLED == 3
-    ! 6. apply flux to the sub-cells at the left and right side of the interface/slice
     DO k=0,PP_NZ; DO j=0,PP_N
-      Ut_FV_xi  (:,i-1,j,k) = Ut_FV_xi  (:,i-1,j,k) + F_FV(:,j,k) * FV_SurfElemXi_sw(j,k,i,iElem) * FV_w_inv(i-1)
-      Ut_FV_xi  (:,i  ,j,k) =                    -1.* F_FV(:,j,k) * FV_SurfElemXi_sw(j,k,i,iElem) * FV_w_inv(i)
+      Ut_FV_xi  (:,i-1,j,k) = Ut_FV_xi  (  :,i-1,j,k)  + F_FV(:,j,k) * FV_SurfElemXi_sw(j,k,i,iElem) * FV_w_inv(i-1)
+      Ut_FV_xi  (:,i  ,j,k) =                          - F_FV(:,j,k) * FV_SurfElemXi_sw(j,k,i,iElem) * FV_w_inv(i)
     END DO; END DO
 #endif /*FV_ENABLED*/
   END DO ! i
+#if FV_ENABLED == 2
+#endif /*FV_ENABLED*/
+#if FV_ENABLED == 3
+  DO i=1,PP_N-1
+    Ut_FV_xi  (:,i,:,:) = Ut_FV_xi  (:,i,:,:) + Ut_FV_xi  (:,i-1,:,:)
+  END DO ! i
+#endif /*FV_ENABLED*/
 
   ! === Eta-Direction ===========
 #if VOLINT_VISC
@@ -230,13 +236,17 @@ DO iElem=1,nElems
       Ut_FV(:,i,j  ,k) = Ut_FV(:,i,j  ,k) - F_FV(:,i,k) * FV_SurfElemEta_sw(i,k,j,iElem) * FV_w_inv(j)
     END DO; END DO
 #elif FV_ENABLED == 3
-    ! 6. apply flux to the sub-cells at the left and right side of the interface/slice
     DO k=0,PP_NZ; DO i=0,PP_N
-      Ut_FV_eta (:,i,j-1,k) = Ut_FV_eta (:,i,j-1,k) + F_FV(:,i,k) * FV_SurfElemEta_sw(i,k,j,iElem) * FV_w_inv(j-1)
-      Ut_FV_eta (:,i,j  ,k) = Ut_FV_eta (:,i,j  ,k) - F_FV(:,i,k) * FV_SurfElemEta_sw(i,k,j,iElem) * FV_w_inv(j)
+      Ut_FV_eta (:,i,j-1,k) =  Ut_FV_eta (:,i,j-1,k)   - F_FV(:,i,k) * FV_SurfElemEta_sw(i,k,j,iElem) * FV_w_inv(j-1)
+      Ut_FV_eta (:,i,j  ,k) =                          + F_FV(:,i,k) * FV_SurfElemEta_sw(i,k,j,iElem) * FV_w_inv(j)
     END DO; END DO
 #endif /*FV_ENABLED*/
   END DO ! j
+#if FV_ENABLED == 3
+  DO j=1,PP_N-1
+    Ut_FV_eta (:,:,j,:) = Ut_FV_eta (:,:,j,:) + Ut_FV_eta (:,:,j-1,:)
+  END DO ! j
+#endif /*FV_ENABLED*/
 
 #if PP_dim == 3
   ! === Zeta-Direction ============
@@ -278,13 +288,17 @@ DO iElem=1,nElems
       Ut_FV(:,i,j,k  ) = Ut_FV(:,i,j,k  ) - F_FV(:,i,j) * FV_SurfElemZeta_sw(i,j,k,iElem) * FV_w_inv(k)
     END DO; END DO
 #elif FV_ENABLED == 3
-    ! 6. apply flux to the sub-cells at the left and right side of the interface/slice
     DO j=0,PP_N; DO i=0,PP_N
-      Ut_FV_zeta(:,i,j,k-1) = Ut_FV_zeta(:,i,j,k-1) + F_FV(:,i,j) * FV_SurfElemZeta_sw(i,j,k,iElem) * FV_w_inv(k-1)
-      Ut_FV_zeta(:,i,j,k  ) = Ut_FV_zeta(:,i,j,k  ) - F_FV(:,i,j) * FV_SurfElemZeta_sw(i,j,k,iElem) * FV_w_inv(k)
+      Ut_FV_zeta(:,i,j,k-1) = Ut_FV_zeta(:,i,j,k-1)    - F_FV(:,i,j) * FV_SurfElemZeta_sw(i,j,k,iElem) * FV_w_inv(k-1)
+      Ut_FV_zeta(:,i,j,k  ) =                          + F_FV(:,i,j) * FV_SurfElemZeta_sw(i,j,k,iElem) * FV_w_inv(k)
     END DO; END DO
 #endif /*FV_ENABLED*/
   END DO ! k
+#if FV_ENABLED == 3
+  DO k=1,PP_N-1
+    Ut_FV_zeta(:,:,:,k) = Ut_FV_zeta(:,:,:,k) + Ut_FV_zeta(:,:,:,k-1)
+  END DO ! k
+#endif /*FV_ENABLED*/
 #endif /* PP_dim == 3 */
 
 #if FV_ENABLED == 3
