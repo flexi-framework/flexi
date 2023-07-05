@@ -237,8 +237,8 @@ DO iElem=1,nElems
     END DO; END DO
 #elif FV_ENABLED == 3
     DO k=0,PP_NZ; DO i=0,PP_N
-      Ut_FV_eta (:,i,j-1,k) =  Ut_FV_eta (:,i,j-1,k)   - F_FV(:,i,k) * FV_SurfElemEta_sw(i,k,j,iElem) * FV_w_inv(j-1)
-      Ut_FV_eta (:,i,j  ,k) =                          + F_FV(:,i,k) * FV_SurfElemEta_sw(i,k,j,iElem) * FV_w_inv(j)
+      Ut_FV_eta (:,i,j-1,k) =  Ut_FV_eta (:,i,j-1,k)   + F_FV(:,i,k) * FV_SurfElemEta_sw(i,k,j,iElem) * FV_w_inv(j-1)
+      Ut_FV_eta (:,i,j  ,k) =                          - F_FV(:,i,k) * FV_SurfElemEta_sw(i,k,j,iElem) * FV_w_inv(j)
     END DO; END DO
 #endif /*FV_ENABLED*/
   END DO ! j
@@ -289,8 +289,8 @@ DO iElem=1,nElems
     END DO; END DO
 #elif FV_ENABLED == 3
     DO j=0,PP_N; DO i=0,PP_N
-      Ut_FV_zeta(:,i,j,k-1) = Ut_FV_zeta(:,i,j,k-1)    - F_FV(:,i,j) * FV_SurfElemZeta_sw(i,j,k,iElem) * FV_w_inv(k-1)
-      Ut_FV_zeta(:,i,j,k  ) =                          + F_FV(:,i,j) * FV_SurfElemZeta_sw(i,j,k,iElem) * FV_w_inv(k)
+      Ut_FV_zeta(:,i,j,k-1) = Ut_FV_zeta(:,i,j,k-1)    + F_FV(:,i,j) * FV_SurfElemZeta_sw(i,j,k,iElem) * FV_w_inv(k-1)
+      Ut_FV_zeta(:,i,j,k  ) =                          - F_FV(:,i,j) * FV_SurfElemZeta_sw(i,j,k,iElem) * FV_w_inv(k)
     END DO; END DO
 #endif /*FV_ENABLED*/
   END DO ! k
