@@ -138,7 +138,7 @@ SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT INDICATORS...'
 
 ! Read in  parameters
-#if FV_ENABLED == 2
+#if FV_ENABLED == 2 || FV_ENABLED == 3
 IndicatorType = INDTYPE_PERSSON
 #else
 IndicatorType = GETINTFROMSTR('IndicatorType')
@@ -176,13 +176,16 @@ CASE(INDTYPE_PERSSON)
   ! Safety checks: At least one mode must be left and only values >0 make sense
   nModes = MAX(1,MIN(PP_N-1,nModes))
   SWRITE(UNIT_stdOut,'(A,I0)') ' | nModes = ', nModes
-#if FV_ENABLED == 2
+#if FV_ENABLED == 2 || FV_ENABLED == 3
   T_FV   = 0.5*10**(-1.8*(PP_N+1)**.25) ! Eq.(42) in: S. Hennemann et al., J.Comp.Phy., 2021
   sdT_FV = s_FV/T_FV
 #if EQNSYSNR != 2 /* NOT NAVIER-STOKES */
   CALL Abort(__STAMP__, &
       "Persson indicator for FV-Blending only works with Navier-Stokes equations.")
 #endif /* EQNSYSNR != 2 */
+#if FV_ENABLED == 3
+  CALL CalcSobelFilter()
+#endif /*FV_ENABLED == 3*/
 #endif /*FV_ENABLED*/
 CASE(-1) ! legacy
   IndicatorType=INDTYPE_DG
@@ -207,6 +210,7 @@ IndicatorInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT INDICATOR DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitIndicator
+
 
 !==================================================================================================================================
 !> Perform calculation of the indicator.
@@ -276,15 +280,16 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
 #elif FV_ENABLED == 3
   DO iElem=1,nElems
     IndValue(iElem) = IndPerssonBlend(U(:,:,:,:,iElem))
-    IPWRITE(*,*) 'IndValue(iElem):', IndValue(iElem)
-    FV_alpha(:,:,:,iElem)  = 1. / (1. + EXP(-sdT_FV * (IndValue(iElem) - T_FV)))
+    IndValue(iElem) = 1. / (1. + EXP(-sdT_FV * (IndValue(iElem) - T_FV)))
+    ! Call Sobel indicator
+    CALL SobelIndicator(U(:,:,:,:,iElem),FV_alpha(:,:,:,:,iElem))
     ! Limit to alpha_max
-    FV_alpha(:,:,:,iElem) = MIN(FV_alpha(:,:,:,iElem),FV_alpha_max)
+    FV_alpha(1,:,:,:,iElem) = MIN(FV_alpha(1,:,:,:,iElem)*IndValue(iElem),FV_alpha_max)
   END DO ! iElem
   ! CALL FV_ExtendAlpha(FV_alpha)
   ! Do not compute FV contribution for elements below threshold
   DO iElem=1,nElems
-    IF (MAXVAL(FV_alpha(:,:,:,iElem)) .LT. FV_alpha_min) FV_alpha(:,:,:,iElem) = 0.
+    IF (MAXVAL(FV_alpha(1,:,:,:,iElem)) .LT. FV_alpha_min) FV_alpha(1,:,:,:,iElem) = 0.
   END DO ! iElem
 #else
   DO iElem=1,nElems
@@ -701,6 +706,114 @@ IF (IndValue .LT. EPSILON(1.)) IndValue = EPSILON(IndValue)
 END FUNCTION IndPerssonBlend
 #endif /*FV_ENABLED==2 || FV_ENABLED==3*/
 
+
+#if FV_ENABLED==3
+!==================================================================================================================================
+!
+!==================================================================================================================================
+SUBROUTINE CalcSobelFilter()
+! MODULES
+USE MOD_Indicator_Vars   ,ONLY: SobelFilterMatrix
+!==================================================================================================================================
+! Sobel filter in x-direction
+SobelFilterMatrix(1,1,1)=-1.
+SobelFilterMatrix(1,1,2)= 0.
+SobelFilterMatrix(1,1,3)= 1.
+SobelFilterMatrix(1,2,1)=-2.
+SobelFilterMatrix(1,2,2)= 0.
+SobelFilterMatrix(1,2,3)= 2.
+SobelFilterMatrix(1,3,1)=-1.
+SobelFilterMatrix(1,3,2)= 0.
+SobelFilterMatrix(1,3,3)= 1.
+
+! Sobel filter in y-direction
+SobelFilterMatrix(2,1,1)=-1.
+SobelFilterMatrix(2,1,2)=-2.
+SobelFilterMatrix(2,1,3)=-1.
+SobelFilterMatrix(2,2,1)= 0.
+SobelFilterMatrix(2,2,2)= 0.
+SobelFilterMatrix(2,2,3)= 0.
+SobelFilterMatrix(2,3,1)= 1.
+SobelFilterMatrix(2,3,2)= 2.
+SobelFilterMatrix(2,3,3)= 1.
+
+END SUBROUTINE CalcSobelFilter
+
+
+!==================================================================================================================================
+!
+!==================================================================================================================================
+SUBROUTINE SobelIndicator (U,FV_alpha)
+! MODULES
+USE MOD_PreProc
+USE MOD_Globals
+USE MOD_Indicator_Vars      ,ONLY: SobelFilterMatrix
+#if EQNSYSNR == 2 /* NAVIER-STOKES */
+USE MOD_EOS_Vars
+#endif /* NAVIER-STOKES */
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,INTENT(IN)                       :: U(       PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   !< Solution
+REAL,INTENT(INOUT)                    :: FV_alpha(1      ,0:PP_N,0:PP_N,0:PP_NZ)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+#if EQNSYSNR == 2 /* NAVIER-STOKES */
+REAL                                  :: UE(1:PP_2Var)
+REAL                                  :: binaryEdgeMap_Pre(0:PP_N,0:PP_N,0:PP_NZ)
+REAL                                  :: signU,U_Max,U_Min,BEMMax
+#endif /* NAVIER-STOKES */
+INTEGER                               :: i,j,k
+REAL                                  :: U_loc(0:PP_N+2,0:PP_N+2,0:PP_NZ)
+REAL                                  :: z_x(0:PP_N, 0:PP_N)
+REAL                                  :: z_y(0:PP_N, 0:PP_N)
+!==================================================================================================================================
+
+#if EQNSYSNR == 2 /* NAVIER-STOKES */
+DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+  UE(EXT_CONS) = U(:,i,j,k)
+  UE(EXT_SRHO) = 1./UE(EXT_DENS)
+  UE(EXT_VELV) = VELOCITY_HE(UE)
+  ! IF (PRESSURE_HE(UE)>0. .AND. UE(EXT_DENS)>0) THEN; signU =  1
+  ! ELSE                                             ; signU = -1
+  ! END IF
+  U_loc(i+1,j+1,k) = PRESSURE_HE(UE)*UE(EXT_DENS)!*signU
+END DO; END DO; END DO! i,j,k=0,PP_N
+! padding
+U_loc(0     ,:     ,:) = U_loc(1     ,:     ,:)
+U_loc(PP_N+2,:     ,:) = U_loc(PP_N+1,:     ,:)
+U_loc(:     ,0     ,:) = U_loc(:     ,1     ,:)
+U_loc(:     ,PP_N+2,:) = U_loc(:     ,PP_N+1,:)
+! TODO
+! CALL NORMALIZE()
+! U_Max=MAXVAL(U_loc)
+! U_Min=MINVAL(U_loc)
+! U_loc(:,:,:)=(U_loc(:,:,:)-U_Min)/(U_Max-U_Min)
+#endif /* NAVIER-STOKES */
+
+DO k=0,PP_NZ
+  z_x = 0.
+  z_y = 0.
+
+  ! Inner DOFs
+  DO j=0,PP_N
+    DO i=0,PP_N
+      z_x(i,j) = z_x(i,j) + SUM(MATMUL(SobelFilterMatrix(1,:,:),U_loc(i:i+2,j:j+2,k)))
+      z_y(i,j) = z_y(i,j) + SUM(MATMUL(SobelFilterMatrix(2,:,:),U_loc(i:i+2,j:j+2,k)))
+    END DO
+  END DO
+
+  FV_alpha(1,0:PP_N,0:PP_N,k) = SQRT(z_x**2 + z_y**2)
+
+  U_Max = MAXVAL(FV_alpha(1,:,:,k))
+  IF (U_max.GT.1.E-8) THEN
+  ! U_Min = MINVAL(FV_alpha)
+    FV_alpha(1,:,:,k) = FV_alpha(1,:,:,k)/U_Max
+  END IF
+END DO
+
+END SUBROUTINE SobelIndicator
+#endif /* FV_ENABLED==3 */
 #endif /* EQNSYSNR == 2 */
 
 

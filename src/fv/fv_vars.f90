@@ -75,7 +75,7 @@ INTEGER                :: FV_nExtendAlpha        !< Number of times alpha should
 
 ! FV/DG Blending
 #if FV_ENABLED == 3
-REAL,ALLOCATABLE       :: FV_alpha( :,:,:,:)     !< Blending coefficient
+REAL,ALLOCATABLE       :: FV_alpha(:,:,:,:,:)    !< Blending coefficient
 REAL                   :: FV_alpha_min           !< Minimal blending coefficient (all elems below are treated as pure DG)
 REAL                   :: FV_alpha_max           !< Maximal blending coefficient
 REAL,ALLOCATABLE       :: Ut_xi(  :,:,:,:,:)

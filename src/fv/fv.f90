@@ -128,7 +128,10 @@ USE MOD_FV_Basis
 USE MOD_Filter_Vars         ,ONLY: NFilter
 USE MOD_Indicator_Vars      ,ONLY: nModes,IndicatorType
 USE MOD_Overintegration_Vars,ONLY: NUnder
-#endif
+#endif /*FV_ENABLED == 1*/
+#if FV_ENABLED == 3
+USE MOD_IO_HDF5             ,ONLY: AddToFieldData,FieldOut
+#endif /*FV_ENABLED == 3*/
 USE MOD_IO_HDF5             ,ONLY: AddToElemData,ElementOut
 USE MOD_Mesh_Vars           ,ONLY: nElems,nSides
 USE MOD_ReadInTools
@@ -201,11 +204,12 @@ CALL AddToElemData(ElementOut,'FV_alpha',FV_alpha)
 FV_alpha_min = GETREAL('FV_alpha_min')
 FV_alpha_max = GETREAL('FV_alpha_max')
 
-ALLOCATE(FV_alpha(       0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
+ALLOCATE(FV_alpha(     1,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
 ALLOCATE(Ut_xi(  PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
 ALLOCATE(Ut_eta( PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
 ALLOCATE(Ut_zeta(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
 FV_alpha = 0.
+CALL AddToFieldData(FieldOut,(/1,PP_N+1,PP_N+1,PP_NZ+1,nElems/),'FV_alpha',(/'FV_alpha'/),RealArray=FV_alpha)
 #endif /*FV_ENABLED*/
 
 #if FV_RECONSTRUCT
