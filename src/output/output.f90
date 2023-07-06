@@ -260,7 +260,7 @@ USE MOD_Mesh_Vars     ,ONLY: nGlobalElems
 #if FV_ENABLED == 1
 USE MOD_Analyze_Vars  ,ONLY: totalFV_nElems
 USE MOD_FV_Vars       ,ONLY: FV_Elems
-#elif FV_ENABLED == 2
+#elif FV_ENABLED == 2 || FV_ENABLED == 3
 USE MOD_Analyze_Vars  ,ONLY: FV_totalAlpha
 USE MOD_FV_Vars       ,ONLY: FV_alpha
 #endif /*FV_ENABLED*/
@@ -289,9 +289,9 @@ INTEGER,PARAMETER :: barWidth = 39
 INTEGER,PARAMETER :: barWidth = 27
 #elif (FV_ENABLED==1) && !PP_LIMITER
 INTEGER,PARAMETER :: barWidth = 39
-#elif (FV_ENABLED==2) &&  PP_LIMITER
+#elif (FV_ENABLED==2 || FV_ENABLED == 3) &&  PP_LIMITER
 INTEGER,PARAMETER :: barWidth = 20
-#elif (FV_ENABLED==2) && !PP_LIMITER
+#elif (FV_ENABLED==2 || FV_ENABLED == 3) && !PP_LIMITER
 INTEGER,PARAMETER :: barWidth = 32
 #else
 INTEGER,PARAMETER :: barWidth = 51
@@ -299,7 +299,7 @@ INTEGER,PARAMETER :: barWidth = 51
 #if FV_ENABLED == 1
 INTEGER(KIND=8)   :: FVcounter
 REAL              :: FV_percent
-#elif FV_ENABLED == 2
+#elif FV_ENABLED == 2 || FV_ENABLED == 3
 REAL              :: FV_alpha_range(2)
 #endif /*FV_ENABLED*/
 #if PP_LIMITER
@@ -310,7 +310,7 @@ REAL              :: PP_percent
 #if FV_ENABLED == 1
 FVcounter      = INT(SUM(FV_Elems),KIND=8)
 totalFV_nElems = totalFV_nElems + FVcounter ! counter for output of FV amount during analyze
-#elif FV_ENABLED == 2
+#elif FV_ENABLED == 2 || FV_ENABLED == 3
 FV_alpha_range(1) = MINVAL(FV_alpha)
 FV_alpha_range(2) = MAXVAL(FV_alpha)
 FV_totalAlpha    = FV_totalAlpha + SUM(FV_alpha)
@@ -332,14 +332,14 @@ IF(.NOT.doPrintStatusLine .AND. .NOT.doETA_loc) RETURN
 IF (MPIRoot) THEN
 #if FV_ENABLED == 1
   CALL MPI_REDUCE(MPI_IN_PLACE    ,FVcounter       ,1,MPI_INTEGER8        ,MPI_SUM,0,MPI_COMM_FLEXI,iError)
-#elif FV_ENABLED == 2
+#elif FV_ENABLED == 2 || FV_ENABLED == 3
   CALL MPI_REDUCE(MPI_IN_PLACE    ,FV_alpha_range(1),1,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_FLEXI,iError)
   CALL MPI_REDUCE(MPI_IN_PLACE    ,FV_alpha_range(2),1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
 #endif /*FV_ENABLED*/
 ELSE
 #if FV_ENABLED == 1
   CALL MPI_REDUCE(FVcounter       ,0               ,1,MPI_INTEGER8        ,MPI_SUM,0,MPI_COMM_FLEXI,iError)
-#elif FV_ENABLED == 2
+#elif FV_ENABLED == 2 || FV_ENABLED == 3
   CALL MPI_REDUCE(FV_alpha_range(1),0               ,1,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_FLEXI,iError)
   CALL MPI_REDUCE(FV_alpha_range(2),0               ,1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
 #endif /*FV_ENABLED*/
@@ -378,7 +378,7 @@ IF(MPIRoot)THEN
 #if FV_ENABLED == 1
   FV_percent = REAL(FVcounter) / REAL(nGlobalElems) * 100.
   WRITE(UNIT_stdOut,'(F7.2,A5)',ADVANCE='NO') FV_percent, '% FV,'
-#elif FV_ENABLED == 2
+#elif FV_ENABLED == 2 || FV_ENABLED == 3
   WRITE(UNIT_stdOut,'(A7,F5.3,A1,F5.3,A)',ADVANCE='NO') ' aFV = ',FV_alpha_range(1),'-',FV_alpha_range(2),','
 #endif /*FV_ENABLED*/
 
