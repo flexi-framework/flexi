@@ -198,6 +198,7 @@ END SUBROUTINE FV_ComputeExtendedAlpha
 SUBROUTINE FV_Info(iter)
 ! MODULES
 USE MOD_Globals
+USE MOD_PreProc
 USE MOD_Mesh_Vars    ,ONLY: nGlobalElems
 USE MOD_FV_Vars      ,ONLY: FV_alpha
 USE MOD_Analyze_Vars ,ONLY: FV_totalAlpha
@@ -224,6 +225,12 @@ ELSE
   CALL MPI_REDUCE(FV_totalAlpha    ,0               ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 #endif /*USE_MPI*/
+
+#if FV_ENABLED == 3
+! DOF-wise FV_alpha
+FV_totalAlpha = FV_totalAlpha / ((PP_N +1)*(PP_N +1)*(PP_NZ+1))
+#endif /*FV_ENABLED*/
+
 SWRITE(UNIT_stdOut,'(A,F8.3,A,F5.3,A,ES18.9)') ' FV_alpha    : ',FV_alpha_range(1),' - ',FV_alpha_range(2),&
                                               ', avg: '         ,FV_totalAlpha / REAL(nGlobalElems) / iter
 FV_totalAlpha   = 0.
