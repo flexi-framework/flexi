@@ -250,9 +250,6 @@ REAL,TARGET               :: U_DG(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 #endif
 !==================================================================================================================================
 
-! FV_alpha = 1.0
-! return
-
 ! if time is before IndStartTime return high Indicator value (FV)
 IF (t.LT.IndStartTime) THEN
   IndValue = HUGE(1.)
@@ -282,7 +279,7 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
     IndValue(iElem) = IndPerssonBlend(U(:,:,:,:,iElem))
     IndValue(iElem) = 1. / (1. + EXP(-sdT_FV * (IndValue(iElem) - T_FV)))
     ! Call Sobel indicator
-    CALL SobelIndicator(U(:,:,:,:,iElem),FV_alpha(:,:,:,:,iElem))
+    CALL SobelIndicator(U(:,:,:,:,iElem),IndValue(iElem),FV_alpha(:,:,:,:,iElem),iElem)
     ! Limit to alpha_max
     FV_alpha(1,:,:,:,iElem) = MIN(FV_alpha(1,:,:,:,iElem)*IndValue(iElem),FV_alpha_max)
   END DO ! iElem
@@ -743,11 +740,17 @@ END SUBROUTINE CalcSobelFilter
 !==================================================================================================================================
 !
 !==================================================================================================================================
-SUBROUTINE SobelIndicator (U,FV_alpha)
+SUBROUTINE SobelIndicator (U,IndVal,FV_alpha,iElem)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Indicator_Vars      ,ONLY: SobelFilterMatrix
+USE MOD_Mesh_Vars           ,ONLY: Elem_xGP,sJ
+USE MOD_FV_Vars             ,ONLY: FV_alpha_min
+USE MOD_Analyze_Vars        ,ONLY: wGPVol
+USE MOD_Interpolation_Vars  ,ONLY: sVdm_Leg
+USE MOD_Output_Vars         ,ONLY: NVisu,Vdm_GaussN_NVisu
+USE MOD_ChangeBasisByDim    ,ONLY: ChangeBasisVolume
 #if EQNSYSNR == 2 /* NAVIER-STOKES */
 USE MOD_EOS_Vars
 #endif /* NAVIER-STOKES */
@@ -755,7 +758,9 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN)                       :: U(       PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   !< Solution
+REAL,INTENT(IN)                       :: IndVal
 REAL,INTENT(INOUT)                    :: FV_alpha(1      ,0:PP_N,0:PP_N,0:PP_NZ)
+INTEGER,INTENT(IN)                    :: iElem
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 #if EQNSYSNR == 2 /* NAVIER-STOKES */
@@ -765,9 +770,11 @@ REAL                                  :: signU,U_Max,U_Min,BEMMax
 #endif /* NAVIER-STOKES */
 INTEGER                               :: i,j,k
 REAL                                  :: U_loc(0:PP_N+2,0:PP_N+2,0:PP_NZ)
-REAL                                  :: z_x(0:PP_N, 0:PP_N)
-REAL                                  :: z_y(0:PP_N, 0:PP_N)
+REAL                                  :: z_x(0:PP_N,0:PP_N),dx(3,0:PP_N,0:PP_N,0:PP_NZ)
+REAL                                  :: z_y(0:PP_N,0:PP_N),IntegrationWeight
 !==================================================================================================================================
+
+IF(IndVal.LT.FV_alpha_min) RETURN
 
 #if EQNSYSNR == 2 /* NAVIER-STOKES */
 DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
@@ -777,19 +784,21 @@ DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
   ! IF (PRESSURE_HE(UE)>0. .AND. UE(EXT_DENS)>0) THEN; signU =  1
   ! ELSE                                             ; signU = -1
   ! END IF
-  U_loc(i+1,j+1,k) = PRESSURE_HE(UE)*UE(EXT_DENS)!*signU
+  !U_loc(i+1,j+1,k) = PRESSURE_HE(UE)*UE(EXT_DENS)!*signU
+  U_loc(i+1,j+1,k) = UE(EXT_DENS)!*signU
 END DO; END DO; END DO! i,j,k=0,PP_N
+#endif /* NAVIER-STOKES */
+
+! Transform nodal solution to a modal representation
+CALL ChangeBasisVolume(PP_N,NVisu,Vdm_GaussN_NVisu,U_loc(1:PP_N+1,1:PP_N+1,:),U_loc(1:PP_N+1,1:PP_N+1,:))
+
 ! padding
 U_loc(0     ,:     ,:) = U_loc(1     ,:     ,:)
 U_loc(PP_N+2,:     ,:) = U_loc(PP_N+1,:     ,:)
 U_loc(:     ,0     ,:) = U_loc(:     ,1     ,:)
 U_loc(:     ,PP_N+2,:) = U_loc(:     ,PP_N+1,:)
-! TODO
-! CALL NORMALIZE()
-! U_Max=MAXVAL(U_loc)
-! U_Min=MINVAL(U_loc)
-! U_loc(:,:,:)=(U_loc(:,:,:)-U_Min)/(U_Max-U_Min)
-#endif /* NAVIER-STOKES */
+
+!TODO: Other three dimension (3)
 
 DO k=0,PP_NZ
   z_x = 0.
@@ -805,12 +814,12 @@ DO k=0,PP_NZ
 
   FV_alpha(1,0:PP_N,0:PP_N,k) = SQRT(z_x**2 + z_y**2)
 
-  U_Max = MAXVAL(FV_alpha(1,:,:,k))
-  IF (U_max.GT.1.E-8) THEN
-  ! U_Min = MINVAL(FV_alpha)
-    FV_alpha(1,:,:,k) = FV_alpha(1,:,:,k)/U_Max
-  END IF
 END DO
+U_Max = MAXVAL(FV_alpha(1,:,:,:))
+IF (U_max.GT.1.E-3) THEN
+! U_Min = MINVAL(FV_alpha)
+  FV_alpha(1,:,:,:) = FV_alpha(1,:,:,:)/U_Max
+END IF
 
 END SUBROUTINE SobelIndicator
 #endif /* FV_ENABLED==3 */
