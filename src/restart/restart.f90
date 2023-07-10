@@ -127,7 +127,7 @@ IF (.NOT.RestartMean) THEN
 #endif /* EQNSYSNR != 1 */
   CALL GetDataProps(nVar_Restart,N_Restart,nElems_Restart,NodeType_Restart)
   RestartMode = 1
-  SWRITE(UNIT_stdOut,'(A)') ' | Restarting from state file ...'
+  SWRITE(UNIT_stdOut,'(A)') ' | Restarting from state file...'
 #if EQNSYSNR != 1
 ELSE
   CALL GetDataProps(nVar_Restart,N_Restart,nElems_Restart,NodeType_Restart,'Mean')
@@ -173,10 +173,10 @@ ELSE
   ! Use conservative variables available
   IF (ALL(RestartCons.NE.-1)) THEN
     RestartMode = 2
-    SWRITE(UNIT_stdOut,'(A)') ' | Restarting from time-averaged file using conservative variables ...'
+    SWRITE(UNIT_stdOut,'(A)') ' | Restarting from time-averaged file using conservative variables...'
   ELSE IF (ALL(RestartPrim.NE.-1)) THEN
     RestartMode = 3
-    SWRITE(UNIT_stdOut,'(A)') ' | Restarting from time-averaged file using primitive variables ...'
+    SWRITE(UNIT_stdOut,'(A)') ' | Restarting from time-averaged file using primitive variables...'
   ELSE
     RestartMode = 0
   END IF
@@ -199,7 +199,7 @@ END SUBROUTINE InitRestartFile
 !> - In the restart case, it is checked if the restart file exists at all. If so, the properties of the restart file will be
 !>   read (polynomial degree and node type are needed) and stored to use later.The flag DoRestart indicating the restart is set
 !>   to be used by other routines. Also the simulation time of the restart is read.
-!>   A optional parameter ResetTime can be used to set the restart time to 0.
+!>   An optional parameter ResetTime can be used to set the restart time to 0.
 !> - If no restart is performed, the RestartTime is set to 0.
 !>
 !> The routine also checks if the node type and polynomial degree of the restart file is the same than in the current simulation.
@@ -253,7 +253,7 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
   ! Read in time from restart file
   CALL ReadAttribute(File_ID,'Time',1,RealScalar=RestartTime)
   ! Option to set the calculation time to 0 even tho performing a restart
-  ResetTime = GETLOGICAL('ResetTime','.FALSE.')
+  ResetTime = GETLOGICAL('ResetTime')
   IF(ResetTime) RestartTime=0.
   CALL CloseDataFile()
 
@@ -319,11 +319,13 @@ USE MOD_Mesh_Vars,          ONLY: offsetElem,detJac_Ref,Ngeo
 USE MOD_Mesh_Vars,          ONLY: nElems,nGlobalElems
 USE MOD_Restart_Vars
 #if FV_ENABLED
-USE MOD_FV,                 ONLY: FV_ProlongFVElemsToFace
 USE MOD_FV_Vars,            ONLY: FV_Elems
+#endif
+#if FV_ENABLED == 1
+USE MOD_FV_Switching,       ONLY: FV_ProlongFVElemsToFace
 USE MOD_Indicator_Vars,     ONLY: IndValue
 USE MOD_StringTools,        ONLY: STRICMP
-#endif /*FV_ENABLED*/
+#endif /*FV_ENABLED==1*/
 #if PP_dim == 3
 USE MOD_2D,                 ONLY: ExpandArrayTo3D
 #else
@@ -345,21 +347,23 @@ REAL,ALLOCATABLE   :: JNR(:,:,:,:)
 REAL               :: Vdm_NRestart_N(0:PP_N,0:N_Restart)
 REAL               :: Vdm_3Ngeo_NRestart(0:N_Restart,0:3*NGeo)
 LOGICAL            :: doFlushFiles_loc
-#if FV_ENABLED
+#if FV_ENABLED == 1
 INTEGER             :: nVal(15)
 REAL,ALLOCATABLE    :: ElemData(:,:),tmp(:)
 CHARACTER(LEN=255),ALLOCATABLE :: VarNamesElemData(:)
-#endif /*FV_ENABLED*/
+#endif /*FV_ENABLED==1*/
 !==================================================================================================================================
 
-doFlushFiles_loc = MERGE(doFlushFiles,.TRUE.,PRESENT(doFlushFiles))
+IF (PRESENT(doFlushFiles)) THEN; doFlushFiles_loc = doFlushFiles
+ELSE                           ; doFlushFiles_loc = .TRUE.
+END IF
 
 IF (DoRestart) THEN
   SWRITE(UNIT_stdOut,'(132("-"))')
   SWRITE(UNIT_stdOut,'(A)') ' PERFORMING RESTART...'
 
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-#if FV_ENABLED
+#if FV_ENABLED == 1
   ! Read FV element distribution and indicator values from elem data array if possible
   CALL GetArrayAndName('ElemData','VarNamesAdd',nVal,tmp,VarNamesElemData)
   IF (ALLOCATED(VarNamesElemData)) THEN
@@ -384,7 +388,7 @@ IF (DoRestart) THEN
   SDEALLOCATE(VarNamesElemData)
   SDEALLOCATE(tmp)
   CALL FV_ProlongFVElemsToFace()
-#endif
+#endif /*FV_ENABLED==1*/
 
   ! Mean files only have a dummy DG_Solution, we have to pick the "Mean" array in this case
   IF (RestartMode.GT.1) THEN

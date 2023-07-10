@@ -52,6 +52,10 @@ INTERFACE InitOutput
   MODULE PROCEDURE InitOutput
 END INTERFACE
 
+INTERFACE PrintPercentage
+  MODULE PROCEDURE PrintPercentage
+END INTERFACE
+
 INTERFACE PrintStatusLine
   MODULE PROCEDURE PrintStatusLine
 END INTERFACE
@@ -72,7 +76,7 @@ INTERFACE FinalizeOutput
   MODULE PROCEDURE FinalizeOutput
 END INTERFACE
 
-PUBLIC:: InitOutput,PrintStatusLine,Visualize,InitOutputToFile,OutputToFile,FinalizeOutput
+PUBLIC:: InitOutput,PrintPercentage,PrintStatusLine,Visualize,InitOutputToFile,OutputToFile,FinalizeOutput
 PUBLIC:: print_userblock
 !==================================================================================================================================
 
@@ -148,7 +152,7 @@ ALLOCATE(Vdm_GaussN_NVisu(0:NVisu,0:PP_N))
 CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVISU,Vdm_GaussN_NVisu)
 
 ! Output polynomial degree (to reduce storage,e.g.in case of overintegration)
-NOut=GETINT('NOut','-1') ! -1: PP_N(off), >0:custom
+NOut=GETINT('NOut') ! -1: PP_N(off), >0:custom
 IF(NOut.EQ.-1)THEN
   NOut=PP_N
 END IF
@@ -159,9 +163,9 @@ IF(NOut.NE.PP_N)THEN
 END IF
 
 ! Name for all output files
-ProjectName=GETSTR('ProjectName')
-Logging    =GETLOGICAL('Logging')
-ErrorFiles =GETLOGICAL('ErrorFiles')
+ProjectName = GETSTR('ProjectName')
+Logging     = GETLOGICAL('Logging')
+ErrorFiles  = GETLOGICAL('ErrorFiles')
 
 doPrintStatusLine=GETLOGICAL("doPrintStatusLine")
 WriteStateFiles=GETLOGICAL("WriteStateFiles")
@@ -169,11 +173,9 @@ IF (.NOT.WriteStateFiles) CALL PrintWarning("Write of state files disabled!")
 WriteTimeAvgFiles=GETLOGICAL("WriteTimeAvgFiles")
 IF (.NOT.WriteTimeAvgFiles) CALL PrintWarning("Write of time average files disabled!")
 
-
 IF (MPIRoot) THEN
   ! prepare userblock file
-  CALL print_userblock(TRIM(UserBlockTmpFile)//C_NULL_CHAR, &
-                       TRIM(ParameterFile)//C_NULL_CHAR)
+  CALL print_userblock(TRIM(UserBlockTmpFile)//C_NULL_CHAR,TRIM(ParameterFile)//C_NULL_CHAR)
   INQUIRE(FILE=TRIM(UserBlockTmpFile),SIZE=userblock_total_len)
 END IF
 
@@ -187,12 +189,12 @@ ASCIIOutputFormat = GETINTFROMSTR('ASCIIOutputFormat')
 ! Open file for logging
 IF(Logging)THEN
   WRITE(LogFile,'(A,A1,I6.6,A4)')TRIM(ProjectName),'_',myRank,'.log'
-  OPEN(UNIT=UNIT_logOut,  &
-       FILE=LogFile,      &
-       STATUS='UNKNOWN',  &
-       ACTION='WRITE',    &
-       POSITION='APPEND', &
-       IOSTAT=OpenStat)
+  OPEN(UNIT     = UNIT_logOut,  &
+       FILE     = LogFile,      &
+       STATUS   = 'UNKNOWN',    &
+       ACTION   = 'WRITE',      &
+       POSITION = 'APPEND',     &
+       IOSTAT   = OpenStat)
   CALL DATE_AND_TIME(StrDate,StrTime)
   WRITE(UNIT_logOut,*)
   WRITE(UNIT_logOut,'(132("#"))')
@@ -206,6 +208,43 @@ SWRITE(UNIT_stdOut,'(A)')' INIT OUTPUT DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitOutput
 
+
+!==================================================================================================================================
+!> Displays the current process of a given procedure
+!==================================================================================================================================
+SUBROUTINE PrintPercentage(NameOpt,percent)
+! MODULES                                                                                                                          !
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Output_Vars   ,ONLY: doPrintStatusLine
+USE MOD_ReadInTools   ,ONLY: prms
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT / OUTPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN) :: NameOpt        !< Option name
+REAL,INTENT(IN)             :: percent        !< current progress percentage
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+CHARACTER(LEN=20)    :: fmtName
+!==================================================================================================================================
+
+IF (.NOT.doPrintStatusLine) RETURN
+IF (.NOT.MPIRoot)           RETURN
+
+WRITE(fmtName,*) prms%maxNameLen
+WRITE(UNIT_StdOut,'(A3,A'//TRIM(fmtName)//',A2)',ADVANCE='NO')' | ',TRIM(NameOpt),' | '
+WRITE(UNIT_stdOut,'(A,A1,A)',ADVANCE='NO') REPEAT('=',MAX(CEILING(percent*(prms%maxValueLen+1)/100.),0)),'>',&
+                                           REPEAT(' ',(prms%maxValueLen+1)-MAX(CEILING(percent*(prms%maxValueLen+1)/100.),0))
+IF (percent.LT.100) THEN
+  WRITE(UNIT_stdOut,'(A2,F6.2,A3,A1)',ADVANCE='NO' ) '|[',percent,'%]|',ACHAR(13) ! ACHAR(13) is carriage
+ELSE
+  WRITE(UNIT_stdOut,'(A2,F6.2,A3)'   ,ADVANCE='YES') '|[',percent,'%]|'
+END IF
+
+END SUBROUTINE PrintPercentage
+
+
 !==================================================================================================================================
 !> Displays the actual status of the simulation and counts the amount of FV elements
 !==================================================================================================================================
@@ -215,18 +254,19 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Output_Vars   ,ONLY: doPrintStatusLine
 USE MOD_Restart_Vars  ,ONLY: DoRestart,RestartTime
-#if FV_ENABLED || PP_LIMITER
+#if (FV_ENABLED == 1) || PP_LIMITER
 USE MOD_Mesh_Vars     ,ONLY: nGlobalElems
 #endif
-#if FV_ENABLED
+#if FV_ENABLED == 1
 USE MOD_Analyze_Vars  ,ONLY: totalFV_nElems
 USE MOD_FV_Vars       ,ONLY: FV_Elems
-USE MOD_Mesh_Vars     ,ONLY: nGlobalElems
+#elif FV_ENABLED == 2
+USE MOD_Analyze_Vars  ,ONLY: FV_totalAlpha
+USE MOD_FV_Vars       ,ONLY: FV_alpha
 #endif /*FV_ENABLED*/
 #if PP_LIMITER
 USE MOD_Analyze_Vars, ONLY: totalPP_nElems
 USE MOD_Filter_Vars , ONLY: PP_Elems
-USE MOD_Mesh_Vars   , ONLY: nGlobalElems
 #endif /*PP_LIMITER*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -243,26 +283,38 @@ LOGICAL           :: doETA_loc
 REAL              :: percent,percent_ETA
 REAL              :: time_remaining,mins,secs,hours,days
 CHARACTER(3)      :: tmpString
-#if FV_ENABLED && PP_LIMITER
-INTEGER,PARAMETER :: barWidth = 27
-#elif FV_ENABLED || PP_LIMITER
+#if !FV_ENABLED && PP_LIMITER
 INTEGER,PARAMETER :: barWidth = 39
+#elif (FV_ENABLED==1) &&  PP_LIMITER
+INTEGER,PARAMETER :: barWidth = 27
+#elif (FV_ENABLED==1) && !PP_LIMITER
+INTEGER,PARAMETER :: barWidth = 39
+#elif (FV_ENABLED==2) &&  PP_LIMITER
+INTEGER,PARAMETER :: barWidth = 20
+#elif (FV_ENABLED==2) && !PP_LIMITER
+INTEGER,PARAMETER :: barWidth = 32
 #else
 INTEGER,PARAMETER :: barWidth = 51
 #endif
-#if FV_ENABLED
+#if FV_ENABLED == 1
 INTEGER(KIND=8)   :: FVcounter
 REAL              :: FV_percent
+#elif FV_ENABLED == 2
+REAL              :: FV_alpha_range(2)
 #endif /*FV_ENABLED*/
 #if PP_LIMITER
 INTEGER(KIND=8)   :: PPcounter
 REAL              :: PP_percent
 #endif /*PP_LIMITER*/
 !==================================================================================================================================
-#if FV_ENABLED
+#if FV_ENABLED == 1
 FVcounter      = INT(SUM(FV_Elems),KIND=8)
 totalFV_nElems = totalFV_nElems + FVcounter ! counter for output of FV amount during analyze
-#endif
+#elif FV_ENABLED == 2
+FV_alpha_range(1) = MINVAL(FV_alpha)
+FV_alpha_range(2) = MAXVAL(FV_alpha)
+FV_totalAlpha    = FV_totalAlpha + SUM(FV_alpha)
+#endif /*FV_ENABLED*/
 #if PP_LIMITER
 PPcounter      = INT(SUM(PP_Elems),KIND=8)
 totalPP_nElems = totalPP_nElems + PPcounter ! counter for output of FV amount during analyze
@@ -278,9 +330,19 @@ IF(.NOT.doPrintStatusLine .AND. .NOT.doETA_loc) RETURN
 
 #if FV_ENABLED && USE_MPI
 IF (MPIRoot) THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE,FVcounter,1,MPI_INTEGER8,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+#if FV_ENABLED == 1
+  CALL MPI_REDUCE(MPI_IN_PLACE    ,FVcounter       ,1,MPI_INTEGER8        ,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+#elif FV_ENABLED == 2
+  CALL MPI_REDUCE(MPI_IN_PLACE    ,FV_alpha_range(1),1,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE    ,FV_alpha_range(2),1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
+#endif /*FV_ENABLED*/
 ELSE
-  CALL MPI_REDUCE(FVcounter,0           ,1,MPI_INTEGER8,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+#if FV_ENABLED == 1
+  CALL MPI_REDUCE(FVcounter       ,0               ,1,MPI_INTEGER8        ,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+#elif FV_ENABLED == 2
+  CALL MPI_REDUCE(FV_alpha_range(1),0               ,1,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(FV_alpha_range(2),0               ,1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
+#endif /*FV_ENABLED*/
 END IF
 #endif
 
@@ -313,9 +375,11 @@ IF(MPIRoot)THEN
   hours = MOD(time_remaining,24.)
   days = time_remaining / 24
 
-#if FV_ENABLED
+#if FV_ENABLED == 1
   FV_percent = REAL(FVcounter) / REAL(nGlobalElems) * 100.
   WRITE(UNIT_stdOut,'(F7.2,A5)',ADVANCE='NO') FV_percent, '% FV,'
+#elif FV_ENABLED == 2
+  WRITE(UNIT_stdOut,'(A7,F5.3,A1,F5.3,A)',ADVANCE='NO') ' aFV = ',FV_alpha_range(1),'-',FV_alpha_range(2),','
 #endif /*FV_ENABLED*/
 
 #if PP_LIMITER
@@ -324,7 +388,9 @@ IF(MPIRoot)THEN
 #endif /*PP_LIMITER*/
 
   ! Status line or standard output
-  tmpString = MERGE('YES','NO ',PRESENT(doETA))
+  IF (PRESENT(doETA)) THEN; tmpString = 'YES'
+  ELSE                    ; tmpString = 'NO'
+  ENDIF
 
   WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A12,A,A1,A,A3,F6.2,A3,A1)',ADVANCE=tmpString)    &
     '   Time = ', t,'  dt = ', dt, ' ', ' ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),' |',     &
@@ -468,10 +534,13 @@ ALLOCATE(U_NVisu(PP_nVar_loc,0:NVisu,0:NVisu,0:ZDIM(NVisu),1:(nElems-nFV_Elems))
 U_NVisu = 0.
 ALLOCATE(Coords_NVisu(1:3,0:NVisu,0:NVisu,0:ZDIM(NVisu),1:(nElems-nFV_Elems)))
 
-DG_iElem=0; FV_iElem=0
+DG_iElem = 0
+FV_iElem = 0
+
 DO iElem=1,nElems
 #if FV_ENABLED
-  IF (FV_Elems(iElem).EQ.0) THEN ! DG Element
+  ! DG Element
+  IF (FV_Elems(iElem).EQ.0) THEN
 #endif
     DG_iElem = DG_iElem+1
     ! Create coordinates of visualization points
@@ -481,6 +550,7 @@ DO iElem=1,nElems
 #if FV_ENABLED
     U_NVisu(PP_nVar_loc-1,:,:,:,DG_iElem) = IndValue(iElem)
     U_NVisu(PP_nVar_loc,:,:,:,DG_iElem) = FV_Elems(iElem)
+  ! FV Element
   ELSE
     FV_iElem = FV_iElem+1
 
@@ -488,7 +558,9 @@ DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       CALL ConsToPrim(UPrim ,U(:,i,j,k,iElem))
       DO kk=0,PP_dim-2; DO jj=0,1; DO ii=0,1
-        kkk=k*2+kk; jjj=j*2+jj; iii=i*2+ii
+        kkk = k*2+kk
+        jjj = j*2+jj
+        iii = i*2+ii
 #if FV_RECONSTRUCT
         dx = MERGE(  -FV_dx_XI_L(j,k,i,iElem),  FV_dx_XI_R(j,k,i,iElem),ii.EQ.0)
         dy = MERGE( -FV_dx_ETA_L(i,k,j,iElem), FV_dx_ETA_R(i,k,j,iElem),jj.EQ.0)
@@ -521,9 +593,9 @@ END DO ! iVar=1,PP_nVar
 ! Visualize data
 SELECT CASE(OutputFormat)
 CASE(OUTPUTFORMAT_TECPLOT)
-  STOP 'Tecplot output removed due to license issues (possible GPL incompatibility).'
+    CALL CollectiveStop(__STAMP__,'Tecplot output removed due to license issues (possible GPL incompatibility).')
 CASE(OUTPUTFORMAT_TECPLOTASCII)
-  STOP 'Tecplot output removed due to license issues (possible GPL incompatibility).'
+    CALL CollectiveStop(__STAMP__,'Tecplot output removed due to license issues (possible GPL incompatibility).')
 CASE(OUTPUTFORMAT_PARAVIEW)
 #if FV_ENABLED
   FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))
@@ -719,16 +791,14 @@ ELSE
 END IF
 
 OPEN(NEWUNIT  = ioUnit             , &
-     FILE     = TRIM(Filename_loc) , &
+     FILE     = TRIM(FileName_loc) , &
      FORM     = 'FORMATTED'        , &
      STATUS   = 'OLD'              , &
      POSITION = 'APPEND'           , &
      RECL     = 50000              , &
      IOSTAT = openStat             )
-IF(openStat.NE.0) THEN
-  CALL Abort(__STAMP__, &
-    'ERROR: cannot open '//TRIM(Filename_loc))
-END IF
+IF (openStat.NE.0) CALL Abort(__STAMP__,'ERROR: cannot open '//TRIM(FileName_loc))
+
 ! Choose between CSV and tecplot output format
 IF (ASCIIOutputFormat.EQ.ASCIIOUTPUTFORMAT_CSV) THEN
   ! Create format string for the variable output: WITH COMMA SEPARATION
@@ -737,10 +807,13 @@ ELSE
   ! Create format string for the variable output: WITH BLANK SEPARATION
   WRITE(formatStr,'(A10,I2,A14)')'(E23.14E5,',nVar(1),'(1X,E23.14E5))'
 END IF
+
 DO i=1,nVar(2)
   WRITE(ioUnit,formatstr) time(i),output(nVar(1)*(i-1)+1:nVar(1)*i)
 END DO
+
 CLOSE(ioUnit) ! outputfile
+
 END SUBROUTINE OutputToFile
 
 
@@ -750,11 +823,13 @@ END SUBROUTINE OutputToFile
 SUBROUTINE FinalizeOutput()
 ! MODULES
 USE MOD_Output_Vars,ONLY:Vdm_GaussN_NVisu,Vdm_N_NOut,OutputInitIsDone
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 SDEALLOCATE(Vdm_GaussN_NVisu)
 SDEALLOCATE(Vdm_N_NOut)
 OutputInitIsDone = .FALSE.
+
 END SUBROUTINE FinalizeOutput
 
 END MODULE MOD_Output

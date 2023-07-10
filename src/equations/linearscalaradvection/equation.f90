@@ -58,7 +58,7 @@ IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Equation")
 CALL prms%CreateRealArrayOption('AdvVel',       "Advection velocity for advection part of LinAdv-Diff.")
-CALL prms%CreateRealOption(     'DiffC',        "Diffusion constant for diffusion part of LinAdv-Diff.")
+CALL prms%CreateRealOption(     'DiffC',        "Diffusion constant for diffusion part of LinAdv-Diff.",'0.')
 END SUBROUTINE DefineParametersEquation
 
 !==================================================================================================================================
@@ -95,7 +95,7 @@ IF(AdvVel(3).NE.0.) THEN
 END IF
 #endif
 ! Read the diffusion constant from ini file
-DiffC  = GETREAL('DiffC','0.')
+DiffC  = GETREAL('DiffC')
 
 ! Call initialization of exactfunc
 CALL InitExactFunc()

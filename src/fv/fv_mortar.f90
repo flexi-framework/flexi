@@ -35,11 +35,64 @@ INTERFACE FV_gradU_mortar
   MODULE PROCEDURE FV_gradU_mortar
 END INTERFACE
 
+#if FV_ENABLED == 2
+INTERFACE FV_alpha_Mortar
+  MODULE PROCEDURE FV_alpha_Mortar
+END INTERFACE
+
+
+PUBLIC::FV_alpha_Mortar
+#endif /*FV_ENABLED == 2*/
 PUBLIC::FV_Elems_Mortar
 PUBLIC::FV_gradU_mortar
 !==================================================================================================================================
 
 CONTAINS
+
+#if FV_ENABLED == 2
+!==================================================================================================================================
+!> Copy FV_alpha information from big mortar sides to the small sides. Compare to U_mortar subroutine.
+!==================================================================================================================================
+SUBROUTINE FV_alpha_Mortar(FV_alpha_master,FV_alpha_slave,doMPISides)
+! MODULES
+USE MOD_Globals
+USE MOD_Preproc
+USE MOD_Mesh_Vars ,ONLY: nSides
+USE MOD_Mesh_Vars ,ONLY: MortarType,MortarInfo
+USE MOD_Mesh_Vars ,ONLY: firstMortarInnerSide,lastMortarInnerSide
+USE MOD_Mesh_Vars ,ONLY: firstMortarMPISide,lastMortarMPISide
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+REAL,INTENT(INOUT) :: FV_alpha_master(1:nSides) !< master side FV_elems
+REAL,INTENT(INOUT) :: FV_alpha_slave( 1:nSides) !< slave  side FV_elems
+LOGICAL,INTENT(IN)    :: doMPISides             !< =.TRUE. only MPI sides are filled, =.FALSE. inner sides
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER :: iMortar,nMortars
+INTEGER :: firstMortarSideID,lastMortarSideID
+INTEGER :: MortarSideID,SideID,locSide
+!==================================================================================================================================
+!                         doMPISides==True   doMPISides==False
+firstMortarSideID = MERGE(firstMortarMPISide,firstMortarInnerSide,doMPISides)
+ lastMortarSideID = MERGE( lastMortarMPISide, lastMortarInnerSide,doMPISides)
+
+DO MortarSideID=firstMortarSideID,lastMortarSideID
+  nMortars=MERGE(4,2,MortarType(1,MortarSideID).EQ.1)
+  locSide =MortarType(2,MortarSideID)
+  DO iMortar=1,nMortars
+    SideID= MortarInfo(MI_SIDEID,iMortar,locSide)
+    SELECT CASE(MortarInfo(MI_FLIP,iMortar,locSide))
+      CASE(0) ! master side
+        FV_alpha_master(SideID) = FV_alpha_master(MortarSideID)
+      CASE(1:4) ! slave side
+        FV_alpha_slave( SideID) = FV_alpha_master(MortarSideID)
+    END SELECT !flip(iMortar)
+  END DO !iMortar
+END DO !MortarSideID
+END SUBROUTINE FV_alpha_Mortar
+#endif /*FV_ENABLED == 2*/
 
 !==================================================================================================================================
 !> Copy FV_Elems information from big mortar sides to the small sides. Compare to U_mortar subroutine.

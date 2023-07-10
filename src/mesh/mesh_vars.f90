@@ -225,6 +225,7 @@ CONTAINS
 !==================================================================================================================================
 FUNCTION GETNEWSIDE()
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -246,11 +247,13 @@ getNewSide%nMortars=0
 getNewSide%MortarType=0
 END FUNCTION GETNEWSIDE
 
+
 !==================================================================================================================================
 !> Build new element type including sides and initialize values
 !==================================================================================================================================
 FUNCTION GETNEWELEM()
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -270,38 +273,64 @@ getNewElem%Type=0
 END FUNCTION GETNEWELEM
 
 
-
 !==================================================================================================================================
 !> Deallocates all pointers used for the mesh readin
 !==================================================================================================================================
 SUBROUTINE deleteMeshPointer()
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER       :: FirstElemInd,LastElemInd
-INTEGER       :: iElem,iLocSide
+INTEGER       :: iElem,iLocSide,iNbLocSide
 INTEGER       :: iMortar
 TYPE(tElem),POINTER :: aElem
 TYPE(tSide),POINTER :: aSide
 !==================================================================================================================================
 FirstElemInd = offsetElem+1
 LastElemInd  = offsetElem+nElems
+
 DO iElem=FirstElemInd,LastElemInd
   aElem=>Elems(iElem)%ep
   DO iLocSide=1,6
     aSide=>aElem%Side(iLocSide)%sp
+    ! Free mortar sides
     DO iMortar=1,aSide%nMortars
-      NULLIFY(aSide%MortarSide(iMortar)%sp)
+      ! Free MPI connection
+      IF (ASSOCIATED(aSide%MortarSide(iMortar)%sp%connection) .AND. aSide%MortarSide(iMortar)%sp%NbProc.NE.-1) THEN
+        ! Free the connected elem
+        DO iNbLocSide=1,6
+          DEALLOCATE(aSide%MortarSide(iMortar)%sp%connection%Elem%Side(iNbLocSide)%sp)
+        END DO
+        DEALLOCATE(aSide%MortarSide(iMortar)%sp%connection%Elem%Side)
+        DEALLOCATE(aSide%MortarSide(iMortar)%sp%connection%Elem)
+        ! Free the connected size
+        DEALLOCATE(aSide%MortarSide(iMortar)%sp%connection)
+      END IF
+      DEALLOCATE(aSide%MortarSide(iMortar)%sp)
     END DO
+    IF(ASSOCIATED(aSide%MortarSide)) DEALLOCATE(aSide%MortarSide)
+    ! Free MPI connection
+    IF (ASSOCIATED(aSide%connection) .AND. aSide%NbProc.NE.-1) THEN
+      ! Free the connected elem
+      DO iNbLocSide=1,6
+        DEALLOCATE(aSide%connection%Elem%Side(iNbLocSide)%sp)
+      END DO
+      DEALLOCATE(aSide%connection%Elem%Side)
+      DEALLOCATE(aSide%connection%Elem)
+      ! Free the connected size
+      DEALLOCATE(aSide%connection)
+    END IF
     DEALLOCATE(aSide)
   END DO
   DEALLOCATE(aElem%Side)
   DEALLOCATE(aElem)
 END DO
 DEALLOCATE(Elems)
+
 END SUBROUTINE deleteMeshPointer
 
 

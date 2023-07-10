@@ -1,10 +1,6 @@
 #!/usr/bin/python
 #************************************************************************************
 #
-# Author:       Matthias Sonntag
-# Institution:  Inst. of Aero- and Gasdynamics, University of Stuttgart
-# Date:         14.07.2016
-#
 # Description:  This script contains routines to extract userblock data from an HDF5
 #               file containing git revision information, eventuelly a patch to
 #               the Git remote and the ini (parameter) file used for the computation.
@@ -81,7 +77,6 @@ def print_all_parts(userblock) :
             if not line.startswith("{[(") : continue
             identifier = line.split("{[(")[1].split(")]}")[0]
             if "END USERBLOCK" in identifier : break
-            # print identifier
             print(identifier)
         except :
             continue
@@ -112,7 +107,7 @@ def get_part(userblock,part) :
 def print_part(userblock,part) :
     tmp = get_part(userblock,part)
     if tmp :
-       print(tmp)
+        print(tmp)
 
 # output whole userblock
 def print_all(userblock) :
@@ -122,10 +117,10 @@ def print_all(userblock) :
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Extract information from userblock of a HDF5-state file.')
-    parser.add_argument('-s', '--show', action='store_true', help='show all available parts of the userblock')
-    parser.add_argument('-p', '--part', help='indicates which part of the userblock should be extracted')
-    parser.add_argument('-a', '--all', help='extract complete userblock', action='store_true')
-    parser.add_argument('filename', type=str, help='filename of hdf5 file')
+    parser.add_argument('-s'       , '--show' , action='store_true' , help='show all available parts of the userblock')
+    parser.add_argument('-p'       , '--part' ,                       help='indicates which part of the userblock should be extracted')
+    parser.add_argument('-a'       , '--all'  , action='store_true' , help='extract complete userblock')
+    parser.add_argument('filename' ,            type=str            , help='filename of hdf5 file')
 
     args = parser.parse_args()
 
@@ -135,4 +130,4 @@ if __name__ == "__main__":
     if args.part :
         print_part(userblock,args.part)
     if args.all :
-       print_all(userblock)
+        print_all(userblock)

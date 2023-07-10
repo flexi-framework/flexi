@@ -77,13 +77,13 @@ DO SideID=firstSideID,lastSideID
 #if FV_ENABLED
     IF (FV_Elems_master(SideID).EQ.0) THEN ! DG Element
 #endif /* FV_ENABLED */
-#if   (PP_NodeType==1)
+#if (PP_NodeType==1 || (PP_NodeType==2 && defined(EXACT_MM)))
       CALL DoSurfInt(&
 #ifdef WITHnVars
           TP_nVar, &
 #endif
           Nloc,FluxTmp,L_HatMinus,   L_HatPlus,      locSideID,Ut(:,:,:,:,ElemID))
-#elif (PP_NodeType==2)
+#elif (PP_NodeType==2 && !defined(EXACT_MM))
       CALL DoSurfInt(&
 #ifdef WITHnVars
           TP_nVar, &
@@ -113,13 +113,13 @@ DO SideID=firstSideID,lastSideID
 #if FV_ENABLED
     IF (FV_Elems_slave(SideID).EQ.0) THEN ! DG Element
 #endif /* FV_ENABLED */
-#if   (PP_NodeType==1)
+#if (PP_NodeType==1 || (PP_NodeType==2 && defined(EXACT_MM)))
       CALL DoSurfInt(&
 #ifdef WITHnVars
           TP_nVar, &
 #endif
           Nloc,FluxTmp,L_HatMinus,   L_HatPlus,      nblocSideID,Ut(:,:,:,:,nbElemID))
-#elif (PP_NodeType==2)
+#elif (PP_NodeType==2 && !defined(EXACT_MM))
       CALL DoSurfInt(&
 #ifdef WITHnVars
           TP_nVar, &
@@ -158,7 +158,7 @@ INTEGER,INTENT(IN) :: TP_nVar
 #endif
 INTEGER,INTENT(IN) :: Nloc
 REAL,INTENT(IN)    :: Flux(TP_nVar,0:Nloc,0:ZDIM(Nloc))
-REAL,INTENT(IN)    :: FV_w_inv
+REAL,INTENT(IN)    :: FV_w_inv(0:Nloc)
 INTEGER,INTENT(IN) :: locSideID
 REAL,INTENT(INOUT) :: Ut(TP_nVar,0:Nloc,0:Nloc,0:ZDIM(Nloc))
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -166,17 +166,17 @@ REAL,INTENT(INOUT) :: Ut(TP_nVar,0:Nloc,0:Nloc,0:ZDIM(Nloc))
 !==================================================================================================================================
 SELECT CASE(locSideID)
 CASE(XI_MINUS)
-  Ut(:,0,:,:)   =Ut(:,0,:,:)   +Flux*FV_w_inv
+  Ut(:,0,:,:)   =Ut(:,0,:,:)   +Flux*FV_w_inv(0)
 CASE(ETA_MINUS)
-  Ut(:,:,0,:)   =Ut(:,:,0,:)   +Flux*FV_w_inv
+  Ut(:,:,0,:)   =Ut(:,:,0,:)   +Flux*FV_w_inv(0)
 CASE(ZETA_MINUS)
-  Ut(:,:,:,0)   =Ut(:,:,:,0)   +Flux*FV_w_inv
+  Ut(:,:,:,0)   =Ut(:,:,:,0)   +Flux*FV_w_inv(0)
 CASE(XI_PLUS)
-  Ut(:,Nloc,:,:)=Ut(:,Nloc,:,:)+Flux*FV_w_inv
+  Ut(:,Nloc,:,:)=Ut(:,Nloc,:,:)+Flux*FV_w_inv(Nloc)
 CASE(ETA_PLUS)
-  Ut(:,:,Nloc,:)=Ut(:,:,Nloc,:)+Flux*FV_w_inv
+  Ut(:,:,Nloc,:)=Ut(:,:,Nloc,:)+Flux*FV_w_inv(Nloc)
 CASE(ZETA_PLUS)
-  Ut(:,:,:,Nloc)=Ut(:,:,:,Nloc)+Flux*FV_w_inv
+  Ut(:,:,:,Nloc)=Ut(:,:,:,Nloc)+Flux*FV_w_inv(Nloc)
 END SELECT !locSideID
 END SUBROUTINE SurfInt_FV
 #endif
@@ -203,20 +203,20 @@ INTEGER,INTENT(IN) :: Nloc                             !< Polynomial degree
 INTEGER,INTENT(IN) :: locSideID                        !< sideID of side in global system
 REAL,INTENT(IN)    :: Flux(TP_nVar,0:Nloc,0:ZDIM(Nloc))  !< Flux on side, in volume system of respective element
 !> Lagrange polynomials evaluated at \f$i \xi=+1 \f$ and \f$ \xi=-1 \f$ premultiplied by mass matrix
-#if (PP_NodeType==1)
+#if (PP_NodeType==1 || (PP_NodeType==2 && defined(EXACT_MM)))
 REAL,INTENT(IN)    :: L_HatPlus(0:Nloc),L_HatMinus(0:Nloc)
-#elif (PP_NodeType==2)
+#elif (PP_NodeType==2 && !defined(EXACT_MM))
 REAL,INTENT(IN)    :: L_HatPlus,L_HatMinus
 #endif
 REAL,INTENT(INOUT) :: Ut(TP_nVar,0:Nloc,0:Nloc,0:ZDIM(Nloc)) !< Time derivative (will be updated)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-#if (PP_NodeType==1)
+#if (PP_NodeType==1 || (PP_NodeType==2 && defined(EXACT_MM)))
 INTEGER            :: l
 #endif
 !==================================================================================================================================
 SELECT CASE(locSideID)
-#if (PP_NodeType==1)
+#if (PP_NodeType==1 || (PP_NodeType==2 && defined(EXACT_MM)))
 CASE(XI_MINUS)
   DO l=0,Nloc
     Ut(:,l,:,:) =Ut(:,l,:,:)   +Flux*L_hatMinus(l)
@@ -241,7 +241,7 @@ CASE(ZETA_PLUS)
   DO l=0,Nloc
     Ut(:,:,:,l) =Ut(:,:,:,l)   +Flux*L_hatPlus(l)
   END DO
-#elif (PP_NodeType==2)
+#elif (PP_NodeType==2 && !defined(EXACT_MM))
 CASE(XI_MINUS)
   Ut(:,0,:,:)   =Ut(:,0,:,:)   +Flux*L_hatMinus
 CASE(ETA_MINUS)
@@ -257,4 +257,3 @@ CASE(ZETA_PLUS)
 #endif
 END SELECT !locSideID
 END SUBROUTINE DoSurfInt
-

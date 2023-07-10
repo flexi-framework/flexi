@@ -56,6 +56,7 @@ USE MOD_ChangeBasisByDim,      ONLY: ChangeBasisVolume
 USE MOD_Interpolation,         ONLY: GetVandermonde,GetDerivativeMatrix
 USE MOD_Interpolation_Vars,    ONLY: NodeTypeCL
 USE MOD_Newton,                ONLY: Newton
+USE MOD_Output,                ONLY: PrintPercentage
 USE MOD_SwapMesh_Vars
 #if USE_OPENMP
 USE OMP_Lib
@@ -72,32 +73,37 @@ INTEGER            :: i,j,k     ! CL,NSuper
 INTEGER            :: ii,jj,kk  ! IP
 INTEGER            :: iElemNew,iElemOld
 INTEGER            :: l
-REAL               :: xCOld(PP_dim,nElemsOld),radOld(nElemsOld),radSqOld(nElemsOld)
-REAL               :: xCNew(PP_dim,nElemsNew),radNew(nElemsNew),radSqNew(nElemsNew)
-LOGICAL            :: IPOverlaps(0:NInter,0:NInter,0:ZDIM(NInter))
+LOGICAL            :: equal
+INTEGER            :: ElemCounter,nEqualElems,nNotfound
+! Element search
 LOGICAL            :: ElemDone(   nElemsNew)
 LOGICAL            :: ElemDoneOld(nElemsOld)
-LOGICAL            :: equal
-REAL               :: X_NSuper(1:PP_dim,0:NSuper,0:NSuper,0:ZDIM(NSuper))
+REAL               :: xCOld(PP_dim,nElemsOld),radOld(nElemsOld),radSqOld(nElemsOld)
+REAL               :: xCNew(PP_dim,nElemsNew),radNew(nElemsNew),radSqNew(nElemsNew)
+! Point search
 REAL               :: dist,maxDist,best
 REAL               :: DCL_NGeo(    0:NGeoOld,0:NGeoOld)
 REAL               :: Xi_CLNGeo(   0:NGeoOld)
 REAL               :: wBary_CLNGeo(0:NGeoOld)
 REAL               :: dXCL_NGeo(1:PP_dim,1:PP_dim,0:NGeoOld,0:NGeoOld,0:ZDIM(NGeoOld))
+! Interpolation/supersampling
+LOGICAL            :: IPOverlaps(       0:NInter,0:NInter,0:ZDIM(NInter))
+REAL               :: X_NSuper(1:PP_dim,0:NSuper,0:NSuper,0:ZDIM(NSuper))
 REAL               :: Xi_NSuper(0:NSuper)
 REAL               :: xInter(PP_dim)
 REAL               :: xi(1:PP_dim)
-INTEGER            :: ElemCounter,nEqualElems
-INTEGER            :: nNotfound
-REAL               :: Time
+! Progress indicator
+REAL               :: StartT,EndT,percent
 !===================================================================================================================================
-Time=OMP_FLEXITIME()
+StartT = FLEXITIME()
+SWRITE(UNIT_stdOut,'(A)') ' EVALUATING PARAMETRIC COORDINATES ...'
+
 ! Prepare CL basis evaluation
 CALL ChebyGaussLobNodesAndWeights(NGeoOld,Xi_CLNGeo)
 CALL BarycentricWeights(NGeoOld,Xi_CLNGeo,wBary_CLNGeo)
 CALL GetDerivativeMatrix(NGeoOld,NodeTypeCL,DCL_NGeo)
 
-! Equdistant points (including the edges) for supersampling
+! Equidistant points (including the edges) for supersampling
 DO i=0,NSuper
   Xi_NSuper(i) = 2./REAL(NSuper) * REAL(i) - 1.
 END DO
@@ -110,33 +116,33 @@ DO iElemNew=1,nElemsNew
  CALL getCentroidAndRadius(xCLInter(:,:,:,:,iElemNew),NInter, xCNew(:,iElemNew),radNew(iElemNew))
 END DO
 ! add 5 % tolerance to old
-radOld=radOld*1.05
-radNew=radNew
+radOld   = radOld*1.05
 ! Precompute square of radii
-radSqOld=radOld*radOld
-radSqNew=radNew*radNew
+radSqOld = radOld*radOld
+radSqNew = radNew*radNew
 
-xiInter=HUGE(1.)
-InterToElem=-999
+xiInter     = HUGE(1.)
+InterToElem = -999
 
-IPDone=.FALSE.            ! Mark single interpolation point as done
-ElemDone=.FALSE.          ! Mark new element as done
-ElemDoneOld=.FALSE.       ! Mark old element as done
-StartTime=OMP_FLEXITIME()
-ElemCounter=0
-nEqualElems=0
-equalElem=-999
+IPDone      = .FALSE.       ! Mark single interpolation point as done
+ElemDone    = .FALSE.       ! Mark new element as done
+ElemDoneOld = .FALSE.       ! Mark old element as done
+StartTime   = FLEXITIME()
+ElemCounter = 0
+nEqualElems = 0
+equalElem   = -999
 
 ! look for identical elements and mark them
+maxDist = 1e-9
 ! only for same Ngeo so far
 IF(NgeoOld.EQ.NGeoNew) THEN
-  maxDist=1e-9
 !$OMP PARALLEL DEFAULT(SHARED)
 !$OMP DO PRIVATE(iElemOld,equal,iElemNew,i,j,k,dist) SCHEDULE(DYNAMIC,100)
-  DO iElemOld=1,nElemsOld
-    DO iElemNew=1,nElemsNew
-      IF(ElemDone(iElemNew)) CYCLE
-      equal=.FALSE.
+  DO iElemOld = 1,nElemsOld
+    DO iElemNew = 1,nElemsNew
+      IF (ElemDone(iElemNew)) CYCLE
+
+      equal = .FALSE.
       ! check each dimension first only before getting 2Norm
       ! we compare the distance of the centroids here for a first check!
       IF(ABS(  xCOld(1,iElemOld)-xCNew(1,iElemNew)).GT.maxDist) CYCLE
@@ -144,29 +150,31 @@ IF(NgeoOld.EQ.NGeoNew) THEN
 #if PP_dim == 3
       IF(ABS(  xCOld(3,iElemOld)-xCNew(3,iElemNew)).GT.maxDist) CYCLE
 #endif
-      dist=SUM((xCOld(1:PP_dim,iElemOld)-xCNew(1:PP_dim,iElemNew))**2)
+      dist = SUM((xCOld(1:PP_dim,iElemOld)-xCNew(1:PP_dim,iElemNew))**2)
+
+      ! Element definitely out of range
       IF(dist.GT.maxDist**2) CYCLE
-      ! now the coordinates of the mesh nodes themselves are compared
-      equal=.TRUE.
-      DO k=0,ZDIM(NGeoOld); DO j=0,NGeoOld; DO i=0,NGeoOld
-        dist=SUM((xCLOld(1:PP_dim,i,j,k,iElemOld)-xCLNew(1:PP_dim,i,j,k,iElemNew))**2)
-        IF(dist.GT.maxDist**2) THEN
-          equal=.FALSE.
-        END IF
+
+      ! Now the coordinates of the mesh nodes themselves are compared
+      equal = .TRUE.
+      DO k = 0,ZDIM(NGeoOld); DO j = 0,NGeoOld; DO i = 0,NGeoOld
+        dist = SUM((xCLOld(1:PP_dim,i,j,k,iElemOld) - xCLNew(1:PP_dim,i,j,k,iElemNew))**2)
+        IF (dist.GT.maxDist**2) equal = .FALSE.
       END DO; END DO; END DO
-      IF(equal) THEN
+
+      IF (equal) THEN
 !$OMP CRITICAL
-        equalElem(iElemNew)=iElemOld
-        ElemDone(iElemNew)=.TRUE.
-        ElemDoneOld(iElemOld)=.TRUE.
-        nEqualElems=nEqualElems+1
+        equalElem(  iElemNew) = iElemOld
+        ElemDone(   iElemNew) = .TRUE.
+        ElemDoneOld(iElemOld) = .TRUE.
+        nEqualElems = nEqualElems+1
 !$OMP END CRITICAL
       END IF ! equal
     END DO! iElemNew=1,nElemsNew
   END DO! iElemOld=1,nElemsOld
 !$OMP END DO
 !$OMP END PARALLEL
-  WRITE(UNIT_stdOut,*)nEqualElems,' equal elements, ',nElemsOld-nEqualElems,' remaining.'
+  SWRITE(UNIT_stdOut,'(I12,A,I12,A)') nEqualElems,' equal elements, ',nElemsOld-nEqualElems,' remaining.'
 END IF ! (NgeoOld.EQ.NGeoNew)
 
 
@@ -184,9 +192,10 @@ END IF
 !$OMP DO PRIVATE(iElemOld,iElemNew,X_NSuper,dXCL_NGeo,IPOverlaps), &
 !$OMP& PRIVATE(ii,jj,kk,xInter,best,i,j,k,l,dist,xi,maxDist) SCHEDULE(DYNAMIC,100)
 DO iElemOld=1,nElemsOld
-  IF(ElemDoneOld(iElemOld)) CYCLE ! already found matching new element
+  ! Already found matching new element
+  IF (ElemDoneOld(iElemOld)) CYCLE
 
-  ! Supersample element, which is later used to find a good initial guess for Newton
+  ! Find initial guess for Newton, get supersampled element
   CALL ChangeBasisVolume(PP_dim,NGeoOld,NSuper,Vdm_CLNGeo_EquiNSuper,xCLOld(1:PP_dim,:,:,:,iElemOld),X_NSuper)
 
   ! Compute Jacobian of element mapping for each CL point
@@ -203,7 +212,8 @@ DO iElemOld=1,nElemsOld
   END DO; END DO; END DO
 
   DO iElemNew=1,nElemsNew
-    IF(ElemDone(iElemNew)) CYCLE ! all IP already found
+    ! All IP already found
+    IF (ElemDone(iElemNew)) CYCLE
 
     ! Check if the two elements could be overlapping by comparing the distance between the centroids with the sum of the radii
     maxDist=radNew(iElemNew)+radOld(iElemOld)
@@ -212,13 +222,14 @@ DO iElemOld=1,nElemsOld
     ! Check which IP of new elem overlaps with old elem
     IPOverlaps=.FALSE.
     DO kk=0,ZDIM(NInter); DO jj=0,NInter; DO ii=0,NInter
+      ! Already found matching interpolation point
       IF(IPDone(ii,jj,kk,iElemNew)) CYCLE
 
       dist=SUM((xCOld(1:PP_dim,iElemOld)-xCLInter(1:PP_dim,ii,jj,kk,iElemNew))**2)
       IPOverlaps(ii,jj,kk)=(dist.LE.radSqOld(iElemOld))
     END DO; END DO; END DO
 
-    ! Get coordinates in reference space for each overlapping candidate point
+    ! Get smallest distance to supersampled points for starting Newton
     DO kk=0,ZDIM(NInter); DO jj=0,NInter; DO ii=0,NInter
       IF(.NOT.IPOverlaps(ii,jj,kk)) CYCLE
 
@@ -239,16 +250,17 @@ DO iElemOld=1,nElemsOld
 
       ! Find coordinates in reference space with Newton starting from initial guess
 #if PP_dim == 3
-      CALL Newton(NGeoOld,XInter,dXCL_NGeo(:,:,:,:,:),Xi_CLNGeo,wBary_CLNGeo,xCLOld(:,:,:,:,iElemOld),xi)
+      CALL Newton(NGeoOld,XInter,dXCL_NGeo(1:PP_dim,1:PP_dim,:,:,:),Xi_CLNGeo,wBary_CLNGeo,xCLOld(1:PP_dim,:,:,:,iElemOld),xi)
 #else
-      CALL Newton(NGeoOld,XInter,dXCL_NGeo(:,:,:,:,0),Xi_CLNGeo,wBary_CLNGeo,xCLOld(:,:,:,0,iElemOld),xi)
+      CALL Newton(NGeoOld,XInter,dXCL_NGeo(1:PP_dim,1:PP_dim,:,:,0),Xi_CLNGeo,wBary_CLNGeo,xCLOld(1:PP_dim,:,:,0,iElemOld),xi)
 #endif /*PP_dim == 3*/
 
       ! Check if result is better than previous result
       ! (Result might be outside of element but still within user-specified tolerance)
 !$OMP CRITICAL
       IF(MAXVAL(ABS(Xi)).LT.MAXVAL(ABS(xiInter(:,ii,jj,kk,iElemNew)))) THEN
-        IF(MAXVAL(ABS(Xi)).LE.1.) IPDone(ii,jj,kk,iElemNew) = .TRUE. ! if point is inside element, stop searching
+        ! If point is inside element, stop searching
+        IF (MAXVAL(ABS(Xi)).LE.1.) IPDone(ii,jj,kk,iElemNew) = .TRUE.
         xiInter(1:PP_dim,ii,jj,kk,iElemNew)=Xi
         InterToElem(ii,jj,kk,iElemNew) = iElemOld
       END IF
@@ -259,43 +271,49 @@ DO iElemOld=1,nElemsOld
   END DO ! iElem
 !$OMP CRITICAL
   ElemCounter=ElemCounter+1
-  IF(MOD(ElemCounter,1000).EQ.0)THEN
-    WRITE(*,*) ElemCounter,'elements of',nElemsOld-nEqualElems,' processed. Time= ', OMP_FLEXITIME()-StartTime
-    StartTime=OMP_FLEXITIME()
-  END IF
+
+  ! Print progress
+  percent = REAL(ElemCounter)/REAL(nElemsNew)*100.
+  CALL PrintPercentage(NameOpt='Searching coordinates',percent=percent)
+
 !$OMP END CRITICAL
 END DO ! iElemOld
 !$OMP END DO
 !$OMP END PARALLEL
 
 ! check if all interpolation points have been found
-nNotFound=0
-DO iElemNew=1,nElemsNew
-  IF(equalElem(iElemNew).GT.0) CYCLE
+nNotFound = 0
+DO iElemNew = 1,nElemsNew
+  IF (equalElem(iElemNew).GT.0) CYCLE
+
   DO ii=0,NInter; DO jj=0,NInter; DO kk=0,ZDIM(NInter)
-    IF(.NOT.IPDone(ii,jj,kk,iElemNew))THEN
-      ! Only mark as invalid if greater then max tolerance
-      IF(MAXVAL(ABS(xiInter(:,ii,jj,kk,iElemNew))).GT.maxTol)THEN
-        ! RP has not been found
-        IF(printTroublemakers)THEN
-          WRITE(*,*) 'IP with ID:',ii,jj,kk,iElemNew,'is a troublemaker!'
-          WRITE(*,*) 'Coords:',xCLInter(:,ii,jj,kk,iElemNew)
-          WRITE(*,*) 'Xi:',xiInter(:,ii,jj,kk,iElemNew)
-        END IF
-        !abort if severly broken and no refstate present (with refstate present abortTol=HUGE)
-        IF(MAXVAL(ABS(xiInter(1:PP_dim,ii,jj,kk,iElemNew))).GT.abortTol)&
-          CALL Abort(__STAMP__, 'IP not found.')
-        nNotFound=nNotFound+1
-      ELSE
-        IPDone(ii,jj,kk,iElemNew)=.TRUE.
+    IF (IPDone(ii,jj,kk,iElemNew)) CYCLE
+
+    ! Only mark as invalid if greater then max tolerance
+    IF (MAXVAL(ABS(xiInter(:,ii,jj,kk,iElemNew))).GT.maxTol) THEN
+      ! RP has not been found
+      IF(printTroublemakers)THEN
+        WRITE(*,*) 'IP with ID:',       ii,jj,kk,iElemNew,'is a troublemaker!'
+        WRITE(*,*) 'Coords:',xCLInter(:,ii,jj,kk,iElemNew)
+        WRITE(*,*) 'Xi:'    ,xiInter( :,ii,jj,kk,iElemNew)
       END IF
+
+      ! Abort if severly broken and no refstate present (with refstate present abortTol=HUGE)
+      IF(MAXVAL(ABS(xiInter(1:PP_dim,ii,jj,kk,iElemNew))).GT.abortTol)&
+        CALL Abort(__STAMP__, 'IP not found.')
+      nNotFound = nNotFound+1
+    ELSE
+      IPDone(ii,jj,kk,iElemNew) = .TRUE.
     END IF
   END DO; END DO; END DO ! ii,jj,kk (IP loop)
 END DO
-WRITE(*,*) nNotFound,' nodes not found.'
-Time=OMP_FLEXITIME() -Time
-WRITE(UNIT_stdOut,'(A,F0.3,A)')' DONE  [',Time,'s]'
+SWRITE(Unit_stdOut,'(I12,A)') nNotFound,' nodes not found.'
+
+EndT = FLEXITIME()
+SWRITE(UNIT_stdOut,'(A,F0.3,A)')' EVALUATING PARAMETRIC COORDINATES DONE  [',EndT-StartT,'s]'
+
 END SUBROUTINE GetParametricCoordinates
+
 
 !=================================================================================================================================
 !> Computes the centroid and the radius of an element

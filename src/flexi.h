@@ -38,8 +38,8 @@
 #define SIZEOF_F(x) (STORAGE_SIZE(x)/8)
 
 #ifdef GNU
-#define CHECKSAFEINT(x,k)  IF(x>HUGE(1_  k).OR.x<-HUGE(1_  k))       CALL Abort(__STAMP__,'Integer conversion failed: out of range!')
-#define CHECKSAFEREAL(x,k) IF(x>HUGE(1._ k).OR.x<-HUGE(1._ k))       CALL Abort(__STAMP__,'Real conversion failed: out of range!')
+#define CHECKSAFEINT(x,k)  IF(x>HUGE(INT( 1,KIND=k)).OR.x<-HUGE(INT( 1,KIND=k))) CALL Abort(__STAMP__,'Integer conversion failed: out of range!')
+#define CHECKSAFEREAL(x,k) IF(x>HUGE(REAL(1,KIND=k)).OR.x<-HUGE(REAL(1,KIND=k))) CALL Abort(__STAMP__,'Real conversion failed: out of range!')
 #elif CRAY
 #define CHECKSAFEINT(x,k)
 #define CHECKSAFEREAL(x,k)
@@ -120,11 +120,25 @@
 
 !#define DEBUGMESH
 
+#if FV_ENABLED
+#define FV_SIZE 1
+#else
+#define FV_SIZE 0
+#endif
+
 #if !(FV_ENABLED)
 #define FV_Elems(x) 0
 #define FV_Elems_master(x) 0
 #define FV_Elems_slave(x) 0
 #define FV_Elems_Sum(x) 0
+#endif
+
+! Compute viscous contributions in volume integral
+! NOT if FV-Blending or if non-parabolic
+#if (FV_ENABLED==2) || !PARABOLIC
+#define VOLINT_VISC 0
+#else
+#define VOLINT_VISC 1
 #endif
 
 #define KILL(x) SWRITE(*,*) __FILE__,__LINE__,x; stop

@@ -56,13 +56,16 @@ The following options enable or disable specific features of **FLEXI**. If you w
     * *Navierstokes*
     * *Linearscalaradvection*
     
-* ``FLEXI_FV``:  ON/OFF
-    
-    Set this to ON to enable the usage of the finite volume subcell shock capturing mechanism.
+* ``FLEXI_FV``:
+
+    Set this to enable the corresponding finite volume subcell shock capturing mechanism. Implemented are
+    * OFF    : No finite volume shock capturing
+    * SWITCH : Switching DG elements into a finite volume subcell representation [@sonntag2017efficient]
+    * BLEND  : Blending the finite volume discretization operator to the DG operator. [@hennemann2021provably]
     
 * ``FLEXI_FV_RECONSTRUCTION``:  ON/OFF
     
-    Only available if FLEXI_FV is set to ON. Enables the reconstruction of interface values in the finite volume subcells. Needed for calculation of gradients and to use a second order finite volume scheme.
+    Only available if FLEXI_FV is set either to SWITCH or BLEND. Enables the reconstruction of interface values in the finite volume subcells. Needed for calculation of gradients and to use a second order finite volume scheme.
     
 * ``FLEXI_LIFTING``:
 
@@ -138,3 +141,18 @@ The remaining part of the options deal with the post-processing framework **POST
 
     Enable to build the ParaView plugin for visualization of **FLEXI** simulation data. The ParaView libraries etc. must be available on the system and the environment variable $ParaView_DIR set accordingly.
 
+There are some additional options for performance improvements for FLEXI.
+
+* ``FLEXI_PERFORMANCE``:  ON/OFF
+
+    Enables a set of advanced features to improve the performance of FLEXI.
+
+
+* ``FLEXI_PERFORMANCE_OPTLIFT``:  ON/OFF
+
+    Enable to lift only the gradients of the variables that are actually required to evaluate the fluxes of the corresponding equation system. Improves the performance if the parabolic terms are computed, but cannot be used if POSTI is enabled.
+
+
+* ``FLEXI_PERFORMANCE_PGO``:  ON/OFF
+
+    Enables profile-guided optimization (PGO) for compilation. Currently, only the GNU compiler is supported to use PGO with FLEXI. The required two-step compilation process is detailed in Section \ref{sec:tut_ptcf_performance}.

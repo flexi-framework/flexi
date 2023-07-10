@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -79,7 +79,7 @@ USE MOD_Jacobian      ,ONLY: EvalAdvFluxJacobian
 #if PARABOLIC
 USE MOD_Precond_Vars  ,ONLy: HyperbolicPrecond
 USE MOD_Lifting_Vars  ,ONLY: gradUx,gradUy,gradUz
-USE MOD_Jacobian      ,ONLY: EvalDiffFluxJacobian 
+USE MOD_Jacobian      ,ONLY: EvalDiffFluxJacobian
 USE MOD_DG_Vars       ,ONLY: nDOFElem
 #if EDDYVISCOSITY
 USE MOD_EddyVisc_Vars,ONLY: muSGS
@@ -108,7 +108,7 @@ INTEGER,INTENT(IN)    :: iElem                                     !< current el
 ! OUTPUT VARIABLES
 REAL,INTENT(INOUT)    :: BJ(1:nDOFVarElem,1:nDOFVarElem)           !< block-Jacobian of current element
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER                                                 :: mm,nn,oo
 INTEGER                                                 :: s,r1,r2,ll,vn1,vn2
 REAL,DIMENSION(PP_nVar,PP_nVar)                         :: fJacTilde,gJacTilde
@@ -154,10 +154,10 @@ IF (.NOT.(HyperbolicPrecond)) THEN
 #endif
                             )
 #ifndef SPLIT_DG
-  fJac=fJac+fJac_loc                                         
-  gJac=gJac+gJac_loc                                         
+  fJac=fJac+fJac_loc
+  gJac=gJac+gJac_loc
 #if PP_dim==3
-  hJac=hJac+hJac_loc                                         
+  hJac=hJac+hJac_loc
 #endif/*PP_dim*/
 #endif /*SPLIT_DG*/
 END IF !HyperbolicPrecond
@@ -190,7 +190,7 @@ DO oo=0,PP_NZ
 #if PP_dim==3
         hJacVisc(:,:) =  fJac_loc(:,:,mm,nn,oo)*Metrics_hTilde(1,mm,nn,oo,iElem,0)   &
                         +gJac_loc(:,:,mm,nn,oo)*Metrics_hTilde(2,mm,nn,oo,iElem,0)  &
-                        +hJac_loc(:,:,mm,nn,oo)*Metrics_hTilde(3,mm,nn,oo,iElem,0) 
+                        +hJac_loc(:,:,mm,nn,oo)*Metrics_hTilde(3,mm,nn,oo,iElem,0)
 #endif
       END IF
 #endif /*PARABOLIC*/
@@ -204,10 +204,10 @@ DO oo=0,PP_NZ
       !         |
       !   +nVar |
       ! r1 ->   | (mm,nn) = s
-      ! x - - - o - - - - 
+      ! x - - - o - - - -
       !         |
       !         |  ^
-      !         |  | + vn1 
+      !         |  | + vn1
       !         x  r2
       r1=           vn1*nn+vn2*oo
       r2=mm*PP_nVar       +vn2*oo
@@ -216,14 +216,14 @@ DO oo=0,PP_NZ
 #endif
       ! Case i!=m (i is the loop variable, similar to weak form)
       DO ll=0,PP_N
-        
+
 #if PARABOLIC
         IF (.NOT.(HyperbolicPrecond)) THEN
           ! Add contribution of diffusive (non-split) fluxes
-          BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) = BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) + D_hat(ll,mm)*fJacVisc(:,:) 
-          BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) = BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) + D_hat(ll,nn)*gJacVisc(:,:) 
+          BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) = BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) + D_hat(ll,mm)*fJacVisc(:,:)
+          BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) = BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) + D_hat(ll,nn)*gJacVisc(:,:)
 #if PP_dim==3
-          BJ(r3+1:r3+PP_nVar,s+1:s+PP_nVar) = BJ(r3+1:r3+PP_nVar,s+1:s+PP_nVar) + D_hat(ll,oo)*hJacVisc(:,:) 
+          BJ(r3+1:r3+PP_nVar,s+1:s+PP_nVar) = BJ(r3+1:r3+PP_nVar,s+1:s+PP_nVar) + D_hat(ll,oo)*hJacVisc(:,:)
 #endif
         END IF
 #endif /*PARABOLIC*/
@@ -232,16 +232,16 @@ DO oo=0,PP_NZ
         CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,ll,nn,oo,iElem),UPrim(:,ll,nn,oo,iElem), &
                        Metrics_fTilde(:,mm,nn,oo,iElem,0),Metrics_fTilde(:,ll,nn,oo,iElem,0),fJacTilde(:,:))
         ! Example: This is the influence of DOF (mm,nn,oo)=s on the flux along the XI direction at index r1
-        BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) = BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) + DVolSurf(mm,ll)*fJacTilde(:,:) 
+        BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) = BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) + DVolSurf(mm,ll)*fJacTilde(:,:)
 
         CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,mm,ll,oo,iElem),UPrim(:,mm,ll,oo,iElem), &
                        Metrics_gTilde(:,mm,nn,oo,iElem,0),Metrics_gTilde(:,mm,ll,oo,iElem,0),gJacTilde(:,:))
-        BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) = BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) + DVolSurf(nn,ll)*gJacTilde(:,:) 
+        BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) = BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) + DVolSurf(nn,ll)*gJacTilde(:,:)
 
 #if PP_dim==3
         CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,mm,nn,ll,iElem),UPrim(:,mm,nn,ll,iElem), &
                        Metrics_hTilde(:,mm,nn,oo,iElem,0),Metrics_hTilde(:,mm,nn,ll,iElem,0),hJacTilde(:,:))
-        BJ(r3+1:r3+PP_nVar,s+1:s+PP_nVar) = BJ(r3+1:r3+PP_nVar,s+1:s+PP_nVar) + DVolSurf(oo,ll)*hJacTilde(:,:) 
+        BJ(r3+1:r3+PP_nVar,s+1:s+PP_nVar) = BJ(r3+1:r3+PP_nVar,s+1:s+PP_nVar) + DVolSurf(oo,ll)*hJacTilde(:,:)
 #endif
 
         ! Increment indizes for fluxes
@@ -290,7 +290,7 @@ DO oo=0,PP_NZ
 #if PP_dim==3
       hJacTilde(:,:) =  fJac(:,:,mm,nn,oo)*Metrics_hTilde(1,mm,nn,oo,iElem,0)  &
                        +gJac(:,:,mm,nn,oo)*Metrics_hTilde(2,mm,nn,oo,iElem,0)  &
-                       +hJac(:,:,mm,nn,oo)*Metrics_hTilde(3,mm,nn,oo,iElem,0) 
+                       +hJac(:,:,mm,nn,oo)*Metrics_hTilde(3,mm,nn,oo,iElem,0)
 #endif
       ! Initialize indizes for fluxes along the lines
       r1=           vn1*nn+vn2*oo
@@ -299,10 +299,10 @@ DO oo=0,PP_NZ
       r3=mm*PP_nVar+vn1*nn
 #endif
       DO ll=0,PP_N
-        BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) = BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) + D_hat(ll,mm)*fJacTilde(:,:) 
-        BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) = BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) + D_hat(ll,nn)*gJacTilde(:,:) 
+        BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) = BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) + D_hat(ll,mm)*fJacTilde(:,:)
+        BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) = BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) + D_hat(ll,nn)*gJacTilde(:,:)
 #if PP_dim==3
-        BJ(r3+1:r3+PP_nVar,s+1:s+PP_nVar) = BJ(r3+1:r3+PP_nVar,s+1:s+PP_nVar) + D_hat(ll,oo)*hJacTilde(:,:) 
+        BJ(r3+1:r3+PP_nVar,s+1:s+PP_nVar) = BJ(r3+1:r3+PP_nVar,s+1:s+PP_nVar) + D_hat(ll,oo)*hJacTilde(:,:)
 #endif
         ! Increment indizes for fluxes
         r1=r1+PP_nVar
@@ -316,7 +316,7 @@ DO oo=0,PP_NZ
       s=s+PP_nVar
     END DO !mm
   END DO !nn
-END DO !oo 
+END DO !oo
 
 END SUBROUTINE DGVolIntJac
 
@@ -325,7 +325,7 @@ END SUBROUTINE DGVolIntJac
 !> Volume integral: the total derivative of the viscous flux with respect to U:
 !>                  dF^v/DU_cons = dF^v/dQ_prim* DQ_prim/DU_prim* DU_prim/DU_cons + dF^v/DU_cons
 !>                                       |              |                |              |
-!>                              FluxGradJacobian     Lifting      dPrimTempdCons  (already done in DGVolIntJac) 
+!>                              FluxGradJacobian     Lifting      dPrimTempdCons  (already done in DGVolIntJac)
 !> This routine only computes the contribution from the derivative of the gradients (first part of sum)!
 !===================================================================================================================================
 SUBROUTINE  DGVolIntGradJac(BJ,iElem)
@@ -351,7 +351,7 @@ INTEGER,INTENT(IN)    :: iElem                                     !< current el
 ! OUTPUT VARIABLES
 REAL,INTENT(INOUT)    :: BJ(1:nDOFVarElem,1:nDOFVarElem)           !< block-Jacobian of current element
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER                                                                    :: i,j,k,l,mm,nn,oo
 INTEGER                                                                    :: r,s,vn1,vn2
 REAL,DIMENSION(PP_nVarPrim,PP_nVar)                                        :: PrimConsJac
@@ -369,7 +369,7 @@ REAL,DIMENSION(PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,0:PP_N,PP_dim):: Ja
 ! Helper variables to quickly build the one-dimensional mapping: ind = iVar+PP_nVar*i+vn1*j+vn2*k for DOF(iVar,i,j,k)
 vn1=PP_nVar*(PP_N+1)
 vn2=vn1*(PP_N+1)
-! Calculation of the derivative of the diffusive flux with respect to gradU. There are 9 flux Jacobians: fluxes in three directions, 
+! Calculation of the derivative of the diffusive flux with respect to gradU. There are 9 flux Jacobians: fluxes in three directions,
 ! each derived w.r.t to all three gradients.
 ! dF/dQ
 CALL EvalFluxGradJacobian(nDOFElem,U(:,:,:,:,iElem),UPrim(:,:,:,:,iElem) &
@@ -474,12 +474,12 @@ DO oo=0,PP_NZ
             r=PP_nVar*i+vn1*nn+vn2*k
             BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + D_hat(i,mm)*fJac(:,:)
           END DO !i
-        END DO !k 
+        END DO !k
         ! Dependeny of all viscous ZETA-fluxes along the XI line w.r.t. my primitive DOF
         DO i=0,PP_N
           hJacTilde(:,:)= ( MATMUL(hJacQx(:,:,i,nn,oo) , JacLifting_X(:,:,i,nn,oo,mm,1) )  &
                           + MATMUL(hJacQy(:,:,i,nn,oo) , JacLifting_Y(:,:,i,nn,oo,mm,1) )  &
-                          + MATMUL(hJacQz(:,:,i,nn,oo) , JacLifting_Z(:,:,i,nn,oo,mm,1) )) 
+                          + MATMUL(hJacQz(:,:,i,nn,oo) , JacLifting_Z(:,:,i,nn,oo,mm,1) ))
           ! Dependency on conservative variables
           hJac(:,:) = MATMUL(hJacTilde(:,:),PrimConsJac(:,:))
           ! Volume integral for the viscous fluxes
@@ -487,7 +487,7 @@ DO oo=0,PP_NZ
             r=PP_nVar*i+vn1*nn+vn2*k
             BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + D_hat(k,oo)*hJac(:,:)
           END DO !k
-        END DO !i 
+        END DO !i
         ! Dependeny of all viscous ETA-fluxes along the ZETA line w.r.t. my primitive DOF
         DO k=0,PP_NZ
           gJacTilde(:,:)= ( MATMUL(gJacQx(:,:,mm,nn,k) , JacLifting_X(:,:,mm,nn,k,oo,3) )  &
@@ -499,7 +499,7 @@ DO oo=0,PP_NZ
             r=PP_nVar*mm+vn1*j+vn2*k
             BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + D_hat(j,nn)*gJac(:,:)
           END DO !j
-        END DO !k 
+        END DO !k
         ! Dependeny of all viscous ZETA-fluxes along the ETA line w.r.t. my primitive DOF
         DO j=0,PP_N
           hJacTilde(:,:)= ( MATMUL(hJacQx(:,:,mm,j,oo) , JacLifting_X(:,:,mm,j,oo,nn,2) )  &
@@ -512,7 +512,7 @@ DO oo=0,PP_NZ
             r=PP_nVar*mm+vn1*j+vn2*k
             BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + D_hat(k,oo)*hJac(:,:)
           END DO !k
-        END DO !j 
+        END DO !j
 #endif
       END IF !NoFillIn
       DO l=0,PP_N
@@ -557,11 +557,11 @@ DO oo=0,PP_NZ
           BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + D_hat(k,l)*hJac(:,:)
         END DO !k
 #endif
-      END DO !l 
+      END DO !l
       s=s+PP_nVar
     END DO !mm
   END DO !nn
-END DO !oo 
+END DO !oo
 
 END SUBROUTINE DGVolIntGradJac
 
@@ -622,9 +622,9 @@ USE MOD_FV_Vars               ,ONLY: FV_SurfElemZeta_sw
 #endif
 USE MOD_FV_Vars               ,ONLY: FV_NormVecXi,FV_TangVec1Xi,FV_TangVec2Xi
 USE MOD_FV_Vars               ,ONLY: FV_NormVecEta,FV_TangVec1Eta,FV_TangVec2Eta
-USE MOD_FV_Vars               ,ONLY: FV_SurfElemXi_sw,FV_SurfElemEta_sw
+USE MOD_FV_Vars               ,ONLY: FV_SurfElemXi_sw,FV_SurfElemEta_sw,FV_w_inv
 USE MOD_Implicit_Vars         ,ONLY: rEps0,nDOFVarElem
-USE MOD_Riemann               ,ONLY: Riemann_Point
+USE MOD_Riemann               ,ONLY: Riemann
 USE MOD_EOS                   ,ONLY: ConsToPrim,PrimToCons
 USE MOD_DG_Vars               ,ONLY: UPrim
 #if FV_RECONSTRUCT
@@ -640,7 +640,7 @@ USE MOD_FV_Vars               ,ONLY: gradUzeta,FV_dx_ZETA_L,FV_dx_ZETA_R
 #if PARABOLIC
 USE MOD_Precond_Vars          ,ONLy: HyperbolicPrecond
 USE MOD_Lifting_Vars          ,ONLY: gradUx,gradUy,gradUz
-USE MOD_Jacobian              ,ONLY: EvalDiffFluxJacobian 
+USE MOD_Jacobian              ,ONLY: EvalDiffFluxJacobian
 USE MOD_DG_Vars               ,ONLY: U,nDOFElem
 #if EDDYVISCOSITY
 USE MOD_EddyVisc_Vars         ,ONLY: muSGS
@@ -655,7 +655,7 @@ INTEGER,INTENT(IN)    :: iElem                                     !< current el
 ! OUTPUT VARIABLES
 REAL,INTENT(INOUT)    :: BJ(1:nDOFVarElem,1:nDOFVarElem)           !< block-Jacobian of current element
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 REAL,DIMENSION(1:PP_nVar,1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ):: dFdU_plus,dFdU_minus
 INTEGER                                                  :: i,j,p,q,iVar,jVar
 INTEGER                                                  :: s,r,vn1,vn2
@@ -673,9 +673,9 @@ INTEGER                                                  :: k
 REAL                                                     :: reps0_L,sreps0_L,reps0_R,sreps0_R
 #ifdef LEVELSET
 REAL                                                     :: LS_L,LS_R
-REAL                                                     :: curv 
-REAL                                                     :: curv_L,curv_R 
-REAL                                                     :: U_dummy1(PP_nVar),U_dummy2(PP_nVar),vel_dummy(3) 
+REAL                                                     :: curv
+REAL                                                     :: curv_L,curv_R
+REAL                                                     :: U_dummy1(PP_nVar),U_dummy2(PP_nVar),vel_dummy(3)
 REAL,DIMENSION(3)                                        :: NormVec_L,NormVec_R,NormVec_LS,TangVec1_LS,TangVec2_LS
 #endif
 #if FV_RECONSTRUCT
@@ -746,7 +746,7 @@ DO p=0,PP_N
 #endif
     ! for the calculation of the flux Jacobian a finite difference approach is used so that all Riemann solvers can be plugged in
     DO i=1,PP_N ! Loop over inner subcell interfaces
-      CALL Riemann_Point(F(:,i-1,p,q),                             &
+      CALL Riemann(F(:,i-1,p,q),                                   &
                    FV_U_Xiplus_loc(     :,i-1),                    &
                    FV_U_Ximinus_loc(    :,i  ),                    &
                    FV_UPrim_Xiplus_loc( :,i-1),                    &
@@ -765,8 +765,8 @@ DO p=0,PP_N
         sreps0_R = 1./reps0_R
         FV_U_minus_Tilde(jVar,i) = FV_U_minus_Tilde(jVar,i) + reps0_R
         CALL ConsToPrim(FV_UPrim_minus_Tilde(:,i),FV_U_minus_Tilde(:,i))
- 
-        CALL Riemann_Point(F_Tilde(:,i-1,p,q),                        &
+
+        CALL Riemann(F_Tilde(:,i-1,p,q),                              &
                      FV_U_plus_Tilde(     :,i-1),                     &
                      FV_U_Ximinus_loc(    :,i  ),                     &
                      FV_UPrim_plus_Tilde( :,i-1),                     &
@@ -774,7 +774,7 @@ DO p=0,PP_N
                      FV_NormVecXi(        :,p  ,q,i,iElem),           &
                      FV_TangVec1Xi(       :,p  ,q,i,iElem),           &
                      FV_TangVec2Xi(       :,p  ,q,i,iElem),.FALSE.)
-        CALL Riemann_Point(F_Tilde(:,i,p,q),                          &
+        CALL Riemann(F_Tilde(:,i,p,q),                                &
                      FV_U_Xiplus_loc(     :,i-1),                     &
                      FV_U_minus_Tilde(    :,i  ),                     &
                      FV_UPrim_Xiplus_loc( :,i-1),                     &
@@ -787,10 +787,10 @@ DO p=0,PP_N
         ! flux has positive sign for left cell (i-1) and negative sign for right cell (i)
         DO iVar=1,PP_nVar
           ! Take surface element into account when computing the finite difference approximation
-          dFdU_plus( iVar,jVar,i-1,p,q) =  FV_SurfElemXi_sw(p,q,i,iElem)*(F_Tilde(iVar,i-1,p,q) - F(iVar,i-1,p,q))*sreps0_L
-          dFdU_plus( iVar,jVar,i  ,p,q) = -FV_SurfElemXi_sw(p,q,i,iElem)*(F_Tilde(iVar,i-1,p,q) - F(iVar,i-1,p,q))*sreps0_L
-          dFdU_minus(iVar,jVar,i-1,p,q) =  FV_SurfElemXi_sw(p,q,i,iElem)*(F_Tilde(iVar,i  ,p,q) - F(iVar,i-1,p,q))*sreps0_R
-          dFdU_minus(iVar,jVar,i  ,p,q) = -FV_SurfElemXi_sw(p,q,i,iElem)*(F_Tilde(iVar,i  ,p,q) - F(iVar,i-1,p,q))*sreps0_R
+          dFdU_plus( iVar,jVar,i-1,p,q) =  FV_SurfElemXi_sw(p,q,i,iElem)*FV_w_inv(i-1)*(F_Tilde(iVar,i-1,p,q) - F(iVar,i-1,p,q))*sreps0_L
+          dFdU_plus( iVar,jVar,i  ,p,q) = -FV_SurfElemXi_sw(p,q,i,iElem)*FV_w_inv(i)  *(F_Tilde(iVar,i-1,p,q) - F(iVar,i-1,p,q))*sreps0_L
+          dFdU_minus(iVar,jVar,i-1,p,q) =  FV_SurfElemXi_sw(p,q,i,iElem)*FV_w_inv(i-1)*(F_Tilde(iVar,i  ,p,q) - F(iVar,i-1,p,q))*sreps0_R
+          dFdU_minus(iVar,jVar,i  ,p,q) = -FV_SurfElemXi_sw(p,q,i,iElem)*FV_w_inv(i)  *(F_Tilde(iVar,i  ,p,q) - F(iVar,i-1,p,q))*sreps0_R
         END DO !iVar
         ! reset U_plus
         FV_U_plus_Tilde(jVar,i-1) = FV_U_Xiplus_loc(jVar,i-1)
@@ -863,10 +863,10 @@ DO p=0,PP_N
                               FV_NormVecXi(2,p,q,i,iElem)*gJac_visc(:,:,i  ,p,q) + &
                               FV_NormVecXi(3,p,q,i,iElem)*hJac_visc(:,:,i  ,p,q))
 
-        BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_SurfElemXi_sw(p,q,i,iElem) * Jac_Visc_plus
-        BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_SurfElemXi_sw(p,q,i,iElem) * Jac_Visc_minus
-        BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) - FV_SurfElemXi_sw(p,q,i,iElem) * Jac_Visc_minus
-        BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) - FV_SurfElemXi_sw(p,q,i,iElem) * Jac_Visc_plus
+        BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_SurfElemXi_sw(p,q,i,iElem) * FV_w_inv(i-1) * Jac_Visc_plus
+        BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_SurfElemXi_sw(p,q,i,iElem) * FV_w_inv(i)   * Jac_Visc_minus
+        BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) - FV_SurfElemXi_sw(p,q,i,iElem) * FV_w_inv(i)   * Jac_Visc_minus
+        BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) - FV_SurfElemXi_sw(p,q,i,iElem) * FV_w_inv(i-1) * Jac_Visc_plus
       END IF
 #endif /*PARABOLIC*/
     END DO !i
@@ -902,7 +902,7 @@ DO p=0,PP_N
                                       UPrim_extended(:,p,:,q,iElem),dUdUvol_plus(:,:,:,:),dUdUvol_minus(:,:,:,:))
 #endif
     DO j=1,PP_N
-      CALL Riemann_Point(F(:,p,j-1,q),                              &
+      CALL Riemann(F(:,p,j-1,q),                                    &
                    FV_U_Etaplus_loc(     :,j-1),                    &
                    FV_U_Etaminus_loc(    :,j  ),                    &
                    FV_UPrim_Etaplus_loc( :,j-1),                    &
@@ -910,7 +910,7 @@ DO p=0,PP_N
                    FV_NormVecEta(        :,p,q  ,j,iElem),          &
                    FV_TangVec1Eta(       :,p,q  ,j,iElem),          &
                    FV_TangVec2Eta(       :,p,q  ,j,iElem),.FALSE.)
- 
+
       DO jVar=1,PP_nVar
         ! modify U_plus at j-1
         reps0_L  = reps0*(1.+ABS(FV_U_plus_Tilde(jVar,j-1)))
@@ -922,7 +922,7 @@ DO p=0,PP_N
         sreps0_R = 1./reps0_R
         FV_U_minus_Tilde(jVar,j) = FV_U_minus_Tilde(jVar,j) + reps0_R
         CALL ConsToPrim(FV_UPrim_minus_Tilde(:,j),FV_U_minus_Tilde(:,j))
-        CALL Riemann_Point(F_Tilde(:,p,j-1,q),                         &
+        CALL Riemann(F_Tilde(:,p,j-1,q),                               &
                      FV_U_plus_Tilde(      :,j-1),                     &
                      FV_U_Etaminus_loc(    :,j  ),                     &
                      FV_UPrim_plus_Tilde(  :,j-1),                     &
@@ -930,7 +930,7 @@ DO p=0,PP_N
                      FV_NormVecEta(        :,p,q  ,j,iElem),           &
                      FV_TangVec1Eta(       :,p,q  ,j,iElem),           &
                      FV_TangVec2Eta(       :,p,q  ,j,iElem),.FALSE.)
-        CALL Riemann_Point(F_Tilde(:,p,j,q),                           &
+        CALL Riemann(F_Tilde(:,p,j,q),                                 &
                      FV_U_Etaplus_loc(    :,j-1),                      &
                      FV_U_minus_Tilde(    :,j  ),                      &
                      FV_UPrim_Etaplus_loc(:,j-1),                      &
@@ -939,10 +939,10 @@ DO p=0,PP_N
                      FV_TangVec1Eta(      :,p,q  ,j,iElem),            &
                      FV_TangVec2Eta(      :,p,q  ,j,iElem),.FALSE.)
         DO iVar=1,PP_nVar
-          dFdU_plus( iVar,jVar,p,j-1,q) =  FV_SurfElemEta_sw(p,q,j,iElem)*(F_Tilde(iVar,p,j-1,q) - F(iVar,p,j-1,q))*sreps0_L
-          dFdU_plus( iVar,jVar,p,j  ,q) = -FV_SurfElemEta_sw(p,q,j,iElem)*(F_Tilde(iVar,p,j-1,q) - F(iVar,p,j-1,q))*sreps0_L
-          dFdU_minus(iVar,jVar,p,j-1,q) =  FV_SurfElemEta_sw(p,q,j,iElem)*(F_Tilde(iVar,p,j  ,q) - F(iVar,p,j-1,q))*sreps0_R
-          dFdU_minus(iVar,jVar,p,j  ,q) = -FV_SurfElemEta_sw(p,q,j,iElem)*(F_Tilde(iVar,p,j  ,q) - F(iVar,p,j-1,q))*sreps0_R
+          dFdU_plus( iVar,jVar,p,j-1,q) =  FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j-1)*(F_Tilde(iVar,p,j-1,q) - F(iVar,p,j-1,q))*sreps0_L
+          dFdU_plus( iVar,jVar,p,j  ,q) = -FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j)  *(F_Tilde(iVar,p,j-1,q) - F(iVar,p,j-1,q))*sreps0_L
+          dFdU_minus(iVar,jVar,p,j-1,q) =  FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j-1)*(F_Tilde(iVar,p,j  ,q) - F(iVar,p,j-1,q))*sreps0_R
+          dFdU_minus(iVar,jVar,p,j  ,q) = -FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j)  *(F_Tilde(iVar,p,j  ,q) - F(iVar,p,j-1,q))*sreps0_R
         END DO !iVar
         ! reset U_plus
         FV_U_plus_Tilde(jVar,j-1) = FV_U_Etaplus_loc(jVar,j-1)
@@ -1002,10 +1002,10 @@ DO p=0,PP_N
                               FV_NormVecEta(2,p,q,j,iElem)*gJac_visc(:,:,p,j  ,q) + &
                               FV_NormVecEta(3,p,q,j,iElem)*hJac_visc(:,:,p,j  ,q))
 
-        BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_SurfElemEta_sw(p,q,j,iElem) * Jac_Visc_plus
-        BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_SurfElemEta_sw(p,q,j,iElem) * Jac_Visc_minus
-        BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) - FV_SurfElemEta_sw(p,q,j,iElem) * Jac_Visc_minus
-        BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) - FV_SurfElemEta_sw(p,q,j,iElem) * Jac_Visc_plus
+        BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j-1) * Jac_Visc_plus
+        BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j)   * Jac_Visc_minus
+        BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) - FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j)   * Jac_Visc_minus
+        BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) - FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j-1) * Jac_Visc_plus
       END IF
 #endif /*PARABOLIC*/
     END DO !j
@@ -1042,7 +1042,7 @@ DO p=0,PP_N
                                       UPrim_extended(:,p,q,:,iElem),dUdUvol_plus(:,:,:,:),dUdUvol_minus(:,:,:,:))
 #endif
     DO k=1,PP_N
-      CALL Riemann_Point(F(:,p,q,k-1),                               &
+      CALL Riemann(F(:,p,q,k-1),                                     &
                    FV_U_Zetaplus_loc(     :,k-1),                    &
                    FV_U_Zetaminus_loc(    :,k  ),                    &
                    FV_UPrim_Zetaplus_loc( :,k-1),                    &
@@ -1050,7 +1050,7 @@ DO p=0,PP_N
                    FV_NormVecZeta(        :,p,q,k  ,iElem),          &
                    FV_TangVec1Zeta(       :,p,q,k  ,iElem),          &
                    FV_TangVec2Zeta(       :,p,q,k  ,iElem),.FALSE.)
- 
+
       DO jVar=1,PP_nVar
         ! modify U_plus at k-1
         reps0_L  = reps0*(1.+ABS(FV_U_plus_Tilde(jVar,k-1)))
@@ -1062,8 +1062,8 @@ DO p=0,PP_N
         sreps0_R = 1./reps0_R
         FV_U_minus_Tilde(jVar,k) = FV_U_minus_Tilde(jVar,k) + reps0_R
         CALL ConsToPrim(FV_UPrim_minus_Tilde(:,k),FV_U_minus_Tilde(:,k))
- 
-        CALL Riemann_Point(F_Tilde(:,p,q,k-1),                          &
+
+        CALL Riemann(F_Tilde(:,p,q,k-1),                                &
                      FV_U_plus_Tilde(       :,k-1),                     &
                      FV_U_Zetaminus_loc(    :,k),                       &
                      FV_UPrim_plus_Tilde(   :,k-1),                     &
@@ -1071,7 +1071,7 @@ DO p=0,PP_N
                      FV_NormVecZeta(        :,p,q,k  ,iElem),           &
                      FV_TangVec1Zeta(       :,p,q,k  ,iElem),           &
                      FV_TangVec2Zeta(       :,p,q,k  ,iElem),.FALSE.)
-        CALL Riemann_Point(F_Tilde(:,p,q,k),                            &
+        CALL Riemann(F_Tilde(:,p,q,k),                                  &
                      FV_U_Zetaplus_loc(    :,k-1),                      &
                      FV_U_minus_Tilde(     :,k),                        &
                      FV_UPrim_Zetaplus_loc(:,k-1),                      &
@@ -1080,10 +1080,10 @@ DO p=0,PP_N
                      FV_TangVec1Zeta(      :,p,q,k  ,iElem),            &
                      FV_TangVec2Zeta(      :,p,q,k  ,iElem),.FALSE.)
         DO iVar=1,PP_nVar
-          dFdU_plus( iVar,jVar,p,q,k-1) =  FV_SurfElemZeta_sw(p,q,k,iElem)*(F_Tilde(iVar,p,q,k-1) - F(iVar,p,q,k-1))*sreps0_L
-          dFdU_plus( iVar,jVar,p,q,k  ) = -FV_SurfElemZeta_sw(p,q,k,iElem)*(F_Tilde(iVar,p,q,k-1) - F(iVar,p,q,k-1))*sreps0_L
-          dFdU_minus(iVar,jVar,p,q,k-1) =  FV_SurfElemZeta_sw(p,q,k,iElem)*(F_Tilde(iVar,p,q,k  ) - F(iVar,p,q,k-1))*sreps0_R
-          dFdU_minus(iVar,jVar,p,q,k  ) = -FV_SurfElemZeta_sw(p,q,k,iElem)*(F_Tilde(iVar,p,q,k  ) - F(iVar,p,q,k-1))*sreps0_R
+          dFdU_plus( iVar,jVar,p,q,k-1) =  FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k-1)*(F_Tilde(iVar,p,q,k-1) - F(iVar,p,q,k-1))*sreps0_L
+          dFdU_plus( iVar,jVar,p,q,k  ) = -FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k)  *(F_Tilde(iVar,p,q,k-1) - F(iVar,p,q,k-1))*sreps0_L
+          dFdU_minus(iVar,jVar,p,q,k-1) =  FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k-1)*(F_Tilde(iVar,p,q,k  ) - F(iVar,p,q,k-1))*sreps0_R
+          dFdU_minus(iVar,jVar,p,q,k  ) = -FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k)  *(F_Tilde(iVar,p,q,k  ) - F(iVar,p,q,k-1))*sreps0_R
         END DO !iVar
         ! reset U_plus
         FV_U_plus_Tilde(jVar,k-1) = FV_U_Zetaplus_loc(jVar,k-1)
@@ -1143,10 +1143,10 @@ DO p=0,PP_N
                               FV_NormVecZeta(2,p,q,k,iElem)*gJac_visc(:,:,p,q,k  ) + &
                               FV_NormVecZeta(3,p,q,k,iElem)*hJac_visc(:,:,p,q,k  ))
 
-        BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_SurfElemZeta_sw(p,q,k,iElem) * Jac_Visc_plus
-        BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_SurfElemZeta_sw(p,q,k,iElem) * Jac_Visc_minus
-        BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) - FV_SurfElemZeta_sw(p,q,k,iElem) * Jac_Visc_minus
-        BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) - FV_SurfElemZeta_sw(p,q,k,iElem) * Jac_Visc_plus
+        BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k-1) * Jac_Visc_plus
+        BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k)   * Jac_Visc_minus
+        BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) - FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k)   * Jac_Visc_minus
+        BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) - FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k-1) * Jac_Visc_plus
       END IF
 #endif /*PARABOLIC*/
     END DO !k
@@ -1161,7 +1161,7 @@ END SUBROUTINE FVVolIntJac
 !> volume integral: the total derivative of the viscous flux with respect to U:
 !>                  dF^v/DU_cons = dF^v/dQ_prim* DQ_prim/DU_prim* DU_prim/DU_cons + dF^v/DU_cons|_grad=cons.
 !>                                       |              |                |              |
-!>                           FluxGradJacobian  FV-Reconstruction    dPrimTempdCons  (already done in FVVolIntJac) 
+!>                           FluxGradJacobian  FV-Reconstruction    dPrimTempdCons  (already done in FVVolIntJac)
 !>                           |____________________________________________________|
 !>                                                     |
 !>                                                 done here
@@ -1179,7 +1179,7 @@ USE MOD_Jacobian              ,ONLY: EvalFluxGradJacobian
 USE MOD_EddyVisc_Vars         ,ONLY: muSGS
 #endif /*EDDYVISCOSITY*/
 USE MOD_Jacobian              ,ONLY: dPrimTempdCons
-USE MOD_FV_Vars               ,ONLY: FV_NormVecXi,FV_NormVecEta,FV_SurfElemXi_sw,FV_SurfElemEta_sw
+USE MOD_FV_Vars               ,ONLY: FV_NormVecXi,FV_NormVecEta,FV_SurfElemXi_sw,FV_SurfElemEta_sw,FV_w_inv
 #if PP_dim==3
 USE MOD_FV_Vars               ,ONLY: FV_NormVecZeta,FV_SurfElemZeta_sw
 #endif
@@ -1192,7 +1192,7 @@ INTEGER,INTENT(IN)    :: iElem                                     !< current el
 ! OUTPUT VARIABLES
 REAL,INTENT(INOUT)    :: BJ(1:nDOFVarElem,1:nDOFVarElem)           !< block-Jacobian of current element
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER                                                       :: p,q,i,j,k
 INTEGER                                                       :: vn1,vn2,r,s,m,l,rr,ss,rrr,sss
 REAL,DIMENSION(PP_nVarPrim,PP_nVar    ,0:PP_N,0:PP_N,0:PP_NZ) :: PrimConsJac
@@ -1255,13 +1255,13 @@ DO p=0,PP_N
 #if PP_dim==3
                          +hJacTilde_plus( :,:)*FV_NormVecXi(3,p,q,i,iElem) &
 #endif
-                         )*FV_SurfElemXi_sw(p,q,i,iElem)
+                         )*FV_SurfElemXi_sw(p,q,i,iElem)*FV_w_inv(i)
       JacQx_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecXi(1,p,q,i,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecXi(2,p,q,i,iElem) &
 #if PP_dim==3
                          +hJacTilde_minus(:,:)*FV_NormVecXi(3,p,q,i,iElem) &
 #endif
-                         )*FV_SurfElemXi_sw(p,q,i,iElem)
+                         )*FV_SurfElemXi_sw(p,q,i,iElem)*FV_w_inv(i)
       ! y-gradient
       fJacTilde_plus =fJacQy(:,:,i-1,p,q)
       gJacTilde_plus =gJacQy(:,:,i-1,p,q)
@@ -1276,13 +1276,13 @@ DO p=0,PP_N
 #if PP_dim==3
                          +hJacTilde_plus( :,:)*FV_NormVecXi(3,p,q,i,iElem) &
 #endif
-                         )*FV_SurfElemXi_sw(p,q,i,iElem)
+                         )*FV_SurfElemXi_sw(p,q,i,iElem)*FV_w_inv(i)
       JacQy_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecXi(1,p,q,i,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecXi(2,p,q,i,iElem) &
 #if PP_dim==3
                          +hJacTilde_minus(:,:)*FV_NormVecXi(3,p,q,i,iElem) &
 #endif
-                         )*FV_SurfElemXi_sw(p,q,i,iElem)
+                         )*FV_SurfElemXi_sw(p,q,i,iElem)*FV_w_inv(i)
 #if PP_dim==3
       ! z-gradient
       fJacTilde_plus =fJacQz(:,:,i-1,p,q)
@@ -1294,11 +1294,11 @@ DO p=0,PP_N
       JacQz_plus  =  0.5*(fJacTilde_plus( :,:)*FV_NormVecXi(1,p,q,i,iElem) &
                          +gJacTilde_plus( :,:)*FV_NormVecXi(2,p,q,i,iElem) &
                          +hJacTilde_plus( :,:)*FV_NormVecXi(3,p,q,i,iElem) &
-                         )*FV_SurfElemXi_sw(p,q,i,iElem)
+                         )*FV_SurfElemXi_sw(p,q,i,iElem)*FV_w_inv(i)
       JacQz_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecXi(1,p,q,i,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecXi(2,p,q,i,iElem) &
                          +hJacTilde_minus(:,:)*FV_NormVecXi(3,p,q,i,iElem) &
-                         )*FV_SurfElemXi_sw(p,q,i,iElem)
+                         )*FV_SurfElemXi_sw(p,q,i,iElem)*FV_w_inv(i)
 #endif
       ! assemble preconditioner
       ! indices give neighbors of considered DOFs; dependency on m,l is due to reconstruction procedure:
@@ -1316,14 +1316,14 @@ DO p=0,PP_N
         ! indices give neighbors of considered DOFs in ETA direction
         !      ETA
         !  _____^_____
-        !  |    |    | 
-        !  |rrr |sss | 
+        !  |    |    |
+        !  |rrr |sss |
         !  |____|____|
-        !  |    F*   | 
+        !  |    F*   |
         !  | r  =  s |->XI
         !  |____|____|
-        !  |    |    | 
-        !  | rr | ss | 
+        !  |    |    |
+        !  | rr | ss |
         !  |____|____|
         rr  = vn1*(p-1) + vn2*q + PP_nVar*(i-1)
         rrr = vn1*(p+1) + vn2*q + PP_nVar*(i-1)
@@ -1392,18 +1392,18 @@ DO p=0,PP_N
 #if PP_dim==3
                          +hJacTilde_plus( :,:)*FV_NormVecEta(3,p,q,j,iElem) &
 #endif
-                         )*FV_SurfElemEta_sw(p,q,j,iElem)
+                         )*FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j)
       JacQx_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecEta(1,p,q,j,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecEta(2,p,q,j,iElem) &
 #if PP_dim==3
                          +hJacTilde_minus(:,:)*FV_NormVecEta(3,p,q,j,iElem) &
 #endif
-                         )*FV_SurfElemEta_sw(p,q,j,iElem)
+                         )*FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j)
       fJacTilde_plus =fJacQy(:,:,p,j-1,q)
       gJacTilde_plus =gJacQy(:,:,p,j-1,q)
       fJacTilde_minus=fJacQy(:,:,p,j  ,q)
       gJacTilde_minus=gJacQy(:,:,p,j  ,q)
-#if PP_dim==3                     
+#if PP_dim==3
       hJacTilde_plus =hJacQy(:,:,p,j-1,q)
       hJacTilde_minus=hJacQy(:,:,p,j  ,q)
 #endif
@@ -1412,13 +1412,13 @@ DO p=0,PP_N
 #if PP_dim==3
                          +hJacTilde_plus( :,:)*FV_NormVecEta(3,p,q,j,iElem) &
 #endif
-                         )*FV_SurfElemEta_sw(p,q,j,iElem)
+                         )*FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j)
       JacQy_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecEta(1,p,q,j,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecEta(2,p,q,j,iElem) &
 #if PP_dim==3
                          +hJacTilde_minus(:,:)*FV_NormVecEta(3,p,q,j,iElem) &
 #endif
-                         )*FV_SurfElemEta_sw(p,q,j,iElem)
+                         )*FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j)
 #if PP_dim==3
       fJacTilde_plus =fJacQz(:,:,p,j-1,q)
       gJacTilde_plus =gJacQz(:,:,p,j-1,q)
@@ -1429,11 +1429,11 @@ DO p=0,PP_N
       JacQz_plus  =  0.5*(fJacTilde_plus( :,:)*FV_NormVecEta(1,p,q,j,iElem) &
                          +gJacTilde_plus( :,:)*FV_NormVecEta(2,p,q,j,iElem) &
                          +hJacTilde_plus( :,:)*FV_NormVecEta(3,p,q,j,iElem) &
-                         )*FV_SurfElemEta_sw(p,q,j,iElem)
+                         )*FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j)
       JacQz_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecEta(1,p,q,j,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecEta(2,p,q,j,iElem) &
                          +hJacTilde_minus(:,:)*FV_NormVecEta(3,p,q,j,iElem) &
-                         )*FV_SurfElemEta_sw(p,q,j,iElem)
+                         )*FV_SurfElemEta_sw(p,q,j,iElem) * FV_w_inv(j)
 #endif
       ! assemble preconditioner
       r = vn1*(j-1) + vn2*q + PP_nVar*p
@@ -1499,11 +1499,11 @@ DO p=0,PP_N
       JacQx_plus  = 0.5*( fJacTilde_plus( :,:)*FV_NormVecZeta(1,p,q,k,iElem) &
                          +gJacTilde_plus( :,:)*FV_NormVecZeta(2,p,q,k,iElem) &
                          +hJacTilde_plus( :,:)*FV_NormVecZeta(3,p,q,k,iElem) &
-                         )*FV_SurfElemZeta_sw(p,q,k,iElem)
+                         )*FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k)
       JacQx_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecZeta(1,p,q,k,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecZeta(2,p,q,k,iElem) &
                          +hJacTilde_minus(:,:)*FV_NormVecZeta(3,p,q,k,iElem) &
-                         )*FV_SurfElemZeta_sw(p,q,k,iElem)
+                         )*FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k)
       fJacTilde_plus =fJacQy(:,:,p,q,k-1)
       gJacTilde_plus =gJacQy(:,:,p,q,k-1)
       fJacTilde_minus=fJacQy(:,:,p,q,k  )
@@ -1513,11 +1513,11 @@ DO p=0,PP_N
       JacQy_plus  =  0.5*(fJacTilde_plus( :,:)*FV_NormVecZeta(1,p,q,k,iElem) &
                          +gJacTilde_plus( :,:)*FV_NormVecZeta(2,p,q,k,iElem) &
                          +hJacTilde_plus( :,:)*FV_NormVecZeta(3,p,q,k,iElem) &
-                         )*FV_SurfElemZeta_sw(p,q,k,iElem)
+                         )*FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k)
       JacQy_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecZeta(1,p,q,k,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecZeta(2,p,q,k,iElem) &
                          +hJacTilde_minus(:,:)*FV_NormVecZeta(3,p,q,k,iElem) &
-                         )*FV_SurfElemZeta_sw(p,q,k,iElem)
+                         )*FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k)
       fJacTilde_plus =fJacQz(:,:,p,q,k-1)
       gJacTilde_plus =gJacQz(:,:,p,q,k-1)
       fJacTilde_minus=fJacQz(:,:,p,q,k  )
@@ -1527,11 +1527,11 @@ DO p=0,PP_N
       JacQz_plus  =  0.5*(fJacTilde_plus( :,:)*FV_NormVecZeta(1,p,q,k,iElem) &
                          +gJacTilde_plus( :,:)*FV_NormVecZeta(2,p,q,k,iElem) &
                          +hJacTilde_plus( :,:)*FV_NormVecZeta(3,p,q,k,iElem) &
-                         )*FV_SurfElemZeta_sw(p,q,k,iElem)
+                         )*FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k)
       JacQz_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecZeta(1,p,q,k,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecZeta(2,p,q,k,iElem) &
                          +hJacTilde_minus(:,:)*FV_NormVecZeta(3,p,q,k,iElem) &
-                         )*FV_SurfElemZeta_sw(p,q,k,iElem)
+                         )*FV_SurfElemZeta_sw(p,q,k,iElem) * FV_w_inv(k)
       ! assemble preconditioner
       r = vn1*q + vn2*(k-1) + PP_nVar*p
       s = vn1*q + vn2*k     + PP_nVar*p
@@ -1568,7 +1568,7 @@ DO p=0,PP_N
                                           JacReconstruct_Y(p,:,k-1,:,2),JacReconstruct_Y(p,:,k,:,2),                        &
                                           JacQz_plus,JacQz_minus,JacReconstruct_Z(p,:,k-1,:,2),JacReconstruct_Z(p,:,k,:,2), &
                                           BJ)
-      END IF                          
+      END IF
       CALL Assemble_FVVolIntGradJac(k,r,s,m,l,PrimConsJac(:,:,p,q,:),JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus, &
                                     JacReconstruct_X(p,q,:,:,3),JacReconstruct_Y(p,q,:,:,3),                        &
                                     JacQz_plus,JacQz_minus,JacReconstruct_Z(p,q,:,:,3),                             &
@@ -1621,7 +1621,7 @@ REAL,DIMENSION(0:PP_N,0:PP_N)                 ,INTENT(IN) :: JacReconstruct_Z !<
 ! OUTPUT VARIABLES
 REAL,INTENT(INOUT)    :: BJ(1:nDOFVarElem,1:nDOFVarElem)                      !< block-Jacobian of current element
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 REAL,DIMENSION(PP_nVar,PP_nVarPrim) :: JacTilde
 REAL,DIMENSION(PP_nVar,PP_nVar)     :: Jac
 !===================================================================================================================================
@@ -1760,7 +1760,7 @@ REAL,DIMENSION(0:PP_N,0:PP_N)             ,INTENT(IN) :: JacReconstruct_Z_minus 
 ! OUTPUT VARIABLES
 REAL,INTENT(INOUT)    :: BJ(1:nDOFVarElem,1:nDOFVarElem)                        !< block-Jacobian of current element
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 REAL,DIMENSION(PP_nVar,PP_nVarPrim) :: JacTilde
 REAL,DIMENSION(PP_nVar,PP_nVar)     :: Jac
 !===================================================================================================================================
@@ -1768,14 +1768,14 @@ REAL,DIMENSION(PP_nVar,PP_nVar)     :: Jac
 ! i gives index along XI-direction (flux dir), p gives index along ETA-direction (gradient dir)
 !      ETA
 !  _____^_____
-!  |    |    | 
-!  |rrr |sss | 
+!  |    |    |
+!  |rrr |sss |
 !  |____|____|
-!  |    F*   | 
+!  |    F*   |
 !  | r  = s, |->XI
 !  |____|_i,p|
-!  |    |    | 
-!  | rr | ss | 
+!  |    |    |
+!  | rr | ss |
 !  |____|____|
 !----------- derivatives w.r.t. (i) -------------!
 ! (i-1) Flux w.r.t (i-1) State

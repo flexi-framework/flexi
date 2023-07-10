@@ -292,7 +292,7 @@ USE MOD_GetBoundaryFlux ,ONLY: GetBoundaryFVgradient
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)    :: t                                                 !< physical time
+REAL,INTENT(IN)    :: t                                                  !< physical time
 REAL,INTENT(IN)    :: UPrim_master( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution
 REAL,INTENT(INOUT) :: FV_surf_gradU(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< slope over the BC interface
 !----------------------------------------------------------------------------------------------------------------------------------

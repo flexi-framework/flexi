@@ -174,7 +174,7 @@ iter  = 0
 IF (PRESENT(epsOut)) epsOut = eps_F
 
 ! While L2 error exceeds eps_F and max. iteration number not reached
-DO WHILE ((SUM(F*F).GT.eps_F).AND.(iter.LT.100))
+DO WHILE ((SUM(F*F).GT.eps_F).AND.(iter.LT.maxIter))
   iter = iter+1
 
   ! Compute F Jacobian dx/dXi

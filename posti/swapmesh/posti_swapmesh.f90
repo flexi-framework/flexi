@@ -43,6 +43,9 @@ USE MOD_MPI,                     ONLY: InitMPIvars,FinalizeMPI
 #endif
 USE MOD_SwapMesh,                ONLY: InitSwapmesh,ReadOldStateFile,WriteNewStateFile,FinalizeSwapMesh
 USE MOD_InterpolateSolution,     ONLY: InterpolateSolution
+#if FV_ENABLED
+USE MOD_FV_Basis,                ONLY: InitFV_Basis,FinalizeFV_Basis
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -82,6 +85,7 @@ CALL prms%CreateRealOption(     "abortTolerance"     , "Tolerance used to decide
                                                        "RefState is given")
 CALL prms%CreateLogicalOption(  "ExtrudeTo3D"        , "Perform an extrusion of a one-layer mesh to the 3D version",'.FALSE.')
 CALL prms%CreateIntOption(      "ExtrudeK"           , "Layer which is used in extrusion")
+CALL prms%CreateLogicalOption(  "ExtrudePeriodic"    , "Perform a periodic extrusion of a 3D mesh to a mesh with extended z length",'.FALSE.') 
 
 ! Parse parameters
 ! check for command line argument --help or --markdown
@@ -120,6 +124,11 @@ CALL InitSwapmesh()
 CALL InitMPIvars()
 #endif
 
+#if FV_ENABLED
+! Required since it allocates some quantities written as HDF5 attributes to state file
+CALL InitFV_Basis()
+#endif
+
 ! Evaluate solution at new solution nodes
 DO iArg=2,nArgs
   ! Check if a .h5 file has been given to the swapmesh tool
@@ -134,7 +143,6 @@ DO iArg=2,nArgs
   SWRITE(UNIT_stdOut,'(132("="))')
   CALL ReadOldStateFile(Args(iArg))
 
-
   SWRITE(UNIT_stdOut,'(A)') ' EVALUATING SOLUTION ON NEW MESH ...'
   CALL InterpolateSolution()
 
@@ -143,6 +151,9 @@ DO iArg=2,nArgs
 END DO
 
 CALL FinalizeSwapMesh()
+#if FV_ENABLED
+CALL FinalizeFV_Basis()
+#endif
 #if USE_MPI
 CALL FinalizeMPI()
 CALL MPI_FINALIZE(iError)

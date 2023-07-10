@@ -78,7 +78,7 @@ build_gnu:
   stage: build
   script:
     - mkdir -p build_gnu ; cd build_gnu
-    - git clone git@gitlab.com:reggie2.0/reggie2.0.git
+    - git clone https://github.com/piclas-framework/reggie2.0.git
     - cmake .. -DLIBS_BUILD_HDF5=OFF ; make -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -89,7 +89,7 @@ gnu:
   stage: reggie_checkin
   script:
     - rm -r build_gnu; mkdir -p build_gnu; cd build_gnu
-    - git clone git@gitlab.com:reggie2.0/reggie2.0.git
+    - git clone https://github.com/piclas-framework/reggie2.0.git
     - cmake .. -DLIBS_BUILD_HDF5=OFF ; make -j 6
     - python ./reggie2.0/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -j 6 -e ./bin/flexi
 
@@ -147,11 +147,17 @@ gnu_naca:
   script:
     - cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/naca -j 6
 
-gnu_fv:
+gnu_fv_switch:
   <<: *defaults_weekly
   stage: reggie_weekly
   script:
-    - cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/fv -j 6
+    - cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/fv_switch -j 6
+
+gnu_fv_blend:
+  <<: *defaults_weekly
+  stage: reggie_weekly
+  script:
+    - cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/fv_blend -j 6
 
 gnu_channelRANS:
   <<: *defaults_weekly

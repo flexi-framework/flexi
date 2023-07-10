@@ -84,6 +84,18 @@ IF(FLEXI_PP_LIMITER)
 ENDIF()
 
 # =========================================================================
+# ExactMM
+# =========================================================================
+# exact mass matrix
+OPTION(FLEXI_EXACT_MASSMATRIX "Build and invert exact mass Matrix" OFF)
+IF(FLEXI_EXACT_MASSMATRIX)
+  ADD_DEFINITIONS(-DEXACT_MM)
+  IF(FLEXI_NODETYPE STREQUAL "GAUSS")
+    MESSAGE(SEND_ERROR "FLEXI_EXACT_MASSMATRIX only works on FLEXI_NODETYPE==GAUSS-LOBATTO points.")
+  ENDIF()
+ENDIF()
+
+# =========================================================================
 # Polynomial degree
 # =========================================================================
 SET(FLEXI_POLYNOMIAL_DEGREE "N" CACHE STRING "N: compile with variable polynomial degree. 1,2,3,...: compile with fixed polynomial degree for performance (untested).")
@@ -157,11 +169,26 @@ ENDIF()
 # =========================================================================
 # FV subcell shock capturing
 # =========================================================================
-OPTION(FLEXI_FV "Enable Finite Volume subcell shock capturing" OFF)
+SET(FLEXI_FV "OFF" CACHE STRING "Enable Finite Volume subcell shock capturing")
+SET_PROPERTY(CACHE FLEXI_FV PROPERTY STRINGS OFF SWITCH BLEND)
+
 CMAKE_DEPENDENT_OPTION(FLEXI_FV_RECONSTRUCTION "Enable 2nd order reconstruction for FV" ON
-                                               "FLEXI_FV" OFF)
-IF(FLEXI_FV)
-  ADD_DEFINITIONS(-DFV_ENABLED=1)
+	                                             "FLEXI_FV" ON) # Everyhting except "OFF" is logically "ON"
+
+IF(NOT (FLEXI_FV STREQUAL "OFF"))
+  IF(    FLEXI_FV STREQUAL "SWITCH")
+    ADD_DEFINITIONS(-DFV_ENABLED=1)
+  ELSEIF(FLEXI_FV STREQUAL "BLEND")
+    IF(NOT FLEXI_EQNSYSNAME STREQUAL "navierstokes")
+      MESSAGE(SEND_ERROR "FLEXI_FV=BLEND only works for FLEXI_EQNSYSNAME==navierstokes.")
+    ELSEIF(FLEXI_NODETYPE STREQUAL "GAUSS")
+      MESSAGE(SEND_ERROR "FLEXI_FV=BLEND only works on FLEXI_NODETYPE==GAUSS-LOBATTO points.")
+    ENDIF()
+    ADD_DEFINITIONS(-DFV_ENABLED=2)
+  ELSE()
+    MESSAGE(SEND_ERROR "No such FV shock capturing known.")
+  ENDIF()
+
   IF (FLEXI_FV_RECONSTRUCTION)
     ADD_DEFINITIONS(-DFV_RECONSTRUCT=1)
   ELSE()
@@ -178,9 +205,9 @@ ENDIF()
 # =========================================================================
 # Reduced lifting in performance mode
 # =========================================================================
-CMAKE_DEPENDENT_OPTION(FLEXI_OPTLIFT "Lift only needed variables" OFF
-                                     "FLEXI_PERFORMANCE;NOT POSTI" OFF)
-IF(FLEXI_OPTLIFT)
+CMAKE_DEPENDENT_OPTION(FLEXI_PERFORMANCE_OPTLIFT "Lift only needed variables" OFF
+                                                 "FLEXI_PERFORMANCE;NOT POSTI" OFF)
+IF(FLEXI_PERFORMANCE_OPTLIFT)
   ADD_DEFINITIONS(-DPP_OPTLIFT=1)
 ELSE()
   ADD_DEFINITIONS(-DPP_OPTLIFT=0)
@@ -250,7 +277,7 @@ FILE(GLOB_RECURSE flexiF90 ./src/interpolation/*.f90
                            ./src/precond/*.f90
                            ./src/implicit/*.f90
                            ./src/testcase/${FLEXI_TESTCASE}/*.f90
-                           ./src/flexilib.f90
+                           # ./src/flexilib.f90
                            ./unitTests/unittest.f90
                            ./unitTests/unittest_vars.f90)
 
@@ -273,17 +300,25 @@ ELSE()
   INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src/equations/${FLEXI_EQNSYSNAME}/)
 ENDIF()
 
+# >> remove F90 files of the splitflux from 'eqnsysF90'-list
+FILE(GLOB splitfluxF90 ./src/equations/${FLEXI_EQNSYSNAME}/splitflux.f90)
+IF (NOT FLEXI_SPLIT_DG)
+  LIST(REMOVE_ITEM eqnsysF90 ${splitfluxF90})
+ENDIF()
+
 # >> append F90 files of the eddy viscosity to 'eqnsysF90'-list
 IF (FLEXI_EDDYVISCOSITY)
   FILE(GLOB eddyviscF90 ./src/equations/${FLEXI_EQNSYSNAME}/eddyVisc/*.f90
             eddyviscF90 ./src/equations/${FLEXI_EQNSYSNAME}/eddyVisc/default/*.f90
             eddyviscF90 ./src/equations/${FLEXI_EQNSYSNAME}/eddyVisc/smagorinsky/*.f90
+            eddyviscF90 ./src/equations/${FLEXI_EQNSYSNAME}/eddyVisc/dynSmagorinsky/*.f90
             eddyviscF90 ./src/equations/${FLEXI_EQNSYSNAME}/eddyVisc/vreman/*.f90
             eddyviscF90 ./src/equations/${FLEXI_EQNSYSNAME}/eddyVisc/sigmaModel/*.f90)
   LIST(APPEND eqnsysF90 ${eddyviscF90})
 ENDIF()
 
 # >> append 'eqnsysF90'-list to 'flexiF90'-list
+LIST(REMOVE_DUPLICATES eqnsysF90)
 LIST(APPEND flexiF90 ${eqnsysF90})
 
 # >> collect F90 files of 'dg' directory (non-recursive) in a new list 'dgF90'
@@ -317,7 +352,7 @@ ENDIF()
 
 # Userblock
 EXECUTE_PROCESS(COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/src/output/print_userblock.c ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-ADD_CUSTOM_TARGET(generateUserblock COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/tools/userblock/generate_userblock.sh
+ADD_CUSTOM_TARGET(generateUserblock COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/tools/userblock/generateuserblock.sh
                                                    ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
                                                    ${CMAKE_BINARY_DIR}
                                                    "${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}"
@@ -326,7 +361,8 @@ ADD_LIBRARY(userblocklib STATIC ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/print_userbloc
 ADD_DEPENDENCIES(userblocklib generateUserblock)
 
 ADD_LIBRARY(stacksizelib STATIC ./src/globals/stacksize.c)
-SET_TARGET_PROPERTIES(stacksizelib userblocklib PROPERTIES LINKER_LANGUAGE C COMPILE_FLAGS "-fPIC")
+SET_TARGET_PROPERTIES(stacksizelib userblocklib PROPERTIES LANGUAGE C LINKER_LANGUAGE C
+                                                           COMPILE_FLAGS "-fPIC")
 
 # we link the statically built libs
 ADD_LIB_SHARED(       libflexishared ./src/flexilib.f90)

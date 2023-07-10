@@ -106,8 +106,8 @@ USE MOD_TimeDisc_Vars       ,ONLY: CFLScale
 USE MOD_TimeDisc_Vars       ,ONLY: dtElem,dt,tend,tStart,dt_dynmin,dt_kill
 USE MOD_TimeDisc_Vars       ,ONLY: Ut_tmp,UPrev,S2
 USE MOD_TimeDisc_Vars       ,ONLY: maxIter,nCalcTimeStepMax
-USE MOD_TimeDisc_Vars       ,ONLY: SetTimeDiscCoefs,TimeStep,TimeDiscName,TimeDiscType,TimeDiscInitIsDone
-USE MOD_TimeStep            ,ONLY: TimeStepByLSERKW2,TimeStepByLSERKK3,TimeStepByESDIRK
+USE MOD_TimeDisc_Vars       ,ONLY: SetTimeDiscCoefs,TimeDiscName,TimeDiscType,TimeDiscInitIsDone
+USE MOD_TimeStep            ,ONLY: SetTimeStep
 #if PARABOLIC
 USE MOD_TimeDisc_Vars       ,ONLY: DFLScale
 #endif /*PARABOLIC*/
@@ -129,28 +129,27 @@ SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TIMEDISC...'
 
 ! Read max number of iterations to perform
-maxIter = GETINT('maxIter','-1')
+maxIter = GETINT('maxIter')
 
 ! Get nCalcTimeStepMax: check if advanced settings should be used!
-nCalcTimeStepMax = GETINT('nCalcTimeStepMax','1')
+nCalcTimeStepMax = GETINT('nCalcTimeStepMax')
 
 ! Get TimeDisc Method
-TimeDiscMethod = GETSTR('TimeDiscMethod','Carpenter RK4-5')
+TimeDiscMethod = GETSTR('TimeDiscMethod')
 CALL StripSpaces(TimeDiscMethod)
 CALL LowCase(TimeDiscMethod)
 CALL SetTimeDiscCoefs(TimeDiscMethod)
 
+! Set TimeStep function pointer
+CALL SetTimeStep(TimeDiscType)
+
 SELECT CASE(TimeDiscType)
   CASE('LSERKW2')
-    TimeStep=>TimeStepByLSERKW2
     ALLOCATE(Ut_tmp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
   CASE('LSERKK3')
-    TimeStep=>TimeStepByLSERKK3
     ALLOCATE(S2   (1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) &
             ,UPrev(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
   CASE('ESDIRK')
-    ! Implicit time integration
-    TimeStep=>TimeStepByESDIRK
     ! Predictor for Newton
     CALL InitPredictor(TimeDiscMethod)
 END SELECT
@@ -318,8 +317,10 @@ USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
 USE MOD_TimeDisc_Vars       ,ONLY: t,dt,dt_min,tAnalyze,tEnd,CalcTimeStart
 USE MOD_TimeDisc_Vars       ,ONLY: iter,iter_analyze,maxIter
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize,writeCounter
-#if FV_ENABLED
-USE MOD_FV                  ,ONLY: FV_Info
+#if FV_ENABLED == 1
+USE MOD_FV_Switching        ,ONLY: FV_Info
+#elif FV_ENABLED == 2
+USE MOD_FV_Blending         ,ONLY: FV_Info
 #endif
 #if PP_LIMITER
 USE MOD_PPLimiter           ,ONLY: PPLimiter_Info,PPLimiter
@@ -367,7 +368,7 @@ IF(doAnalyze)THEN
     ! Write various derived data
     IF(doCalcTimeAverage) CALL CalcTimeAverage(.TRUE.,dt,t)
     IF(RP_onProc)         CALL WriteRP(PP_nVar,StrVarNames,t,.TRUE.)
-    IF(CalcPruettDamping) CALL WriteBaseFlow(TRIM(MeshFile),t)
+    IF(CalcPruettDamping) CALL WriteBaseFlow(TRIM(MeshFile),t,tWriteData)
     ! Write state file
     ! NOTE: this should be last in the series, so we know all previous data
     ! has been written correctly when the state file is present
@@ -475,6 +476,7 @@ USE MOD_TimeDisc_Vars       ,ONLY:DFLScale,DFLScale_Readin,DFLScaleAlpha,Relativ
 #endif /*PARABOLIC*/
 #if FV_ENABLED
 USE MOD_TimeDisc_Vars       ,ONLY:CFLScaleFV
+USE MOD_FV_Vars             ,ONLY:FV_w
 #endif /*FV*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -495,7 +497,7 @@ INTEGER            :: dummy
 alpha       = CFLScaleAlpha(MIN(15,Nin_CFL))
 CFLScale(0) = CFLScale(0)*alpha
 #if FV_ENABLED
-CFLScale(1) = CFLScale(1)*CFLScaleFV/(PP_N+1.) ! equidistant distribution
+CFLScale(1) = CFLScale(1)*CFLScaleFV*MINVAL(FV_w)/2. ! Scale with smallest FV subcell
 #endif
 IF((Nin_CFL.GT.15).OR.(CFLScale(0).GT.alpha))THEN
   SWRITE(UNIT_stdOut,'(132("!"))')
@@ -515,7 +517,7 @@ CFLScale_Readin = CFLScale
 alpha       = DFLScaleAlpha(MIN(10,Nin_DFL))*RelativeDFL
 DFLScale(0) = DFLScale(0)*alpha
 #if FV_ENABLED
-DFLScale(1) = DFLScale(1)*DFLScaleAlpha(1)*RelativeDFL/(PP_N+1.)**2
+DFLScale(1) = DFLScale(1)*DFLScaleAlpha(1)*RelativeDFL*(MINVAL(FV_w)/2.)**2 ! Scale with smallest FV subcell
 #endif
 IF((Nin_DFL.GT.10).OR.(DFLScale(0).GT.alpha))THEN
   SWRITE(UNIT_stdOut,'(132("!"))')
@@ -565,6 +567,7 @@ END SUBROUTINE TimeDisc_Info
 SUBROUTINE FinalizeTimeDisc()
 ! MODULES
 USE MOD_TimeDisc_Vars
+USE MOD_TimeStep,      ONLY: TimeStep
 IMPLICIT NONE
 !==================================================================================================================================
 TimeDiscInitIsDone = .FALSE.

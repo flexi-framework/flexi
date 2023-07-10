@@ -23,7 +23,7 @@ USE MOD_Globals
 USE MOD_Commandline_Arguments
 USE MOD_PreProc              ,ONLY: PP_N
 USE MOD_AnalyzeEquation_Vars ,ONLY: UAvg,UFluc
-USE MOD_HDF5_Input           ,ONLY: ReadAttribute,ReadArray,GetDataSize
+USE MOD_HDF5_Input           ,ONLY: ReadAttribute,ReadArray,GetDataSize,DatasetExists
 USE MOD_HDF5_Output          ,ONLY: WriteTimeAverage,WriteArray,WriteAttribute
 USE MOD_IO_HDF5              ,ONLY: HSIZE,File_ID,nDims
 USE MOD_IO_HDF5              ,ONLY: OpenDataFile,CloseDataFile
@@ -32,6 +32,9 @@ USE MOD_MPI                  ,ONLY: InitMPI
 USE MOD_Mesh_Vars            ,ONLY: offsetElem,nElems,nGlobalElems
 USE MOD_Output_Vars          ,ONLY: ProjectName
 USE MOD_StringTools          ,ONLY: STRICMP
+#if FV_ENABLED
+USE MOD_FV_Vars              ,ONLY: FV_X,FV_w
+#endif
 #if USE_MPI
 USE MOD_MPI                  ,ONLY: FinalizeMPI
 #endif
@@ -76,6 +79,9 @@ REAL                                 :: dt,AvgTime,TotalAvgTime,TotalAvgTimeGlob
 
 !> FV Elems
 INTEGER,ALLOCATABLE                  :: FV_Elems_loc(:)
+#if FV_ENABLED
+LOGICAL                              :: FV_exists
+#endif /*FV_ENABLED*/
 
 !> Input
 CHARACTER(LEN=255)                   :: InputFile
@@ -188,8 +194,8 @@ DO i = 1,ref%nDataSets
   locsize(1:nDim) = ref%nVal(1:nDim,i)
   locsize(  nDim) = nElems
 
-  ALLOCATE(avg(i)%AvgData(PRODUCT(ref%nVal(1:nDim,i))) &
-          ,avg(i)%AvgTmp( PRODUCT(ref%nVal(1:nDim,i))))
+  ALLOCATE(avg(i)%AvgData(PRODUCT(locsize(1:nDim))) &
+          ,avg(i)%AvgTmp( PRODUCT(locsize(1:nDim))))
 
   avg(i)%AvgData = 0
   avg(i)%AvgTmp  = 0
@@ -213,6 +219,22 @@ DO i = 1,ref%nDataSets
     END SELECT
   END IF
 END DO
+
+! Read FV position and weights or fill with dummy
+#if FV_ENABLED
+CALL OpenDataFile(InputFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+ALLOCATE(FV_X(0:PP_N))
+ALLOCATE(FV_w(0:PP_N))
+CALL DatasetExists(File_ID,'FV_X',FV_exists,attrib=.TRUE.)
+IF (FV_exists) THEN
+  CALL ReadAttribute(File_ID,'FV_X',PP_N+1,RealArray=FV_X)
+  CALL ReadAttribute(File_ID,'FV_w',PP_N+1,RealArray=FV_w)
+ELSE
+  FV_X = 0.
+  FV_w = 0.
+END IF
+CALL CloseDataFile()
+#endif
 
 ! Start the averaging
 SWRITE(UNIT_stdOut,'(132("="))')
@@ -308,24 +330,23 @@ DO iFile = 1,nFiles
         SELECT CASE(TRIM(ref%DatasetNames(i)))
           CASE('Mean')
             nDim     = ref%nDims(   i)
-            nVarAvg  = ref%nVal(1:nDim,i)
+            nVarAvg(1:nDim) = ref%nVal(1:nDim,i)
+            nVarAvg(nDim)   = nElems
             UAvg     = RESHAPE(avg(i)%AvgData,(/nVarAvg( 1),nVarAvg( 2),nVarAvg( 3),nVarAvg( 4),nVarAvg( 5)/))
 
           CASE('MeanSquare')
             nDim     = ref%nDims(   i)
-            nVarFluc = ref%nVal(1:nDim,i)
+            nVarFluc(1:nDim) = ref%nVal(1:nDim,i)
+            nVarFluc(nDim)   = nElems
             UFluc    = RESHAPE(avg(i)%AvgData,(/nVarFluc(1),nVarFluc(2),nVarFluc(3),nVarFluc(4),nVarFluc(5)/))
         END SELECT
       ELSE
         SELECT CASE(TRIM(ref%DatasetNames(i)))
           CASE('DG_Solution')
             nDim     = ref%nDims(   i)
-            nVarAvg  = ref%nVal(1:nDim,i)
+            nVarAvg(1:nDim) = ref%nVal(1:nDim,i)
+            nVarAvg(nDim)   = nElems
             UAvg     = RESHAPE(avg(i)%AvgData,(/nVarAvg( 1),nVarAvg( 2),nVarAvg( 3),nVarAvg( 4),nVarAvg( 5)/))
-
-            CALL OpenDataFile(FileNameOut,create=.FALSE.,single=.FALSE.,readOnly=.FALSE.)
-            CALL WriteAttribute(File_ID,'VarNames_Mean',nVarAvg(1),StrArray=ref%DatasetNamesAvg)
-            CALL CloseDataFile
         END SELECT
       END IF
     END DO
@@ -337,6 +358,7 @@ DO iFile = 1,nFiles
     ! Write file
     CALL WriteTimeAverage(MeshFileName = ref%MeshFile         &
                          ,OutputTime   = Time                 &
+                         ,FutureTime   = Time                 &
                          ,dtAvg        = TotalAvgTime         &
                          ,nVal         = nVarAvg(2:4)         &
                          ,nVarAvg      = nVarAvg(1)           &
@@ -387,6 +409,11 @@ END DO
 SDEALLOCATE(UAvg)
 SDEALLOCATE(UFluc)
 SDEALLOCATE(FV_Elems_loc)
+
+#if FV_ENABLED
+SDEALLOCATE(FV_X)
+SDEALLOCATE(FV_w)
+#endif /*FV_ENABLED*/
 
 SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A,I5,A,I5,A,F10.5)') "Merging DONE: ",nFiles-nSkipped," of ",nFiles, &

@@ -56,18 +56,15 @@ INTERFACE InitRiemann
 END INTERFACE
 
 INTERFACE Riemann
-  MODULE PROCEDURE Riemann
-END INTERFACE
-
-INTERFACE Riemann_Point
   MODULE PROCEDURE Riemann_Point
+  MODULE PROCEDURE Riemann_Side
 END INTERFACE
 
 #if PARABOLIC
 INTERFACE ViscousFlux
-  MODULE PROCEDURE ViscousFlux
+  MODULE PROCEDURE ViscousFlux_Point
+  MODULE PROCEDURE ViscousFlux_Side
 END INTERFACE
-PUBLIC::ViscousFlux
 #endif
 
 INTERFACE FinalizeRiemann
@@ -75,13 +72,15 @@ INTERFACE FinalizeRiemann
 END INTERFACE
 
 
+PUBLIC::DefineParametersRiemann
 PUBLIC::InitRiemann
 PUBLIC::Riemann
-PUBLIC::Riemann_Point
 PUBLIC::FinalizeRiemann
+#if PARABOLIC
+PUBLIC::ViscousFlux
+#endif
 !==================================================================================================================================
 
-PUBLIC::DefineParametersRiemann
 CONTAINS
 
 
@@ -243,21 +242,20 @@ END SUBROUTINE InitRiemann
 !> Conservative States are rotated into normal direction in this routine and are NOT backrotated: don't use it after this routine!!
 !> Attention 2: numerical flux is backrotated at the end of the routine!!
 !==================================================================================================================================
-SUBROUTINE Riemann(Nloc,FOut,U_L,U_R,UPrim_L,UPrim_R,nv,t1,t2,doBC)
+SUBROUTINE Riemann_Side(Nloc,FOut,U_L,U_R,UPrim_L,UPrim_R,nv,t1,t2,doBC)
 ! MODULES
 USE MOD_Flux         ,ONLY:EvalEulerFlux1D_fast
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)                                          :: Nloc       !< local polynomial degree
-REAL,DIMENSION(CONS    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)     :: U_L        !< conservative solution at left side of the interface
-REAL,DIMENSION(CONS    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)     :: U_R        !< conservative solution at right side of the interface
-REAL,DIMENSION(PRIM,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)         :: UPrim_L    !< primitive solution at left side of the interface
-REAL,DIMENSION(PRIM,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)         :: UPrim_R    !< primitive solution at right side of the interface
-!> normal vector and tangential vectors at side
-REAL,DIMENSION(          3,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv,t1,t2
-LOGICAL,INTENT(IN)                                          :: doBC       !< marker whether side is a BC side
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: FOut       !< advective flux
+INTEGER,INTENT(IN)                                          :: Nloc      !< local polynomial degree
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_L       !< conservative solution at left side of the interface
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_R       !< conservative solution at right side of the interface
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_L   !< primitive solution at left side of the interface
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_R   !< primitive solution at right side of the interface
+REAL,DIMENSION(3          ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv,t1,t2  !> normal vector and tangential vectors at side
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: FOut      !< advective flux
+LOGICAL,INTENT(IN)                                          :: doBC      !< marker whether side is a BC side
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: i,j
@@ -310,7 +308,7 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
   U_RR(EXT_MOM3)=0.
 #endif
 
-# ifndef SPLIT_DG
+#ifndef SPLIT_DG
   CALL EvalEulerFlux1D_fast(U_LL,F_L)
   CALL EvalEulerFlux1D_fast(U_RR,F_R)
 #endif /*SPLIT_DG*/
@@ -328,7 +326,7 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
 #endif
   Fout(ENER,i,j)=F(ENER)
 END DO; END DO
-END SUBROUTINE Riemann
+END SUBROUTINE Riemann_Side
 
 !==================================================================================================================================
 !> Computes the numerical flux
@@ -345,9 +343,9 @@ REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U_L        !< conservative solution a
 REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
 REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
 REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
-REAL,DIMENSION(          3),INTENT(IN)  :: nv,t1,t2   !< normal vector and tangential vectors at side
-LOGICAL,INTENT(IN)                      :: doBC       !< marker whether side is a BC side
+REAL,DIMENSION(3          ),INTENT(IN)  :: nv,t1,t2   !< normal vector and tangential vectors at side
 REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: FOut       !< advective flux
+LOGICAL,INTENT(IN)                      :: doBC       !< marker whether side is a BC side
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,DIMENSION(PP_nVar) :: F_L,F_R,F
@@ -403,16 +401,16 @@ CALL EvalEulerFlux1D_fast(U_LL,F_L)
 CALL EvalEulerFlux1D_fast(U_RR,F_R)
 #endif /*SPLIT_DG*/
 
- CALL Riemann_loc(F_L,F_R,U_LL,U_RR,F)
+CALL Riemann_loc(F_L,F_R,U_LL,U_RR,F)
 
- ! Back Rotate the normal flux into Cartesian direction
- Fout(DENS)=F(DENS)
- Fout(MOMV)=nv(:)*F(MOM1)     &
-                 + t1(:)*F(MOM2)  &
+! Back rotate the normal flux into Cartesian direction
+Fout(DENS)=F(DENS)
+Fout(MOMV)=nv(:)*F(MOM1)  &
+          +t1(:)*F(MOM2)  &
 #if PP_dim==3
-                + t2(:)*F(MOM3)
+          +t2(:)*F(MOM3)
 #else
-                + 0.
+          +0.
 #endif
 Fout(ENER)=F(ENER)
 END SUBROUTINE Riemann_Point
@@ -422,12 +420,12 @@ END SUBROUTINE Riemann_Point
 !> Computes the viscous NSE diffusion fluxes in all directions to approximate the numerical flux
 !> Actually not a Riemann solver, only here for coding reasons
 !==================================================================================================================================
-SUBROUTINE ViscousFlux(Nloc,F,UPrim_L,UPrim_R, &
-                       gradUx_L,gradUy_L,gradUz_L,gradUx_R,gradUy_R,gradUz_R,nv&
+SUBROUTINE ViscousFlux_Side(Nloc,F,UPrim_L,UPrim_R, &
+                            gradUx_L,gradUy_L,gradUz_L,gradUx_R,gradUy_R,gradUz_R,nv &
 #if EDDYVISCOSITY
-                      ,muSGS_L,muSGS_R&
+                           ,muSGS_L,muSGS_R &
 #endif
-                      )
+                           )
 ! MODULES
 USE MOD_Flux         ,ONLY: EvalDiffFlux3D
 USE MOD_Lifting_Vars ,ONLY: diffFluxX_L,diffFluxY_L,diffFluxZ_L
@@ -435,16 +433,15 @@ USE MOD_Lifting_Vars ,ONLY: diffFluxX_R,diffFluxY_R,diffFluxZ_R
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)                                            :: Nloc     !< local polynomial degree
-                                                              !> solution in primitive variables at left/right side of the interface
-REAL,DIMENSION(PRIM,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)           :: UPrim_L,UPrim_R
-                                                              !> solution gradients in x/y/z-direction left/right of the interface
-REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN) :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
-REAL,INTENT(IN)                                               :: nv(3,0:Nloc,0:ZDIM(Nloc)) !< normal vector
-REAL,INTENT(OUT)                                              :: F(PP_nVar,0:Nloc,0:ZDIM(Nloc)) !< viscous flux
+INTEGER,INTENT(IN)                                             :: Nloc     !< local polynomial degree
+                                                               !> solution in primitive variables at left/right side of interface
+REAL,DIMENSION(PP_nVarPrim   ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_L,UPrim_R
+                                                               !> solution gradients in x/y/z-direction left/right of interface
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
+REAL,DIMENSION(3             ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv  !< normal vector
+REAL,DIMENSION(PP_nVar       ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: F   !< viscous flux
 #if EDDYVISCOSITY
-                                                              !> eddy viscosity left/right of the interface
-REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)              :: muSGS_L,muSGS_R
+REAL,DIMENSION(1             ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: muSGS_L,muSGS_R   !> eddy viscosity left/right of the interface
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -454,30 +451,77 @@ INTEGER                                                       :: p,q
 !==================================================================================================================================
 ! Don't forget the diffusion contribution, my young padawan
 ! Compute NSE Diffusion flux
-  CALL EvalDiffFlux3D(Nloc,UPrim_L,gradUx_L,   gradUy_L,   gradUz_L, &
-                                diffFluxX_L,diffFluxY_L,diffFluxZ_L  &
+CALL EvalDiffFlux3D(Nloc,UPrim_L,   gradUx_L,   gradUy_L,   gradUz_L  &
+                                ,diffFluxX_L,diffFluxY_L,diffFluxZ_L  &
 #if EDDYVISCOSITY
-                     ,muSGS_L&
+                   ,muSGS_L &
 #endif
       )
-  CALL EvalDiffFlux3D(Nloc,UPrim_R,gradUx_R,   gradUy_R,   gradUz_R, &
-                                diffFluxX_R,diffFluxY_R,diffFluxZ_R  &
+CALL EvalDiffFlux3D(Nloc,UPrim_R,   gradUx_R,   gradUy_R,   gradUz_R  &
+                                ,diffFluxX_R,diffFluxY_R,diffFluxZ_R  &
 #if EDDYVISCOSITY
-                     ,muSGS_R&
+                   ,muSGS_R&
 #endif
       )
-! BR1 uses arithmetic mean of the fluxes
+! Arithmetic mean of the fluxes
 DO q=0,ZDIM(Nloc); DO p=0,Nloc
-  F(:,p,q)=0.5*(nv(1,p,q)*(diffFluxX_L(CONS,p,q)+diffFluxX_R(CONS,p,q)) &
-               +nv(2,p,q)*(diffFluxY_L(CONS,p,q)+diffFluxY_R(CONS,p,q)) &
-               +nv(3,p,q)*(diffFluxZ_L(CONS,p,q)+diffFluxZ_R(CONS,p,q)))
+  F(:,p,q)=0.5*(nv(1,p,q)*(diffFluxX_L(:,p,q)+diffFluxX_R(:,p,q)) &
+               +nv(2,p,q)*(diffFluxY_L(:,p,q)+diffFluxY_R(:,p,q)) &
+               +nv(3,p,q)*(diffFluxZ_L(:,p,q)+diffFluxZ_R(:,p,q)))
 END DO; END DO
-END SUBROUTINE ViscousFlux
+END SUBROUTINE ViscousFlux_Side
+
+!==================================================================================================================================
+!> Computes the viscous NSE diffusion fluxes in all directions to approximate the numerical flux
+!> Actually not a Riemann solver, only here for coding reasons
+!==================================================================================================================================
+SUBROUTINE ViscousFlux_Point(F,UPrim_L,UPrim_R, &
+                             gradUx_L,gradUy_L,gradUz_L,gradUx_R,gradUy_R,gradUz_R,nv &
+#if EDDYVISCOSITY
+                            ,muSGS_L,muSGS_R &
+#endif
+                            )
+! MODULES
+USE MOD_Flux         ,ONLY: EvalDiffFlux3D
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+                                           !> solution in primitive variables at left/right side of the interface
+REAL,DIMENSION(PP_nVarPrim   ),INTENT(IN)  :: UPrim_L,UPrim_R
+                                           !> solution gradients in x/y/z-direction left/right of the interface
+REAL,DIMENSION(PP_nVarLifting),INTENT(IN)  :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
+REAL,DIMENSION(3             ),INTENT(IN)  :: nv  !< normal vector
+REAL,DIMENSION(PP_nVar       ),INTENT(OUT) :: F   !< viscous flux
+#if EDDYVISCOSITY
+REAL,INTENT(IN)                            :: muSGS_L,muSGS_R    !> eddy viscosity left/right of the interface
+#endif
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL,DIMENSION(PP_nVar)  :: diffFluxX_L,diffFluxY_L,diffFluxZ_L
+REAL,DIMENSION(PP_nVar)  :: diffFluxX_R,diffFluxY_R,diffFluxZ_R
+!==================================================================================================================================
+! Don't forget the diffusion contribution, my young padawan
+! Compute NSE Diffusion flux
+CALL EvalDiffFlux3D(UPrim_L,   gradUx_L,   gradUy_L,   gradUz_L  &
+                           ,diffFluxX_L,diffFluxY_L,diffFluxZ_L  &
+#if EDDYVISCOSITY
+                   ,muSGS_L &
+#endif
+      )
+CALL EvalDiffFlux3D(UPrim_R,   gradUx_R,   gradUy_R,   gradUz_R  &
+                           ,diffFluxX_R,diffFluxY_R,diffFluxZ_R  &
+#if EDDYVISCOSITY
+                   ,muSGS_R&
+#endif
+      )
+! Arithmetic mean of the fluxes
+F(:)=0.5*(nv(1)*(diffFluxX_L(:)+diffFluxX_R(:)) &
+         +nv(2)*(diffFluxY_L(:)+diffFluxY_R(:)) &
+         +nv(3)*(diffFluxZ_L(:)+diffFluxZ_R(:)))
+END SUBROUTINE ViscousFlux_Point
 #endif /* PARABOLIC */
-
-
-
-
 
 !==================================================================================================================================
 !> Local Lax-Friedrichs (Rusanov) Riemann solver
@@ -514,13 +558,12 @@ F = F - 0.5*LambdaMax*(U_RR(CONS) - U_LL(CONS))
 #endif /*SPLIT_DG*/
 END SUBROUTINE Riemann_LF
 
-
 !=================================================================================================================================
 !> Harten-Lax-Van-Leer Riemann solver resolving contact discontinuity
 !=================================================================================================================================
 PPURE SUBROUTINE Riemann_HLLC(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
-USE MOD_EOS_Vars      ,ONLY: KappaM1
+USE MOD_EOS_Vars      ,ONLY: KappaM1!,kappa
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -542,14 +585,14 @@ REAL    :: sMu_L,sMu_R
 ! HLLC flux
 
 ! Version A: Basic Davis estimate for wave speed
-!Ssl = U_LL(VEL1) - SPEEDOFSOUND_HE(U_LL)
-!Ssr = U_RR(VEL1) + SPEEDOFSOUND_HE(U_RR)
+!Ssl = U_LL(EXT_VEL1) - SPEEDOFSOUND_HE(U_LL)
+!Ssr = U_RR(EXT_VEL1) + SPEEDOFSOUND_HE(U_RR)
 
 ! Version B: Basic Davis estimate for wave speed
 !c_L = SPEEDOFSOUND_HE(U_LL)
 !c_R = SPEEDOFSOUND_HE(U_RR)
-!Ssl = MIN(U_LL(VEL1) - c_L,U_RR(VEL1) - c_R)
-!Ssr = MAX(U_LL(VEL1) + c_L,U_RR(VEL1) + c_R)
+!Ssl = MIN(U_LL(EXT_VEL1) - c_L,U_RR(EXT_VEL1) - c_R)
+!Ssr = MAX(U_LL(EXT_VEL1) + c_L,U_RR(EXT_VEL1) + c_R)
 
 ! Version C: Better Roe estimate for wave speeds Davis, Einfeldt
 H_L       = TOTALENTHALPY_HE(U_LL)
@@ -562,8 +605,8 @@ RoeVel    = (SqrtRho_R*U_RR(EXT_VELV) + SqrtRho_L*U_LL(EXT_VELV)) * sSqrtRho
 RoeH      = (SqrtRho_R*H_R            + SqrtRho_L*H_L       )     * sSqrtRho
 absVel    = DOT_PRODUCT(RoeVel,RoeVel)
 Roec      = SQRT(KappaM1*(RoeH-0.5*absVel))
-Ssl = RoeVel(1) - Roec
-Ssr = RoeVel(1) + Roec
+Ssl       = RoeVel(1) - Roec
+Ssr       = RoeVel(1) + Roec
 
 ! positive supersonic speed
 IF(Ssl .GE. 0.)THEN
@@ -587,7 +630,6 @@ ELSE
   END IF
 END IF ! subsonic case
 END SUBROUTINE Riemann_HLLC
-
 
 !=================================================================================================================================
 !> Roe's approximate Riemann solver
@@ -664,7 +706,6 @@ F = F - 0.5*(Alpha1*ABS(a(1))*r1 + &
              Alpha5*ABS(a(5))*r5)
 #endif /*SPLIT_DG*/
 END SUBROUTINE Riemann_Roe
-
 
 !=================================================================================================================================
 !> Roe's approximate Riemann solver using the Harten and Hymen II entropy fix, see
@@ -862,7 +903,6 @@ F = F - 0.5*(Alpha1*ABS(a(1))*r1 + &
 #endif /*SPLIT_DG*/
 END SUBROUTINE Riemann_RoeL2
 
-
 !=================================================================================================================================
 !> Standard Harten-Lax-Van-Leer Riemann solver without contact discontinuity
 !=================================================================================================================================
@@ -913,7 +953,6 @@ ELSE
 END IF ! subsonic case
 END SUBROUTINE Riemann_HLL
 
-
 !=================================================================================================================================
 !> Harten-Lax-Van-Leer-Einfeldt Riemann solver
 !=================================================================================================================================
@@ -962,7 +1001,6 @@ ELSE
   F=(Ssr*F_L-Ssl*F_R+Ssl*Ssr*(U_RR(EXT_CONS)-U_LL(EXT_CONS)))/(Ssr-Ssl)
 END IF ! subsonic case
 END SUBROUTINE Riemann_HLLE
-
 
 !=================================================================================================================================
 !> Harten-Lax-Van-Leer-Einfeldt-Munz Riemann solver
@@ -1050,7 +1088,6 @@ REAL,DIMENSION(PP_nVar),INTENT(OUT):: F         !< resulting Riemann flux
 ! get split flux
 CALL SplitDGSurface_pointer(U_LL,U_RR,F)
 END SUBROUTINE Riemann_FluxAverage
-
 
 !==================================================================================================================================
 !> kinetic energy preserving and entropy consistent flux according to Chandrashekar (2012)

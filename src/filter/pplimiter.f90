@@ -101,9 +101,9 @@ SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT POSITIVITY-PRESERVING LIMITER...'
 
 ! Read in variables
-DoPPLimiter = GETLOGICAL('DoPPLimiter','.FALSE.')
-PPEpsFac    = GETREAL('PPThresholdFactor','1.E-10')
-iPPRefState = GETINT('PPRefState','1')
+DoPPLimiter = GETLOGICAL('DoPPLimiter')
+PPEpsFac    = GETREAL('PPThresholdFactor')
+iPPRefState = GETINT('PPRefState')
 !PPepsDens and PPepsPres are calculated in limiter, since RefStatePrim is needed from InitEquation
 
 ! Prepare PP Limiter
@@ -126,7 +126,7 @@ IF (DoPPLimiter) THEN
   SDEALLOCATE(IntegrationWeight) ! different array size in last dim
 #endif
   IF( .NOT. ALLOCATED(IntegrationWeight)) THEN
-    ALLOCATE(IntegrationWeight(0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_ENABLED))
+    ALLOCATE(IntegrationWeight(0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_SIZE))
     DO iElem=1,nElems
       Vol = 0.
       DO k=0,PP_NZ;DO j=0,PP_N;DO i=0,PP_N
@@ -144,7 +144,7 @@ IF (DoPPLimiter) THEN
     DO iElem=1,nElems
       Vol = 0.
       DO k=0,PP_NZ;DO j=0,PP_N;DO i=0,PP_N
-        IntegrationWeight(i,j,k,iElem,1) = FV_w**PP_dim / sJ(i,j,k,iElem,1)
+        IntegrationWeight(i,j,k,iElem,1) = FV_w(i)*FV_w(j)*FV_w(k) / sJ(i,j,k,iElem,1)
         Vol = Vol + IntegrationWeight(i,j,k,iElem,1)
       END DO; END DO; END DO
       IntegrationWeight(:,:,:,iElem,1) = IntegrationWeight(:,:,:,iElem,1) / Vol

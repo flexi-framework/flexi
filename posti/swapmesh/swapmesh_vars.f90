@@ -32,7 +32,11 @@ LOGICAL             :: printTroublemakers=.TRUE. !< print warnings for troublema
                                                  !< (very time consuming for many new points outisde the old mesh)
 LOGICAL             :: ExtrudeTo3D               !< Switch to perform an extrusion of a one-layer mesh to the 3D version
 INTEGER,ALLOCATABLE :: Elem_IJK(:,:)             !< IJK sorting of new mesh
+INTEGER             :: nElemsOld_IJK(3)          !< IJK Element numebr of old mesh
+INTEGER             :: nElemsNew_IJK(3)          !< IJK Element numebr of new mesh
 INTEGER             :: ExtrudeK                  !< Layer which is used in extrusion
+
+LOGICAL             :: ExtrudePeriodic           !< Perform a periodic extrusion of a 3D mesh to a mesh with extended z length
 
 CHARACTER(LEN=255)  :: MeshFileOld               !< Old mesh file (optional, only to overwrite mesh from old state)
 CHARACTER(LEN=255)  :: MeshFileNew               !< New mesh file

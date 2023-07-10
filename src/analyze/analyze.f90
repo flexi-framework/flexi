@@ -115,18 +115,18 @@ SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT ANALYZE...'
 
 ! Get the various analysis/output variables
-doCalcErrorNorms  =GETLOGICAL('CalcErrorNorms' ,'.TRUE.')
-doAnalyzeToFile   =GETLOGICAL('AnalyzeToFile','.FALSE.')
-AnalyzeExactFunc  =GETINT('AnalyzeExactFunc',INTTOSTR(IniExactFunc))
-AnalyzeRefState   =GETINT('AnalyzeRefState' ,INTTOSTR(IniRefState))
+doCalcErrorNorms = GETLOGICAL('CalcErrorNorms')
+doAnalyzeToFile  = GETLOGICAL('AnalyzeToFile')
+AnalyzeExactFunc = GETINT('AnalyzeExactFunc',INTTOSTR(IniExactFunc))
+AnalyzeRefState  = GETINT('AnalyzeRefState' ,INTTOSTR(IniRefState))
 
-analyze_dt        =GETREAL('analyze_dt','0.0')
-nWriteData        =GETINT('nWriteData' ,'1')
-NAnalyze          =GETINT('NAnalyze'   ,INTTOSTR(2*(PP_N+1)))
+analyze_dt       = GETREAL('analyze_dt')
+nWriteData       = GETINT('nWriteData')
+NAnalyze         = GETINT('NAnalyze'   ,INTTOSTR(2*(PP_N+1)))
 #if PP_dim == 3
-NAnalyzeZ         =NAnalyze
+NAnalyzeZ        = NAnalyze
 #else
-NAnalyzeZ         =0
+NAnalyzeZ        = 0
 #endif
 ! If analyze_dt is set to 0 (default) or to a negative value, no analyze calls should be performed at all.
 ! To achieve this, analyze_dt is set to the final simulation time. This will prevent any calls of the analyze routine
@@ -409,14 +409,10 @@ REAL                            :: J_NAnalyze(1,0:NAnalyze,0:NAnalyze,0:NAnalyze
 REAL                            :: J_N(1,0:PP_N,0:PP_N,0:PP_NZ)
 REAL                            :: IntegrationWeight
 #if FV_ENABLED
-REAL                            :: FV_w_volume
 REAL                            :: U_DG(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL                            :: U_FV(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 #endif
 !==================================================================================================================================
-#if FV_ENABLED
-FV_w_volume = FV_w**PP_dim
-#endif
 ! Calculate error norms
 L_Inf_Error(:)=-1.E10
 L_2_Error(:)=0.
@@ -436,7 +432,7 @@ DO iElem=1,nElems
       DO l=0,PP_N
         DO k=0,PP_N
           L_Inf_Error = MAX(L_Inf_Error,ABS(U(:,k,l,m,iElem) - U_FV(:,k,l,m)))
-          IntegrationWeight = FV_w_volume/sJ(k,l,m,iElem,1)
+          IntegrationWeight = FV_w(k)*FV_w(l)*FV_w(m)/sJ(k,l,m,iElem,1)
           ! To sum over the elements, We compute here the square of the L_2 error
           L_2_Error = L_2_Error+(U(:,k,l,m,iElem) - U_FV(:,k,l,m))*(U(:,k,l,m,iElem) - U_FV(:,k,l,m))*IntegrationWeight
         END DO ! k

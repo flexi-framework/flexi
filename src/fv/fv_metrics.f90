@@ -282,7 +282,7 @@ DO iElem=1,nElems
         FV_TangVec2Xi (:,:,:,l,iElem),&
         FV_SurfElemXi_sw(:,:,l,iElem))
     ! multiply FV_SurfElemXi with 1/FV_w
-    FV_SurfElemXi_sw(:,:,l,iElem) = FV_SurfElemXi_sw(:,:,l,iElem)*FV_w_inv
+    !FV_SurfElemXi_sw(:,:,l,iElem) = FV_SurfElemXi_sw(:,:,l,iElem)*FV_w_inv
   END DO
 
   ! Eta direction
@@ -306,7 +306,7 @@ DO iElem=1,nElems
         FV_TangVec2Eta (:,:,:,l,iElem),&
         FV_SurfElemEta_sw(:,:,l,iElem))
     ! multiply FV_SurfElemEta with 1/FV_w
-    FV_SurfElemEta_sw(:,:,l,iElem) = FV_SurfElemEta_sw(:,:,l,iElem)*FV_w_inv
+    !FV_SurfElemEta_sw(:,:,l,iElem) = FV_SurfElemEta_sw(:,:,l,iElem)*FV_w_inv
   END DO
 
 #if (PP_dim == 3)
@@ -331,7 +331,7 @@ DO iElem=1,nElems
         FV_TangVec2Zeta (:,:,:,l,iElem),&
         FV_SurfElemZeta_sw(:,:,l,iElem))
     ! multiply FV_SurfElemZeta with 1/FV_w
-    FV_SurfElemZeta_sw(:,:,l,iElem) = FV_SurfElemZeta_sw(:,:,l,iElem)*FV_w_inv
+    !FV_SurfElemZeta_sw(:,:,l,iElem) = FV_SurfElemZeta_sw(:,:,l,iElem)*FV_w_inv
   END DO
 #endif /* PP_dim == 3 */
   !==================================================================
@@ -495,18 +495,20 @@ END DO
 DO iElem=1,nElems
   DO d=1,3
     DO i=0,PP_N
-      FV_Metrics_fTilde_sJ(d,i,:,:,iElem)=FV_w_inv*Metrics_fTilde(d,i,:,:,iElem,1)*&
+      FV_Metrics_fTilde_sJ(d,i,:,:,iElem)=FV_w_inv(i)*Metrics_fTilde(d,i,:,:,iElem,1)*&
           (FV_dx_XI_L  (:,:,i,iElem)+FV_dx_XI_R  (:,:,i,iElem))
     END DO ! i=0,PP_N
     DO j=0,PP_N
-      FV_Metrics_gTilde_sJ(d,:,j,:,iElem)=FV_w_inv*Metrics_gTilde(d,:,j,:,iElem,1)*&
+      FV_Metrics_gTilde_sJ(d,:,j,:,iElem)=FV_w_inv(j)*Metrics_gTilde(d,:,j,:,iElem,1)*&
           (FV_dx_ETA_L (:,:,j,iElem)+FV_dx_ETA_R (:,:,j,iElem))
     END DO ! j=0,PP_N
     FV_Metrics_fTilde_sJ(d,:,:,:,iElem)=FV_Metrics_fTilde_sJ(d,:,:,:,iElem)*sJ(:,:,:,iElem,1)
     FV_Metrics_gTilde_sJ(d,:,:,:,iElem)=FV_Metrics_gTilde_sJ(d,:,:,:,iElem)*sJ(:,:,:,iElem,1)
 #if (PP_dim == 3)
-    FV_Metrics_hTilde_sJ(d,:,:,:,iElem)=FV_w_inv*Metrics_hTilde(d,:,:,:,iElem,1)*&
-        (FV_dx_ZETA_L(:,:,:,iElem)+FV_dx_ZETA_R(:,:,:,iElem))
+    DO k=0,PP_N
+      FV_Metrics_hTilde_sJ(d,:,:,k,iElem)=FV_w_inv(k)*Metrics_hTilde(d,:,:,k,iElem,1)*&
+          (FV_dx_ZETA_L(:,:,k,iElem)+FV_dx_ZETA_R(:,:,k,iElem))
+    END DO ! k=0,PP_N
     FV_Metrics_hTilde_sJ(d,:,:,:,iElem)=FV_Metrics_hTilde_sJ(d,:,:,:,iElem)*sJ(:,:,:,iElem,1)
 #endif
   END DO

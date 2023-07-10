@@ -71,7 +71,7 @@ OPTION(FLEXI_PERFORMANCE "Enable performance optimizations" OFF)
 EXECUTE_PROCESS(COMMAND ld.gold --version COMMAND grep "^GNU gold" COMMAND sed "s/^.* //g" OUTPUT_VARIABLE GNU_GOLD_VERSION)
 IF (DEFINED GNU_GOLD_VERSION  AND NOT "${GNU_GOLD_VERSION}" STREQUAL "")
   STRING(STRIP "${GNU_GOLD_VERSION}" GNU_GOLD_VERSION)
-  MESSAGE(STATUS "Setting linker to gold v${GNU_GOLD_VERSION}")
+  MESSAGE(STATUS "Setting linker to [gold] (v${GNU_GOLD_VERSION})")
   # Shift responsibility of driving the final stages of compilation from collect2 to gold via the linker plugin
   # More information at: https://gcc.gnu.org/wiki/LinkTimeOptimization
   IF(CMAKE_VERSION VERSION_GREATER_EQUAL 3.13)
@@ -118,7 +118,9 @@ ENDIF()
 # Check IPO support:
 # =========================================================================
 # we need to have languages enabled and compilers defined for this
-IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.9.0"))
+OPTION(FLEXI_PERFORMANCE_IPO "Enable Interprocedural Optimization for build (if available)." ON)
+MARK_AS_ADVANCED(FORCE FLEXI_PERFORMANCE_IPO)
+IF(FLEXI_PERFORMANCE_IPO AND NOT(${CMAKE_VERSION} VERSION_LESS "3.9.0"))
   CMAKE_POLICY(SET CMP0069 NEW)
   INCLUDE(CheckIPOSupported)
   CHECK_IPO_SUPPORTED(RESULT HASIPO OUTPUT error)
@@ -154,7 +156,6 @@ IF (NOT CMAKE_BUILD_TYPE)
      SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release Profile)
    ENDIF()
 ENDIF (NOT CMAKE_BUILD_TYPE)
-
 
 STRING(TOLOWER ${CMAKE_BUILD_TYPE} BUILD_TYPE_LC)
 IF (BUILD_TYPE_LC MATCHES "debug" OR BUILD_TYPE_LC MATCHES "sanitize")
@@ -205,14 +206,17 @@ ENDIF()
 # Location of binary and filenames
 # =========================================================================
 # append relative filename-macro for __FILENAME__ in Stamp of abort function (see flexi.h)
+# subst replacement is GNU make specific
+IF("${CMAKE_GENERATOR}" MATCHES "Unix Makefiles")
 SET(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -D__FILENAME__='\"$(subst ${CMAKE_SOURCE_DIR}/,,$(abspath $<))\"'")
+ENDIF()
 
 # add basedir for location of corresponding userblock-file
 ADD_DEFINITIONS("-DBASEDIR='\"${CMAKE_CURRENT_BINARY_DIR}/\"'")
 
-# -------------------------------------------------------------------------
+# =========================================================================
 # echo COMPILE_DEFINITIONS
-# -------------------------------------------------------------------------
+# =========================================================================
 GET_DIRECTORY_PROPERTY(comp_defs DIRECTORY ${CMAKE_SOURCE_DIR} COMPILE_DEFINITIONS )
 SET(comp_defs_str "COMPILE_DEFINITIONS = ")
 FOREACH (def ${comp_defs})
@@ -221,35 +225,36 @@ ENDFOREACH()
 ADD_CUSTOM_TARGET(preproc_defines COMMAND echo ${comp_defs_str})
 
 # =========================================================================
-# USERBLOCK
+# USERBLOCK + PREPROC_FLAGS
 # =========================================================================
-# generate the configuration.cmake file needed for the userblock
-
 # A function to get all user defined variables with a specified prefix
-FUNCTION(getListOfVarsStartingWith _prefix _varResult)
-  GET_CMAKE_PROPERTY(_vars CACHE_VARIABLES)
-  STRING(REGEX MATCHALL "(^|;)${_prefix}[A-Za-z0-9_]*" _matchedVars "${_vars}")
-  SET(${_varResult} ${_matchedVars} PARENT_SCOPE)
+FUNCTION (GETLISTOFVARSSTARTINGWITH _PREFIX _VARRESULT)
+    GET_CMAKE_PROPERTY(_VARS CACHE_VARIABLES)
+    STRING(REGEX MATCHALL "(^|;)${_PREFIX}[A-Za-z0-9_]*" _MATCHEDVARS "${_VARS}")
+    SET(${_VARRESULT} ${_MATCHEDVARS} PARENT_SCOPE)
 ENDFUNCTION()
 
-# get all user defined variables with a specified prefix
+# A function to get all user defined variables with a specified prefix
 SET(configuration ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/configuration.cmake)
 FILE(WRITE ${configuration} "")
-GETLISTOFVARSSTARTINGWITH("FLEXI_" flexiConfigVars)
-GETLISTOFVARSSTARTINGWITH("LIBS_"  libsConfigVars)
-GETLISTOFVARSSTARTINGWITH("POSTI"  postiConfigVars) # no underscore
-SET(userDefinedVars "CMAKE_BUILD_TYPE" ${flexiConfigVars} ${libsConfigVars} ${postiConfigVars})
-FOREACH(_var IN LISTS userDefinedVars)
+GETLISTOFVARSSTARTINGWITH("FLEXI_" flexiVars1)
+GETLISTOFVARSSTARTINGWITH("CMAKE_" flexiVars2)
+GETLISTOFVARSSTARTINGWITH("HDF5_"  flexiVars3)
+GETLISTOFVARSSTARTINGWITH("LIBS_"  flexiVars4)
+GETLISTOFVARSSTARTINGWITH("POSTI_" flexiVars5)
+FOREACH (_var IN LISTS flexiVars1 flexiVars2 flexiVars3 flexiVars4 flexiVars5)
   GET_PROPERTY(currentHelpString CACHE "${_var}" PROPERTY HELPSTRING)
-  # Leading H is hack for empty strings which otherwise produce errors
-  SET(isBoolean ("H${${_var}}" STREQUAL "HON" OR "H${${_var}}" STREQUAL "HOFF"))
-  IF(${isBoolean})
-    FILE(APPEND ${configuration} "OPTION(${_var} \"${currentHelpString}\" ${${_var}})\n")
-  ELSE()
-    IF(${_var})
-      STRING(REPLACE "\\" "\\\\" ${_var} ${${_var}})
+  # Skip empty variables
+  IF(NOT ${${_var}} STREQUAL "")
+    SET(boolian (${${_var}} STREQUAL "ON" OR ${${_var}} STREQUAL "OFF"))
+    IF(${boolian})
+      FILE(APPEND ${configuration} "OPTION(${_var} \"${currentHelpString}\" ${${_var}})\n")
+    ELSE()
+      IF(${_var})
+        STRING(REPLACE "\\" "\\\\" ${_var} ${${_var}})
+      ENDIF()
+      FILE(APPEND ${configuration} "SET(${_var} \"${${_var}}\" CACHE STRING \"${currentHelpString}\")\n")
     ENDIF()
-    FILE(APPEND ${configuration} "SET(${_var} \"${${_var}}\" CACHE STRING \"${currentHelpString}\")\n")
   ENDIF()
 ENDFOREACH()
 

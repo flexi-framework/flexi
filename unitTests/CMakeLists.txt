@@ -9,13 +9,12 @@ function(add_unit_test target)
     ADD_EXECUTABLE(${target} ${ARGN})
     TARGET_LINK_LIBRARIES(${target} libflexishared)
     # Set properties of target
-    SET_TARGET_PROPERTIES(${target} PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
+    SET_TARGET_PROPERTIES(${target} PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
     SET_TARGET_PROPERTIES(${target} PROPERTIES LINKER_LANGUAGE Fortran)
-    SET_TARGET_PROPERTIES( ${target}
-   	 		PROPERTIES
-   	 		ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/unitTests/lib"
-   	 		LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/unitTests/lib"
-   	 		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/unitTests/bin")    
+    SET_TARGET_PROPERTIES(${target} PROPERTIES
+                                    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/unitTests/lib"
+                                    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/unitTests/lib"
+                                    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/unitTests/bin")
     # Add this test to the global list of tests
     SET(UNIT_TEST_TARGETS ${UNIT_TEST_TARGETS} ${target} PARENT_SCOPE)
     # Add the test
@@ -26,6 +25,11 @@ endfunction()
 
 # Enable testing in general
 ENABLE_TESTING()
+# ... and make it parallel
+INCLUDE(ProcessorCount)
+PROCESSORCOUNT(N)
+SET(ENV{CTEST_PARALLEL_LEVEL} "${N}")
+MESSAGE(STATUS "Executing unit tests with $ENV{CTEST_PARALLEL_LEVEL} processes")
 
 # Add the unit tests
 add_unit_test(ReadInTools ./unitTests/ReadInTools.f90)
@@ -41,5 +45,5 @@ ADD_CUSTOM_TARGET( all_tests ALL
                    DEPENDS ${UNIT_TEST_TARGETS})
 ADD_CUSTOM_COMMAND(TARGET all_tests
                    COMMENT "Run unit tests"
-                   POST_BUILD COMMAND ctest --output-on-failure
+                   POST_BUILD COMMAND ctest --output-on-failure -j${N}
                    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
