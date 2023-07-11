@@ -34,7 +34,7 @@ fi
 
 cd "$1"
 BUILD_ID=$(date +%Y-%m-%d_%H-%M-%S-%N)
-echo "{[( CMAKE )]}"               >> build_info.txt
+echo "{[( CMAKE )]}"                > build_info.txt
 cat configuration.cmake            >> build_info.txt
 
 #----------------------------------------------------------------------------------------------------
