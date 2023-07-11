@@ -478,8 +478,8 @@ USE MOD_TestCase_Vars,ONLY:writeBuf,Time
 IMPLICIT NONE
 !==================================================================================================================================
 IF(MPIRoot)THEN
-  DEALLOCATE(Time)
-  DEALLOCATE(writeBuf)
+  SDEALLOCATE(Time)
+  SDEALLOCATE(writeBuf)
 END IF
 END SUBROUTINE
 
