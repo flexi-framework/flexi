@@ -44,8 +44,11 @@ cat configuration.cmake            >> build_info.txt
 IS_GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
 
 if [ $IS_GIT_DIR ]; then
-  # Code ID is a git hash of the working tree
-  CODE_ID=$(bash $4/tools/userblock/hash_tree.sh)
+  ## Code ID is a git hash of the working tree
+  #CODE_ID=$(bash $4/tools/userblock/hash_tree.sh)
+  # ATTENTION: Requires Git operations in current git repo!
+  CODE_ID=$(git rev-parse HEAD)
+  # TODO: Compute instead unique hash from git commit and diff!
 
   sh $4/tools/userblock/print_git_info.sh > code_info.txt
 else
