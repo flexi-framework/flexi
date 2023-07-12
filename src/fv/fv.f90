@@ -144,6 +144,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER            :: i
 !==================================================================================================================================
 IF(.NOT.FVInitBasisIsDone)THEN
    CALL CollectiveStop(__STAMP__,&
@@ -204,12 +205,17 @@ CALL AddToElemData(ElementOut,'FV_alpha',FV_alpha)
 FV_alpha_min = GETREAL('FV_alpha_min')
 FV_alpha_max = GETREAL('FV_alpha_max')
 
-ALLOCATE(FV_alpha(     1,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
+FV_dim = 3
+ALLOCATE(FV_int(FV_dim))
+DO i = 1,3
+  FV_int(i) = MERGE(i,1,FV_dim.EQ.3)
+END DO
+ALLOCATE(FV_alpha(FV_dim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
 ALLOCATE(Ut_xi(  PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
 ALLOCATE(Ut_eta( PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
 ALLOCATE(Ut_zeta(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
 FV_alpha = 0.
-CALL AddToFieldData(FieldOut,(/1,PP_N+1,PP_N+1,PP_NZ+1,nElems/),'FV_alpha',(/'FV_alpha'/),RealArray=FV_alpha)
+CALL AddToFieldData(FieldOut,(/FV_dim,PP_N+1,PP_N+1,PP_NZ+1,nElems/),'FV_alpha',(/'FV_alpha'/),RealArray=FV_alpha)
 #endif /*FV_ENABLED*/
 
 #if FV_RECONSTRUCT

@@ -281,12 +281,12 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
     ! Call Sobel indicator
     CALL SobelIndicator(U(:,:,:,:,iElem),IndValue(iElem),FV_alpha(:,:,:,:,iElem),iElem)
     ! Limit to alpha_max
-    FV_alpha(1,:,:,:,iElem) = MIN(FV_alpha(1,:,:,:,iElem)*IndValue(iElem),FV_alpha_max)
+    FV_alpha(:,:,:,:,iElem) = MIN(FV_alpha(:,:,:,:,iElem)*IndValue(iElem),FV_alpha_max)
   END DO ! iElem
   ! CALL FV_ExtendAlpha(FV_alpha)
   ! Do not compute FV contribution for elements below threshold
   DO iElem=1,nElems
-    IF (MAXVAL(FV_alpha(1,:,:,:,iElem)) .LT. FV_alpha_min) FV_alpha(1,:,:,:,iElem) = 0.
+    IF (MAXVAL(FV_alpha(:,:,:,:,iElem)) .LT. FV_alpha_min) FV_alpha(:,:,:,:,iElem) = 0.
   END DO ! iElem
 #else
   DO iElem=1,nElems
@@ -746,7 +746,7 @@ USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Indicator_Vars      ,ONLY: SobelFilterMatrix
 USE MOD_Mesh_Vars           ,ONLY: Elem_xGP,sJ
-USE MOD_FV_Vars             ,ONLY: FV_alpha_min
+USE MOD_FV_Vars             ,ONLY: FV_alpha_min,FV_dim
 USE MOD_Analyze_Vars        ,ONLY: wGPVol
 USE MOD_Interpolation_Vars  ,ONLY: sVdm_Leg
 USE MOD_Output_Vars         ,ONLY: NVisu,Vdm_GaussN_NVisu
@@ -759,7 +759,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN)                       :: U(       PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   !< Solution
 REAL,INTENT(IN)                       :: IndVal
-REAL,INTENT(INOUT)                    :: FV_alpha(1      ,0:PP_N,0:PP_N,0:PP_NZ)
+REAL,INTENT(INOUT)                    :: FV_alpha(FV_dim ,0:PP_N,0:PP_N,0:PP_NZ)
 INTEGER,INTENT(IN)                    :: iElem
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -769,56 +769,74 @@ REAL                                  :: binaryEdgeMap_Pre(0:PP_N,0:PP_N,0:PP_NZ
 REAL                                  :: signU,U_Max,U_Min,BEMMax
 #endif /* NAVIER-STOKES */
 INTEGER                               :: i,j,k
-REAL                                  :: U_loc(0:PP_N+2,0:PP_N+2,0:PP_NZ)
+REAL                                  :: U_loc(0:PP_N+2,0:PP_N+2,0:PP_NZ+2)
 REAL                                  :: z_x(0:PP_N,0:PP_N),dx(3,0:PP_N,0:PP_N,0:PP_NZ)
 REAL                                  :: z_y(0:PP_N,0:PP_N),IntegrationWeight
+REAL                                  :: FV_alpha_norm
 !==================================================================================================================================
 
 IF(IndVal.LT.FV_alpha_min) RETURN
+U_loc = 0.
 
 #if EQNSYSNR == 2 /* NAVIER-STOKES */
 DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
   UE(EXT_CONS) = U(:,i,j,k)
-  UE(EXT_SRHO) = 1./UE(EXT_DENS)
-  UE(EXT_VELV) = VELOCITY_HE(UE)
+  ! UE(EXT_SRHO) = 1./UE(EXT_DENS)
+  ! UE(EXT_VELV) = VELOCITY_HE(UE)
   ! IF (PRESSURE_HE(UE)>0. .AND. UE(EXT_DENS)>0) THEN; signU =  1
   ! ELSE                                             ; signU = -1
   ! END IF
-  !U_loc(i+1,j+1,k) = PRESSURE_HE(UE)*UE(EXT_DENS)!*signU
-  U_loc(i+1,j+1,k) = UE(EXT_DENS)!*signU
+  ! U_loc(i+1,j+1,k+1) = PRESSURE_HE(UE)*UE(EXT_DENS)!*signU
+  U_loc(i+1,j+1,k+1) = UE(EXT_DENS) !*signU
 END DO; END DO; END DO! i,j,k=0,PP_N
 #endif /* NAVIER-STOKES */
 
 ! Transform nodal solution to a modal representation
-CALL ChangeBasisVolume(PP_N,NVisu,Vdm_GaussN_NVisu,U_loc(1:PP_N+1,1:PP_N+1,:),U_loc(1:PP_N+1,1:PP_N+1,:))
+CALL ChangeBasisVolume(PP_N,NVisu,Vdm_GaussN_NVisu,U_loc(1:PP_N+1,1:PP_N+1,1:PP_NZ+1),U_loc(1:PP_N+1,1:PP_N+1,1:PP_NZ+1))
 
 ! padding
-U_loc(0     ,:     ,:) = U_loc(1     ,:     ,:)
-U_loc(PP_N+2,:     ,:) = U_loc(PP_N+1,:     ,:)
-U_loc(:     ,0     ,:) = U_loc(:     ,1     ,:)
-U_loc(:     ,PP_N+2,:) = U_loc(:     ,PP_N+1,:)
+U_loc(0     ,:     ,:      ) = U_loc(1     ,:     ,:       )
+U_loc(PP_N+2,:     ,:      ) = U_loc(PP_N+1,:     ,:       )
+U_loc(:     ,0     ,:      ) = U_loc(:     ,1     ,:       )
+U_loc(:     ,PP_N+2,:      ) = U_loc(:     ,PP_N+1,:       )
+U_loc(:     ,:     ,0      ) = U_loc(:     ,:      ,1      )
+U_loc(:     ,:     ,PP_NZ+2) = U_loc(:     ,:      ,PP_NZ+1)
 
-!TODO: Other three dimension (3)
+FV_alpha = 0.
+IF (FV_dim.EQ.3) THEN
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+    FV_alpha(1,i,j,k) = ABS(DOT_PRODUCT(SobelFilterMatrix(1,1,:),U_loc(i:i+2,j+1  ,k+1  )))
+    FV_alpha(2,i,j,k) = ABS(DOT_PRODUCT(SobelFilterMatrix(1,1,:),U_loc(i+1  ,j:j+2,k+1  )))
+    FV_alpha(3,i,j,k) = ABS(DOT_PRODUCT(SobelFilterMatrix(1,1,:),U_loc(i+1  ,j+1  ,k:k+2)))
 
-DO k=0,PP_NZ
+    FV_alpha_norm = NORM2(FV_alpha(:,i,j,k))
+
+    IF (FV_alpha_norm.GT.1.E-3) THEN
+      FV_alpha(:,i,j,k) = FV_alpha(:,i,j,k)/FV_alpha_norm
+    END IF ! FV_alpha_norm.GT.1.E-3
+
+  END DO; END DO; END DO ! k,j,i
+ELSE
   z_x = 0.
   z_y = 0.
 
   ! Inner DOFs
-  DO j=0,PP_N
-    DO i=0,PP_N
-      z_x(i,j) = z_x(i,j) + SUM(MATMUL(SobelFilterMatrix(1,:,:),U_loc(i:i+2,j:j+2,k)))
-      z_y(i,j) = z_y(i,j) + SUM(MATMUL(SobelFilterMatrix(2,:,:),U_loc(i:i+2,j:j+2,k)))
+  DO k=0,PP_NZ
+    DO j=0,PP_N
+      DO i=0,PP_N
+        z_x(i,j) = z_x(i,j) + SUM(MATMUL(SobelFilterMatrix(1,:,:),U_loc(i:i+2,j:j+2,k)))
+        z_y(i,j) = z_y(i,j) + SUM(MATMUL(SobelFilterMatrix(2,:,:),U_loc(i:i+2,j:j+2,k)))
+      END DO
     END DO
+
+    ! FV_alpha(1,0:PP_N,0:PP_N,k) = SQRT(z_x**2 + z_y**2)
+    FV_alpha(1,0:PP_N,0:PP_N,k) = NORM2((/z_x,z_y/))
   END DO
 
-  FV_alpha(1,0:PP_N,0:PP_N,k) = SQRT(z_x**2 + z_y**2)
-
-END DO
-U_Max = MAXVAL(FV_alpha(1,:,:,:))
-IF (U_max.GT.1.E-3) THEN
-! U_Min = MINVAL(FV_alpha)
-  FV_alpha(1,:,:,:) = FV_alpha(1,:,:,:)/U_Max
+  U_Max = MAXVAL(FV_alpha(FV_dim,:,:,:))
+  IF (U_max.GT.1.E-3) THEN
+    FV_alpha(FV_dim,:,:,:) = FV_alpha(FV_dim,:,:,:)/U_Max
+  END IF
 END IF
 
 END SUBROUTINE SobelIndicator
