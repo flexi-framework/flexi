@@ -39,6 +39,7 @@ REAL                   :: sdT_FV                      !< Precomputed variable fo
 #endif
 #if FV_ENABLED == 3
 REAL                   :: SobelFilterMatrix(1:2,1:3,1:3)
+REAL,ALLOCATABLE       :: VdmGaussEqui(:,:)
 #endif
 !==================================================================================================================================
 END MODULE MOD_Indicator_Vars

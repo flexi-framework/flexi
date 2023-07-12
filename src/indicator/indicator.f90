@@ -123,6 +123,10 @@ USE MOD_Mesh_Vars           ,ONLY: nElems
 USE MOD_IO_HDF5             ,ONLY: AddToElemData,ElementOut
 USE MOD_Overintegration_Vars,ONLY: NUnder
 USE MOD_Filter_Vars         ,ONLY: NFilter
+#if FV_ENABLED == 3
+USE MOD_Interpolation       ,ONLY: GetVandermonde
+USE MOD_Interpolation_Vars  ,ONLY: NodeTypeVISU,NodeType
+#endif /*FV_ENABLED == 3*/
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -184,6 +188,8 @@ CASE(INDTYPE_PERSSON)
       "Persson indicator for FV-Blending only works with Navier-Stokes equations.")
 #endif /* EQNSYSNR != 2 */
 #if FV_ENABLED == 3
+  ALLOCATE(VdmGaussEqui(0:PP_N,0:PP_N))
+  CALL GetVandermonde(PP_N,NodeType,PP_N,NodeTypeVISU,VdmGaussEqui)
   CALL CalcSobelFilter()
 #endif /*FV_ENABLED == 3*/
 #endif /*FV_ENABLED*/
@@ -744,12 +750,11 @@ SUBROUTINE SobelIndicator (U,IndVal,FV_alpha,iElem)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_Indicator_Vars      ,ONLY: SobelFilterMatrix
+USE MOD_Indicator_Vars      ,ONLY: SobelFilterMatrix,VdmGaussEqui
 USE MOD_Mesh_Vars           ,ONLY: Elem_xGP,sJ
 USE MOD_FV_Vars             ,ONLY: FV_alpha_min,FV_dim
 USE MOD_Analyze_Vars        ,ONLY: wGPVol
 USE MOD_Interpolation_Vars  ,ONLY: sVdm_Leg
-USE MOD_Output_Vars         ,ONLY: NVisu,Vdm_GaussN_NVisu
 USE MOD_ChangeBasisByDim    ,ONLY: ChangeBasisVolume
 #if EQNSYSNR == 2 /* NAVIER-STOKES */
 USE MOD_EOS_Vars
@@ -792,7 +797,7 @@ END DO; END DO; END DO! i,j,k=0,PP_N
 #endif /* NAVIER-STOKES */
 
 ! Transform nodal solution to a modal representation
-CALL ChangeBasisVolume(PP_N,NVisu,Vdm_GaussN_NVisu,U_loc(1:PP_N+1,1:PP_N+1,1:PP_NZ+1),U_loc(1:PP_N+1,1:PP_N+1,1:PP_NZ+1))
+CALL ChangeBasisVolume(PP_N,PP_N,VdmGaussEqui,U_loc(1:PP_N+1,1:PP_N+1,1:PP_NZ+1),U_loc(1:PP_N+1,1:PP_N+1,1:PP_NZ+1))
 
 ! padding
 U_loc(0     ,:     ,:      ) = U_loc(1     ,:     ,:       )
@@ -899,6 +904,9 @@ IMPLICIT NONE
 IndicatorInitIsDone=.FALSE.
 SDEALLOCATE(IndValue)
 SDEALLOCATE(FVBoundaryType)
+#if FV_ENABLED == 3
+SDEALLOCATE(VdmGaussEqui)
+#endif /*FV_ENABLED == 3*/
 END SUBROUTINE FinalizeIndicator
 
 END MODULE MOD_Indicator
