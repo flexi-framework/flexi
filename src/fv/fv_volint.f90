@@ -77,10 +77,12 @@ REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: Ut_FV
 #if FV_ENABLED==3
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: Flux_xi
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: Flux_eta
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: Flux_zeta
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: Ut_FV_xi
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: Ut_FV_eta
+#if PP_dim == 3
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: Flux_zeta
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: Ut_FV_zeta
+#endif /*PP_dim == 3*/
 #endif /*FV_ENABLED==3*/
 !==================================================================================================================================
 
@@ -125,7 +127,9 @@ DO iElem=1,nElems
 #if FV_ENABLED == 3
   Ut_FV_xi  (:,:,:,:) = 0.
   Ut_FV_eta (:,:,:,:) = 0.
+#if PP_dim == 3
   Ut_FV_zeta(:,:,:,:) = 0.
+#endif /* PP_dim == 3 */
 #endif /*FV_ENABLED*/
   ! iterate over all inner slices in xi-direction
   DO i=1,PP_N
@@ -331,6 +335,7 @@ DO iElem=1,nElems
     Ut_eta   (:,i,PP_N,k,iElem) = Flux_eta (:,i,PP_N  ,k) * (1.-FV_alpha(FV_int(2),i,PP_N,k,iElem)) + Ut_FV_eta (:,i,PP_N,k) * FV_alpha(FV_int(2),i,PP_N,k,iElem)
     Ut       (:,i,PP_N,k,iElem) = Ut(       :,i,PP_N,k,iElem) + Ut_eta (         :,i,PP_N,k,iElem)
   END DO; END DO ! j,k
+#if PP_dim == 3
   DO j=0,PP_N; DO i=0,PP_N
     ! Blend in zeta direction
     Flux_zeta(:,i,j,0)       = Ut_zeta  (:,i,j,0,iElem)
@@ -346,6 +351,7 @@ DO iElem=1,nElems
     Ut_zeta  (:,i,j,PP_N,iElem) = Flux_zeta(:,i,j,PP_N  ) * (1.-FV_alpha(FV_int(3),i,j,PP_N,iElem)) + Ut_FV_zeta(:,i,j,PP_N) * FV_alpha(FV_int(3),i,j,PP_N,iElem)
     Ut       (:,i,j,PP_N,iElem) = Ut(       :,i,j,PP_N,iElem) + Ut_zeta(         :,i,j,PP_N,iElem)
   END DO; END DO ! j,k
+#endif /* PP_dim == 3 */
 #elif FV_ENABLED == 2
   ! Blend the solutions together
   Ut(:,:,:,:,iElem) = (1 - FV_alpha(iElem)) * Ut(:,:,:,:,iElem) + FV_alpha(iElem)*Ut_FV

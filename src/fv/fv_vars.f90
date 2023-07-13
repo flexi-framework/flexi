@@ -82,7 +82,9 @@ REAL                   :: FV_alpha_min           !< Minimal blending coefficient
 REAL                   :: FV_alpha_max           !< Maximal blending coefficient
 REAL,ALLOCATABLE       :: Ut_xi(  :,:,:,:,:)
 REAL,ALLOCATABLE       :: Ut_eta( :,:,:,:,:)
+#if PP_dim == 3
 REAL,ALLOCATABLE       :: Ut_zeta(:,:,:,:,:)
+#endif /*PP_dim == 3*/
 #endif /*FV_ENABLED==3*/
 
 ! FV variables on reference element

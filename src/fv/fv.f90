@@ -213,7 +213,9 @@ END DO
 ALLOCATE(FV_alpha(FV_dim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
 ALLOCATE(Ut_xi(  PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
 ALLOCATE(Ut_eta( PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
+#if PP_dim == 3
 ALLOCATE(Ut_zeta(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
+#endif /*PP_dim == 3*/
 FV_alpha = 0.
 CALL AddToFieldData(FieldOut,(/FV_dim,PP_N+1,PP_N+1,PP_NZ+1,nElems/),'FV_alpha',(/'FV_alpha'/),RealArray=FV_alpha)
 #endif /*FV_ENABLED*/
@@ -481,7 +483,9 @@ SDEALLOCATE(FV_alpha_master)
 SDEALLOCATE(FV_alpha)
 SDEALLOCATE(Ut_xi)
 SDEALLOCATE(Ut_eta)
+#if PP_dim == 3
 SDEALLOCATE(Ut_zeta)
+#endif /*PP_dim == 3*/
 #endif /*FV_ENABLED*/
 
 FVInitIsDone=.FALSE.

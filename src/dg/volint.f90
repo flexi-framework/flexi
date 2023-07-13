@@ -224,7 +224,10 @@ USE MOD_FV_Vars      ,ONLY: FV_Elems
 #endif
 #if FV_ENABLED == 3
 USE MOD_Interpolation_Vars, ONLY: wGP
-USE MOD_FV_Vars      ,ONLY: Ut_xi,Ut_eta,Ut_zeta
+USE MOD_FV_Vars      ,ONLY: Ut_xi,Ut_eta
+#if PP_dim == 3
+USE MOD_FV_Vars      ,ONLY: Ut_zeta
+#endif /*PP_dim == 3*/
 #endif
 USE MOD_SplitFlux    ,ONLY: SplitDGVolume_pointer ! computes volume fluxes in split formulation
 IMPLICIT NONE
@@ -276,7 +279,9 @@ DO iElem=1,nElems
 #if FV_ENABLED==3
   Ut_xi  (:,:,:,:,iElem) = 0.
   Ut_eta (:,:,:,:,iElem) = 0.
+#if PP_dim == 3
   Ut_zeta(:,:,:,:,iElem) = 0.
+#endif /*PP_dim == 3*/
 #endif /*FV_ENABLED==3*/
 #endif /*VOLINT_VISC*/
 
