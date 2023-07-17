@@ -340,7 +340,9 @@ SUBROUTINE FinalizeTestcase()
 USE MOD_Globals
 IMPLICIT NONE
 !==================================================================================================================================
-IF(MPIRoot) SDEALLOCATE(writeBuf)
+IF(MPIRoot) THEN
+  SDEALLOCATE(writeBuf)
+END IF
 END SUBROUTINE
 
 
