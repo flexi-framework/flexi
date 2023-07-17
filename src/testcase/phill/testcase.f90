@@ -375,7 +375,9 @@ USE MOD_Globals      ,ONLY:MPIRoot
 USE MOD_TestCase_Vars,ONLY:writeBuf
 IMPLICIT NONE
 !==================================================================================================================================
-IF(MPIRoot) SDEALLOCATE(writeBuf)
+IF(MPIRoot) THEN
+  SDEALLOCATE(writeBuf)
+END IF
 END SUBROUTINE
 
 
