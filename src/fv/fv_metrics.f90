@@ -851,21 +851,21 @@ DO iElem=1,nElems
       !FV_Metrics_hTilde_sJ_eta(d,:,:,k,iElem)=(PP_N+1)*0.5*Metrics_hTilde_eta(d,:,:,k,iElem)*&
         !0.5*((FV_dx_ZETA_L(:,0:PP_N-1,k,iElem)+FV_dx_ZETA_R(:,0:PP_N-1,k,iElem)) + &
              !(FV_dx_ZETA_L(:,1:PP_N  ,k,iElem)+FV_dx_ZETA_R(:,1:PP_N  ,k,iElem)))
-      FV_Metrics_hTilde_sJ_eta(d,:,:,k,iElem)=(PP_N+1)*0.5*Metrics_hTilde_eta(d,:,:,k,iElem)*&
+      FV_Metrics_hTilde_sJ_eta(d,:,:,k,iElem)=(PP_N+1)*0.5*Metrics_hTilde_eta(d,:,:,k)*&
           (FV_dX_3_xi_FV_eta_BC_zeta_LG_R(:,1:PP_N,k)+FV_dX_3_xi_FV_eta_BC_zeta_LG_L(:,1:PP_N,k))
     END DO ! j=0,PP_N
 
     DO k=0,PP_NZ-1
-      FV_Metrics_hTilde_sJ_zeta(d,:,:,k,iElem)=(PP_N+1)*0.5*Metrics_hTilde_zeta(d,:,:,k,iElem)*&
+      FV_Metrics_hTilde_sJ_zeta(d,:,:,k,iElem)=(PP_N+1)*0.5*Metrics_hTilde_zeta(d,:,:,k)*&
         (FV_dx_ZETA_L(:,:,k+1,iElem)+FV_dx_ZETA_R(:,:,k,iElem))
     END DO ! j=0,PP_N
 
-    FV_Metrics_hTilde_sJ_xi  (d,:,:,:,iElem)=FV_Metrics_hTilde_sJ_xi  (d,:,:,:,iElem)*sJ_xi  (:,:,:,iElem)
-    FV_Metrics_hTilde_sJ_eta (d,:,:,:,iElem)=FV_Metrics_hTilde_sJ_eta (d,:,:,:,iElem)*sJ_eta( :,:,:,iElem)
+    FV_Metrics_hTilde_sJ_xi  (d,:,:,:,iElem)=FV_Metrics_hTilde_sJ_xi  (d,:,:,:,iElem)*sJ_xi  (:,:,:)
+    FV_Metrics_hTilde_sJ_eta (d,:,:,:,iElem)=FV_Metrics_hTilde_sJ_eta (d,:,:,:,iElem)*sJ_eta( :,:,:)
 
-    FV_Metrics_fTilde_sJ_zeta(d,:,:,:,iElem)=FV_Metrics_fTilde_sJ_zeta(d,:,:,:,iElem)*sJ_zeta(:,:,:,iElem)
-    FV_Metrics_gTilde_sJ_zeta(d,:,:,:,iElem)=FV_Metrics_gTilde_sJ_zeta(d,:,:,:,iElem)*sJ_zeta(:,:,:,iElem)
-    FV_Metrics_hTilde_sJ_zeta(d,:,:,:,iElem)=FV_Metrics_hTilde_sJ_zeta(d,:,:,:,iElem)*sJ_zeta(:,:,:,iElem)
+    FV_Metrics_fTilde_sJ_zeta(d,:,:,:,iElem)=FV_Metrics_fTilde_sJ_zeta(d,:,:,:,iElem)*sJ_zeta(:,:,:)
+    FV_Metrics_gTilde_sJ_zeta(d,:,:,:,iElem)=FV_Metrics_gTilde_sJ_zeta(d,:,:,:,iElem)*sJ_zeta(:,:,:)
+    FV_Metrics_hTilde_sJ_zeta(d,:,:,:,iElem)=FV_Metrics_hTilde_sJ_zeta(d,:,:,:,iElem)*sJ_zeta(:,:,:)
 #endif
   END DO
 #endif /* VOLINT_VISC */
