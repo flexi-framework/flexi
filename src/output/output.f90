@@ -23,11 +23,11 @@ USE ISO_C_BINDING
 IMPLICIT NONE
 
 INTERFACE
-  SUBROUTINE insert_userblock(filename,inifilename) BIND(C)
+  SUBROUTINE print_userblock(filename,inifilename) BIND(C)
       USE ISO_C_BINDING, ONLY: C_CHAR
       CHARACTER(KIND=C_CHAR) :: filename(*)
       CHARACTER(KIND=C_CHAR) :: inifilename(*)
-  END SUBROUTINE insert_userblock
+  END SUBROUTINE print_userblock
 END INTERFACE
 
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -77,7 +77,7 @@ INTERFACE FinalizeOutput
 END INTERFACE
 
 PUBLIC:: InitOutput,PrintPercentage,PrintStatusLine,Visualize,InitOutputToFile,OutputToFile,FinalizeOutput
-PUBLIC:: insert_userblock
+PUBLIC:: print_userblock
 !==================================================================================================================================
 
 PUBLIC::DefineParametersOutput
@@ -127,7 +127,7 @@ USE MOD_ReadInTools       ,ONLY:GETSTR,GETLOGICAL,GETINT,GETINTFROMSTR
 USE MOD_StringTools       ,ONLY:INTTOSTR
 USE MOD_Interpolation     ,ONLY:GetVandermonde
 USE MOD_Interpolation_Vars,ONLY:InterpolationInitIsDone,NodeTypeVISU,NodeType
-USE ISO_C_BINDING,         ONLY: C_NULL_CHAR
+USE ISO_C_BINDING,         ONLY:C_NULL_CHAR
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -175,7 +175,7 @@ IF (.NOT.WriteTimeAvgFiles) CALL PrintWarning("Write of time average files disab
 
 IF (MPIRoot) THEN
   ! prepare userblock file
-  CALL insert_userblock(TRIM(UserBlockTmpFile)//C_NULL_CHAR,TRIM(ParameterFile)//C_NULL_CHAR)
+  CALL print_userblock(TRIM(UserBlockTmpFile)//C_NULL_CHAR,TRIM(ParameterFile)//C_NULL_CHAR)
   INQUIRE(FILE=TRIM(UserBlockTmpFile),SIZE=userblock_total_len)
 END IF
 
@@ -388,7 +388,9 @@ IF(MPIRoot)THEN
 #endif /*PP_LIMITER*/
 
   ! Status line or standard output
-  tmpString = MERGE('YES','NO ',PRESENT(doETA))
+  IF (PRESENT(doETA)) THEN; tmpString = 'YES'
+  ELSE                    ; tmpString = 'NO'
+  ENDIF
 
   WRITE(UNIT_stdOut,'(A,E10.4,A,E10.4,A,A,I4,A1,I0.2,A1,I0.2,A1,I0.2,A12,A,A1,A,A3,F6.2,A3,A1)',ADVANCE=tmpString)    &
     '   Time = ', t,'  dt = ', dt, ' ', ' ETA = ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),' |',     &
@@ -755,7 +757,6 @@ IF(.NOT.file_exists)THEN ! No restart create new file
   END IF
   CLOSE(ioUnit) ! outputfile
 END IF
-
 END SUBROUTINE InitOutputToFile
 
 

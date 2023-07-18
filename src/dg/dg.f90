@@ -258,7 +258,7 @@ USE MOD_Mesh_Vars,           ONLY: nSides
 #if FV_ENABLED
 USE MOD_FV_Vars             ,ONLY: FV_Elems_master,FV_Elems_slave,FV_Elems_Sum
 USE MOD_FV_Mortar           ,ONLY: FV_Elems_Mortar
-USE MOD_FV                  ,ONLY: FV_DGtoFV
+USE MOD_FV                  ,ONLY: FV_DGtoFV,FV_ConsToPrim
 USE MOD_FV_VolInt           ,ONLY: FV_VolInt
 #if USE_MPI
 USE MOD_MPI                 ,ONLY: StartExchange_FV_Elems
@@ -521,10 +521,11 @@ CALL FV_SurfCalcGradients_Parabolic()
 #endif /* VOLINT_VISC */
 
 CALL FV_DGtoFV(PP_nVar    ,U_master     ,U_slave     )
-CALL FV_DGtoFV(PP_nVarPrim,UPrim_master ,UPrim_slave )
-
-! 11.2)
+CALL FV_ConsToPrim(PP_nVarPrim,PP_nVar,UPrim_master,UPrim_slave,U_master,U_slave)
+#if FV_RECONSTRUCT
+! 10.2)
 CALL GetConservativeStateSurface(UPrim_master, UPrim_slave, U_master, U_slave, FV_Elems_master, FV_Elems_slave, 1)
+#endif /*FV_RECONSTRUCT*/
 #endif /*FV_ENABLED*/
 
 #if USE_MPI

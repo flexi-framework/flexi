@@ -40,6 +40,14 @@ INTERFACE FV_DGtoFV
   MODULE PROCEDURE FV_DGtoFV
 END INTERFACE
 
+INTERFACE FV_PrimToCons
+  MODULE PROCEDURE FV_PrimToCons
+END INTERFACE
+
+INTERFACE FV_ConsToPrim
+  MODULE PROCEDURE FV_ConsToPrim
+END INTERFACE
+
 INTERFACE FinalizeFV
   MODULE PROCEDURE FinalizeFV
 END INTERFACE
@@ -47,6 +55,8 @@ END INTERFACE
 PUBLIC::DefineParametersFV
 PUBLIC::InitFV
 PUBLIC::FV_DGtoFV
+PUBLIC::FV_PrimToCons
+PUBLIC::FV_ConsToPrim
 PUBLIC::FinalizeFV
 !==================================================================================================================================
 
@@ -150,17 +160,19 @@ FV_IndUpperThreshold = GETREAL('FV_IndUpperThreshold')
 ! Read flag indicating, if an additional Persson indicator should check if a FV sub-cells element really contains no oscillations
 ! anymore.
 FV_toDG_indicator = GETLOGICAL('FV_toDG_indicator')
-IF (FV_toDG_indicator) FV_toDG_limit = GETREAL('FV_toDG_limit')
+IF (FV_toDG_indicator) THEN
+  FV_toDG_limit = GETREAL('FV_toDG_limit')
+  ! If the main indicator is not already the persson indicator, then we need to read in the parameters
+  IF (IndicatorType .NE. 2) THEN
+    nModes = GETINT('nModes')
+    nModes = MAX(1,MIN(PP_N-1,nModes+PP_N-MIN(NUnder,NFilter)))
+    SWRITE(UNIT_stdOut,'(A,I0)') ' | nModes = ', nModes
+  END IF
+END IF
 
 ! Read flag, which allows switching from FV to DG between the stages of a Runge-Kutta time step
 ! (this might lead to instabilities, since the time step for a DG element is smaller)
 FV_toDGinRK = GETLOGICAL("FV_toDGinRK")
-
-! If the main indicator is not already the persson indicator, then we need to read in the parameters
-IF (IndicatorType.NE.2) THEN
-  nModes = GETINT('nModes')
-  nModes = MAX(1,nModes+PP_N-MIN(NUnder,NFilter))-1 ! increase by number of empty modes in case of overintegration
-END IF
 
 ! Options for initial solution
 FV_IniSharp       = GETLOGICAL("FV_IniSharp")
@@ -367,6 +379,78 @@ DO SideID=firstSideID,lastSideID
 END DO
 
 END SUBROUTINE FV_DGtoFV
+
+!==================================================================================================================================
+!> Prim to cons for FV
+!==================================================================================================================================
+PPURE SUBROUTINE FV_PrimToCons(nVarPrim,nVar,UPrim_master,UPrim_slave,U_master,U_slave)
+! MODULES
+USE MOD_PreProc
+USE MOD_FV_Vars          ,ONLY: FV_Elems_Sum
+USE MOD_Mesh_Vars        ,ONLY: firstInnerSide,lastMPISide_MINE,nSides
+USE MOD_EOS              ,ONLY: PrimToCons
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: nVarPrim                                       !< number of solution variables
+INTEGER,INTENT(IN) :: nVar                                           !< number of solution variables
+REAL,INTENT(IN)    :: UPrim_master(nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Solution on master side
+REAL,INTENT(IN)    :: UPrim_slave (nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Solution on slave side
+REAL,INTENT(INOUT) :: U_master    (nVar    ,0:PP_N,0:PP_NZ,1:nSides) !< Solution on master side
+REAL,INTENT(INOUT) :: U_slave     (nVar    ,0:PP_N,0:PP_NZ,1:nSides) !< Solution on slave side
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: firstSideID,lastSideID,SideID
+!==================================================================================================================================
+firstSideID = firstInnerSide
+lastSideID  = lastMPISide_MINE
+
+DO SideID=firstSideID,lastSideID
+  IF (FV_Elems_Sum(SideID).EQ.2) THEN
+    CALL PrimToCons(PP_N,UPrim_master(:,:,:,SideID),U_master(:,:,:,SideID))
+  ELSE IF (FV_Elems_Sum(SideID).EQ.1) THEN
+    CALL PrimToCons(PP_N,UPrim_slave(:,:,:,SideID), U_slave(:,:,:,SideID))
+  END IF
+END DO
+
+END SUBROUTINE FV_PrimToCons
+
+!==================================================================================================================================
+!> Cons to prim for FV
+!==================================================================================================================================
+PPURE SUBROUTINE FV_ConsToPrim(nVarPrim,nVar,UPrim_master,UPrim_slave,U_master,U_slave)
+! MODULES
+USE MOD_PreProc
+USE MOD_FV_Vars          ,ONLY: FV_Elems_Sum
+USE MOD_Mesh_Vars        ,ONLY: firstInnerSide,lastMPISide_MINE,nSides
+USE MOD_EOS              ,ONLY: ConsToPrim
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: nVarPrim                                       !< number of solution variables
+INTEGER,INTENT(IN) :: nVar                                           !< number of solution variables
+REAL,INTENT(INOUT) :: UPrim_master(nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Solution on master side
+REAL,INTENT(INOUT) :: UPrim_slave (nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Solution on slave side
+REAL,INTENT(IN)    :: U_master    (nVar    ,0:PP_N,0:PP_NZ,1:nSides) !< Solution on master side
+REAL,INTENT(IN)    :: U_slave     (nVar    ,0:PP_N,0:PP_NZ,1:nSides) !< Solution on slave side
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: firstSideID,lastSideID,SideID
+!==================================================================================================================================
+firstSideID = firstInnerSide
+lastSideID  = lastMPISide_MINE
+
+DO SideID=firstSideID,lastSideID
+  IF (FV_Elems_Sum(SideID).EQ.2) THEN
+    CALL ConsToPrim(PP_N,UPrim_master(:,:,:,SideID),U_master(:,:,:,SideID))
+  ELSE IF (FV_Elems_Sum(SideID).EQ.1) THEN
+    CALL ConsToPrim(PP_N,UPrim_slave(:,:,:,SideID), U_slave(:,:,:,SideID))
+  END IF
+END DO
+
+END SUBROUTINE FV_ConsToPrim
 
 !==================================================================================================================================
 !> Finalizes global variables of the module.

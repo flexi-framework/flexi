@@ -25,7 +25,7 @@ MESSAGE(STATUS "Checking git origin: " ${GIT_ORIGIN})
   # Checked out using HTTPS
   # IF("${GIT_ORIGIN}" MATCHES "^https@")
   ELSE()
-    SET(LIBS_DLPATH "https://gitlabext.iag.uni-stuttgart.de/")
+    SET(LIBS_DLPATH "https://gitlab.iag.uni-stuttgart.de/")
   ENDIF()
 # Origin pointing to ILA
 ELSEIF("${GIT_ORIGIN}" MATCHES "ila.uni-stuttgart.de")
@@ -39,7 +39,7 @@ ELSEIF("${GIT_ORIGIN}" MATCHES "ila.uni-stuttgart.de")
   ENDIF()
 # Fallback to IAG libs
 ELSE()
-  SET(LIBS_DLPATH "https://gitlabext.iag.uni-stuttgart.de/")
+  SET(LIBS_DLPATH "https://gitlab.iag.uni-stuttgart.de/")
 ENDIF()
 
 
@@ -76,7 +76,6 @@ IF(LIBS_USE_MPI)
   ELSEIF(MPI_C_LIBRARY_VERSION_STRING MATCHES ".*HPE MPT.*" AND MPI_C_VERSION_MAJOR MATCHES "3")
     SET(LIBS_MPI_NAME "HPE MPT")
     STRING(REGEX MATCH "([0-9]+)\\.([0-9]+)" MPI_C_LIBRARY_VERSION ${MPI_C_LIBRARY_VERSION_STRING})
-    ADD_DEFINITIONS(-DLIBS_MPT=1)
   ELSEIF(MPI_C_LIBRARY_VERSION_STRING MATCHES ".*Intel.*" AND MPI_C_VERSION_MAJOR MATCHES "3")
     SET(LIBS_MPI_NAME "Intel MPI")
     STRING(REGEX MATCH "([0-9]+)\\.([0-9]+)" MPI_C_LIBRARY_VERSION ${MPI_C_LIBRARY_VERSION_STRING})
@@ -107,6 +106,7 @@ STRING(TOLOWER ${LIB_TYPE} SEARCH_TYPE)
 # Use system HDF5
 IF(NOT LIBS_BUILD_HDF5)
   # Unset leftover paths from old CMake runs
+  UNSET(HDF5_VERSION CACHE)
   UNSET(HDF5_LIBRARIES)
   UNSET(HDF5_INCLUDE_DIR_FORTRAN)
   UNSET(HDF5_INCLUDE_DIR)
@@ -158,13 +158,16 @@ ELSE()
   IF(LIBS_USE_MPI)
     # HDF5 1.12.0 and greater is compatible with OpenMPI 4.0.0 and greater
     IF("${LIBS_MPI_NAME}" MATCHES "OpenMPI" AND ${MPI_C_LIBRARY_VERSION} VERSION_GREATER_EQUAL "4.0.0")
-        SET (HDF5_TAG "hdf5-1_12_0" CACHE STRING "HDF5 version tag")
+        SET (HDF5_TAG "hdf5-1_12_0" CACHE STRING   "HDF5 version tag")
+        SET (HDF5_VERSION "1.12"    CACHE INTERNAL "HDF5 version number")
       ELSE()
-        SET (HDF5_TAG "hdf5-1_10_6" CACHE STRING "HDF5 version tag")
+        SET (HDF5_TAG "hdf5-1_10_6" CACHE STRING   "HDF5 version tag")
+        SET (HDF5_VERSION "1.10"    CACHE INTERNAL "HDF5 version number")
       ENDIF()
     MESSAGE (STATUS "Setting HDF5 to tag ${HDF5_TAG} to be compatible with detected [${LIBS_MPI_NAME}] (v${MPI_C_LIBRARY_VERSION})")
   ELSE()
-    SET (HDF5_TAG "hdf5-1_12_0" CACHE STRING "HDF5 version tag")
+    SET (HDF5_TAG "hdf5-1_12_0" CACHE STRING   "HDF5 version tag")
+    SET (HDF5_VERSION "1.12"    CACHE INTERNAL "HDF5 version number")
     MESSAGE (STATUS "Setting HDF5 to tag ${HDF5_TAG} as no MPI support was requested")
   ENDIF()
   MARK_AS_ADVANCED(FORCE HDF5_TAG)
@@ -185,9 +188,9 @@ ELSE()
       SET(LIBS_HDF5CC ${CMAKE_C_COMPILER} )
     ENDIF()
 
-    # Set parallel build with maximum number of threads
-    INCLUDE(ProcessorCount)
-    PROCESSORCOUNT(N)
+    ## Set parallel build with maximum number of threads
+    #INCLUDE(ProcessorCount)
+    #PROCESSORCOUNT(N)
 
     # Optional Features:
     #   --enable-silent-rules   less verbose build output (undo: "make V=1")
@@ -214,7 +217,7 @@ ELSE()
       CONFIGURE_COMMAND FC=${LIBS_HDF5FC} CC=${LIBS_HDF5CC} ${LIBS_HDF5_DIR}/src/HDF5/configure --prefix=${LIBS_HDF5_DIR} --with-pic --enable-fortran ${LIBS_HDF5PARALLEL} --libdir=${LIBS_HDF5_DIR}/lib --enable-build-mode=production --enable-silent-rules --disable-dependency-tracking
       BUILD_BYPRODUCTS ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.a ${LIBS_HDF5_DIR}/lib/libhdf5.a ${LIBS_HDF5_DIR}/bin/h5diff
       # Configure explicitly requires GNU make
-      BUILD_COMMAND make -j${N}
+      #BUILD_COMMAND make
     )
     SET(LIBS_HDF5_CMAKE FALSE)
 
@@ -251,6 +254,12 @@ ELSE()
   # Add ZLIB to include paths for HDF5 data compression
   FIND_LIBRARY(HDF5_z_LIBRARY_RELEASE z)
   LIST(APPEND HDF5_LIBRARIES ${HDF5_hdf5_fortran_LIBRARY_RELEASE} ${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_z_LIBRARY_RELEASE} -ldl)
+ENDIF()
+
+# HDF5 1.14 references build directory
+# > https://github.com/HDFGroup/hdf5/issues/2422
+IF(${HDF5_VERSION} VERSION_EQUAL "1.14")
+  LIST(FILTER HDF5_INCLUDE_DIR EXCLUDE REGEX "src/H5FDsubfiling")
 ENDIF()
 
 # Actually add the HDF5 paths (system/custom built) to the linking paths

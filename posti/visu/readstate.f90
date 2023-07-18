@@ -244,7 +244,7 @@ USE MOD_Restart_Vars        ,ONLY: RestartMode,RestartCons,RestartPrim,nVar_Rest
 USE MOD_MPI,                 ONLY: FinalizeMPI
 #endif
 #if FV_ENABLED
-USE MOD_FV_Basis            ,ONLY: InitFV_Basis,FinalizeFV_Basis
+USE MOD_FV_Basis            ,ONLY: InitFV_Basis,FinalizeFV_Basis,DefineParametersFV_Basis
 USE MOD_Mortar              ,ONLY: InitMortar,FinalizeMortar
 #endif
 IMPLICIT NONE
@@ -292,6 +292,9 @@ CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
 CALL DefineParametersInterpolation()
 CALL DefineParametersMesh()
+#if FV_ENABLED
+CALL DefineParametersFV_Basis()
+#endif
 CALL DefineParametersEOS()
 CALL prms%read_options(prmfile)
 

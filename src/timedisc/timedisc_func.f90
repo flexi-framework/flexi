@@ -106,8 +106,8 @@ USE MOD_TimeDisc_Vars       ,ONLY: CFLScale
 USE MOD_TimeDisc_Vars       ,ONLY: dtElem,dt,tend,tStart,dt_dynmin,dt_kill
 USE MOD_TimeDisc_Vars       ,ONLY: Ut_tmp,UPrev,S2
 USE MOD_TimeDisc_Vars       ,ONLY: maxIter,nCalcTimeStepMax
-USE MOD_TimeDisc_Vars       ,ONLY: SetTimeDiscCoefs,TimeStep,TimeDiscName,TimeDiscType,TimeDiscInitIsDone
-USE MOD_TimeStep            ,ONLY: TimeStepByLSERKW2,TimeStepByLSERKK3,TimeStepByESDIRK
+USE MOD_TimeDisc_Vars       ,ONLY: SetTimeDiscCoefs,TimeDiscName,TimeDiscType,TimeDiscInitIsDone
+USE MOD_TimeStep            ,ONLY: SetTimeStep
 #if PARABOLIC
 USE MOD_TimeDisc_Vars       ,ONLY: DFLScale
 #endif /*PARABOLIC*/
@@ -140,17 +140,16 @@ CALL StripSpaces(TimeDiscMethod)
 CALL LowCase(TimeDiscMethod)
 CALL SetTimeDiscCoefs(TimeDiscMethod)
 
+! Set TimeStep function pointer
+CALL SetTimeStep(TimeDiscType)
+
 SELECT CASE(TimeDiscType)
   CASE('LSERKW2')
-    TimeStep=>TimeStepByLSERKW2
     ALLOCATE(Ut_tmp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
   CASE('LSERKK3')
-    TimeStep=>TimeStepByLSERKK3
     ALLOCATE(S2   (1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) &
             ,UPrev(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
   CASE('ESDIRK')
-    ! Implicit time integration
-    TimeStep=>TimeStepByESDIRK
     ! Predictor for Newton
     CALL InitPredictor(TimeDiscMethod)
 END SELECT
@@ -568,6 +567,7 @@ END SUBROUTINE TimeDisc_Info
 SUBROUTINE FinalizeTimeDisc()
 ! MODULES
 USE MOD_TimeDisc_Vars
+USE MOD_TimeStep,      ONLY: TimeStep
 IMPLICIT NONE
 !==================================================================================================================================
 TimeDiscInitIsDone = .FALSE.

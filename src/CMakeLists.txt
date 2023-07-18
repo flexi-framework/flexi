@@ -244,7 +244,7 @@ ENDFUNCTION()
 
 FUNCTION(add_lib_shared target)
   ADD_LIBRARY(          ${target} SHARED ${ARGN})
-  TARGET_LINK_LIBRARIES(${target} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.o libflexistatic userblocklib stacksizelib ${linkedlibs})
+  TARGET_LINK_LIBRARIES(${target} libflexistatic userblocklib stacksizelib ${linkedlibs})
   SET_TARGET_PROPERTIES(${target} PROPERTIES PREFIX ""
                                              COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
                                              LINKER_LANGUAGE Fortran)
@@ -300,17 +300,25 @@ ELSE()
   INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src/equations/${FLEXI_EQNSYSNAME}/)
 ENDIF()
 
+# >> remove F90 files of the splitflux from 'eqnsysF90'-list
+FILE(GLOB splitfluxF90 ./src/equations/${FLEXI_EQNSYSNAME}/splitflux.f90)
+IF (NOT FLEXI_SPLIT_DG)
+  LIST(REMOVE_ITEM eqnsysF90 ${splitfluxF90})
+ENDIF()
+
 # >> append F90 files of the eddy viscosity to 'eqnsysF90'-list
 IF (FLEXI_EDDYVISCOSITY)
   FILE(GLOB eddyviscF90 ./src/equations/${FLEXI_EQNSYSNAME}/eddyVisc/*.f90
             eddyviscF90 ./src/equations/${FLEXI_EQNSYSNAME}/eddyVisc/default/*.f90
             eddyviscF90 ./src/equations/${FLEXI_EQNSYSNAME}/eddyVisc/smagorinsky/*.f90
+            eddyviscF90 ./src/equations/${FLEXI_EQNSYSNAME}/eddyVisc/dynSmagorinsky/*.f90
             eddyviscF90 ./src/equations/${FLEXI_EQNSYSNAME}/eddyVisc/vreman/*.f90
             eddyviscF90 ./src/equations/${FLEXI_EQNSYSNAME}/eddyVisc/sigmaModel/*.f90)
   LIST(APPEND eqnsysF90 ${eddyviscF90})
 ENDIF()
 
 # >> append 'eqnsysF90'-list to 'flexiF90'-list
+LIST(REMOVE_DUPLICATES eqnsysF90)
 LIST(APPEND flexiF90 ${eqnsysF90})
 
 # >> collect F90 files of 'dg' directory (non-recursive) in a new list 'dgF90'
@@ -342,7 +350,17 @@ IF(SELFBUILTEXTERNALS)
   ADD_DEPENDENCIES(libflexistaticF90 ${SELFBUILTEXTERNALS})
 ENDIF()
 
-ADD_LIBRARY(userblocklib STATIC ./src/output/read_userblock.c)
+# Userblock
+#EXECUTE_PROCESS(COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/src/output/print_userblock.c ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/src/output/print_userblock.c ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} COPYONLY)
+ADD_CUSTOM_TARGET(generateUserblock COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/tools/userblock/generate_userblock.sh
+                                                   ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+                                                   ${CMAKE_BINARY_DIR}
+                                                   "${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}"
+                                                   ${CMAKE_CURRENT_SOURCE_DIR})
+ADD_LIBRARY(userblocklib STATIC ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/print_userblock.c)
+ADD_DEPENDENCIES(userblocklib generateUserblock)
+
 ADD_LIBRARY(stacksizelib STATIC ./src/globals/stacksize.c)
 SET_TARGET_PROPERTIES(stacksizelib userblocklib PROPERTIES LANGUAGE C LINKER_LANGUAGE C
                                                            COMPILE_FLAGS "-fPIC")
