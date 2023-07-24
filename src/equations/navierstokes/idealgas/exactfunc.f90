@@ -84,6 +84,7 @@ CALL addStrListEntry('IniExactFunc','cavity'   ,9)
 CALL addStrListEntry('IniExactFunc','shock'    ,10)
 CALL addStrListEntry('IniExactFunc','sod'      ,11)
 CALL addStrListEntry('IniExactFunc','dmr'      ,13)
+CALL addStrListEntry('IniExactFunc', 'toro1', 17)
 #if PARABOLIC
 CALL addStrListEntry('IniExactFunc','blasius'  ,1338)
 #endif
@@ -542,6 +543,13 @@ CASE(10) ! shock
   Resu=-0.5*(Resul-Resur)*TANH(5.0*(x(1)-xs))+Resur+0.5*(Resul-Resur)
 CASE(11) ! Sod Shock tube
   xs = 0.5
+  IF (X(1).LE.xs) THEN
+    Resu = RefStateCons(:,1)
+  ELSE
+    Resu = RefStateCons(:,2)
+  END IF
+CASE(17) ! Toro 1, Modified Sod Shock tube
+  xs = 0.3
   IF (X(1).LE.xs) THEN
     Resu = RefStateCons(:,1)
   ELSE
