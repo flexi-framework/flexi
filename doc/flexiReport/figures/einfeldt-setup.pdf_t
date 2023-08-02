@@ -1,0 +1,29 @@
+\begin{picture}(0,0)%
+\includegraphics{figures/einfeldt-setup.pdf}%
+\end{picture}%
+\setlength{\unitlength}{2368sp}%
+%
+\begingroup\makeatletter\ifx\SetFigFont\undefined%
+\gdef\SetFigFont#1#2#3#4#5{%
+  \reset@font\fontsize{#1}{#2pt}%
+  \fontfamily{#3}\fontseries{#4}\fontshape{#5}%
+  \selectfont}%
+\fi\endgroup%
+\begin{picture}(8598,2568)(1111,-5221)
+\put(1501,-4261){\makebox(0,0)[lb]{\smash{{\SetFigFont{7}{8.4}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$x$}%
+}}}}
+\put(3451,-3136){\makebox(0,0)[lb]{\smash{{\SetFigFont{7}{8.4}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}LEFT}%
+}}}}
+\put(7201,-3061){\makebox(0,0)[lb]{\smash{{\SetFigFont{7}{8.4}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}RIGHT}%
+}}}}
+\put(1126,-5161){\makebox(0,0)[lb]{\smash{{\SetFigFont{7}{8.4}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$-0.5$}%
+}}}}
+\put(6001,-5161){\makebox(0,0)[lb]{\smash{{\SetFigFont{7}{8.4}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$0.0$}%
+}}}}
+\put(9526,-5161){\makebox(0,0)[lb]{\smash{{\SetFigFont{7}{8.4}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$0.5$}%
+}}}}
+\put(2701,-3661){\makebox(0,0)[lb]{\smash{{\SetFigFont{7}{8.4}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$(\rho_{\mathrm{l}}, \mathrm{MomX}_{\mathrm{l}}, \mathrm{E}_{\mathrm{l}}, \gamma_{\mathrm{l}})$}%
+}}}}
+\put(6601,-3586){\makebox(0,0)[lb]{\smash{{\SetFigFont{7}{8.4}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$(\rho_{\mathrm{r}}, \mathrm{MomX}_{\mathrm{r}}, \mathrm{E}_{\mathrm{r}}, \gamma_{\mathrm{r}})$}%
+}}}}
+\end{picture}%
