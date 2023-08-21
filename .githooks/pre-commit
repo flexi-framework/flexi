@@ -40,6 +40,7 @@ ERROR=0
 FILEWARN=0
 FILEERR=0
 FILESUM=0
+EXEWARN=0
 
 # Check if file is opened in a terminal
 if test -t 1; then
@@ -72,7 +73,9 @@ if [ -n "$CHANGED" ]; then
 
   # Loop over all changes
   for file in $SORTED; do
+
     # Check if path is a file that exists
+    #  -f  True if FILE exists and is a regular file.
     if [ -f "$file" ]; then
       # -b, --bytes           equivalent to '--apparent-size --block-size=1'
       LINE=$(du -h "$file")
@@ -111,12 +114,25 @@ if [ -n "$CHANGED" ]; then
       # Error header
       printf "${YELLOW}Total file size to be committed ($FILESUM bytes)${NC}\n"
     fi
+
+    # Check if file is executable
+    if [ -x "$file" ]; then
+      # Error header
+      if [ "$EXEWARN" -eq 0 ]; then
+        printf "${RED}The following file(s) are executable, which is not allowed. Remove the execute permission via 'chmod -x filename' and try again.${NC}\n"
+        EXEWARN=1
+      fi
+      LINE=$(ls -alFhs "$file")
+      printf "$LINE\n"
+      ERROR=1
+    fi
+
   done
 
   # Abort if hook encountered any error
   if [ "$ERROR" -ne 0 ]; then
     echo '------------------------------------------------------------------------------------------------------------------------------------'
-    echo 'Commit rejected! You can override this check by passing "GIT_OVERRIDE_LIMITS=1" to git.'
+    echo 'Commit rejected! You can override this check by passing "GIT_OVERRIDE_LIMITS=1" to git, e.g., run "GIT_OVERRIDE_LIMITS=1 git commit".'
     exit 1
   fi
 
