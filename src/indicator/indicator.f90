@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -28,8 +28,8 @@
 MODULE MOD_Indicator
 ! MODULES
 IMPLICIT NONE
-
 PRIVATE
+!----------------------------------------------------------------------------------------------------------------------------------
 
 INTEGER,PARAMETER :: INDTYPE_DG             = 0
 INTEGER,PARAMETER :: INDTYPE_FV             = 1
@@ -123,6 +123,7 @@ USE MOD_Mesh_Vars           ,ONLY: nElems
 USE MOD_IO_HDF5             ,ONLY: AddToElemData,ElementOut
 USE MOD_Overintegration_Vars,ONLY: NUnder
 USE MOD_Filter_Vars         ,ONLY: NFilter
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -209,6 +210,7 @@ IndicatorInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT INDICATOR DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitIndicator
+
 
 !==================================================================================================================================
 !> Perform calculation of the indicator.
@@ -401,16 +403,19 @@ IndValue=LOG10(IndValue)
 
 END FUNCTION IndPersson
 
+
 #if EQNSYSNR == 2 /* NAVIER-STOKES */
 #if PARABOLIC
 !==================================================================================================================================
 !> Indicator by Ducros.
 !==================================================================================================================================
 FUNCTION DucrosIndicator(gradUx, gradUy, gradUz) RESULT(IndValue)
+! MODULES
 USE MOD_PreProc
 USE MOD_Mesh_Vars          ,ONLY: nElems,sJ
 USE MOD_Analyze_Vars       ,ONLY: wGPVol
 USE MOD_FV_Vars            ,ONLY: FV_Elems
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -456,10 +461,12 @@ END DO ! iElem
 END FUNCTION DucrosIndicator
 #endif /* PARABOLIC */
 
+
 !==================================================================================================================================
 !> Indicator by Jameson.
 !==================================================================================================================================
 FUNCTION JamesonIndicator(U) RESULT(IndValue)
+! MODULES
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Indicator_Vars     ,ONLY: IndVar
@@ -479,8 +486,9 @@ USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExc
 #endif
 USE MOD_FillMortar1        ,ONLY: U_Mortar1,Flux_Mortar1
 USE MOD_FV_Vars            ,ONLY: FV_Elems,FV_Elems_master,FV_Elems_slave
-!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 REAL,INTENT(IN)           :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)              !< Solution
 REAL                      :: IndValue(1:nElems)                                  !< Value of the indicator (Return Value)
@@ -736,6 +744,7 @@ END SUBROUTINE IndFVBoundaries
 SUBROUTINE FinalizeIndicator()
 ! MODULES
 USE MOD_Indicator_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 IndicatorInitIsDone=.FALSE.

@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2017 Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024 Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -58,7 +58,6 @@ INTERFACE FinalizeRiemann
   MODULE PROCEDURE FinalizeRiemann
 END INTERFACE
 
-
 PUBLIC::DefineParametersRiemann
 PUBLIC::InitRiemann
 PUBLIC::Riemann
@@ -69,7 +68,6 @@ PUBLIC::ViscousFlux
 !==================================================================================================================================
 
 CONTAINS
-
 
 !==================================================================================================================================
 !> Define parameters
@@ -94,6 +92,7 @@ CALL addStrListEntry('RiemannBC','lf',           PRM_RIEMANN_LF)
 CALL addStrListEntry('RiemannBC','roeentropyfix',PRM_RIEMANN_ROEENTROPYFIX)
 CALL addStrListEntry('RiemannBC','same',         PRM_RIEMANN_SAME)
 END SUBROUTINE DefineParametersRiemann
+
 
 !==================================================================================================================================!
 !> Initialize Riemann solver routines, read inner and BC Riemann solver parameters and set pointers
@@ -134,6 +133,7 @@ CASE DEFAULT
 END SELECT
 
 END SUBROUTINE InitRiemann
+
 
 !==================================================================================================================================
 !> Computes the numerical flux
@@ -226,6 +226,7 @@ END DO; END DO
 
 END SUBROUTINE Riemann_Side
 
+
 !==================================================================================================================================
 !> Computes the numerical flux
 !> Conservative States are rotated into normal direction in this routine and are NOT backrotated: don't use it after this routine!!
@@ -234,6 +235,7 @@ END SUBROUTINE Riemann_Side
 SUBROUTINE Riemann_Point(FOut,U_L,U_R,UPrim_L,UPrim_R,nv,t1,t2,doBC)
 ! MODULES
 USE MOD_Flux         ,ONLY:EvalEulerFlux1D_fast
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -313,6 +315,7 @@ Fout(MUSA)=F(MUSA)
 
 END SUBROUTINE Riemann_Point
 
+
 #if PARABOLIC
 !==================================================================================================================================
 !> Computes the viscous NSE diffusion fluxes in all directions to approximate the numerical flux
@@ -391,6 +394,7 @@ F(:)=0.5*(nv(1)*(diffFluxX_L(:)+diffFluxX_R(:)) &
 END SUBROUTINE ViscousFlux_Point
 #endif /* PARABOLIC */
 
+
 !==================================================================================================================================
 !> Local Lax-Friedrichs (Rusanov) Riemann solver
 !==================================================================================================================================
@@ -414,6 +418,7 @@ LambdaMax = MAX( ABS(U_RR(EXT_VEL1)),ABS(U_LL(EXT_VEL1)) ) + MAX( SPEEDOFSOUND_H
 F = 0.5*((F_L+F_R) - LambdaMax*(U_RR(EXT_CONS) - U_LL(EXT_CONS)))
 
 END SUBROUTINE Riemann_LF
+
 
 !=================================================================================================================================
 !> Roe's approximate Riemann solver using the Harten and Hymen II entropy fix, see
@@ -519,6 +524,7 @@ LambdaMax = MAX( ABS(U_RR(EXT_VEL1)),ABS(U_LL(EXT_VEL1)) ) + MAX(c_L,c_R)
 F(MUSA) = 0.5*((F_L(MUSA)+F_R(MUSA)) - LambdaMax*(U_RR(EXT_MUSA) - U_LL(EXT_MUSA)))
 END SUBROUTINE Riemann_RoeEntropyFix
 
+
 !==================================================================================================================================
 !> Finalize Riemann solver routines
 !==================================================================================================================================
@@ -531,6 +537,5 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !==================================================================================================================================
 END SUBROUTINE FinalizeRiemann
-
 
 END MODULE MOD_Riemann

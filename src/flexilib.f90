@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -74,6 +74,7 @@ USE MOD_Indicator,         ONLY:DefineParametersIndicator,InitIndicator
 USE MOD_ReadInTools,       ONLY:prms,IgnoredParameters,PrintDefaultParameterFile,ExtractParameterFile
 USE MOD_StringTools,       ONLY:STRICMP, GetFileExtension
 USE MOD_Unittest,          ONLY:GenerateUnittestReferenceData
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -270,6 +271,7 @@ USE MOD_FV,                ONLY:FinalizeFV
 USE MOD_FV_Basis,          ONLY:FinalizeFV_Basis
 USE MOD_Indicator,         ONLY:FinalizeIndicator
 #endif /*FV_ENABLED*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

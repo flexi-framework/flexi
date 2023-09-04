@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -426,6 +426,7 @@ IF (dt.LT.dt_kill) &
   CALL Abort(__STAMP__,"TimeDisc ERROR - Initial timestep below critical kill timestep!")
 END FUNCTION EvalInitialTimeStep
 
+
 !==================================================================================================================================
 !> Evaluates the time step for the current update of U
 !==================================================================================================================================
@@ -459,6 +460,7 @@ IF (dt_Min.LT.dt_kill) THEN
     'TimeDisc ERROR - Critical Kill timestep reached! Time: ',RealInfo=t)
 END IF
 END FUNCTION EvalTimeStep
+
 
 !===================================================================================================================================
 !> Scaling of the CFL number, from paper GASSNER, KOPRIVA, "A comparision of the Gauss and Gauss-Lobatto
@@ -532,6 +534,7 @@ dummy = Nin_DFL ! prevent compile warning
 #endif /*PARABOLIC*/
 END SUBROUTINE fillCFL_DFL
 
+
 !==================================================================================================================================
 !> Print information on the timestep
 !==================================================================================================================================
@@ -561,6 +564,7 @@ nDtLimited = 0
 
 END SUBROUTINE TimeDisc_Info
 
+
 !==================================================================================================================================
 !> Finalizes variables necessary for timedisc subroutines
 !==================================================================================================================================
@@ -568,6 +572,7 @@ SUBROUTINE FinalizeTimeDisc()
 ! MODULES
 USE MOD_TimeDisc_Vars
 USE MOD_TimeStep,      ONLY: TimeStep
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 TimeDiscInitIsDone = .FALSE.

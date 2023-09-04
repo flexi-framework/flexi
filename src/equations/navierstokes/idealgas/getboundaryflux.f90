@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -108,6 +108,7 @@ USE MOD_Exactfunc_Vars    ,ONLY: delta99_in,x_in,BlasiusInitDone
 #endif
 USE MOD_EOS               ,ONLY: ConsToPrim
 USE MOD_ExactFunc         ,ONLY: ExactFunc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -260,10 +261,9 @@ USE MOD_EOS          ,ONLY: PRESSURE_RIEMANN
 USE MOD_EOS_Vars     ,ONLY: sKappaM1,Kappa,KappaM1,R
 USE MOD_ExactFunc    ,ONLY: ExactFunc
 USE MOD_Equation_Vars,ONLY: IniExactFunc,BCDataPrim,RefStatePrim
-!----------------------------------------------------------------------------------------------------------------------------------
-! insert modules here
-!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)      :: SideID                                   !< ID of current side
 REAL,INTENT(IN)         :: t                                        !< current time (provided by time integration scheme)
@@ -274,8 +274,6 @@ REAL,INTENT(IN)         :: TangVec1(         3,0:Nloc,0:ZDIM(Nloc)) !< tangent s
 REAL,INTENT(IN)         :: TangVec2(         3,0:Nloc,0:ZDIM(Nloc)) !< tangent surface vectors 2
 REAL,INTENT(IN)         :: Face_xGP(         3,0:Nloc,0:ZDIM(Nloc)) !< positions of surface flux points
 REAL,INTENT(OUT)        :: UPrim_boundary(PRIM,0:Nloc,0:ZDIM(Nloc)) !< resulting boundary state
-
-! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: p,q
@@ -513,6 +511,8 @@ USE MOD_EddyVisc_Vars,ONLY: muSGS_master
 #endif
 USE MOD_TestCase     ,ONLY: GetBoundaryFluxTestcase
 USE MOD_DG_Vars      ,ONLY: UPrim_Boundary
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)   :: SideID                                         !< ID of current side
@@ -806,6 +806,7 @@ USE MOD_Globals       ,ONLY: Abort
 USE MOD_Mesh_Vars     ,ONLY: BoundaryType,BC
 USE MOD_TestCase      ,ONLY: GetBoundaryFVgradientTestcase
 USE MOD_DG_Vars       ,ONLY: UPrim_Boundary
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -859,6 +860,7 @@ USE MOD_DG_Vars      ,ONLY: UPrim_Boundary
 USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
 USE MOD_Lifting_Vars ,ONLY: doWeakLifting
 USE MOD_TestCase     ,ONLY: Lifting_GetBoundaryFluxTestcase
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -949,6 +951,7 @@ USE MOD_Interpolation_Vars,ONLY:L_minus,L_plus
 #endif
 USE MOD_ChangeBasisByDim  ,ONLY:ChangeBasisVolume
 USE MOD_EOS               ,ONLY:ConsToPrim
+! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES

@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -41,7 +41,7 @@ CONTAINS
   PROCEDURE :: printValue               !< function used to print the value
   PROCEDURE :: parse                    !< function that parses a string from the parameter file to fill the value of the option
   PROCEDURE :: parseReal                !< function that parses a string from the parameter file to fill the value of the option
-  PROCEDURE :: NAMEEQUALS               !< function to compare case-insensitive a string with the name of this option
+  PROCEDURE :: NAMEEQUALS               !< function to compare case-insensitive string with the name of this option
   PROCEDURE :: GETNAMELEN               !< function that returns the string length of the name
   PROCEDURE :: GETVALUELEN              !< function that returns the string length required to print the value
 END TYPE OPTION
@@ -131,13 +131,13 @@ PUBLIC :: GETSTRLENREAL
 
 CONTAINS
 
-
 !==================================================================================================================================
 !> Compares name with the name of the option (case-insensitive)
 !==================================================================================================================================
 FUNCTION NAMEEQUALS(this, name)
 ! MODULES
 USE MOD_StringTools ,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -155,6 +155,7 @@ END FUNCTION NAMEEQUALS
 !==================================================================================================================================
 FUNCTION GETNAMELEN(this)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -171,6 +172,7 @@ END FUNCTION GETNAMELEN
 !==================================================================================================================================
 FUNCTION GETVALUELEN(this)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -236,6 +238,8 @@ END FUNCTION GETVALUELEN
 !> Returns length of a real represented as string with a given number of digits
 !===================================================================================================================================
 FUNCTION GETSTRLENREAL(value,digits)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -267,6 +271,7 @@ SUBROUTINE print(this, maxNameLen, maxValueLen, mode)
 ! MODULES
 USE MOD_StringTools
 USE MOD_ISO_VARYING_STRING
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -381,6 +386,8 @@ END SUBROUTINE print
 !> print value of an option
 !==================================================================================================================================
 SUBROUTINE printValue(this,maxValueLen)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -511,6 +518,7 @@ SUBROUTINE parse(this, rest_in)
 ! MODULES
 USE MOD_Globals, ONLY:abort
 USE MOD_ISO_VARYING_STRING
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -676,8 +684,11 @@ END SUBROUTINE parse
 !> parse string to real and get the format of the number (floating,scientific)
 !===================================================================================================================================
 SUBROUTINE parseReal(this,string_in, value, digits)
-USE MOD_Globals, ONLY:abort
+! MODULES
+USE MOD_Globals, ONLY:Abort
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CLASS(OPTION)                 :: this      !< CLASS(OPTION)
 CHARACTER(LEN=255),INTENT(IN) :: string_in !< (IN) string containing a real number
@@ -730,4 +741,4 @@ END IF
 
 END SUBROUTINE parseReal
 
-END module
+END MODULE

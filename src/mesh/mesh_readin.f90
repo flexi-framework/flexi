@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -61,7 +61,6 @@ END INTERFACE
 INTERFACE ReadIJKSorting
   MODULE PROCEDURE ReadIJKSorting
 END INTERFACE
-
 
 PUBLIC::ReadMesh
 PUBLIC::BuildPartition
@@ -829,11 +828,11 @@ END FUNCTION ELEMIPROC
 !> for meshes thar are i,j,k sorted.
 !===================================================================================================================================
 SUBROUTINE ReadIJKSorting()
-! MODULES                                                                                                                          !
+! MODULES
 USE MOD_Mesh_Vars,       ONLY: nElems_IJK,Elem_IJK,offsetElem,nElems,MeshFile
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------!
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -117,7 +117,6 @@ USE MOD_Globals
 USE MOD_ReadInTools
 USE MOD_ExactFunc_Vars
 USE MOD_Equation_Vars      ,ONLY: IniExactFunc,IniRefState
-
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -204,7 +203,7 @@ REAL,INTENT(IN)                 :: x(3)                   !< physical coordinate
 REAL,INTENT(IN)                 :: tIn                    !< solution time (Runge-Kutta stage)
 REAL,INTENT(OUT)                :: Resu(PP_nVar)          !< state in conservative variables
 INTEGER,INTENT(IN),OPTIONAL     :: RefStateOpt            !< refstate to be used for exact func
-!----------------------------------------------------------------------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: RefState
 REAL                            :: tEval
