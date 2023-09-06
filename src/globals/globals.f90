@@ -52,6 +52,31 @@ INTEGER           :: doPrintHelp ! 0: no help, 1: help, 2: markdown-help
 
 LOGICAL           :: postiMode=.FALSE.                                        !< set TRUE if called from posti
 
+! Overload the MPI interface because MPICH fails to provide it
+! > https://github.com/pmodels/mpich/issues/2659
+! > https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node263.htm
+#if LIBS_MPICH
+INTERFACE MPI_WIN_ALLOCATE_SHARED
+  SUBROUTINE PMPI_WIN_ALLOCATE_SHARED(SIZE, DISP_UNIT, INFO, COMM, BASEPTR, WIN, IERROR)
+      USE, INTRINSIC ::  ISO_C_BINDING, ONLY : C_PTR
+      IMPORT         ::  MPI_ADDRESS_KIND
+      INTEGER        ::  DISP_UNIT, INFO, COMM, WIN, IERROR
+      INTEGER(KIND=MPI_ADDRESS_KIND) ::  SIZE
+      TYPE(C_PTR)    ::  BASEPTR
+  END SUBROUTINE
+END INTERFACE
+
+INTERFACE MPI_WIN_SHARED_QUERY
+  SUBROUTINE PMPI_WIN_SHARED_QUERY(WIN, RANK, SIZE, DISP_UNIT, BASEPTR, IERROR)
+      USE, INTRINSIC :: ISO_C_BINDING, ONLY : C_PTR
+      IMPORT         :: MPI_ADDRESS_KIND
+      INTEGER        :: WIN, RANK, DISP_UNIT, IERROR
+      INTEGER(KIND=MPI_ADDRESS_KIND) :: SIZE
+      TYPE(C_PTR)    :: BASEPTR
+  END SUBROUTINE
+END INTERFACE
+#endif /*LIBS_MPICH*/
+
 INTERFACE Abort
   MODULE PROCEDURE Abort
 END INTERFACE Abort
