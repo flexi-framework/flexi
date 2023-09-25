@@ -258,7 +258,7 @@ ENDIF()
 
 # HDF5 1.14 references build directory
 # > https://github.com/HDFGroup/hdf5/issues/2422
-IF(${HDF5_VERSION} VERSION_EQUAL "1.14")
+IF(HDF5_VERSION VERSION_EQUAL "1.14")
   LIST(FILTER HDF5_INCLUDE_DIR EXCLUDE REGEX "src/H5FDsubfiling")
 ENDIF()
 
