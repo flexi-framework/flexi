@@ -95,6 +95,8 @@ IF(MPIRoot)THEN
 ELSE
   CALL MPI_REDUCE(Box         ,0  ,6*nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
+#else
+BodyForce=Fv+Fp
 #endif
 
 END SUBROUTINE CalcBodyForces
