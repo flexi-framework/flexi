@@ -68,7 +68,7 @@ stages:
     - if: '$DO_WEEKLY'
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
-# # Stage "build": Build on check-in
+# Stage "build": Build on check-in
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 reggie_download:
   extends: .default_build_param
@@ -201,6 +201,9 @@ imperator:
 documentation:
   extends: .default_build_param
   stage: documentation
+  rules:
+    - if: '$DO_DEPLOY'
+    - if: '$DO_WEEKLY'
   script:
     - cd doc/doxygen
     - ./builddoxy.sh
@@ -216,6 +219,9 @@ documentation:
 userguide:
   extends: .default_build_param
   stage: documentation
+  rules:
+    - if: '$DO_DEPLOY'
+    - if: '$DO_WEEKLY'
   script:
     - cd doc/userguide
     - make
@@ -245,11 +251,9 @@ homepage:
   variables:
     FF_ENABLE_JOB_CLEANUP: 1
   script:
-    - cd doc/doxygen
-    - ssh flexi@euler rm -rf homepage/doxygen
-    - scp -r doxygen flexi@euler:~/homepage/.
-    - cd ..
-    - scp -r userguide flexi@euler:~/homepage/.
+    - cd doc
+    - rsync --recursive --delete doxygen/doxygen flexi@euler:homepage/
+    - rsync --recursive --delete userguide       flexi@euler:homepage/
 
 github:
   extends: .default_build_param
