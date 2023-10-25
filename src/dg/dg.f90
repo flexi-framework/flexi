@@ -265,9 +265,10 @@ USE MOD_MPI                 ,ONLY: StartExchange_FV_Elems
 #endif /*USE_MPI*/
 #if FV_RECONSTRUCT
 USE MOD_FV_Vars             ,ONLY: gradUxi,gradUeta,gradUzeta
-#if PARABOLIC
+#if VOLINT_VISC
 USE MOD_FV_Vars             ,ONLY: gradUxi_central,gradUeta_central,gradUzeta_central
-#endif
+USE MOD_FV_Reconstruction   ,ONLY: FV_SurfCalcGradients_Parabolic
+#endif /* VOLINT_VISC */
 USE MOD_FV_Vars             ,ONLY: FV_surf_gradU,FV_multi_master,FV_multi_slave
 USE MOD_FV_ProlongToFace    ,ONLY: FV_ProlongToDGFace
 USE MOD_FV_Mortar           ,ONLY: FV_gradU_mortar
@@ -438,9 +439,9 @@ CALL FV_SurfCalcGradients_BC(UPrim_master,FV_surf_gradU,t)
 CALL FV_ProlongToDGFace(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,FV_surf_gradU,doMPISides=.FALSE.)
 ! 5.6)
 CALL FV_CalcGradients(UPrim,FV_surf_gradU,gradUxi,gradUeta,gradUzeta &
-#if PARABOLIC
+#if VOLINT_VISC
     ,gradUxi_central,gradUeta_central,gradUzeta_central &
-#endif
+#endif /* VOLINT_VISC */
     )
 #endif /* FV_ENABLED && FV_RECONSTRUCT */
 
@@ -512,11 +513,12 @@ CALL FinishExchangeMPIData(6*nNbProcs,MPIRequest_gradU) ! gradUx,y,z: slave -> m
 ! 11.5)  Compute surface integral
 #if FV_ENABLED
 ! 11.1)
-#if PARABOLIC
+#if VOLINT_VISC
 CALL FV_DGtoFV(PP_nVarLifting,gradUx_master,gradUx_slave)
 CALL FV_DGtoFV(PP_nVarLifting,gradUy_master,gradUy_slave)
 CALL FV_DGtoFV(PP_nVarLifting,gradUz_master,gradUz_slave)
-#endif
+CALL FV_SurfCalcGradients_Parabolic()
+#endif /* VOLINT_VISC */
 
 CALL FV_DGtoFV(PP_nVar    ,U_master     ,U_slave     )
 CALL FV_ConsToPrim(PP_nVarPrim,PP_nVar,UPrim_master,UPrim_slave,U_master,U_slave)

@@ -210,7 +210,7 @@ Note that for h convergence, the mesh names are hard-coded to the form `CART_HEX
 
 ### `userblock`
 
-The `userblock` contains complete information about a **FLEXI** run (git branch of the repository, differences to that branch, `cmake` configuration and parameter file) and is prepended to every `.h5` state file. The parameter file is prepended in ASCII format, the rest is binary and is generated automatically during the build process with the `generateuserblock.sh` script. It can be extracted and printed using the `extract_userblock.py` script. Its basic usage is
+The `userblock` contains complete information about a **FLEXI** run (git branch of the repository, differences to that branch, `cmake` configuration and parameter file) and is prepended to every `.h5` state file. The parameter file is prepended in ASCII format, the rest is binary and is generated automatically during the build process with the `generate_userblock.sh` script. It can be extracted and printed using the `extract_userblock.py` script. Its basic usage is
 
 ~~~~~~~
 python3 extract_userblock.py -XXX [statefile.h5]

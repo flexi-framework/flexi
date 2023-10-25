@@ -285,17 +285,47 @@ gradUxi=0.
 gradUeta=0.
 gradUzeta=0.
 #if PARABOLIC
-! Same as gradUxi/eta/zeta, but instead of a TVD-limiter the mean value of the slopes to the
-! adjacent points is used. These slopes are used to calculate the physical gradients in
-! x-/y-/z-direction, which are required for the parabolic/viscous flux.
+! The gradients for the parabolic fluxes are calculated based on a simplified method of Green's theorem.
+! In each DG element, on each FV subcell face the gradients in x-/y-/z-directions are calculated on the
+! xi-/eta-/zeta-faces of the subcell. The gradient in (physical) x-direction for the eta face is stored
+! in the gradUx_eta array, ...
+ALLOCATE(gradUx_xi (PP_nVarLifting,0:PP_N-1,0:PP_N  ,0:PP_NZ  ,nElems))
+ALLOCATE(gradUx_eta(PP_nVarLifting,0:PP_N  ,0:PP_N-1,0:PP_NZ  ,nElems))
+ALLOCATE(gradUy_xi (PP_nVarLifting,0:PP_N-1,0:PP_N  ,0:PP_NZ  ,nElems))
+ALLOCATE(gradUy_eta(PP_nVarLifting,0:PP_N  ,0:PP_N-1,0:PP_NZ  ,nElems))
+ALLOCATE(gradUz_xi (PP_nVarLifting,0:PP_N-1,0:PP_N  ,0:PP_NZ  ,nElems))
+ALLOCATE(gradUz_eta(PP_nVarLifting,0:PP_N  ,0:PP_N-1,0:PP_NZ  ,nElems))
+gradUx_xi = 0.
+gradUx_eta= 0.
+gradUy_xi = 0.
+gradUy_eta= 0.
+gradUz_xi = 0.
+gradUz_eta= 0.
+#if (PP_dim==3)
+ALLOCATE(gradUx_zeta(PP_nVarLifting,0:PP_N  ,0:PP_N  ,0:PP_NZ-1,nElems))
+ALLOCATE(gradUy_zeta(PP_nVarLifting,0:PP_N  ,0:PP_N  ,0:PP_NZ-1,nElems))
+ALLOCATE(gradUz_zeta(PP_nVarLifting,0:PP_N  ,0:PP_N  ,0:PP_NZ-1,nElems))
+gradUx_zeta= 0.
+gradUy_zeta= 0.
+gradUz_zeta= 0.
+#endif
+! Additionally, central gradients are calculated in each DG element in a similar manner to the
+! reconstruction slopes.
+! These gradients are prolongated to the DG element faces and used for the parabolic flux
 ! Therefore the array size is adjusted to the number of lifting variables instead of the primitives.
-! The gradients in x-/y-/z-direction are stored in the gradUx/y/z arrays of the lifting.
+! calculation across DG element faces. This reduces the communication effort required by
+! Green's method. The gradients in x-/y-/z-direction are stored in the gradUx/y/z arrays of the lifting.
 ALLOCATE(gradUxi_central  (PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 ALLOCATE(gradUeta_central (PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 ALLOCATE(gradUzeta_central(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 gradUxi_central  =0.
 gradUeta_central =0.
 gradUzeta_central=0.
+
+ALLOCATE(FV_surf_gradU_master(PP_nVarLifting,3,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(FV_surf_gradU_slave (PP_nVarLifting,3,0:PP_N,0:PP_NZ,1:nSides))
+FV_surf_gradU_master=0.
+FV_surf_gradU_slave =0.
 #endif /* PARABOLIC */
 #endif /* FV_RECONSTRUCT */
 
@@ -473,6 +503,19 @@ SDEALLOCATE(gradUzeta)
 SDEALLOCATE(gradUxi_central)
 SDEALLOCATE(gradUeta_central)
 SDEALLOCATE(gradUzeta_central)
+SDEALLOCATE(gradUx_xi  )
+SDEALLOCATE(gradUx_eta )
+SDEALLOCATE(gradUy_xi  )
+SDEALLOCATE(gradUy_eta )
+SDEALLOCATE(gradUz_xi  )
+SDEALLOCATE(gradUz_eta )
+#if (PP_dim==3)
+SDEALLOCATE(gradUx_zeta)
+SDEALLOCATE(gradUy_zeta)
+SDEALLOCATE(gradUz_zeta)
+#endif
+SDEALLOCATE(FV_surf_gradU_master)
+SDEALLOCATE(FV_surf_gradU_slave)
 #endif
 #endif
 #if FV_ENABLED == 2

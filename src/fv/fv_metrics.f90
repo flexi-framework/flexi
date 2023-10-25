@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -27,11 +27,16 @@ INTERFACE InitFV_Metrics
   MODULE PROCEDURE InitFV_Metrics
 END INTERFACE
 
+INTERFACE FV_CalcMetrics
+  MODULE PROCEDURE FV_CalcMetrics
+END INTERFACE
+
 INTERFACE FinalizeFV_Metrics
   MODULE PROCEDURE FinalizeFV_Metrics
 END INTERFACE
 
 PUBLIC::InitFV_Metrics
+PUBLIC::FV_CalcMetrics
 PUBLIC::FinalizeFV_Metrics
 !==================================================================================================================================
 
@@ -43,72 +48,15 @@ CONTAINS
 !==================================================================================================================================
 SUBROUTINE InitFV_Metrics()
 ! MODULES
-USE MOD_Globals
 USE MOD_PreProc
 USE MOD_FV_Vars
-USE MOD_FV_Basis
-USE MOD_Mesh_Vars          ,ONLY: nElems,nSides,firstMPISide_YOUR,lastMPISide_YOUR
-USE MOD_Mesh_Vars          ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,sJ
-USE MOD_Mesh_Vars          ,ONLY: NGeoRef,DetJac_Ref,MortarType,MortarInfo
-USE MOD_Mesh_Vars          ,ONLY: NormalDirs,TangDirs,NormalSigns,SideToElem
-USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face
-USE MOD_Mesh_Vars          ,ONLY: sJ_master,sJ_slave
-USE MOD_ChangeBasis        ,ONLY: ChangeBasis1D,ChangeBasis2D,ChangeBasis3D
-USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisSurf,ChangeBasisVolume
-USE MOD_Metrics            ,ONLY: SurfMetricsFromJa
-USE MOD_Interpolation      ,ONLY: GetVandermonde
-USE MOD_Interpolation_Vars ,ONLY: NodeType
-#if FV_RECONSTRUCT
-USE MOD_Mesh_Vars          ,ONLY: firstBCSide,lastBCSide,firstInnerSide,lastMPISide_MINE
-USE MOD_Mesh_Vars          ,ONLY: S2V2,ElemToSide,dXCL_N
-USE MOD_Interpolation      ,ONLY: GetNodesAndWeights
-USE MOD_Interpolation_Vars ,ONLY: NodeTypeCL,xGP,wGP,wBary
-#endif
-#if USE_MPI
-USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
-USE MOD_MPI_Vars           ,ONLY: nNbProcs
-USE MOD_Mesh_Vars          ,ONLY: firstMPISide_MINE
-#endif
-USE MOD_2D
-USE MOD_FillMortar1        ,ONLY: U_Mortar1
+USE MOD_Mesh_Vars          ,ONLY: nElems,nSides,lastMPISide_MINE
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                :: i,j,k,l,iSide,iElem,iLocSide
-INTEGER                                :: dd,NormalDir,TangDir
-REAL                                   :: NormalSign
-REAL                                   :: Vdm_Gauss_FVboundary(0:PP_N+1,0:PP_N)
-REAL                                   :: JaVol(3,3,0:PP_N+1,0:PP_N+1,0:PP_NZ+1)
-REAL                                   :: FV_Ja_Face(3,3,0:PP_N,0:PP_NZ)
-REAL,DIMENSION(0:PP_N,0:NgeoRef)       :: Vdm_NgeoRef_N,Vdm_NgeoRef_FV
-REAL                                   :: FV_DetJac(1,0:PP_N,0:PP_N,0:PP_NZ)
-INTEGER                                :: flip, SideID, iMortar
-#if FV_RECONSTRUCT
-INTEGER                                :: ijk(2),p,q,locSideID
-REAL                                   :: FV_dx_Face    (0:PP_N,0:PP_NZ,1:3)
-REAL                                   :: DG_dx_slave (1,0:PP_N,0:PP_NZ,1:nSides)
-REAL                                   :: DG_dx_master(1,0:PP_N,0:PP_NZ,1:nSides)
-REAL                                   :: tmp2(3,0:PP_N)
-REAL,DIMENSION(0:PP_N,0:PP_N)          :: Vdm_CLN_FV, Vdm_CLN_GaussN,length
-REAL,DIMENSION(3,0:PP_N,0:PP_N,0:PP_NZ):: FV_Path_XI, FV_Path_ETA, FV_Path_ZETA
-REAL                                   :: x0, xN
-REAL,POINTER                           :: FV_dx_P(:,:)
-#if USE_MPI
-INTEGER                                :: MPIRequest(nNbProcs,2)
-#endif
-#if PARABOLIC
-INTEGER                                :: d
-#endif
-#endif
-#if USE_MPI
-INTEGER                                :: MPIRequest_Geo(nNbProcs,2)
-REAL,ALLOCATABLE                       :: Geo(:,:,:,:)
-#endif
 !==================================================================================================================================
-SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') '  Build Metrics ...'
-
 #if FV_RECONSTRUCT
 ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! All the following distances are computed in PHYSICAL space, even so the variables are named in reference space notation.
@@ -183,15 +131,193 @@ ALLOCATE(FV_TangVec1Zeta(3,0:PP_N,0:PP_N ,1:PP_N,nElems))  !  -"-
 ALLOCATE(FV_TangVec2Zeta(3,0:PP_N,0:PP_N ,1:PP_N,nElems))  !  -"-
 #endif
 
-#if PARABOLIC
+#if FV_RECONSTRUCT
+#if VOLINT_VISC
 ALLOCATE(FV_Metrics_fTilde_sJ(3,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 ALLOCATE(FV_Metrics_gTilde_sJ(3,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 #if (PP_dim == 3)
 ALLOCATE(FV_Metrics_hTilde_sJ(3,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 #endif
+
+! Metrics for rotation from slave to master coordinate system
+ALLOCATE(FV_Metrics_NormVec_master (3,0:PP_N,0:PP_NZ,nSides))
+ALLOCATE(FV_Metrics_TangVec1_master(3,0:PP_N,0:PP_NZ,nSides))
+ALLOCATE(FV_Metrics_NormVec_slave (3,0:PP_N,0:PP_NZ,nSides))
+ALLOCATE(FV_Metrics_TangVec1_slave(3,0:PP_N,0:PP_NZ,nSides))
+FV_Metrics_NormVec_master =0.
+FV_Metrics_TangVec1_master=0.
+FV_Metrics_NormVec_slave  =0.
+FV_Metrics_TangVec1_slave =0.
+#if PP_dim==3
+ALLOCATE(FV_Metrics_TangVec2_master(3,0:PP_N,0:PP_NZ,nSides))
+ALLOCATE(FV_Metrics_TangVec2_slave(3,0:PP_N,0:PP_NZ,nSides))
+FV_Metrics_TangVec2_slave=0.
+FV_Metrics_TangVec2_master=0.
+#endif /* PP_dim==3 */
+
+ALLOCATE(FV_Metrics_fTilde_sJ_xi  (3,0:PP_N-1,0:PP_N  ,0:PP_NZ  ,nElems))
+ALLOCATE(FV_Metrics_gTilde_sJ_xi  (3,0:PP_N-1,0:PP_N  ,0:PP_NZ  ,nElems))
+#if (PP_dim == 3)
+ALLOCATE(FV_Metrics_hTilde_sJ_xi  (3,0:PP_N-1,0:PP_N  ,0:PP_NZ  ,nElems))
 #endif
+ALLOCATE(FV_Metrics_fTilde_sJ_eta (3,0:PP_N  ,0:PP_N-1,0:PP_NZ  ,nElems))
+ALLOCATE(FV_Metrics_gTilde_sJ_eta (3,0:PP_N  ,0:PP_N-1,0:PP_NZ  ,nElems))
+#if (PP_dim == 3)
+ALLOCATE(FV_Metrics_hTilde_sJ_eta (3,0:PP_N  ,0:PP_N-1,0:PP_NZ  ,nElems))
+#endif
+ALLOCATE(FV_Metrics_fTilde_sJ_zeta(3,0:PP_N  ,0:PP_N  ,0:PP_NZ-1,nElems))
+ALLOCATE(FV_Metrics_gTilde_sJ_zeta(3,0:PP_N  ,0:PP_N  ,0:PP_NZ-1,nElems))
+#if (PP_dim == 3)
+ALLOCATE(FV_Metrics_hTilde_sJ_zeta(3,0:PP_N  ,0:PP_N  ,0:PP_NZ-1,nElems))
+#endif
+#endif /* VOLINT_VISC */
+#endif /* FV_RECONSTRUCT */
 
 ALLOCATE(FV_Elems_master(1:nSides)) ! Moved from InitFV to here, since needed in U_Mortar below.
+
+END SUBROUTINE InitFV_Metrics
+
+!==================================================================================================================================
+!> Compute the remaining metric terms for FV subcells, that are not computed in metrics.f90.
+!> Normal, tangential vectors, SurfElems, ... for FV subcells.
+!==================================================================================================================================
+SUBROUTINE FV_CalcMetrics()
+! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_FV_Vars
+USE MOD_FV_Basis
+USE MOD_Mesh_Vars          ,ONLY: nElems,nSides,firstMPISide_YOUR,lastMPISide_YOUR
+USE MOD_Mesh_Vars          ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,sJ
+USE MOD_Mesh_Vars          ,ONLY: NGeoRef,DetJac_Ref,MortarType,MortarInfo
+USE MOD_Mesh_Vars          ,ONLY: NormalDirs,TangDirs,NormalSigns,SideToElem
+USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face
+USE MOD_Mesh_Vars          ,ONLY: sJ_master,sJ_slave
+USE MOD_ChangeBasis        ,ONLY: ChangeBasis1D,ChangeBasis2D,ChangeBasis3D
+USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisSurf,ChangeBasisVolume
+USE MOD_Metrics            ,ONLY: SurfMetricsFromJa
+USE MOD_Interpolation      ,ONLY: GetVandermonde
+USE MOD_Interpolation_Vars ,ONLY: NodeType
+#if FV_RECONSTRUCT
+USE MOD_Mesh_Vars          ,ONLY: firstBCSide,lastBCSide,firstInnerSide,lastMPISide_MINE
+USE MOD_Mesh_Vars          ,ONLY: S2V2,ElemToSide,dXCL_N
+USE MOD_Interpolation      ,ONLY: GetNodesAndWeights
+USE MOD_Interpolation_Vars ,ONLY: NodeTypeCL,xGP,wGP,wBary
+#if VOLINT_VISC
+USE MOD_Mesh_Vars          ,ONLY: SideToElem,S2V
+#endif /* VOLINT_VISC */
+#endif
+#if USE_MPI
+USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
+USE MOD_MPI_Vars           ,ONLY: nNbProcs
+USE MOD_Mesh_Vars          ,ONLY: firstMPISide_MINE
+#endif
+USE MOD_2D
+USE MOD_FillMortar1        ,ONLY: U_Mortar1
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                                :: i,j,k,l,iSide,iElem,iLocSide
+INTEGER                                :: dd,NormalDir,TangDir
+REAL                                   :: NormalSign
+REAL                                   :: Vdm_Gauss_FVboundary(0:PP_N+1,0:PP_N)
+REAL                                   :: JaVol(3,3,0:PP_N+1,0:PP_N+1,0:PP_NZ+1)
+REAL                                   :: FV_Ja_Face(3,3,0:PP_N,0:PP_NZ)
+REAL,DIMENSION(0:PP_N,0:NgeoRef)       :: Vdm_NgeoRef_N,Vdm_NgeoRef_FV
+REAL                                   :: FV_DetJac(1,0:PP_N,0:PP_N,0:PP_NZ)
+INTEGER                                :: flip, SideID, iMortar
+#if FV_RECONSTRUCT
+INTEGER                                :: ijk(2),p,q,locSideID
+REAL                                   :: FV_dx_Face    (0:PP_N,0:PP_NZ,1:3)
+REAL                                   :: DG_dx_slave (1,0:PP_N,0:PP_NZ,1:nSides)
+REAL                                   :: DG_dx_master(1,0:PP_N,0:PP_NZ,1:nSides)
+REAL                                   :: tmp2(3,0:PP_N)
+REAL,DIMENSION(0:PP_N,0:PP_N)          :: Vdm_CLN_FV, Vdm_CLN_GaussN,length
+REAL,DIMENSION(0:PP_N+1,0:PP_N)        :: Vdm_CLN_FVboundary
+REAL,DIMENSION(3,0:PP_N,0:PP_N,0:PP_NZ):: FV_Path_XI, FV_Path_ETA, FV_Path_ZETA
+REAL                                   :: x0, xN
+REAL,POINTER                           :: FV_dx_P(:,:)
+#if USE_MPI
+INTEGER                                :: MPIRequest(nNbProcs,2)
+#endif
+#if VOLINT_VISC
+INTEGER                                :: d,ijk2(3),ElemID,NB_ElemID
+#endif
+#endif
+#if USE_MPI
+INTEGER                                :: MPIRequest_Geo(nNbProcs,2)
+REAL,ALLOCATABLE                       :: Geo(:,:,:,:)
+#endif
+#if VOLINT_VISC
+REAL                                   :: dXFace  (3,3,0:PP_N  ,0:PP_NZ           )
+REAL                                   :: dXVol   (3,3,0:PP_N+1,0:PP_N+1,0:PP_NZ+1)
+REAL                                   :: Metrics_fTilde_xi(3,0:PP_N-1,0:PP_N,0:PP_NZ)
+REAL                                   :: Metrics_gTilde_xi(3,0:PP_N-1,0:PP_N,0:PP_NZ)
+REAL                                   :: Metrics_hTilde_xi(3,0:PP_N-1,0:PP_N,0:PP_NZ)
+REAL                                   :: Metrics_fTilde_eta(3,0:PP_N,0:PP_N-1,0:PP_NZ)
+REAL                                   :: Metrics_gTilde_eta(3,0:PP_N,0:PP_N-1,0:PP_NZ)
+REAL                                   :: Metrics_hTilde_eta(3,0:PP_N,0:PP_N-1,0:PP_NZ)
+REAL                                   :: Metrics_fTilde_zeta(3,0:PP_N,0:PP_N,0:PP_NZ-1)
+REAL                                   :: Metrics_gTilde_zeta(3,0:PP_N,0:PP_N,0:PP_NZ-1)
+REAL                                   :: Metrics_hTilde_zeta(3,0:PP_N,0:PP_N,0:PP_NZ-1)
+REAL                                   :: dX_xi   (3,3,0:PP_N-1,0:PP_N  ,0:PP_NZ  )
+REAL                                   :: dX_eta  (3,3,0:PP_N  ,0:PP_N-1,0:PP_NZ  )
+#if PP_dim==3
+REAL                                   :: dX_zeta (3,3,0:PP_N  ,0:PP_N  ,0:PP_NZ-1)
+#endif
+REAL                                   :: sJ_xi  (0:PP_N-1,0:PP_N  ,0:PP_NZ  )
+REAL                                   :: sJ_eta (0:PP_N  ,0:PP_N-1,0:PP_NZ  )
+#if PP_dim==3
+REAL                                   :: sJ_zeta(0:PP_N  ,0:PP_N  ,0:PP_NZ-1)
+#endif
+REAL                                   :: FV_dX_1_xi_LG_eta_FV_zeta_BC_L(0:PP_N  ,0:PP_NZ+1,0:PP_N)  ! Attention: storage order is (j,k,i,iElem)
+REAL                                   :: FV_dX_1_xi_LG_eta_BC_zeta_FV_L(0:PP_N+1,0:PP_NZ  ,0:PP_N)  ! Attention: storage order is (j,k,i,iElem)
+#if (PP_dim == 3)
+REAL                                   :: FV_dX_3_xi_FV_eta_BC_zeta_LG_L(0:PP_N  ,0:PP_NZ+1,0:PP_N)  ! Attention: storage order is (i,j,k,iElem)
+#endif
+REAL                                   :: FV_dX_2_xi_FV_eta_LG_zeta_BC_L(0:PP_N  ,0:PP_NZ+1,0:PP_N)  ! Attention: storage order is (i,k,j,iElem)
+REAL                                   :: FV_dX_2_xi_BC_eta_LG_zeta_FV_L(0:PP_N+1,0:PP_NZ  ,0:PP_N)  ! Attention: storage order is (i,k,j,iElem)
+#if (PP_dim == 3)
+REAL                                   :: FV_dX_3_xi_BC_eta_FV_zeta_LG_L(0:PP_N+1,0:PP_NZ  ,0:PP_N)  ! Attention: storage order is (i,j,k,iElem)
+#endif
+REAL                                   :: FV_dX_1_xi_LG_eta_FV_zeta_BC_R(0:PP_N  ,0:PP_NZ+1,0:PP_N)  ! Attention: storage order is (j,k,i,iElem)
+REAL                                   :: FV_dX_1_xi_LG_eta_BC_zeta_FV_R(0:PP_N+1,0:PP_NZ  ,0:PP_N)  ! Attention: storage order is (j,k,i,iElem)
+#if (PP_dim == 3)
+REAL                                   :: FV_dX_3_xi_FV_eta_BC_zeta_LG_R(0:PP_N  ,0:PP_NZ+1,0:PP_N)  ! Attention: storage order is (i,j,k,iElem)
+#endif
+REAL                                   :: FV_dX_2_xi_FV_eta_LG_zeta_BC_R(0:PP_N  ,0:PP_NZ+1,0:PP_N)  ! Attention: storage order is (i,k,j,iElem)
+REAL                                   :: FV_dX_2_xi_BC_eta_LG_zeta_FV_R(0:PP_N+1,0:PP_NZ  ,0:PP_N)  ! Attention: storage order is (i,k,j,iElem)
+#if (PP_dim == 3)
+REAL                                   :: FV_dX_3_xi_BC_eta_FV_zeta_LG_R(0:PP_N+1,0:PP_NZ  ,0:PP_N)  ! Attention: storage order is (i,j,k,iElem)
+#endif
+REAL                                   :: dX_1_xi_LG_eta_CL_zeta_CL_Path       (3,0:PP_N  ,0:PP_N   ,0:PP_NZ  )
+REAL                                   :: dX_2_xi_CL_eta_LG_zeta_CL_Path       (3,0:PP_N  ,0:PP_N   ,0:PP_NZ  )
+REAL                                   :: FV_dX_1_xi_LG_eta_FV_zeta_CL_Path    (3,0:PP_N  ,0:PP_N   ,0:PP_NZ  )
+REAL                                   :: FV_dX_1_xi_LG_eta_BC_zeta_CL_Path    (3,0:PP_N  ,0:PP_N+1 ,0:PP_NZ  )
+REAL                                   :: FV_dX_2_xi_FV_eta_LG_zeta_CL_Path    (3,0:PP_N  ,0:PP_N   ,0:PP_NZ  )
+REAL                                   :: FV_dX_2_xi_BC_eta_LG_zeta_CL_Path    (3,0:PP_N+1,0:PP_N   ,0:PP_NZ  )
+REAL                                   :: FV_dX_1_xi_LG_eta_FV_zeta_BC_Path    (3,0:PP_N  ,0:PP_N   ,0:PP_NZ+1)
+REAL                                   :: FV_dX_1_xi_LG_eta_FV_zeta_BC_Path_pq (3,0:PP_N  ,0:PP_N   ,0:PP_NZ+1)
+REAL                                   :: FV_dX_1_xi_LG_eta_BC_zeta_FV_Path    (3,0:PP_N  ,0:PP_N+1 ,0:PP_NZ  )
+REAL                                   :: FV_dX_1_xi_LG_eta_BC_zeta_FV_Path_pq (3,0:PP_N  ,0:PP_N+1 ,0:PP_NZ  )
+REAL                                   :: FV_dX_2_xi_FV_eta_LG_zeta_BC_Path    (3,0:PP_N  ,0:PP_N   ,0:PP_NZ+1)
+REAL                                   :: FV_dX_2_xi_FV_eta_LG_zeta_BC_Path_pq (3,0:PP_N  ,0:PP_N   ,0:PP_NZ+1)
+REAL                                   :: FV_dX_2_xi_BC_eta_LG_zeta_FV_Path    (3,0:PP_N+1,0:PP_N   ,0:PP_NZ  )
+REAL                                   :: FV_dX_2_xi_BC_eta_LG_zeta_FV_Path_pq (3,0:PP_N  ,0:PP_N+1 ,0:PP_NZ  )
+#if (PP_dim == 3)
+REAL                                   :: dX_3_xi_CL_eta_CL_zeta_LG_Path       (3,0:PP_N  ,0:PP_N   ,0:PP_NZ  )
+REAL                                   :: FV_dX_3_xi_FV_eta_CL_zeta_LG_Path    (3,0:PP_N  ,0:PP_N   ,0:PP_NZ  )
+REAL                                   :: FV_dX_3_xi_BC_eta_CL_zeta_LG_Path    (3,0:PP_N+1,0:PP_N   ,0:PP_NZ  )
+REAL                                   :: FV_dX_3_xi_FV_eta_BC_zeta_LG_Path    (3,0:PP_N  ,0:PP_N+1 ,0:PP_NZ  )
+REAL                                   :: FV_dX_3_xi_FV_eta_BC_zeta_LG_Path_pq (3,0:PP_N  ,0:PP_N   ,0:PP_NZ+1)
+REAL                                   :: FV_dX_3_xi_BC_eta_FV_zeta_LG_Path    (3,0:PP_N+1,0:PP_N   ,0:PP_NZ  )
+REAL                                   :: FV_dX_3_xi_BC_eta_FV_zeta_LG_Path_pq (3,0:PP_N  ,0:PP_N+1 ,0:PP_NZ  )
+#endif /*(PP_dim == 3)*/
+#endif /*VOLINT_VISC*/
+!==================================================================================================================================
+SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') '  Build FV-Metrics ...'
 
 ! compute FV NormVec, TangVec,.. on boundary of DG-cells
 DO iSide=1,nSides
@@ -238,7 +364,7 @@ Geo(8:10,:,:,:)=TangVec2(:,:,0:PP_NZ,1,firstMPISide_MINE:nSides)
 MPIRequest_Geo=MPI_REQUEST_NULL
 CALL StartReceiveMPIData(Geo,10*(PP_N+1)**(PP_dim-1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,RECV),SendID=1) ! Receive YOUR / Geo: master -> slave
 CALL StartSendMPIData(   Geo,10*(PP_N+1)**(PP_dim-1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,SEND),SendID=1) ! SEND MINE / Geo: master -> slave
-CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Geo) 
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Geo)
 SurfElem  (:,0:PP_NZ,1,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(1   ,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
 NormVec (:,:,0:PP_NZ,1,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(2:4 ,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
 TangVec1(:,:,0:PP_NZ,1,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(5:7 ,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
@@ -249,6 +375,9 @@ DEALLOCATE(Geo)
 CALL FV_Build_Vdm_Gauss_FVboundary(PP_N, Vdm_Gauss_FVboundary)
 CALL GetVandermonde(NgeoRef, NodeType, PP_N, NodeType, Vdm_NgeoRef_N, modal=.TRUE.)
 Vdm_NgeoRef_FV = MATMUL(FV_Vdm, Vdm_NgeoRef_N)
+CALL GetVandermonde(PP_N,NodeTypeCL,PP_N,NodeType, Vdm_CLN_GaussN, modal=.FALSE.)
+Vdm_CLN_FV = MATMUL(FV_Vdm, Vdm_CLN_GaussN)
+Vdm_CLN_FVboundary = MATMUL(Vdm_Gauss_FVboundary, Vdm_CLN_GaussN)
 DO iElem=1,nElems
   ! compute Jacobian
   CALL ChangeBasisVolume(1,NGeoRef,PP_N,Vdm_NgeoRef_FV,DetJac_Ref(:,:,:,:,iElem),FV_DetJac)
@@ -267,12 +396,20 @@ DO iElem=1,nElems
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_fTilde(:,:,j,k,iElem,0),JaVol(1,:,:,j,k))
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_gTilde(:,:,j,k,iElem,0),JaVol(2,:,:,j,k))
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_hTilde(:,:,j,k,iElem,0),JaVol(3,:,:,j,k))
+#if VOLINT_VISC
+    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary,dXCL_N(1,:,:,j,k,iElem),dXVol(1,:,:,j,k))
+    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary,dXCL_N(2,:,:,j,k,iElem),dXVol(2,:,:,j,k))
+    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary,dXCL_N(3,:,:,j,k,iElem),dXVol(3,:,:,j,k))
+#endif /*VOLINT_VISC*/
   END DO; END DO ! j,k=0,PP_N
   DO l=1,PP_N
     ! at every inner interface/slice between FV subcells in XI direction:
     ! convert metrics in the other directions from DG to FV subcells
     DO dd=1,3
       CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,JaVol(dd,1:3,l,0:PP_N,0:PP_NZ),FV_Ja_Face(dd,:,:,:))
+#if VOLINT_VISC
+      CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,dXVol(dd,1:3,l,0:PP_N,0:PP_NZ),dXFace(dd,:,:,:))
+#endif /*VOLINT_VISC*/
     END DO
     ! use metrics to build normal/tangential vectors and surelem at the inner interfaces/slices
     NormalDir=NormalDirs(XI_PLUS); TangDir=TangDirs(XI_PLUS); NormalSign=NormalSigns(XI_PLUS)
@@ -283,6 +420,18 @@ DO iElem=1,nElems
         FV_SurfElemXi_sw(:,:,l,iElem))
     ! multiply FV_SurfElemXi with 1/FV_w
     !FV_SurfElemXi_sw(:,:,l,iElem) = FV_SurfElemXi_sw(:,:,l,iElem)*FV_w_inv
+#if VOLINT_VISC
+    DO dd=1,3
+      DO k=0,PP_NZ; DO j=0,PP_N
+        Metrics_fTilde_xi(dd,l-1,j,k)=FV_Ja_Face(1,dd,j,k)
+        Metrics_gTilde_xi(dd,l-1,j,k)=FV_Ja_Face(2,dd,j,k)
+        Metrics_hTilde_xi(dd,l-1,j,k)=FV_Ja_Face(3,dd,j,k)
+        dX_xi          (1,dd,l-1,j,k)=dXFace    (1,dd,j,k)
+        dX_xi          (2,dd,l-1,j,k)=dXFace    (2,dd,j,k)
+        dX_xi          (3,dd,l-1,j,k)=dXFace    (3,dd,j,k)
+      END DO; END DO ! j,k=0,PP_N
+    END DO
+#endif /*VOLINT_VISC*/
   END DO
 
   ! Eta direction
@@ -291,12 +440,20 @@ DO iElem=1,nElems
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_fTilde(:,i,:,k,iElem,0),JaVol(1,:,i,:,k))
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_gTilde(:,i,:,k,iElem,0),JaVol(2,:,i,:,k))
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_hTilde(:,i,:,k,iElem,0),JaVol(3,:,i,:,k))
+#if VOLINT_VISC
+    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary,dXCL_N(1,:,i,:,k,iElem),dXVol(1,:,i,:,k))
+    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary,dXCL_N(2,:,i,:,k,iElem),dXVol(2,:,i,:,k))
+    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary,dXCL_N(3,:,i,:,k,iElem),dXVol(3,:,i,:,k))
+#endif /*VOLINT_VISC*/
   END DO; END DO ! i,k=0,PP_N
   DO l=1,PP_N
     ! at every inner interface/slice between FV subcells in ETA direction:
     ! convert metrics in the other directions from DG to FV subcells
     DO dd=1,3
       CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,JaVol(dd,1:3,0:PP_N,l,0:PP_NZ),FV_Ja_Face(dd,:,:,:))
+#if VOLINT_VISC
+      CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,dXVol(dd,1:3,0:PP_N,l,0:PP_NZ),dXFace(dd,:,:,:))
+#endif /*VOLINT_VISC*/
     END DO
     ! use metrics to build normal/tangential vectors and surelem at the inner interfaces/slices
     NormalDir=NormalDirs(ETA_PLUS); TangDir=TangDirs(ETA_PLUS); NormalSign=NormalSigns(ETA_PLUS)
@@ -307,6 +464,18 @@ DO iElem=1,nElems
         FV_SurfElemEta_sw(:,:,l,iElem))
     ! multiply FV_SurfElemEta with 1/FV_w
     !FV_SurfElemEta_sw(:,:,l,iElem) = FV_SurfElemEta_sw(:,:,l,iElem)*FV_w_inv
+#if VOLINT_VISC
+    DO dd=1,3
+      DO k=0,PP_NZ; DO i=0,PP_N
+        Metrics_fTilde_eta(dd,i,l-1,k)=FV_Ja_Face(1,dd,i,k)
+        Metrics_gTilde_eta(dd,i,l-1,k)=FV_Ja_Face(2,dd,i,k)
+        Metrics_hTilde_eta(dd,i,l-1,k)=FV_Ja_Face(3,dd,i,k)
+        dX_eta          (1,dd,i,l-1,k)=dXFace    (1,dd,i,k)
+        dX_eta          (2,dd,i,l-1,k)=dXFace    (2,dd,i,k)
+        dX_eta          (3,dd,i,l-1,k)=dXFace    (3,dd,i,k)
+      END DO; END DO ! i,k=0,PP_N
+    END DO
+#endif /*VOLINT_VISC*/
   END DO
 
 #if (PP_dim == 3)
@@ -316,12 +485,20 @@ DO iElem=1,nElems
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_fTilde(:,i,j,:,iElem,0),JaVol(1,:,i,j,:))
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_gTilde(:,i,j,:,iElem,0),JaVol(2,:,i,j,:))
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_hTilde(:,i,j,:,iElem,0),JaVol(3,:,i,j,:))
+#if VOLINT_VISC
+    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary,dXCL_N(1,:,i,j,:,iElem),dXVol(1,:,i,j,:))
+    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary,dXCL_N(2,:,i,j,:,iElem),dXVol(2,:,i,j,:))
+    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary,dXCL_N(3,:,i,j,:,iElem),dXVol(3,:,i,j,:))
+#endif /*VOLINT_VISC*/
   END DO; END DO ! i,j=0,PP_N
   DO l=1,PP_N
     ! at every inner interface/slice between FV subcells in ZETA direction:
     ! convert metrics in the other directions from DG to FV subcells
     DO dd=1,3
       CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,JaVol(dd,1:3,0:PP_N,0:PP_N,l),FV_Ja_Face(dd,:,:,:))
+#if VOLINT_VISC
+      CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,dXVol(dd,1:3,0:PP_N,0:PP_N,l),dXFace(dd,:,:,:))
+#endif /*VOLINT_VISC*/
     END DO
     ! use metrics to build normal/tangential vectors and surelem at the inner interfaces/slices
     NormalDir=NormalDirs(ZETA_PLUS); TangDir=TangDirs(ZETA_PLUS); NormalSign=NormalSigns(ZETA_PLUS)
@@ -332,23 +509,63 @@ DO iElem=1,nElems
         FV_SurfElemZeta_sw(:,:,l,iElem))
     ! multiply FV_SurfElemZeta with 1/FV_w
     !FV_SurfElemZeta_sw(:,:,l,iElem) = FV_SurfElemZeta_sw(:,:,l,iElem)*FV_w_inv
+#if VOLINT_VISC
+    DO dd=1,3
+      DO j=0,PP_N; DO i=0,PP_N
+        Metrics_fTilde_zeta(dd,i,j,l-1)=FV_Ja_Face(1,dd,i,j)
+        Metrics_gTilde_zeta(dd,i,j,l-1)=FV_Ja_Face(2,dd,i,j)
+        Metrics_hTilde_zeta(dd,i,j,l-1)=FV_Ja_Face(3,dd,i,j)
+        dX_zeta          (1,dd,i,j,l-1)=dXFace    (1,dd,i,j)
+        dX_zeta          (2,dd,i,j,l-1)=dXFace    (2,dd,i,j)
+        dX_zeta          (3,dd,i,j,l-1)=dXFace    (3,dd,i,j)
+      END DO; END DO ! i,k=0,PP_N
+    END DO
+#endif /*VOLINT_VISC*/
   END DO
 #endif /* PP_dim == 3 */
+
+#if VOLINT_VISC
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N-1
+#if (PP_dim == 3)
+    sJ_xi(i,j,k)= 1./ ( &
+      + dX_xi(1,1,i,j,k)*(dX_xi(2,2,i,j,k)*dX_xi(3,3,i,j,k) - dX_xi(3,2,i,j,k)*dX_xi(2,3,i,j,k))  &
+      + dX_xi(2,1,i,j,k)*(dX_xi(3,2,i,j,k)*dX_xi(1,3,i,j,k) - dX_xi(1,2,i,j,k)*dX_xi(3,3,i,j,k))  &
+      + dX_xi(3,1,i,j,k)*(dX_xi(1,2,i,j,k)*dX_xi(2,3,i,j,k) - dX_xi(2,2,i,j,k)*dX_xi(1,3,i,j,k))  )
+#else
+    sJ_xi(i,j,k)= 1./(dX_xi(1,1,i,j,k)*dX_xi(2,2,i,j,k) - dX_xi(2,1,i,j,k)*dX_xi(1,2,i,j,k))
+#endif
+  END DO; END DO; END DO
+
+  DO k=0,PP_NZ; DO j=0,PP_N-1; DO i=0,PP_N
+#if (PP_dim == 3)
+    sJ_eta(i,j,k)= 1./ ( &
+      + dX_eta(1,1,i,j,k)*(dX_eta(2,2,i,j,k)*dX_eta(3,3,i,j,k) - dX_eta(3,2,i,j,k)*dX_eta(2,3,i,j,k))  &
+      + dX_eta(2,1,i,j,k)*(dX_eta(3,2,i,j,k)*dX_eta(1,3,i,j,k) - dX_eta(1,2,i,j,k)*dX_eta(3,3,i,j,k))  &
+      + dX_eta(3,1,i,j,k)*(dX_eta(1,2,i,j,k)*dX_eta(2,3,i,j,k) - dX_eta(2,2,i,j,k)*dX_eta(1,3,i,j,k))  )
+#else
+    sJ_eta(i,j,k)= 1./(dX_eta(1,1,i,j,k)*dX_eta(2,2,i,j,k) - dX_eta(2,1,i,j,k)*dX_eta(1,2,i,j,k))
+#endif
+
+  END DO; END DO; END DO
+
+#if (PP_dim == 3)
+  DO k=0,PP_NZ-1; DO j=0,PP_N; DO i=0,PP_N
+    sJ_zeta(i,j,k)= 1./ ( &
+      + dX_zeta(1,1,i,j,k)*(dX_zeta(2,2,i,j,k)*dX_zeta(3,3,i,j,k) - dX_zeta(3,2,i,j,k)*dX_zeta(2,3,i,j,k))  &
+      + dX_zeta(2,1,i,j,k)*(dX_zeta(3,2,i,j,k)*dX_zeta(1,3,i,j,k) - dX_zeta(1,2,i,j,k)*dX_zeta(3,3,i,j,k))  &
+      + dX_zeta(3,1,i,j,k)*(dX_zeta(1,2,i,j,k)*dX_zeta(2,3,i,j,k) - dX_zeta(2,2,i,j,k)*dX_zeta(1,3,i,j,k))  )
+  END DO; END DO; END DO
+#endif
+#endif /*VOLINT_VISC*/
   !==================================================================
   ! Compute FV NormVec,TangVec,.. at inner cell boundaries...DONE
   !==================================================================
-END DO
-
 
 #if FV_RECONSTRUCT
-!=====================================================================================
-! Compute distances between FV subcells and between first Gauss point and interface
-! Integrate path given by dXCL_N, to ensure free stream preservation for N<Ngeo
-!=====================================================================================
-CALL GetVandermonde(PP_N,NodeTypeCL,PP_N,NodeType, Vdm_CLN_GaussN, modal=.FALSE.)
-Vdm_CLN_FV = MATMUL(FV_Vdm, Vdm_CLN_GaussN)
-
-DO iElem=1,nElems
+  !=====================================================================================
+  ! Compute distances between FV subcells and between first Gauss point and interface
+  ! Integrate path given by dXCL_N, to ensure free stream preservation for N<Ngeo
+  !=====================================================================================
   DO l=0,PP_N
     CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_FV, dXCL_N(1,:,l,:,:,iElem), FV_Path_XI  (:,l,:,:))
     CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_FV, dXCL_N(2,:,:,l,:,iElem), FV_Path_ETA (:,l,:,:))
@@ -394,6 +611,28 @@ DO iElem=1,nElems
 #if PP_dim == 3
   FV_sdx_ZETA(:,:,:,iElem) = 1. / (FV_dx_ZETA_R(:,:,0:PP_N-1,iElem) +  FV_dx_ZETA_L(:,:,1:PP_N,iElem)) ! 1 / FV_dx_ZETA
 #endif
+
+#if VOLINT_VISC
+  DO d=1,3
+    DO i=0,PP_N
+      FV_Metrics_fTilde_sJ(d,i,:,:,iElem)=FV_w_inv(i)*Metrics_fTilde(d,i,:,:,iElem,1)*&
+          (FV_dx_XI_L  (:,:,i,iElem)+FV_dx_XI_R  (:,:,i,iElem))
+    END DO ! i=0,PP_N
+    DO j=0,PP_N
+      FV_Metrics_gTilde_sJ(d,:,j,:,iElem)=FV_w_inv(j)*Metrics_gTilde(d,:,j,:,iElem,1)*&
+          (FV_dx_ETA_L (:,:,j,iElem)+FV_dx_ETA_R (:,:,j,iElem))
+    END DO ! j=0,PP_N
+    FV_Metrics_fTilde_sJ(d,:,:,:,iElem)=FV_Metrics_fTilde_sJ(d,:,:,:,iElem)*sJ(:,:,:,iElem,1)
+    FV_Metrics_gTilde_sJ(d,:,:,:,iElem)=FV_Metrics_gTilde_sJ(d,:,:,:,iElem)*sJ(:,:,:,iElem,1)
+#if (PP_dim == 3)
+    DO k=0,PP_N
+      FV_Metrics_hTilde_sJ(d,:,:,k,iElem)=FV_w_inv(k)*Metrics_hTilde(d,:,:,k,iElem,1)*&
+          (FV_dx_ZETA_L(:,:,k,iElem)+FV_dx_ZETA_R(:,:,k,iElem))
+    END DO ! k=0,PP_N
+    FV_Metrics_hTilde_sJ(d,:,:,:,iElem)=FV_Metrics_hTilde_sJ(d,:,:,:,iElem)*sJ(:,:,:,iElem,1)
+#endif
+  END DO
+#endif /* VOLINT_VISC */
 
   ! Calculate distance between first GaussPoint and interface
 #if PP_dim == 3
@@ -441,7 +680,246 @@ DO iElem=1,nElems
       END DO; END DO
     END IF
   END DO
+
+#if VOLINT_VISC
+  DO q=0,PP_NZ; DO p=0,PP_N
+    CALL ChangeBasis1D(3,PP_N,PP_N,Vdm_CLN_GaussN,dXCL_N(1,:,:,p,q,iElem), dX_1_xi_LG_eta_CL_zeta_CL_Path(:,:,p,q))
+    CALL ChangeBasis1D(3,PP_N,PP_N,Vdm_CLN_GaussN,dXCL_N(2,:,p,:,q,iElem), dX_2_xi_CL_eta_LG_zeta_CL_Path(:,p,:,q))
+#if (PP_dim == 3)
+    CALL ChangeBasis1D(3,PP_N,PP_N,Vdm_CLN_GaussN,dXCL_N(3,:,p,q,:,iElem), dX_3_xi_CL_eta_CL_zeta_LG_Path(:,p,q,:))
+#endif
+  END DO; END DO
+
+  DO q=0,PP_NZ; DO p=0,PP_N
+    CALL ChangeBasis1D(3,PP_N,PP_N  ,Vdm_CLN_FV        , dX_1_xi_LG_eta_CL_zeta_CL_Path(:,p,:,q), FV_dX_1_xi_LG_eta_FV_zeta_CL_Path(:,p,:,q))
+    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary, dX_1_xi_LG_eta_CL_zeta_CL_Path(:,p,:,q), FV_dX_1_xi_LG_eta_BC_zeta_CL_Path(:,p,:,q))
+
+    CALL ChangeBasis1D(3,PP_N,PP_N  ,Vdm_CLN_FV        , dX_2_xi_CL_eta_LG_zeta_CL_Path(:,:,p,q), FV_dX_2_xi_FV_eta_LG_zeta_CL_Path(:,:,p,q))
+    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary, dX_2_xi_CL_eta_LG_zeta_CL_Path(:,:,p,q), FV_dX_2_xi_BC_eta_LG_zeta_CL_Path(:,:,p,q))
+
+#if (PP_dim == 3)
+    CALL ChangeBasis1D(3,PP_N,PP_N  ,Vdm_CLN_FV        , dX_3_xi_CL_eta_CL_zeta_LG_Path(:,:,p,q), FV_dX_3_xi_FV_eta_CL_zeta_LG_Path(:,:,p,q))
+    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary, dX_3_xi_CL_eta_CL_zeta_LG_Path(:,:,p,q), FV_dX_3_xi_BC_eta_CL_zeta_LG_Path(:,:,p,q))
+#endif
+  END DO; END DO
+
+#if (PP_dim == 3)
+  DO q=0,PP_N+1; DO p=0,PP_N
+    CALL ChangeBasis1D(3,PP_N,PP_N  ,Vdm_CLN_FV        , FV_dX_1_xi_LG_eta_BC_zeta_CL_Path(:,p,q,:), FV_dX_1_xi_LG_eta_BC_zeta_FV_Path(:,p,q,:))
+  END DO; END DO
+
+  DO q=0,PP_N  ; DO p=0,PP_N+1
+    CALL ChangeBasis1D(3,PP_N,PP_N  ,Vdm_CLN_FV        , FV_dX_2_xi_BC_eta_LG_zeta_CL_Path(:,p,q,:), FV_dX_2_xi_BC_eta_LG_zeta_FV_Path(:,p,q,:))
+    CALL ChangeBasis1D(3,PP_N,PP_N  ,Vdm_CLN_FV        , FV_dX_3_xi_BC_eta_CL_zeta_LG_Path(:,p,:,q), FV_dX_3_xi_BC_eta_FV_zeta_LG_Path(:,p,:,q))
+  END DO; END DO
+
+  DO q=0,PP_N  ; DO p=0,PP_N
+    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary, FV_dX_1_xi_LG_eta_FV_zeta_CL_Path(:,p,q,:), FV_dX_1_xi_LG_eta_FV_zeta_BC_Path(:,p,q,:))
+    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary, FV_dX_2_xi_FV_eta_LG_zeta_CL_Path(:,p,q,:), FV_dX_2_xi_FV_eta_LG_zeta_BC_Path(:,p,q,:))
+    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_CLN_FVboundary, FV_dX_3_xi_FV_eta_CL_zeta_LG_Path(:,p,:,q), FV_dX_3_xi_FV_eta_BC_zeta_LG_Path(:,p,:,q))
+  END DO; END DO
+#else
+  DO q=0,PP_N+1; DO p=0,PP_N
+    FV_dX_1_xi_LG_eta_BC_zeta_FV_Path(:,p,q,:)=FV_dX_1_xi_LG_eta_BC_zeta_CL_Path(:,p,q,:)
+  END DO; END DO
+
+  DO q=0,PP_N  ; DO p=0,PP_N+1
+    FV_dX_2_xi_BC_eta_LG_zeta_FV_Path(:,p,q,:)=FV_dX_2_xi_BC_eta_LG_zeta_CL_Path(:,p,q,:)
+  END DO; END DO
+
+  DO q=0,PP_N  ; DO p=0,PP_N
+    FV_dX_1_xi_LG_eta_FV_zeta_BC_Path(:,p,q,0)=FV_dX_1_xi_LG_eta_FV_zeta_CL_Path(:,p,q,0)
+    FV_dX_1_xi_LG_eta_FV_zeta_BC_Path(:,p,q,1)=FV_dX_1_xi_LG_eta_FV_zeta_CL_Path(:,p,q,0)
+    FV_dX_2_xi_FV_eta_LG_zeta_BC_Path(:,p,q,0)=FV_dX_2_xi_FV_eta_LG_zeta_CL_Path(:,p,q,0)
+    FV_dX_2_xi_FV_eta_LG_zeta_BC_Path(:,p,q,1)=FV_dX_2_xi_FV_eta_LG_zeta_CL_Path(:,p,q,0)
+  END DO; END DO
+#endif
+
+  DO l=0,PP_N
+    FV_dX_1_xi_LG_eta_FV_zeta_BC_Path_pq(:,l,:,:)=FV_dX_1_xi_LG_eta_FV_zeta_BC_Path(:,l,:,:)
+    FV_dX_1_xi_LG_eta_BC_zeta_FV_Path_pq(:,l,:,:)=FV_dX_1_xi_LG_eta_BC_zeta_FV_Path(:,l,:,:)
+
+    FV_dX_2_xi_FV_eta_LG_zeta_BC_Path_pq(:,l,:,:)=FV_dX_2_xi_FV_eta_LG_zeta_BC_Path(:,:,l,:)
+    FV_dX_2_xi_BC_eta_LG_zeta_FV_Path_pq(:,l,:,:)=FV_dX_2_xi_BC_eta_LG_zeta_FV_Path(:,:,l,:)
+#if (PP_dim == 3)
+    FV_dX_3_xi_FV_eta_BC_zeta_LG_Path_pq(:,l,:,:)=FV_dX_3_xi_FV_eta_BC_zeta_LG_Path(:,:,:,l)
+    FV_dX_3_xi_BC_eta_FV_zeta_LG_Path_pq(:,l,:,:)=FV_dX_3_xi_BC_eta_FV_zeta_LG_Path(:,:,:,l)
+#endif
+  END DO
+
+  ! Calculate distances between FV subcells
+  DO l=0,PP_N
+    ! left
+    x0 = FV_BdryX(l)
+    xN = x0 + (FV_BdryX(l+1) - FV_BdryX(l)) * 0.5
+    CALL Integrate_Path_BC_zeta(PP_N,PP_N  ,xGP,wGP,wBary,x0,xN,FV_dX_1_xi_LG_eta_FV_zeta_BC_Path_pq,FV_dX_1_xi_LG_eta_FV_zeta_BC_L(:,:,l))
+#if (PP_dim == 2)
+    CALL Integrate_Path        (PP_N,PP_N+1,xGP,wGP,wBary,x0,xN,FV_dX_1_xi_LG_eta_BC_zeta_FV_Path_pq,FV_dX_1_xi_LG_eta_BC_zeta_FV_L(:,:,l))
+#else
+    CALL Integrate_Path_BC_eta (PP_N,PP_N+1,xGP,wGP,wBary,x0,xN,FV_dX_1_xi_LG_eta_BC_zeta_FV_Path_pq,FV_dX_1_xi_LG_eta_BC_zeta_FV_L(:,:,l))
+    CALL Integrate_Path_BC_zeta(PP_N,PP_N  ,xGP,wGP,wBary,x0,xN,FV_dX_3_xi_FV_eta_BC_zeta_LG_Path_pq,FV_dX_3_xi_FV_eta_BC_zeta_LG_L(:,:,l))
+#endif
+    CALL Integrate_Path_BC_zeta(PP_N,PP_N  ,xGP,wGP,wBary,x0,xN,FV_dX_2_xi_FV_eta_LG_zeta_BC_Path_pq,FV_dX_2_xi_FV_eta_LG_zeta_BC_L(:,:,l))
+#if (PP_dim == 2)
+    CALL Integrate_Path        (PP_N,PP_N+1,xGP,wGP,wBary,x0,xN,FV_dX_2_xi_BC_eta_LG_zeta_FV_Path_pq,FV_dX_2_xi_BC_eta_LG_zeta_FV_L(:,:,l))
+#else
+    CALL Integrate_Path_BC_eta (PP_N,PP_N+1,xGP,wGP,wBary,x0,xN,FV_dX_2_xi_BC_eta_LG_zeta_FV_Path_pq,FV_dX_2_xi_BC_eta_LG_zeta_FV_L(:,:,l))
+    CALL Integrate_Path_BC_eta (PP_N,PP_N+1,xGP,wGP,wBary,x0,xN,FV_dX_3_xi_BC_eta_FV_zeta_LG_Path_pq,FV_dX_3_xi_BC_eta_FV_zeta_LG_L(:,:,l))
+#endif
+
+    ! right
+    xN = FV_BdryX(l+1)
+    x0 = xN - (FV_BdryX(l+1) - FV_BdryX(l)) * 0.5
+    CALL Integrate_Path_BC_zeta(PP_N,PP_N  ,xGP,wGP,wBary,x0,xN,FV_dX_1_xi_LG_eta_FV_zeta_BC_Path_pq,FV_dX_1_xi_LG_eta_FV_zeta_BC_R(:,:,l))
+#if (PP_dim == 2)
+    CALL Integrate_Path        (PP_N,PP_N+1,xGP,wGP,wBary,x0,xN,FV_dX_1_xi_LG_eta_BC_zeta_FV_Path_pq,FV_dX_1_xi_LG_eta_BC_zeta_FV_R(:,:,l))
+#else
+    CALL Integrate_Path_BC_eta (PP_N,PP_N+1,xGP,wGP,wBary,x0,xN,FV_dX_1_xi_LG_eta_BC_zeta_FV_Path_pq,FV_dX_1_xi_LG_eta_BC_zeta_FV_R(:,:,l))
+    CALL Integrate_Path_BC_zeta(PP_N,PP_N  ,xGP,wGP,wBary,x0,xN,FV_dX_3_xi_FV_eta_BC_zeta_LG_Path_pq,FV_dX_3_xi_FV_eta_BC_zeta_LG_R(:,:,l))
+#endif
+    CALL Integrate_Path_BC_zeta(PP_N,PP_N  ,xGP,wGP,wBary,x0,xN,FV_dX_2_xi_FV_eta_LG_zeta_BC_Path_pq,FV_dX_2_xi_FV_eta_LG_zeta_BC_R(:,:,l))
+#if (PP_dim == 2)
+    CALL Integrate_Path        (PP_N,PP_N+1,xGP,wGP,wBary,x0,xN,FV_dX_2_xi_BC_eta_LG_zeta_FV_Path_pq,FV_dX_2_xi_BC_eta_LG_zeta_FV_R(:,:,l))
+#else
+    CALL Integrate_Path_BC_eta (PP_N,PP_N+1,xGP,wGP,wBary,x0,xN,FV_dX_2_xi_BC_eta_LG_zeta_FV_Path_pq,FV_dX_2_xi_BC_eta_LG_zeta_FV_R(:,:,l))
+    CALL Integrate_Path_BC_eta (PP_N,PP_N+1,xGP,wGP,wBary,x0,xN,FV_dX_3_xi_BC_eta_FV_zeta_LG_Path_pq,FV_dX_3_xi_BC_eta_FV_zeta_LG_R(:,:,l))
+#endif
+  END DO ! l=0,PP_N
+
+  ! scale metrics for equidistant subcells
+  DO d=1,3
+    DO i=0,PP_N-1
+      FV_Metrics_fTilde_sJ_xi(d,i,:,:,iElem)=(PP_N+1)*0.5*Metrics_fTilde_xi(d,i,:,:)*&
+          (FV_dx_XI_L  (:,:,i+1,iElem)+FV_dx_XI_R  (:,:,i,iElem))
+    END DO ! i=0,PP_N
+    DO j=0,PP_N
+      ! NOTE: naive solution: calculation of metrics on FV faces via arithmetic mean
+      !FV_Metrics_gTilde_sJ_xi(d,:,j,:,iElem)=(PP_N+1)*0.5*Metrics_gTilde_xi(d,:,j,:,iElem)*&
+          !0.5*((FV_dx_ETA_L (0:PP_N-1,:,j,iElem)+FV_dx_ETA_R (0:PP_N-1,:,j,iElem)) + &
+               !(FV_dx_ETA_L (1:PP_N  ,:,j,iElem)+FV_dx_ETA_R (1:PP_N  ,:,j,iElem)))
+      FV_Metrics_gTilde_sJ_xi(d,:,j,:,iElem)=(PP_N+1)*0.5*Metrics_gTilde_xi(d,:,j,:)*&
+          (FV_dX_2_xi_BC_eta_LG_zeta_FV_R(1:PP_N,:,j)+FV_dX_2_xi_BC_eta_LG_zeta_FV_L(1:PP_N,:,j))
+    END DO ! j=0,PP_N
+
+    DO i=0,PP_N
+      ! NOTE: naive solution: calculation of metrics on FV faces via arithmetic mean
+      !FV_Metrics_fTilde_sJ_eta(d,i,:,:,iElem)=(PP_N+1)*0.5*Metrics_fTilde_eta(d,i,:,:,iElem)*&
+          !0.5*((FV_dx_XI_L  (0:PP_N-1,:,i,iElem)+FV_dx_XI_R  (0:PP_N-1,:,i,iElem)) + &
+               !(FV_dx_XI_L  (1:PP_N  ,:,i,iElem)+FV_dx_XI_R  (1:PP_N  ,:,i,iElem)))
+      FV_Metrics_fTilde_sJ_eta(d,i,:,:,iElem)=(PP_N+1)*0.5*Metrics_fTilde_eta(d,i,:,:)*&
+          (FV_dX_1_xi_LG_eta_BC_zeta_FV_R(1:PP_N,:,i)+FV_dX_1_xi_LG_eta_BC_zeta_FV_L(1:PP_N,:,i))
+    END DO ! i=0,PP_N
+    DO j=0,PP_N-1
+      FV_Metrics_gTilde_sJ_eta(d,:,j,:,iElem)=(PP_N+1)*0.5*Metrics_gTilde_eta(d,:,j,:)*&
+          (FV_dx_ETA_L (:,:,j+1,iElem)+FV_dx_ETA_R (:,:,j,iElem))
+    END DO ! j=0,PP_N
+
+    DO i=0,PP_N
+      ! NOTE: naive solution: calculation of metrics on FV faces via arithmetic mean
+      !FV_Metrics_fTilde_sJ_zeta(d,i,:,:,iElem)=(PP_N+1)*0.5*Metrics_fTilde_zeta(d,i,:,:,iElem)*&
+          !0.5*((FV_dx_XI_L  (:,0:PP_NZ-1,i,iElem)+FV_dx_XI_R  (:,0:PP_NZ-1,i,iElem)) + &
+               !(FV_dx_XI_L  (:,1:PP_NZ  ,i,iElem)+FV_dx_XI_R  (:,1:PP_NZ  ,i,iElem)))
+      FV_Metrics_fTilde_sJ_zeta(d,i,:,:,iElem)=(PP_N+1)*0.5*Metrics_fTilde_zeta(d,i,:,:)*&
+          (FV_dX_1_xi_LG_eta_FV_zeta_BC_R(:,1:PP_NZ,i)+FV_dX_1_xi_LG_eta_FV_zeta_BC_L(:,1:PP_NZ,i))
+    END DO ! i=0,PP_N
+    DO j=0,PP_N
+      ! NOTE: naive solution: calculation of metrics on FV faces via arithmetic mean
+      !FV_Metrics_gTilde_sJ_zeta(d,:,j,:,iElem)=(PP_N+1)*0.5*Metrics_gTilde_zeta(d,:,j,:,iElem)*&
+          !0.5*((FV_dx_ETA_L (:,0:PP_NZ-1,j,iElem)+FV_dx_ETA_R (:,0:PP_NZ-1,j,iElem)) + &
+               !(FV_dx_ETA_L (:,1:PP_NZ  ,j,iElem)+FV_dx_ETA_R (:,1:PP_NZ  ,j,iElem)))
+      FV_Metrics_gTilde_sJ_zeta(d,:,j,:,iElem)=(PP_N+1)*0.5*Metrics_gTilde_zeta(d,:,j,:)*&
+          (FV_dX_2_xi_FV_eta_LG_zeta_BC_R(:,1:PP_NZ,j)+FV_dX_2_xi_FV_eta_LG_zeta_BC_L(:,1:PP_NZ,j))
+    END DO ! j=0,PP_N
+
+    FV_Metrics_fTilde_sJ_xi(d,:,:,:,iElem)   = FV_Metrics_fTilde_sJ_xi(d,:,:,:,iElem)   * sJ_xi (:,:,:)
+    FV_Metrics_gTilde_sJ_xi(d,:,:,:,iElem)   = FV_Metrics_gTilde_sJ_xi(d,:,:,:,iElem)   * sJ_xi( :,:,:)
+    FV_Metrics_fTilde_sJ_eta(d,:,:,:,iElem)  = FV_Metrics_fTilde_sJ_eta(d,:,:,:,iElem)  * sJ_eta (:,:,:)
+    FV_Metrics_gTilde_sJ_eta(d,:,:,:,iElem)  = FV_Metrics_gTilde_sJ_eta(d,:,:,:,iElem)  * sJ_eta( :,:,:)
+
+#if (PP_dim == 3)
+    DO k=0,PP_NZ
+      ! NOTE: naive solution: calculation of metrics on FV faces via arithmetic mean
+      !FV_Metrics_hTilde_sJ_xi(d,:,:,k,iElem)=(PP_N+1)*0.5*Metrics_hTilde_xi(d,:,:,k,iElem)*&
+        !0.5*((FV_dx_ZETA_L(0:PP_N-1,:,k,iElem)+FV_dx_ZETA_R(0:PP_N-1,:,k,iElem)) + &
+             !(FV_dx_ZETA_L(1:PP_N  ,:,k,iElem)+FV_dx_ZETA_R(1:PP_N  ,:,k,iElem)))
+      FV_Metrics_hTilde_sJ_xi(d,:,:,k,iElem)=(PP_N+1)*0.5*Metrics_hTilde_xi(d,:,:,k)*&
+          (FV_dX_3_xi_BC_eta_FV_zeta_LG_R(1:PP_N,:,k)+FV_dX_3_xi_BC_eta_FV_zeta_LG_L(1:PP_N,:,k))
+    END DO ! j=0,PP_N
+
+    DO k=0,PP_NZ
+      ! NOTE: naive solution: calculation of metrics on FV faces via arithmetic mean
+      !FV_Metrics_hTilde_sJ_eta(d,:,:,k,iElem)=(PP_N+1)*0.5*Metrics_hTilde_eta(d,:,:,k,iElem)*&
+        !0.5*((FV_dx_ZETA_L(:,0:PP_N-1,k,iElem)+FV_dx_ZETA_R(:,0:PP_N-1,k,iElem)) + &
+             !(FV_dx_ZETA_L(:,1:PP_N  ,k,iElem)+FV_dx_ZETA_R(:,1:PP_N  ,k,iElem)))
+      FV_Metrics_hTilde_sJ_eta(d,:,:,k,iElem)=(PP_N+1)*0.5*Metrics_hTilde_eta(d,:,:,k)*&
+          (FV_dX_3_xi_FV_eta_BC_zeta_LG_R(:,1:PP_N,k)+FV_dX_3_xi_FV_eta_BC_zeta_LG_L(:,1:PP_N,k))
+    END DO ! j=0,PP_N
+
+    DO k=0,PP_NZ-1
+      FV_Metrics_hTilde_sJ_zeta(d,:,:,k,iElem)=(PP_N+1)*0.5*Metrics_hTilde_zeta(d,:,:,k)*&
+        (FV_dx_ZETA_L(:,:,k+1,iElem)+FV_dx_ZETA_R(:,:,k,iElem))
+    END DO ! j=0,PP_N
+
+    FV_Metrics_hTilde_sJ_xi  (d,:,:,:,iElem)=FV_Metrics_hTilde_sJ_xi  (d,:,:,:,iElem)*sJ_xi  (:,:,:)
+    FV_Metrics_hTilde_sJ_eta (d,:,:,:,iElem)=FV_Metrics_hTilde_sJ_eta (d,:,:,:,iElem)*sJ_eta( :,:,:)
+
+    FV_Metrics_fTilde_sJ_zeta(d,:,:,:,iElem)=FV_Metrics_fTilde_sJ_zeta(d,:,:,:,iElem)*sJ_zeta(:,:,:)
+    FV_Metrics_gTilde_sJ_zeta(d,:,:,:,iElem)=FV_Metrics_gTilde_sJ_zeta(d,:,:,:,iElem)*sJ_zeta(:,:,:)
+    FV_Metrics_hTilde_sJ_zeta(d,:,:,:,iElem)=FV_Metrics_hTilde_sJ_zeta(d,:,:,:,iElem)*sJ_zeta(:,:,:)
+#endif
+  END DO
+#endif /* VOLINT_VISC */
+#endif /* FV_RECONSTRUCT */
 END DO
+
+#if FV_RECONSTRUCT
+#if VOLINT_VISC
+! Caluclate transformation matrix from xi/eta/zeta  to normal system of master side
+DO iSide = 1, nSides
+  ! master
+  ElemID=SideToElem(S2E_ELEM_ID    ,iSide)
+  IF (ElemID .GT. 0) THEN
+    locSideID=SideToElem(S2E_LOC_SIDE_ID,iSide)
+    flip     = 0
+    DO q=0,PP_NZ; DO p=0,PP_N
+      ijk2=S2V(:,0,p,q,flip,locSideID)
+      FV_Metrics_NormVec_master (1,p,q,iSide)= DOT_PRODUCT(NormVec (:,p,q,1,iSide),FV_Metrics_fTilde_sJ(:,ijk2(1),ijk2(2),ijk2(3),ElemID))
+      FV_Metrics_NormVec_master (2,p,q,iSide)= DOT_PRODUCT(NormVec (:,p,q,1,iSide),FV_Metrics_gTilde_sJ(:,ijk2(1),ijk2(2),ijk2(3),ElemID))
+      FV_Metrics_TangVec1_master(1,p,q,iSide)= DOT_PRODUCT(TangVec1(:,p,q,1,iSide),FV_Metrics_fTilde_sJ(:,ijk2(1),ijk2(2),ijk2(3),ElemID))
+      FV_Metrics_TangVec1_master(2,p,q,iSide)= DOT_PRODUCT(TangVec1(:,p,q,1,iSide),FV_Metrics_gTilde_sJ(:,ijk2(1),ijk2(2),ijk2(3),ElemID))
+#if PP_dim==3
+      FV_Metrics_NormVec_master (3,p,q,iSide)= DOT_PRODUCT(NormVec (:,p,q,1,iSide),FV_Metrics_hTilde_sJ(:,ijk2(1),ijk2(2),ijk2(3),ElemID))
+      FV_Metrics_TangVec1_master(3,p,q,iSide)= DOT_PRODUCT(TangVec1(:,p,q,1,iSide),FV_Metrics_hTilde_sJ(:,ijk2(1),ijk2(2),ijk2(3),ElemID))
+
+      FV_Metrics_TangVec2_master(1,p,q,iSide)= DOT_PRODUCT(TangVec2(:,p,q,1,iSide),FV_Metrics_fTilde_sJ(:,ijk2(1),ijk2(2),ijk2(3),ElemID))
+      FV_Metrics_TangVec2_master(2,p,q,iSide)= DOT_PRODUCT(TangVec2(:,p,q,1,iSide),FV_Metrics_gTilde_sJ(:,ijk2(1),ijk2(2),ijk2(3),ElemID))
+      FV_Metrics_TangVec2_master(3,p,q,iSide)= DOT_PRODUCT(TangVec2(:,p,q,1,iSide),FV_Metrics_hTilde_sJ(:,ijk2(1),ijk2(2),ijk2(3),ElemID))
+#endif /* PP_dim==3 */
+    END DO; END DO ! p,q=0,PP_N
+  END IF
+  ! slave
+  NB_ElemID=SideToElem(S2E_NB_ELEM_ID    ,iSide)
+  IF (NB_ElemID .GT. 0) THEN
+    locSideID=SideToElem(S2E_NB_LOC_SIDE_ID,iSide)
+    flip     =SideToElem(S2E_FLIP          ,iSide)
+    DO q=0,PP_NZ; DO p=0,PP_N
+      ijk2=S2V(:,0,p,q,flip,locSideID)
+      FV_Metrics_NormVec_slave (1,p,q,iSide)= DOT_PRODUCT(NormVec (:,p,q,1,iSide),FV_Metrics_fTilde_sJ(:,ijk2(1),ijk2(2),ijk2(3),NB_ElemID))
+      FV_Metrics_NormVec_slave (2,p,q,iSide)= DOT_PRODUCT(NormVec (:,p,q,1,iSide),FV_Metrics_gTilde_sJ(:,ijk2(1),ijk2(2),ijk2(3),NB_ElemID))
+      FV_Metrics_TangVec1_slave(1,p,q,iSide)= DOT_PRODUCT(TangVec1(:,p,q,1,iSide),FV_Metrics_fTilde_sJ(:,ijk2(1),ijk2(2),ijk2(3),NB_ElemID))
+      FV_Metrics_TangVec1_slave(2,p,q,iSide)= DOT_PRODUCT(TangVec1(:,p,q,1,iSide),FV_Metrics_gTilde_sJ(:,ijk2(1),ijk2(2),ijk2(3),NB_ElemID))
+#if PP_dim==3
+      FV_Metrics_NormVec_slave (3,p,q,iSide)= DOT_PRODUCT(NormVec (:,p,q,1,iSide),FV_Metrics_hTilde_sJ(:,ijk2(1),ijk2(2),ijk2(3),NB_ElemID))
+      FV_Metrics_TangVec1_slave(3,p,q,iSide)= DOT_PRODUCT(TangVec1(:,p,q,1,iSide),FV_Metrics_hTilde_sJ(:,ijk2(1),ijk2(2),ijk2(3),NB_ElemID))
+
+      FV_Metrics_TangVec2_slave(1,p,q,iSide)= DOT_PRODUCT(TangVec2(:,p,q,1,iSide),FV_Metrics_fTilde_sJ(:,ijk2(1),ijk2(2),ijk2(3),NB_ElemID))
+      FV_Metrics_TangVec2_slave(2,p,q,iSide)= DOT_PRODUCT(TangVec2(:,p,q,1,iSide),FV_Metrics_gTilde_sJ(:,ijk2(1),ijk2(2),ijk2(3),NB_ElemID))
+      FV_Metrics_TangVec2_slave(3,p,q,iSide)= DOT_PRODUCT(TangVec2(:,p,q,1,iSide),FV_Metrics_hTilde_sJ(:,ijk2(1),ijk2(2),ijk2(3),NB_ElemID))
+#endif /* PP_dim==3 */
+    END DO; END DO ! p,q=0,PP_N
+  END IF
+END DO ! iSide = 1, nSides
+#endif /* VOLINT_VISC */
 
 ! distances at big mortar interfaces must be distributed to the smaller sides
 FV_Elems_master = 1 ! Force use of FV mortar matrices in U_Mortar routine
@@ -489,37 +967,11 @@ DO SideID=firstInnerSide,lastMPISide_MINE
   ! precompute inverse
   FV_sdx_Face(:,:,:,SideID) = 1. / FV_dx_Face
 END DO
-
-! scale metrics for equidistant subcells
-#if PARABOLIC
-DO iElem=1,nElems
-  DO d=1,3
-    DO i=0,PP_N
-      FV_Metrics_fTilde_sJ(d,i,:,:,iElem)=FV_w_inv(i)*Metrics_fTilde(d,i,:,:,iElem,1)*&
-          (FV_dx_XI_L  (:,:,i,iElem)+FV_dx_XI_R  (:,:,i,iElem))
-    END DO ! i=0,PP_N
-    DO j=0,PP_N
-      FV_Metrics_gTilde_sJ(d,:,j,:,iElem)=FV_w_inv(j)*Metrics_gTilde(d,:,j,:,iElem,1)*&
-          (FV_dx_ETA_L (:,:,j,iElem)+FV_dx_ETA_R (:,:,j,iElem))
-    END DO ! j=0,PP_N
-    FV_Metrics_fTilde_sJ(d,:,:,:,iElem)=FV_Metrics_fTilde_sJ(d,:,:,:,iElem)*sJ(:,:,:,iElem,1)
-    FV_Metrics_gTilde_sJ(d,:,:,:,iElem)=FV_Metrics_gTilde_sJ(d,:,:,:,iElem)*sJ(:,:,:,iElem,1)
-#if (PP_dim == 3)
-    DO k=0,PP_N
-      FV_Metrics_hTilde_sJ(d,:,:,k,iElem)=FV_w_inv(k)*Metrics_hTilde(d,:,:,k,iElem,1)*&
-          (FV_dx_ZETA_L(:,:,k,iElem)+FV_dx_ZETA_R(:,:,k,iElem))
-    END DO ! k=0,PP_N
-    FV_Metrics_hTilde_sJ(d,:,:,:,iElem)=FV_Metrics_hTilde_sJ(d,:,:,:,iElem)*sJ(:,:,:,iElem,1)
-#endif
-  END DO
-END DO
-#endif /* PARABOLIC */
 #endif /* FV_RECONSTRUCT */
-
 
 SWRITE(UNIT_stdOut,'(A)')' Done !'
 
-END SUBROUTINE InitFV_Metrics
+END SUBROUTINE FV_CalcMetrics
 
 
 #if FV_RECONSTRUCT
@@ -562,8 +1014,86 @@ DO q=0,ZDIM(Nloc); DO p=0,Nloc
 END DO; END DO! p,q=0,Nloc
 FV_Length=FV_Length*0.5*(xN-x0) ! *0.5 since reference element has width=2
 END SUBROUTINE Integrate_Path
-#endif
 
+#if VOLINT_VISC
+!==================================================================================================================================
+!> Computes the distance between two points along a path given in 1D reference coordinates
+!==================================================================================================================================
+SUBROUTINE Integrate_Path_BC_eta(Nloc2,Nloc,xGP,wGP,wBary,x0,xN,FV_Path_1D,FV_Length)
+! MODULES
+USE MOD_Basis       ,ONLY: InitializeVandermonde
+USE MOD_ChangeBasis ,ONLY: ChangeBasis1D
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: Nloc2                                   ! < degree of path polynomial
+INTEGER,INTENT(IN) :: Nloc                                    ! < number of points to compute (Nloc+1)**2
+REAL,INTENT(IN)    :: xGP(  0:Nloc2)                          ! < parametric coords
+REAL,INTENT(IN)    :: wGP(  0:Nloc2)                          ! < integration weights
+REAL,INTENT(IN)    :: wBary(0:Nloc2)                          ! < interpolations weights
+REAL,INTENT(IN)    :: x0                                      ! < start point
+REAL,INTENT(IN)    :: xN                                      ! < end point
+REAL,INTENT(INOUT) :: FV_Path_1D(3,0:Nloc2,0:Nloc,0:Nloc2)    ! < path polynomial
+REAL,INTENT(OUT)   :: FV_Length(           0:Nloc,0:Nloc2)    ! < distance
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL               :: VDM(0:Nloc2,0:Nloc2)
+REAL               :: SubxGP(1,0:Nloc2)
+REAL               :: FV_Path_Cut(3,0:Nloc2)
+INTEGER            :: q,p,l
+!===================================================================================================================================
+subxGP(1,:) = x0 + (xGP + 1.)/2. * (xN-x0)
+CALL InitializeVandermonde(Nloc2,Nloc2,wBary,xGP,subxGP(1,:),Vdm)
+
+FV_Length=0.
+DO q=0,Nloc2; DO p=0,Nloc
+  ! path to integrate in ref space [-1,1]
+  CALL ChangeBasis1D(3,Nloc2,Nloc2,Vdm,FV_Path_1D(:,:,p,q), FV_Path_Cut)
+  ! integrate path
+  DO l=0,Nloc2
+    FV_Length(p,q) = FV_Length(p,q) + NORM2(FV_Path_Cut(:,l)) * wGP(l)
+  END DO
+END DO; END DO! p,q=0,Nloc
+FV_Length=FV_Length*0.5*(xN-x0) ! *0.5 since reference element has width=2
+END SUBROUTINE Integrate_Path_BC_eta
+
+SUBROUTINE Integrate_Path_BC_zeta(Nloc2,Nloc,xGP,wGP,wBary,x0,xN,FV_Path_1D,FV_Length)
+! MODULES
+USE MOD_Basis       ,ONLY: InitializeVandermonde
+USE MOD_ChangeBasis ,ONLY: ChangeBasis1D
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: Nloc2                                   ! < degree of path polynomial
+INTEGER,INTENT(IN) :: Nloc                                    ! < number of points to compute (Nloc+1)**2
+REAL,INTENT(IN)    :: xGP(  0:Nloc2)                          ! < parametric coords
+REAL,INTENT(IN)    :: wGP(  0:Nloc2)                          ! < integration weights
+REAL,INTENT(IN)    :: wBary(0:Nloc2)                          ! < interpolations weights
+REAL,INTENT(IN)    :: x0                                      ! < start point
+REAL,INTENT(IN)    :: xN                                      ! < end point
+REAL,INTENT(INOUT) :: FV_Path_1D(3,0:Nloc2,0:Nloc,0:ZDIM(Nloc)+1) ! < path polynomial
+REAL,INTENT(OUT)   :: FV_Length(           0:Nloc,0:ZDIM(Nloc)+1) ! < distance
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL               :: VDM(0:Nloc2,0:Nloc2)
+REAL               :: SubxGP(1,0:Nloc2)
+REAL               :: FV_Path_Cut(3,0:Nloc2)
+INTEGER            :: q,p,l
+!===================================================================================================================================
+subxGP(1,:) = x0 + (xGP + 1.)/2. * (xN-x0)
+CALL InitializeVandermonde(Nloc2,Nloc2,wBary,xGP,subxGP(1,:),Vdm)
+
+FV_Length=0.
+DO q=0,ZDIM(Nloc)+1; DO p=0,Nloc
+  ! path to integrate in ref space [-1,1]
+  CALL ChangeBasis1D(3,Nloc2,Nloc2,Vdm,FV_Path_1D(:,:,p,q), FV_Path_Cut)
+  ! integrate path
+  DO l=0,Nloc2
+    FV_Length(p,q) = FV_Length(p,q) + NORM2(FV_Path_Cut(:,l)) * wGP(l)
+  END DO
+END DO; END DO! p,q=0,Nloc
+FV_Length=FV_Length*0.5*(xN-x0) ! *0.5 since reference element has width=2
+END SUBROUTINE Integrate_Path_BC_zeta
+#endif /*VOLINT_VISC*/
+#endif
 
 !==================================================================================================================================
 !> Finalizes global variables of the module.
@@ -606,10 +1136,37 @@ SDEALLOCATE(FV_NormVecZeta)
 SDEALLOCATE(FV_TangVec1Zeta)
 SDEALLOCATE(FV_TangVec2Zeta)
 
-#if PARABOLIC
+#if FV_RECONSTRUCT
+#if VOLINT_VISC
 SDEALLOCATE(FV_Metrics_fTilde_sJ)
 SDEALLOCATE(FV_Metrics_gTilde_sJ)
 SDEALLOCATE(FV_Metrics_hTilde_sJ)
+
+SDEALLOCATE(FV_Metrics_NormVec_master)
+SDEALLOCATE(FV_Metrics_TangVec1_master)
+SDEALLOCATE(FV_Metrics_NormVec_slave)
+SDEALLOCATE(FV_Metrics_TangVec1_slave)
+#if (PP_dim == 3)
+SDEALLOCATE(FV_Metrics_TangVec2_master)
+SDEALLOCATE(FV_Metrics_TangVec2_slave)
+#endif
+
+SDEALLOCATE(FV_Metrics_fTilde_sJ_xi)
+SDEALLOCATE(FV_Metrics_gTilde_sJ_xi)
+#if (PP_dim == 3)
+SDEALLOCATE(FV_Metrics_hTilde_sJ_xi)
+#endif
+SDEALLOCATE(FV_Metrics_fTilde_sJ_eta)
+SDEALLOCATE(FV_Metrics_gTilde_sJ_eta)
+#if (PP_dim == 3)
+SDEALLOCATE(FV_Metrics_hTilde_sJ_eta)
+#endif
+SDEALLOCATE(FV_Metrics_fTilde_sJ_zeta)
+SDEALLOCATE(FV_Metrics_gTilde_sJ_zeta)
+#if (PP_dim == 3)
+SDEALLOCATE(FV_Metrics_hTilde_sJ_zeta)
+#endif
+#endif /* VOLINT_VISC */
 #endif
 
 SDEALLOCATE(FV_Elems_master)

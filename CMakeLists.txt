@@ -104,11 +104,15 @@ PROJECT(Flexi)
 # =========================================================================
 # Store the current commit information
 # =========================================================================
-EXECUTE_PROCESS(COMMAND git rev-parse HEAD OUTPUT_VARIABLE GIT_COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE)
-SET(commit ${CMAKE_CURRENT_SOURCE_DIR}/src/commit.h)
-MESSAGE(STATUS "Current git commit ${GIT_COMMIT} will be written to ${commit}")
-FILE(WRITE ${commit} "! Define the current commit hash. The default must remain empty, i.e., ''. Do not commit the changed file!\n#define GIT_CURRENT_COMMIT  ''\n")
-EXECUTE_PROCESS(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/setCommitHash.sh ${commit})
+EXECUTE_PROCESS(COMMAND git rev-parse HEAD OUTPUT_VARIABLE GIT_COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE RESULT_VARIABLE ERR_NO_GIT)
+IF(${ERR_NO_GIT})
+  MESSAGE("No git information found. Continue without git.")
+ELSE()
+  SET(commit ${CMAKE_CURRENT_SOURCE_DIR}/src/commit.h)
+  MESSAGE(STATUS "Current git commit ${GIT_COMMIT} will be written to ${commit}")
+  FILE(WRITE ${commit} "! Define the current commit hash. The default must remain empty, i.e., ''. Do not commit the changed file!\n#define GIT_CURRENT_COMMIT  ''\n")
+  EXECUTE_PROCESS(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/setCommitHash.sh ${commit})
+ENDIF()
 
 # =========================================================================
 # Check IPO support:
@@ -233,12 +237,11 @@ ENDFUNCTION()
 # A function to get all user defined variables with a specified prefix
 SET(configuration ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/configuration.cmake)
 FILE(WRITE ${configuration} "")
+GETLISTOFVARSSTARTINGWITH("CMAKE_BUILD_TYPE" flexiVars2)
 GETLISTOFVARSSTARTINGWITH("FLEXI_" flexiVars1)
-GETLISTOFVARSSTARTINGWITH("CMAKE_" flexiVars2)
-GETLISTOFVARSSTARTINGWITH("HDF5_"  flexiVars3)
-GETLISTOFVARSSTARTINGWITH("LIBS_"  flexiVars4)
-GETLISTOFVARSSTARTINGWITH("POSTI_" flexiVars5)
-FOREACH (_var IN LISTS flexiVars1 flexiVars2 flexiVars3 flexiVars4 flexiVars5)
+GETLISTOFVARSSTARTINGWITH("LIBS_"  flexiVars3)
+GETLISTOFVARSSTARTINGWITH("POSTI_" flexiVars4)
+FOREACH (_var IN LISTS flexiVars1 flexiVars2 flexiVars3 flexiVars4)
   GET_PROPERTY(currentHelpString CACHE "${_var}" PROPERTY HELPSTRING)
   # Skip empty variables
   IF(NOT ${${_var}} STREQUAL "")
@@ -278,13 +281,6 @@ ELSE()
 ENDIF()
 
 # =========================================================================
-# USERBLOCK
-# =========================================================================
-ADD_CUSTOM_COMMAND(TARGET libflexistatic PRE_BUILD COMMAND
-  sh ${CMAKE_CURRENT_SOURCE_DIR}/tools/userblock/generateuserblock.sh ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} ${CMAKE_CACHEFILE_DIR} "${CMAKE_CACHE_MAJOR_VERSION}.${CMAKE_CACHE_MINOR_VERSION}.${CMAKE_CACHE_PATCH_VERSION}"
-  BYPRODUCTS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.o)
-
-# =========================================================================
 # Install
 # =========================================================================
-INSTALL(FILES    ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/configuration.cmake ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.txt DESTINATION bin)
+INSTALL(FILES ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/configuration.cmake ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.txt DESTINATION bin)
