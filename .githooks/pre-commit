@@ -132,6 +132,18 @@ if [ -n "$CHANGED" ]; then
       ERROR=1
     fi
 
+    # Check for tab characters in specific file endings
+    echo $file
+    if [ "${file:-4}" = ".txt" ] || [ "${file:-3}" = ".f90" ] || [ "${file:-4}" = ".ini" ]; then
+      # -P, --perl-regexp         PATTERNS are Perl regular expressions
+      NbrOfLinesWithTabs=$(grep -P '\t' $file | wc -l)
+      echo "[${NbrOfLinesWithTabs}]"
+      if [ "${NbrOfLinesWithTabs}" -gt 0 ]; then
+        printf "${RED}Tab characters found in [${file}]. Remove them and then commit again!${NC}\n"
+        ERROR=1
+      fi
+    fi
+
   done
 
   # Abort if hook encountered any error
