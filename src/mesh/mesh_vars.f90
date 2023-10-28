@@ -58,9 +58,9 @@ INTEGER,ALLOCATABLE :: ElemToTree(:)           !< Index of the tree correspondin
 ! Metrics on GaussPoints
 !----------------------------------------------------------------------------------------------------------------------------------
 REAL,ALLOCATABLE :: dXCL_N(:,:,:,:,:,:)          !< geometry Jacobian matrix on in reference space
-REAL,ALLOCATABLE :: Metrics_fTilde(:,:,:,:,:,:)  !< Metrics for transforming the fluxes f (1:3,0:N,0:N,0:N,nElems,0:FV)
-REAL,ALLOCATABLE :: Metrics_gTilde(:,:,:,:,:,:)  !< Metrics for transforming the fluxes g (1:3,0:N,0:N,0:N,nElems,0:FV)
-REAL,ALLOCATABLE :: Metrics_hTilde(:,:,:,:,:,:)  !< Metrics for transforming the fluxes h (1:3,0:N,0:N,0:N,nElems,0:FV)
+REAL,ALLOCATABLE,TARGET :: Metrics_fTilde(:,:,:,:,:,:)  !< Metrics for transforming the fluxes f (1:3,0:N,0:N,0:N,nElems,0:FV)
+REAL,ALLOCATABLE,TARGET :: Metrics_gTilde(:,:,:,:,:,:)  !< Metrics for transforming the fluxes g (1:3,0:N,0:N,0:N,nElems,0:FV)
+REAL,ALLOCATABLE,TARGET :: Metrics_hTilde(:,:,:,:,:,:)  !< Metrics for transforming the fluxes h (1:3,0:N,0:N,0:N,nElems,0:FV)
 REAL,ALLOCATABLE :: detJac_Ref(:,:,:,:,:)        !< determinant of the mesh Jacobian for each Gauss point at degree 3*NGeo
 REAL,ALLOCATABLE :: sJ(:,:,:,:,:)                !< inverse of Jacobian determinent for each Gauss Point at degree N
 REAL,ALLOCATABLE :: scaledJac(:,:,:,:)           !< scaled Jacobian determinent for each Gauss Point at degree N

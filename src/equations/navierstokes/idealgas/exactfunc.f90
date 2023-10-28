@@ -241,7 +241,8 @@ CASE(1) ! constant
 CASE(2) ! sinus
   Frequency=0.5
   Amplitude=0.3
-  Omega=2.*PP_Pi*Frequency
+  !Omega=2.*PP_Pi*Frequency
+  Omega=PP_Pi
   ! base flow
   prim(DENS)   = 1.
   prim(VELV) = AdvVel

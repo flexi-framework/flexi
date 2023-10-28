@@ -258,7 +258,11 @@ REAL,TARGET               :: U_DG(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 
 ! if time is before IndStartTime return high Indicator value (FV)
 IF (t.LT.IndStartTime) THEN
+#if FV_ENABLED == 1
   IndValue = HUGE(1.)
+#else
+  FV_alpha = FV_alpha_max
+#endif
   RETURN
 END IF
 

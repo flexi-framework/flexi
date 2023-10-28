@@ -43,6 +43,16 @@ INTERFACE PrimToCons
   MODULE PROCEDURE PrimToCons_Volume
 END INTERFACE
 
+INTERFACE ConsToEntropy
+  MODULE PROCEDURE ConsToEntropy
+  MODULE PROCEDURE ConsToEntropy_Volume
+END INTERFACE
+
+INTERFACE EntropyToCons
+  MODULE PROCEDURE EntropyToCons
+  MODULE PROCEDURE EntropyToCons_Side
+END INTERFACE
+
 INTERFACE PRESSURE_RIEMANN
   MODULE PROCEDURE PRESSURE_RIEMANN
 END INTERFACE
@@ -50,6 +60,8 @@ END INTERFACE
 PUBLIC::InitEos
 PUBLIC::ConsToPrim
 PUBLIC::PrimToCons
+PUBLIC::ConsToEntropy
+PUBLIC::EntropyToCons
 PUBLIC::PRESSURE_RIEMANN
 PUBLIC::DefineParametersEos
 !==================================================================================================================================
@@ -365,6 +377,116 @@ DO iElem=1,nElems
   END DO; END DO; END DO
 END DO
 END SUBROUTINE PrimToCons_Volume
+
+!==================================================================================================================================
+!> Transformation from conservative variables U to entropy vector, dS/dU, S = -rho*s/(kappa-1), s=ln(p)-kappa*ln(rho)
+!==================================================================================================================================
+PPURE SUBROUTINE ConsToEntropy(entropy,cons)
+! MODULES
+USE MOD_EOS_Vars,ONLY:KappaM1,kappa,sKappaM1
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,DIMENSION(PP_nVar),INTENT(IN)  :: cons    !< vector of conservative variables
+!----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,DIMENSION(PP_nVar),INTENT(OUT) :: entropy !< vector of entropy variables
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                                :: vel(3),s,p,rho_p
+!==================================================================================================================================
+vel(:) = cons(MOMV)/cons(DENS)
+p      = KappaM1*(cons(ENER)-0.5*SUM(cons(MOMV)*vel(:)))
+! entropy: log(p) - eq.γ * log(ρ)
+s      = LOG(p) - kappa*LOG(cons(DENS))
+rho_p  = cons(DENS)/p
+
+! Convert to entropy variables
+entropy(1)   = (kappa-s)*skappaM1 - rho_p * 0.5*SUM(vel**2)  ! (γ - s) / (γ - 1) - (ρu^2 + ρv^2 + ρw^2) / ρ / 2p,
+entropy(2:3) = rho_p*vel(1:2)        ! ρu / p
+#if (PP_dim==3)
+entropy(4)   = rho_p*vel(3)
+#else
+entropy(4)   = 0.
+#endif
+entropy(5)   = - rho_p          ! -ρ / p
+
+END SUBROUTINE ConsToEntropy
+
+!==================================================================================================================================
+!> Transformation from entropy to conservative variables U, dS/dU, S = -rho*s/(kappa-1), s=ln(p)-kappa*ln(rho)
+!==================================================================================================================================
+PPURE SUBROUTINE EntropyToCons(entropy,cons)
+! MODULES
+USE MOD_EOS_Vars,ONLY:KappaM1,kappa,sKappaM1
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,DIMENSION(PP_nVar),INTENT(IN)   :: entropy !< vector of entropy variables
+!----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,DIMENSION(PP_nVar),INTENT(OUT)  :: cons    !< vector of conservative variables
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                                 :: s,entropy2(5),rhoe
+!!==================================================================================================================================
+!
+entropy2 = entropy*kappaM1
+s      = kappa - entropy2(1) + 0.5 * SUM(entropy2(2:4)**2) / entropy2(5)
+rhoe   = (kappaM1 / ((-entropy2(5))**kappa))**(skappaM1) * EXP(-s*skappaM1)
+
+cons(DENS) = - rhoe * entropy2(5) ! ρ = -p * W[5]
+cons(MOMV) = rhoe * entropy2(2:4)
+#if (PP_dim==2)
+cons(MOM3) = 0.
+#endif
+cons(ENER) = rhoe * (1 - SUM(entropy2(2:4)**2) * 0.5/ entropy2(5)) !sKappaM1*p+0.5*SUM(cons(MOMV)*vel)
+
+END SUBROUTINE EntropyToCons
+
+!==================================================================================================================================
+!> Transformation from primitive to conservative variables in the whole volume
+!==================================================================================================================================
+PPURE SUBROUTINE ConsToEntropy_Volume(Nloc,entropy,cons)
+! MODULES
+USE MOD_Mesh_Vars,ONLY:nElems
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: Nloc                                                  !< local polynomial degree of solution representation
+REAL,INTENT(OUT)   :: entropy(PP_nVar,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)  !< vector of entropy variables
+REAL,INTENT(IN)    :: cons(PP_nVar   ,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)  !< vector of conservative variables
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: i,j,k,iElem
+!==================================================================================================================================
+DO iElem=1,nElems
+  DO k=0,ZDIM(Nloc); DO j=0,Nloc; DO i=0,Nloc
+    CALL ConsToEntropy(entropy(:,i,j,k,iElem),cons(:,i,j,k,iElem))
+  END DO; END DO; END DO
+END DO
+END SUBROUTINE ConsToEntropy_Volume
+
+!> Transformation from primitive to conservative variables on a single side
+!==================================================================================================================================
+PPURE SUBROUTINE EntropyToCons_Side(Nloc,entropy,cons)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: Nloc                                  !< local polynomial degree of solution representation
+REAL,INTENT(IN)    :: entropy(PP_nVar,0:Nloc,0:ZDIM(Nloc))  !< vector of primitive variables
+REAL,INTENT(OUT)   :: cons(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)) !< vector of conservative variables
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: p,q
+!==================================================================================================================================
+DO q=0,ZDIM(Nloc); DO p=0,Nloc
+  CALL EntropyToCons(entropy(:,p,q),cons(:,p,q))
+END DO; END DO ! p,q=0,Nloc
+END SUBROUTINE EntropyToCons_Side
 
 !==================================================================================================================================
 !> Riemann solver function to get pressure at BCs

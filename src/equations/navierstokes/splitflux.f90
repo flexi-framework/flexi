@@ -109,11 +109,6 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-! check if Gauss-Lobatto-Pointset is beeing used
-#if (PP_NodeType==1)
-CALL CollectiveStop(__STAMP__,&
-  'Wrong Pointset: Gauss-Lobatto-Points are mandatory for using SplitDG !')
-#endif
 ! set pointers
 SplitDG = GETINTFROMSTR('SplitDG')
 SELECT CASE(SplitDG)
