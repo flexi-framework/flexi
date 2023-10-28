@@ -237,6 +237,11 @@ USE MOD_Analyze_Vars,       ONLY: wGPVolAnalyze,Vdm_GaussN_NAnalyze
 USE MOD_Basis,              ONLY: InitializeVandermonde
 USE MOD_Interpolation,      ONLY: GetNodesAndWeights
 USE MOD_Interpolation_Vars, ONLY: NodeTypeGL
+#if FV_ENABLED == 1
+USE MOD_Analyze_Vars,       ONLY: FV_wGPVolAnalyze,FV_Vdm_NAnalyze
+USE MOD_FV_Basis,           ONLY: FV_Build_X_w_BdryX
+USE MOD_FV_Vars,            ONLY: FV_sVdm,FV_CellType
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -252,6 +257,9 @@ INTEGER                          :: i,j
 #if PP_dim == 3
 INTEGER                          :: k
 #endif
+#if FV_ENABLED == 1
+REAL                             :: dummy1(0:Nloc+1),dummy2(0:Nloc)
+#endif
 !==================================================================================================================================
 ALLOCATE(wGPVolAnalyze(0:Nloc,0:Nloc,0:ZDIM(Nloc)),Vdm_GaussN_NAnalyze(0:Nloc,0:N_in))
 CALL GetNodesAndWeights(Nloc,NodeTypeGL,XiAnalyze,wAnalyze)
@@ -265,6 +273,22 @@ END DO; END DO; END DO
 DO j=0,Nloc; DO i=0,Nloc
   wGPVolAnalyze(i,j,0) = wAnalyze(i)*wAnalyze(j)
 END DO; END DO
+#endif
+
+#if FV_ENABLED == 1
+CALL FV_Build_X_w_BdryX(Nloc, dummy2, wAnalyze, dummy1, FV_CellType)
+ALLOCATE(FV_wGPVolAnalyze(0:Nloc,0:Nloc,0:ZDIM(Nloc)),FV_Vdm_NAnalyze(0:Nloc,0:N_in))
+FV_Vdm_NAnalyze = MATMUL(Vdm_GaussN_NAnalyze,FV_sVdm)
+
+#if PP_dim == 3
+DO k=0,Nloc; DO j=0,Nloc; DO i=0,Nloc
+  FV_wGPVolAnalyze(i,j,k) = wAnalyze(i)*wAnalyze(j)*wAnalyze(k)
+END DO; END DO; END DO
+#else
+DO j=0,Nloc; DO i=0,Nloc
+  FV_wGPVolAnalyze(i,j,0) = wAnalyze(i)*wAnalyze(j)
+END DO; END DO
+#endif
 #endif
 
 END SUBROUTINE InitAnalyzeBasis

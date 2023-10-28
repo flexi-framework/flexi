@@ -288,6 +288,11 @@ USE MOD_EOS_Vars,       ONLY: sKappaM1,Kappa
 USE MOD_Mesh_Vars,      ONLY: sJ
 USE MOD_ChangeBasis,    ONLY: ChangeBasis3D
 USE MOD_Mesh_Vars,      ONLY: nElems
+#if FV_ENABLED == 1
+USE MOD_FV_Vars,        ONLY: gradUxi_central,gradUeta_central,gradUzeta_central
+USE MOD_Analyze_Vars,   ONLY: FV_Vdm_NAnalyze,FV_wGPVolAnalyze
+USE MOD_FV_Vars,        ONLY: FV_Elems
+#endif
 #if USE_MPI
 USE MOD_MPI_Vars
 #endif
@@ -351,17 +356,34 @@ DR_u=0.;DR_S=0.;DR_Sd=0.;DR_p=0.;ED_S=0.;ED_D=0.;Enstr=0.;Vorticity_max=0.
 
 DO iElem=1,nElems
   !----------------------------------------------------------------------------------------------------------------------------------
-  ! 2. Interpolate solution and gradients to analyze mesh
-  sJ_N(1,:,:,:)=sJ(:,:,:,iElem,0)
-  CALL ChangeBasis3D(      1, PP_N, NAnalyze, Vdm_GaussN_NAnalyze,          sJ_N, sJ_NAnalyze)
-  ! Interpolate the solution to the analyze grid
-  CALL ChangeBasis3D(PP_nVar, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, U(:,:,:,:,iElem),  U_NAnalyze)
+  ! 2. Interpolate solution and gradients to analyze mesh (Either DG or FV Element)
+#if FV_ENABLED == 1
+  IF(FV_Elems(iElem).EQ.1) THEN  ! FV element
+    sJ_N(1,:,:,:) = sJ(:,:,:,iElem,1)
+    CALL ChangeBasis3D(      1, PP_N, NAnalyze, FV_Vdm_NAnalyze,             sJ_N, sJ_NAnalyze)
+    ! Interpolate the solution to the analyze grid
+    CALL ChangeBasis3D(PP_nVar, PP_N, NAnalyze, FV_Vdm_NAnalyze, U(:,:,:,:,iElem),  U_NAnalyze)
 #if PARABOLIC
-  ! Interpolate the gradient of the velocity to the analyze grid
-  CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUx(LIFT_VELV,:,:,:,iElem), GradVelx)
-  CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUy(LIFT_VELV,:,:,:,iElem), GradVely)
-  CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUz(LIFT_VELV,:,:,:,iElem), GradVelz)
+    ! Project the central FV gradients to DG on analyze grid
+    CALL ChangeBasis3D(3, PP_N, NAnalyze, FV_Vdm_NAnalyze,   gradUxi_central(LIFT_VELV,:,:,:,iElem), GradVelx)
+    CALL ChangeBasis3D(3, PP_N, NAnalyze, FV_Vdm_NAnalyze,  gradUeta_central(LIFT_VELV,:,:,:,iElem), GradVely)
+    CALL ChangeBasis3D(3, PP_N, NAnalyze, FV_Vdm_NAnalyze, gradUzeta_central(LIFT_VELV,:,:,:,iElem), GradVelz)
+#endif /*PARABOLIC*/
+  ELSE ! DG element
+#endif /*FV_ENABLED*/
+    sJ_N(1,:,:,:) = sJ(:,:,:,iElem,0)
+    CALL ChangeBasis3D(      1, PP_N, NAnalyze, Vdm_GaussN_NAnalyze,             sJ_N, sJ_NAnalyze)
+    ! Interpolate the solution to the analyze grid
+    CALL ChangeBasis3D(PP_nVar, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, U(:,:,:,:,iElem),  U_NAnalyze)
+#if PARABOLIC
+    ! Interpolate the gradient of the velocity to the analyze grid
+    CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUx(LIFT_VELV,:,:,:,iElem), GradVelx)
+    CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUy(LIFT_VELV,:,:,:,iElem), GradVely)
+    CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUz(LIFT_VELV,:,:,:,iElem), GradVelz)
 #endif
+#if FV_ENABLED == 1
+  END IF
+#endif /*FV_ENABLED*/
 
   DO k=0,NAnalyze;DO j=0,NAnalyze;DO i=0,NAnalyze
     !----------------------------------------------------------------------------------------------------------------------------------
@@ -390,7 +412,16 @@ DO iElem=1,nElems
 
     !----------------------------------------------------------------------------------------------------------------------------------
     ! 4. Integrate
-    IntFactor=wGPVolAnalyze(i,j,k)/sJ_NAnalyze(1,i,j,k) ! Integration weight and Jacobian
+#if FV_ENABLED == 1
+    IF(FV_Elems(iElem).EQ.1) THEN ! FV element
+      Intfactor=FV_wGPVolAnalyze(i,j,k)/sJ_NAnalyze(1,i,j,k) ! FV integration weight and Jacobian
+    ELSE ! DG element
+#endif /*FV_ENABLED*/
+      Intfactor=   wGPVolAnalyze(i,j,k)/sJ_NAnalyze(1,i,j,k) ! DG Integration weight and Jacobian
+#if FV_ENABLED == 1
+    END IF
+#endif /*FV_ENABLED*/
+
       ! Temperature
     T_mean   =T_mean   +IntFactor*UPrim(TEMP)
       ! Entropy
