@@ -14,10 +14,6 @@
 #include "flexi.h"
 #include "eos.h"
 
-#if FV_ENABLED
-#error "This testcase is not tested with FV"
-#endif
-
 !==================================================================================================================================
 !> Subroutines defining the Taylor-Green isentropic vortex testcase
 !==================================================================================================================================
@@ -94,6 +90,7 @@ CALL prms%SetSection("Testcase")
 CALL prms%CreateIntOption('nWriteStats', "Write testcase statistics to file at every n-th AnalyzeTestcase step.", '100')
 CALL prms%CreateIntOption('nAnalyzeTestCase', "Call testcase specific analysis routines every n-th timestep. "//&
                                               "(Note: always called at global analyze level)"                   , '10')
+CALL prms%CreateRealOption('MachNumber'     , "Mach number", '0.1')
 END SUBROUTINE DefineParametersTestcase
 
 
@@ -103,7 +100,7 @@ END SUBROUTINE DefineParametersTestcase
 SUBROUTINE InitTestcase()
 ! MODULES
 USE MOD_Globals
-USE MOD_ReadInTools,    ONLY: GETINT
+USE MOD_ReadInTools,    ONLY: GETINT,GETREAL
 USE MOD_Output_Vars,    ONLY: ProjectName
 USE MOD_TestCase_Vars
 USE MOD_Output,         ONLY: InitOutputToFile
@@ -117,10 +114,8 @@ CHARACTER(LEN=31)        :: varnames(nTGVVars)
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE TAYLOR-GREEN VORTEX...'
 
-#if FV_ENABLED
-CALL CollectiveStop(__STAMP__, &
-  'The testcase has not been implemented for FV yet!')
-#endif
+! Set Mach number of TGV
+MachNumber = GETREAL('MachNumber','0.1')
 
 ! Length of Buffer for TGV output
 nWriteStats      = GETINT( 'nWriteStats')
@@ -168,6 +163,12 @@ SUBROUTINE ExactFuncTestcase(tIn,x,Resu,Resu_t,Resu_tt)
 USE MOD_Globals,      ONLY: Abort
 USE MOD_EOS_Vars,     ONLY: kappa
 USE MOD_EOS,          ONLY: PrimToCons
+USE MOD_TestCase_Vars,ONLY: MachNumber
+USE MOD_EOS_Vars     ,ONLY: R
+#if PP_VISC == 1
+USE MOD_EOS_Vars     ,ONLY: Tref
+USE MOD_EOS_Vars,     ONLY: ExpoSuth,Tref,Ts,cSuth
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -180,16 +181,26 @@ REAL,INTENT(OUT)                :: Resu_tt(5)  !< second time deriv of exact fuc
 ! LOCAL VARIABLES
 REAL                            :: A,Ms,prim(PP_nVarPrim)
 !==================================================================================================================================
-A=1.    ! magnitude of speed
-Ms=0.1  ! maximum Mach number
+A  = 1.           ! magnitude of speed
+Ms = MachNumber  ! maximum Mach number
+
 prim(1)=1.
 prim(2)= A*SIN(x(1))*COS(x(2))*COS(x(3))
 prim(3)=-A*COS(x(1))*SIN(x(2))*COS(x(3))
 prim(4)=0.
 prim(5)=(A/Ms*A/Ms/Kappa*prim(1))  ! scaling to get Ms
+prim(6)= prim(5)/prim(1) / R       ! T does not matter for prim to cons
 prim(5)=prim(5)+1./16.*A*A*prim(1)*(COS(2*x(1))*COS(2.*x(3)) + 2.*COS(2.*x(2)) +2.*COS(2.*x(1)) +COS(2*x(2))*COS(2.*x(3)))
-prim(6)=0. ! T does not matter for prim to cons
+
+#if PP_VISC == 1
+! Adjust the Sutherland temperature Ts
+Tref = 1.0/prim(6)  ! Tref = 1/Tref
+Ts   = 0.4042
+cSuth   = Ts**ExpoSuth*(1+Ts)/(2*Ts*Ts)
+prim(1) = prim(5) /R/ prim(6)
+#endif
 CALL PrimToCons(prim,Resu)
+
 Resu_t =0.
 Resu_tt=0.
 END SUBROUTINE ExactFuncTestcase
@@ -228,6 +239,11 @@ USE MOD_EOS_Vars,       ONLY: KappaM1,R,sKappaM1,Kappa
 USE MOD_Mesh_Vars,      ONLY: sJ
 USE MOD_ChangeBasis,    ONLY: ChangeBasis3D
 USE MOD_Mesh_Vars,      ONLY: nElems
+#if FV_ENABLED == 1
+USE MOD_FV_Vars,        ONLY: gradUxi_central,gradUeta_central,gradUzeta_central
+USE MOD_Analyze_Vars,   ONLY: FV_Vdm_NAnalyze,FV_wGPVolAnalyze
+USE MOD_FV_Vars,        ONLY: FV_Elems
+#endif
 #if USE_MPI
 USE MOD_MPI_Vars
 #endif
@@ -286,18 +302,35 @@ mean_Temperature=0.
 mean_Entropy=0.
 
 DO ii=1,nElems
-
+#if FV_ENABLED == 1
+  IF(FV_Elems(ii).EQ.1) THEN  !FV element
 #if PARABOLIC
-  !Interpolate the gradient of the velocity to the analyze grid
-  CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUx(LIFT_VELV,:,:,:,ii), GradVelx)
-  CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUy(LIFT_VELV,:,:,:,ii), GradVely)
-  CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUz(LIFT_VELV,:,:,:,ii), GradVelz)
-#endif
-  !Interpolate the jacobian to the analyze grid
-  sJ_N(1,:,:,:)=sJ(:,:,:,ii,0)
-  CALL ChangeBasis3D(1, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, sJ_N(1:1,0:PP_N,0:PP_N,0:PP_N), sJ_NAnalyze(1:1,:,:,:))
-  !Interpolate the solution to the analyze grid
-  CALL ChangeBasis3D(PP_nVar, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, U(1:PP_nVar,:,:,:,ii), U_NAnalyze(1:PP_nVar,:,:,:))
+    ! Project the central FV gradients to DG with PP_MAX
+    CALL ChangeBasis3D(3, PP_N, NAnalyze, FV_Vdm_NAnalyze, gradUxi_central(  LIFT_VELV,:,:,:,ii), GradVelx)
+    CALL ChangeBasis3D(3, PP_N, NAnalyze, FV_Vdm_NAnalyze, gradUeta_central( LIFT_VELV,:,:,:,ii), GradVely)
+    CALL ChangeBasis3D(3, PP_N, NAnalyze, FV_Vdm_NAnalyze, gradUzeta_central(LIFT_VELV,:,:,:,ii), GradVelz)
+#endif /*PARABOLIC*/
+    !Interpolate the jacobian to the analyze grid
+    sJ_N(1,:,:,:) = sJ(:,:,:,ii,1)
+    CALL ChangeBasis3D(1, PP_N, NAnalyze, FV_Vdm_NAnalyze, sJ_N(1:1,0:PP_N,0:PP_N,0:PP_N), sJ_NAnalyze(1:1,:,:,:))
+    ! Interpolate the solution to the analyze grid
+    CALL ChangeBasis3D(PP_nVar, PP_N, NAnalyze, FV_Vdm_NAnalyze, U(1:PP_nVar,:,:,:,ii), U_NAnalyze(1:PP_nVar,:,:,:))
+  ELSE
+#endif /*FV_ENABLED*/
+#if PARABOLIC
+    !Interpolate the gradient of the velocity to the analyze grid
+    CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUx(LIFT_VELV,:,:,:,ii), GradVelx)
+    CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUy(LIFT_VELV,:,:,:,ii), GradVely)
+    CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUz(LIFT_VELV,:,:,:,ii), GradVelz)
+#endif /*PARABOLIC*/
+    !Interpolate the jacobian to the analyze grid
+    sJ_N(1,:,:,:)=sJ(:,:,:,ii,0)
+    CALL ChangeBasis3D(1, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, sJ_N(1:1,0:PP_N,0:PP_N,0:PP_N), sJ_NAnalyze(1:1,:,:,:))
+    !Interpolate the solution to the analyze grid
+    CALL ChangeBasis3D(PP_nVar, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, U(1:PP_nVar,:,:,:,ii), U_NAnalyze(1:PP_nVar,:,:,:))
+#if FV_ENABLED == 1
+  END IF
+#endif /*FV_ENABLED*/
 
   DO k=0,NAnalyze
     DO j=0,NAnalyze
@@ -346,7 +379,15 @@ DO ii=1,nElems
           END DO
         END DO
 #endif
-        Intfactor=wGPVolAnalyze(i,j,k)/sJ_NAnalyze(1,i,j,k)
+#if FV_ENABLED == 1
+        IF(FV_Elems(ii).EQ.1) THEN  !FV element
+          Intfactor=FV_wGPVolAnalyze(i,j,k)/sJ_NAnalyze(1,i,j,k)
+        ELSE
+#endif /*FV_ENABLED*/
+          Intfactor=wGPVolAnalyze(i,j,k)/sJ_NAnalyze(1,i,j,k)
+#if FV_ENABLED == 1
+        END IF
+#endif /*FV_ENABLED*/
         ! compute cell volume (total volumen of domain on proc)
         Volume=Volume+Intfactor
         ! compute integrals:

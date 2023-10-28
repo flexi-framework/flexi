@@ -30,6 +30,7 @@ CHARACTER(LEN=255) :: testcase = "taylorgreenvortex"  !< name of testcase
 !----------------------------------------------------------------------------------------------------------------------------------
 REAL,ALLOCATABLE   :: Time(:)           !< times of log data (nWriteStats)
 REAL,ALLOCATABLE   :: writeBuf(:,:)     !< log data (nTGVVars+1,nWriteStats)
+REAL               :: MachNumber        !< Mach number of TGV
 #if PARABOLIC
 INTEGER,PARAMETER  :: nTGVvars=13       !< Number of variables to be evaluated for TGV, time not included
 #else
