@@ -286,8 +286,7 @@ DO iElem=1,nElems
 #endif /*VOLINT_VISC*/
 
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    ! DO l=i+1,PP_N
-    DO l=0,PP_N
+    DO l=i+1,PP_N
       ! compute split flux in x-direction
       CALL SplitDGVolume_pointer(U(:,i,j,k,iElem),UPrim(:,i,j,k,iElem), &
                                  U(:,l,j,k,iElem),UPrim(:,l,j,k,iElem), &
@@ -301,7 +300,7 @@ DO iElem=1,nElems
       ! add up time derivative
       Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(l,i)*Flux(:)
       ! symmetry
-      ! Ut(:,l,j,k,iElem) = Ut(:,l,j,k,iElem) + DVolSurf(i,l)*Flux(:)
+      Ut(:,l,j,k,iElem) = Ut(:,l,j,k,iElem) + DVolSurf(i,l)*Flux(:)
 #endif /*FV_ENABLED == 3*/
 #if VOLINT_VISC
       ! add up time derivative
@@ -311,8 +310,7 @@ DO iElem=1,nElems
 #endif /*VOLINT_VISC*/
     END DO ! l
 
-    !DO l=j+1,PP_N
-    DO l=0,PP_N
+    DO l=j+1,PP_N
       ! compute split flux in y-direction
       CALL SplitDGVolume_pointer(U(:,i,j,k,iElem),UPrim(:,i,j,k,iElem), &
                                  U(:,i,l,k,iElem),UPrim(:,i,l,k,iElem), &
@@ -326,7 +324,7 @@ DO iElem=1,nElems
       ! add up time derivative
       Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(l,j)*Flux(:)
       ! symmetry
-      ! Ut(:,i,l,k,iElem) = Ut(:,i,l,k,iElem) + DVolSurf(j,l)*Flux(:)
+      Ut(:,i,l,k,iElem) = Ut(:,i,l,k,iElem) + DVolSurf(j,l)*Flux(:)
 #endif /*FV_ENABLED == 3*/
 #if VOLINT_VISC
       ! add up time derivative
@@ -337,8 +335,7 @@ DO iElem=1,nElems
     END DO ! l
 
 #if PP_dim==3
-    !DO l=k+1,PP_N
-    DO l=0,PP_N
+    DO l=k+1,PP_N
       ! compute split flux in z-direction
       CALL SplitDGVolume_pointer(U(:,i,j,k,iElem),UPrim(:,i,j,k,iElem), &
                                  U(:,i,j,l,iElem),UPrim(:,i,j,l,iElem), &
@@ -352,7 +349,7 @@ DO iElem=1,nElems
       ! add up time derivative
       Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(l,k)*Flux(:)
       ! symmetry
-      ! Ut(:,i,j,l,iElem) = Ut(:,i,j,l,iElem) + DVolSurf(k,l)*Flux(:)
+      Ut(:,i,j,l,iElem) = Ut(:,i,j,l,iElem) + DVolSurf(k,l)*Flux(:)
 #endif /*FV_ENABLED == 3*/
 #if VOLINT_VISC
        ! add up time derivative
