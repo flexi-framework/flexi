@@ -352,6 +352,7 @@ IF (meshMode.GT.1) THEN
   ALLOCATE(      TangVec2(3,0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
   ALLOCATE(      SurfElem(  0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
   ALLOCATE(     Ja_Face(3,3,0:PP_N,0:PP_NZ,          1:nSides)) ! temp
+  ALLOCATE(    Ja_slave(3,3,0:PP_N,0:PP_NZ,          1:nSides)) ! temp
 
 #if FV_ENABLED
   ! NOTE: initialize with 1 and not with 0
@@ -456,6 +457,9 @@ SDEALLOCATE(NormVec)
 SDEALLOCATE(TangVec1)
 SDEALLOCATE(TangVec2)
 SDEALLOCATE(SurfElem)
+
+SDEALLOCATE(Ja_Face)
+SDEALLOCATE(Ja_slave)
 
 ! ijk sorted mesh
 SDEALLOCATE(Elem_IJK)

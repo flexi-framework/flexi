@@ -74,6 +74,7 @@ REAL,ALLOCATABLE :: TangVec1(:,:,:,:,:)          !< tangential vector 1 for each
 REAL,ALLOCATABLE :: TangVec2(:,:,:,:,:)          !< tangential vector 3 for each side (1:3,0:N,0:N,nSides)
 REAL,ALLOCATABLE :: SurfElem(:,:,:,:)            !< surface area for each side        (    0:N,0:N,nSides)
 REAL,ALLOCATABLE :: Ja_Face(:,:,:,:,:)           !< surface  metrics for each side
+REAL,ALLOCATABLE :: Ja_slave(:,:,:,:,:)          !< surface  metrics for each side
 !----------------------------------------------------------------------------------------------------------------------------------
 INTEGER,ALLOCATABLE :: ElemInfo(:,:)           !< array containing the node and side connectivity of the elments as stored in the
                                                !< mesh file

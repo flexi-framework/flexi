@@ -100,14 +100,14 @@ ALLOCATE(Ut(       PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 U=0.
 Ut=0.
 
-#if ((PP_NodeType==1) && defined(PP_EntropyVars))
+#ifdef PP_EntropyVars
 ALLOCATE(V   (PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems))
 V=0.
 ALLOCATE(V_master(PP_nVar,0:PP_N,0:PP_N,1:nSides))
 ALLOCATE(V_slave( PP_nVar,0:PP_N,0:PP_N,1:nSides))
 V_master=0.
 V_slave=0.
-#endif /*((PP_NodeType==1) && defined(PP_EntropyVars))*/
+#endif /*ifdef PP_EntropyVars*/
 
 ! Allocate the 2D solution vectors on the sides, one array for the data belonging to the proc (the master)
 ! and one for the sides which belong to another proc (slaves): side-based
@@ -181,12 +181,10 @@ REAL,ALLOCATABLE,DIMENSION(:)  ,INTENT(OUT)    :: L_HatPlus              !< Valu
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,DIMENSION(0:N_in,0:N_in)              :: M,Minv
-#ifdef SPLIT_DG
 #if ((PP_NodeType==1) && defined(SPLIT_DG))
 REAL,DIMENSION(2,0:N_in)                   :: Vf
 REAL,DIMENSION(2,2)                        :: B
-#endif
-#endif /*SPLIT_DG*/
+#endif /*((PP_NodeType==1) && defined(SPLIT_DG))*/
 !==================================================================================================================================
 
 ALLOCATE(L_HatMinus(0:N_in), L_HatPlus(0:N_in))
@@ -207,20 +205,20 @@ D_Hat_T= TRANSPOSE(D_Hat)
 ! Use a modified D matrix for the strong form volume integral, that incorporates the inner fluxes that are subtracted from the
 ! surfaces
 ALLOCATE(DVolSurf(0:N_in,0:N_in))
-#if (PP_NodeType==2)
-DVolSurf = D_T
-! Modify the D matrix here, the integral over the inner fluxes at the boundaries will then be automatically done in the volume
-! integral. The factor 1/2 is needed since we incorporate a factor of 2 in the split fluxes themselves!
-! For Gauss-Lobatto points, these inner flux contributions cancel exactly with entries in the DVolSurf matrix, resulting in zeros.
-DVolSurf(   0,   0) = DVolSurf(   0   ,0) + 1.0/(2.0 * wGP(   0))  ! = 0. (for LGL)
-DVolSurf(N_in,N_in) = DVolSurf(N_in,N_in) - 1.0/(2.0 * wGP(N_in))  ! = 0. (for LGL)
-#elif (PP_NodeType==1)
+#if (PP_NodeType==1)
 Vf(1,:) = L_Minus
 Vf(2,:) = L_Plus
 B(1,:)  = (/-1.,0./)
 B(2,:)  = (/ 0.,1./)
 DVolSurf = D - 1./2.*MATMUL(Minv,MATMUL(MATMUL(TRANSPOSE(Vf),B),Vf))
 DVolSurf = TRANSPOSE(DVolSurf)
+#else
+DVolSurf = D_T
+! Modify the D matrix here, the integral over the inner fluxes at the boundaries will then be automatically done in the volume
+! integral. The factor 1/2 is needed since we incorporate a factor of 2 in the split fluxes themselves!
+! For Gauss-Lobatto points, these inner flux contributions cancel exactly with entries in the DVolSurf matrix, resulting in zeros.
+DVolSurf(   0,   0) = DVolSurf(   0   ,0) + 1.0/(2.0 * wGP(   0))  ! = 0. (for LGL)
+DVolSurf(N_in,N_in) = DVolSurf(N_in,N_in) - 1.0/(2.0 * wGP(N_in))  ! = 0. (for LGL)
 #endif
 #endif /*SPLIT_DG*/
 
@@ -304,7 +302,7 @@ USE MOD_EddyVisc_Vars       ,ONLY: ComputeEddyViscosity, muSGS, muSGS_master, mu
 USE MOD_ProlongToFace       ,ONLY: ProlongToFace
 USE MOD_TimeDisc_Vars       ,ONLY: CurrentStage
 #endif
-#if (defined(PP_EntropyVars))
+#ifdef PP_EntropyVars
 USE MOD_DG_Vars             ,ONLY: V,V_slave,V_master
 USE MOD_EOS                 ,ONLY: ConsToEntropy
 #endif
@@ -347,7 +345,7 @@ IF(FilterType.GT.0) CALL Filter_Pointer(U,FilterMat)
 CALL ConsToPrim(PP_N,UPrim,U)
 
 ! Compute entropy variables
-#if (defined(PP_EntropyVars))
+#ifdef PP_EntropyVars
 Call ConsToEntropy(PP_N,V,U)
 #endif
 
@@ -373,11 +371,11 @@ Call ConsToEntropy(PP_N,V,U)
 ! Step 3 for all slave MPI sides
 ! 3.1)
 CALL StartReceiveMPIData(U_slave,DataSizeSide,1,nSides,MPIRequest_U(:,SEND),SendID=2) ! Receive MINE / U_slave: slave -> master
-#if (defined(PP_EntropyVars))
+#ifdef PP_EntropyVars
 CALL ProlongToFaceCons(PP_N,V,V_master,V_slave,U_master,U_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
 #else
 CALL ProlongToFaceCons(PP_N,U,U_master,U_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
-#endif /*(defined(PP_EntropyVars))*/
+#endif /*ifdef PP_EntropyVars*/
 CALL U_MortarCons(U_master,U_slave,doMPISides=.TRUE.)
 CALL StartSendMPIData(   U_slave,DataSizeSide,1,nSides,MPIRequest_U(:,RECV),SendID=2) ! SEND YOUR / U_slave: slave -> master
 #if FV_ENABLED
@@ -399,11 +397,11 @@ CALL StartSendMPIData(   FV_multi_slave,DataSizeSidePrim,1,nSides,MPIRequest_FV_
 
 ! Step 3 for all remaining sides
 ! 3.1)
-#if (defined(PP_EntropyVars))
+#ifdef PP_EntropyVars
 CALL ProlongToFaceCons(PP_N,V,V_master,V_slave,U_master,U_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
 #else
 CALL ProlongToFaceCons(PP_N,U,U_master,U_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
-#endif /*(defined(PP_EntropyVars))*/
+#endif /*ifdef PP_EntropyVars*/
 CALL U_MortarCons(U_master,U_slave,doMPISides=.FALSE.)
 #if FV_ENABLED
 ! 3.2)
@@ -515,8 +513,6 @@ END IF
 
 ! 8. Compute volume integral contribution and add to Ut
 CALL VolInt(Ut)
-! print *, 'VolInt',SUM(Ut)
-! read *;
 
 #if FV_ENABLED
 ! [ 9. Volume integral (advective and viscous) for all FV elements ]
@@ -594,9 +590,6 @@ CALL Flux_MortarCons(Flux_master,Flux_slave,doMPISides=.TRUE.,weak=.TRUE.)
 ! 11.5)
 CALL SurfIntCons(PP_N,Flux_master,Flux_slave,Ut,.TRUE.,L_HatMinus,L_HatPlus)
 #endif /*USE_MPI*/
-! print *, 'SurfInt',SUM(Ut)
-! print *, 'SurfInt',Ut(1,:,0,0,1)
-! read *;
 
 ! 12. Swap to right sign :)
 Ut=-Ut
@@ -682,7 +675,7 @@ SDEALLOCATE(U)
 SDEALLOCATE(Ut)
 SDEALLOCATE(U_master)
 SDEALLOCATE(U_slave)
-#if ((PP_NodeType==1) && defined(PP_EntropyVars))
+#ifdef PP_EntropyVars
 SDEALLOCATE(V)
 SDEALLOCATE(V_master)
 SDEALLOCATE(V_slave)

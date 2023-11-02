@@ -24,16 +24,16 @@ SUBROUTINE SurfInt(&
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Mesh_Vars    ,ONLY: SideToElem,nSides
+USE MOD_Mesh_Vars    ,ONLY: SideToElem,nSides,ElemToSide
 USE MOD_Mesh_Vars    ,ONLY: firstMPISide_YOUR,lastMPISide_MINE
 USE MOD_Mesh_Vars    ,ONLY: S2V2,nElems
 #if (PP_NodeType == 1) && defined(SPLIT_DG)
 USE MOD_SplitFlux    ,ONLY: SplitDGVolume_pointer ! computes volume fluxes in split formulation
 USE MOD_Interpolation_Vars, ONLY: L_Minus,L_Plus
-USE MOD_Mesh_Vars    ,ONLY: NormalSigns,S2V
+USE MOD_Mesh_Vars    ,ONLY: NormalSigns,S2V,NormalDirs
 #endif
 USE MOD_DG_Vars      ,ONLY: U,UPrim,U_master,U_slave,UPrim_master,UPrim_slave
-USE MOD_Mesh_Vars    ,ONLY: Metrics_fTilde,Metrics_gTilde,nElems,Ja_face
+USE MOD_Mesh_Vars    ,ONLY: Metrics_fTilde,Metrics_gTilde,nElems,Ja_face,Ja_slave
 #if PP_dim==3 || VOLINT_VISC
 USE MOD_Mesh_Vars    ,ONLY: Metrics_hTilde
 #endif
@@ -113,10 +113,8 @@ DO SideID=firstSideID,lastSideID
 #if (PP_NodeType == 1) && defined(SPLIT_DG)
       DO l=0,PP_N
         ijk(:)=S2V(:,l,p,q,flip,locSideID) !0: flip=0
-        FluxTmp(:,S2V2(1,p,q,flip,locSideID),S2V2(2,p,q,flip,locSideID)) = Flux_master(:,p,q,SideID) &
-                                         - 1./2.*(FluxB_sum - FluxB(:,ijk(idx))) * NormalSigns(locSideID)
         Ut(:,ijk(1),ijk(2),ijk(3),ElemID) = Ut(:,ijk(1),ijk(2),ijk(3),ElemID) + &
-                                FluxTmp(:,S2V2(1,p,q,flip,locSideID),S2V2(2,p,q,flip,locSideID)) * LegHat(ijk(idx))
+             (Flux_master(:,p,q,SideID) - 1./2.*(FluxB_sum - FluxB(:,ijk(idx))) * NormalSigns(locSideID)) * LegHat(ijk(idx))
       END DO
 #else
       FluxTmp(:,S2V2(1,p,q,flip,locSideID),S2V2(2,p,q,flip,locSideID)) = Flux_master(:,p,q,SideID)
@@ -155,6 +153,7 @@ DO SideID=firstSideID,lastSideID
     flip        = SideToElem(S2E_FLIP,SideID)
     ! orient flux to fit flip and locSide to element local system
 #if (PP_NodeType == 1) && defined(SPLIT_DG)
+    ! Hack without MPI: SideID2 = ElemToSide(E2S_SIDE_ID,LocSideID,nbElemID)
     ! Get the right metric terms
     SELECT CASE(nblocSideID)
       CASE(XI_MINUS  ) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_fTilde(:,:,:,:,nbElemID,0); idx = 1; Leg = L_minus; LegHat = L_HatMinus
@@ -170,25 +169,24 @@ DO SideID=firstSideID,lastSideID
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
 #if (PP_NodeType == 1) && defined(SPLIT_DG)
       FluxB_sum = 0.0
+      ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V mapping
       DO l=0,PP_N
         ijk(:)=S2V(:,l,p,q,flip,nblocSideID) !0: flip=0
         CALL SplitDGVolume_pointer(U(:,ijk(1),ijk(2),ijk(3),nbElemID),UPrim(:,ijk(1),ijk(2),ijk(3) ,nbElemID),      &
-                                   U_slave(:,p,q,SideID)  ,UPrim_slave(:,p,q,SideID), &
-                                   Metrics(:,ijk(1),ijk(2),ijk(3)),Ja_face(idx,:,p,q,SideID),FluxB(:,ijk(idx)))
+                                   U_slave(:,p,q,SideID)             ,UPrim_slave(:,p,q,SideID) ,                   &
+                                   Metrics(:,ijk(1),ijk(2),ijk(3))   ,Ja_slave(idx,:,p,q,SideID),FluxB(:,ijk(idx)))
         FluxB_sum = FluxB_sum + FluxB(:,ijk(idx)) * Leg(ijk(idx))
       END DO
 #endif
-      ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V2 mapping
+      ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V mapping
 #if (PP_NodeType == 1) && defined(SPLIT_DG)
       DO l=0,PP_N
         ijk(:)=S2V(:,l,p,q,flip,nblocSideID) !0: flip=0
-        FluxTmp(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID)) = - Flux_slave(:,p,q,SideID) &
-                                      - 1./2.*(FluxB_sum - FluxB(:,ijk(idx))) * NormalSigns(nblocSideID)
         Ut(:,ijk(1),ijk(2),ijk(3),nbElemID) = Ut(:,ijk(1),ijk(2),ijk(3),nbElemID) + &
-                                     FluxTmp(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID)) * LegHat(ijk(idx))
+          (- Flux_slave(:,p,q,SideID) - 1./2.*(FluxB_sum - FluxB(:,ijk(idx))) * NormalSigns(nblocSideID)) * LegHat(ijk(idx))
       END DO
 #else
-     FluxTmp(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID))=-Flux_slave(:,p,q,SideID)
+      FluxTmp(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID)) = -Flux_slave(:,p,q,SideID)
 #endif
     END DO; END DO ! p,q
 #if FV_ENABLED

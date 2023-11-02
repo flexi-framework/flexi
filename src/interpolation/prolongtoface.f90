@@ -46,15 +46,10 @@ PRIVATE
 #undef WITHnVar
 INTEGER,PARAMETER :: TP_nVar = PP_nVar
 
-#if (defined(PP_EntropyVars))
 INTERFACE ProlongToFaceCons
   MODULE PROCEDURE ProlongToFaceEntropy
-END INTERFACE
-#else
-INTERFACE ProlongToFaceCons
   MODULE PROCEDURE ProlongToFace
 END INTERFACE
-#endif
 
 PUBLIC::ProlongToFaceCons
 
