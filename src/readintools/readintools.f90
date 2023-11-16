@@ -169,10 +169,10 @@ PUBLIC :: ModifyParameterFile
 TYPE(Parameters) :: prms
 PUBLIC :: prms
 
-  type, public :: STR255
-     private
-     character(LEN=255) :: chars
-  end type STR255
+TYPE, PUBLIC :: STR255
+   PRIVATE
+   CHARACTER(LEN=255) :: chars
+END TYPE STR255
 !==================================================================================================================================
 
 CONTAINS
@@ -183,6 +183,7 @@ CONTAINS
 !==================================================================================================================================
 SUBROUTINE SetSection(this, section)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -200,6 +201,10 @@ END SUBROUTINE SetSection
 !> types of options.
 !==================================================================================================================================
 SUBROUTINE CreateOption(this, opt, name, description, value, multiple)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)       :: this             !< CLASS(Parameters)
 CLASS(OPTION),INTENT(INOUT)           :: opt              !< option class
@@ -207,6 +212,7 @@ CHARACTER(LEN=*),INTENT(IN)           :: name             !< option name
 CHARACTER(LEN=*),INTENT(IN)           :: description      !< option description
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL  :: value            !< option value
 LOGICAL,INTENT(IN),OPTIONAL           :: multiple         !< marker if multiple option
+!----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CLASS(link), POINTER :: newLink
 !==================================================================================================================================
@@ -229,7 +235,7 @@ opt%section = this%actualSection
 opt%isRemoved = .FALSE.
 
 ! insert option into linked list
-IF (.not. associated(this%firstLink)) then
+IF (.NOT. ASSOCIATED(this%firstLink)) THEN
   this%firstLink => constructor_Link(opt, this%firstLink)
   this%lastLink => this%firstLink
 ELSE
@@ -243,6 +249,10 @@ END SUBROUTINE CreateOption
 !> Create a new integer option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
 SUBROUTINE CreateIntOption(this, name, description, value, multiple)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -315,6 +325,10 @@ END SUBROUTINE CreateRealOption
 !> Create a new string option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
 SUBROUTINE CreateStringOption(this, name, description, value, multiple)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -333,6 +347,10 @@ END SUBROUTINE CreateStringOption
 !> Create a new integer array option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
 SUBROUTINE CreateIntArrayOption(this, name, description, value, multiple)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -351,6 +369,10 @@ END SUBROUTINE CreateIntArrayOption
 !> Create a new logical array option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
 SUBROUTINE CreateLogicalArrayOption(this, name, description, value, multiple)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -369,6 +391,10 @@ END SUBROUTINE CreateLogicalArrayOption
 !> Create a new real array option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
 SUBROUTINE CreateRealArrayOption(this, name, description, value, multiple)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -387,6 +413,10 @@ END SUBROUTINE CreateRealArrayOption
 !> Create a new string array option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
 !SUBROUTINE CreateStringArrayOption(this, name, description, value, multiple)
+!! MODULES
+!! IMPLICIT VARIABLE HANDLING
+!IMPLICIT NONE
+!!----------------------------------------------------------------------------------------------------------------------------------
 !! INPUT/OUTPUT VARIABLES
 !CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 !CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -406,6 +436,7 @@ END SUBROUTINE CreateRealArrayOption
 !==================================================================================================================================
 FUNCTION CountOption_(this, name) result(count)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -419,7 +450,7 @@ CLASS(link),POINTER :: current
 count = 0
 ! iterate over all options and compare names
 current => this%firstLink
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   IF (current%opt%NAMEEQUALS(name)) THEN
     IF (current%opt%isSet) count = count + 1
   END IF
@@ -427,11 +458,13 @@ DO WHILE (associated(current))
 END DO
 END FUNCTION  CountOption_
 
+
 !==================================================================================================================================
-!> Insert a option in front of option with same name in the 'prms' linked list.
+!> Insert an option in front of option with same name in the 'prms' linked list.
 !==================================================================================================================================
 SUBROUTINE insertOption(first, opt)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -443,7 +476,7 @@ CLASS(link),POINTER :: newLink
 CLASS(link),POINTER :: current
 !==================================================================================================================================
 current =>  first
-DO WHILE (associated(current%next))
+DO WHILE (ASSOCIATED(current%next))
   IF (.NOT.current%next%opt%NAMEEQUALS(opt%name)) THEN
     EXIT
   END IF
@@ -452,6 +485,7 @@ END DO
 newLink => constructor_Link(opt, current%next)
 current%next => newLink
 END SUBROUTINE insertOption
+
 
 !==================================================================================================================================
 !> Read options from parameter file.
@@ -462,6 +496,7 @@ END SUBROUTINE insertOption
 SUBROUTINE read_options(this, filename)
 ! MODULES
 USE MOD_StringTools ,ONLY: STRICMP,GetFileExtension
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -482,10 +517,8 @@ CALL this%CreateLogicalOption('ColoredOutput','Colorize stdout, included for com
 IF(MPIRoot)THEN
   ! Get name of ini file
   WRITE(UNIT_stdOut,*)'| Reading from file "',TRIM(filename),'":'
-  IF (.NOT.FILEEXISTS(filename)) THEN
-    CALL Abort(__STAMP__,&
-        "Ini file does not exist.")
-  END IF
+  IF (.NOT.FILEEXISTS(filename)) CALL Abort(__STAMP__,"Ini file does not exist.")
+
   ! Check if first argument is the ini-file
   IF(.NOT.(STRICMP(GetFileExtension(filename),'ini'))) THEN
     SWRITE(*,*) "Usage: flexi parameter.ini [restart.h5] [keyword arguments]"
@@ -500,10 +533,7 @@ IF(MPIRoot)THEN
        ACTION = 'READ',         &
        ACCESS = 'SEQUENTIAL',   &
        IOSTAT = stat)
-  IF(stat.NE.0)THEN
-    CALL Abort(__STAMP__,&
-      "Could not open ini file.")
-  END IF
+  IF (stat.NE.0) CALL Abort(__STAMP__,"Could not open ini file.")
 
   ! parallel IO: ROOT reads file and sends it to all other procs
   nLines=0
@@ -533,8 +563,9 @@ CALL MPI_BCAST(FileContent,LEN(FileContent)*nLines,MPI_CHARACTER,0,MPI_COMM_FLEX
 
 ! infinte loop. Exit at EOF
 DO i=1,nLines
-  !! Lower case
-  CALL LowCase(FileContent(i),FileContent(i))
+  ! ! Lower case.
+  ! ! > Not required, performed in NAMEEQUALS anyways but makes output lowcase
+  ! CALL LowCase(FileContent(i),FileContent(i))
   ! read a line into 'aStr'
   aStr=Var_Str(FileContent(i))
   ! Remove comments with "!"
@@ -550,7 +581,7 @@ DO i=1,nLines
   aStr=Replace(aStr,"/)"," ",Every=.true.)
   ! Lower case
   HelpStr=CHAR(aStr)
-  ! If something remaind, this should be an option
+  ! If something remained, this should be an option
   IF (LEN_TRIM(HelpStr).GT.2) THEN
     ! read the option
     IF (.NOT.this%read_option(HelpStr)) THEN
@@ -560,11 +591,11 @@ DO i=1,nLines
       IF (firstWarn) THEN
         firstWarn=.FALSE.
         SWRITE(UNIT_stdOut,'(100("!"))')
-        SWRITE(UNIT_stdOut, *) "WARNING: The following options are unknown!"
+        SWRITE(UNIT_stdOut,'(A)') "WARNING: The following options are unknown!"
       END IF
 
       CALL set_formatting("blue")
-      SWRITE(UNIT_stdOut,*) '   ', TRIM(HelpStr)
+      SWRITE(UNIT_stdOut,'(A,A)') '   ', TRIM(HelpStr)
       CALL clear_formatting()
     END IF
   END IF
@@ -574,11 +605,11 @@ IF (.NOT.firstWarn) THEN
 END IF
 DEALLOCATE(FileContent)
 
-! calculate the maximal string lenght of all option-names and option-values
+! calculate the maximal string length of all option-names and option-values
 this%maxNameLen  = 0
 this%maxValueLen = 0
 current => prms%firstLink
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   this%maxNameLen = MAX(this%maxNameLen, current%opt%GETNAMELEN())
   this%maxValueLen = MAX(this%maxValueLen, current%opt%GETVALUELEN())
   current => current%next
@@ -594,6 +625,7 @@ END SUBROUTINE read_options
 !==================================================================================================================================
 FUNCTION read_option(this, line) result(found)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -618,14 +650,14 @@ rest = line(i+1:)
 
 ! iterate over all options and compare names
 current => this%firstLink
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   ! compare name
   IF (current%opt%NAMEEQUALS(name)) THEN
     found = .TRUE.
     IF (current%opt%isSet) THEN
       IF (.NOT.(current%opt%multiple)) THEN
         ! option already set, but is not a multiple option
-        SWRITE(UNIT_stdOut,*) 'Option "', TRIM(name), '" is already set, but is not a multiple option!'
+        SWRITE(UNIT_stdOut,'(A,A,A)') 'Option "', TRIM(name), '" is already set, but is not a multiple option!'
         STOP
       ELSE
         ! create new instance of multiple option
@@ -643,7 +675,7 @@ DO WHILE (associated(current))
       current%opt%isSet = .TRUE.
     ELSE
       CALL set_formatting("bright red")
-      SWRITE(UNIT_stdOut,*) 'WARNING: Option "', TRIM(name), '" is specified in file but is empty!'
+      SWRITE(UNIT_stdOut,'(A,A,A)') 'WARNING: Option "', TRIM(name), '" is specified in file but is empty!'
       CALL clear_formatting()
     END IF
     RETURN
@@ -670,7 +702,7 @@ SWRITE(UNIT_stdOut,'(100("!"))')
 SWRITE(UNIT_stdOut,'(A)') "WARNING: The following options are defined, but NOT set in parameter-file or readin:"
 DO WHILE (associated(current))
   IF (.NOT.current%opt%isRemoved) THEN
-    SWRITE(UNIT_stdOut,*) "   ", TRIM(current%opt%name)
+    SWRITE(UNIT_stdOut,'(A,A)') "   ", TRIM(current%opt%name)
   END IF
   current => current%next
 END DO
@@ -686,6 +718,7 @@ END SUBROUTINE IgnoredParameters
 SUBROUTINE PrintDefaultParameterFile(markdown,name)
 ! MODULES
 USE MOD_StringTools ,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -717,12 +750,11 @@ CHARACTER(LEN=255)     :: fmtIntFromStringLength
 CHARACTER(LEN=255)     :: fmtStringIntFromString
 !==================================================================================================================================
 
-
 maxNameLen  = 0
 maxValueLen = 0
 current => prms%firstLink
 ! check if name is a section or a option
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   IF (STRICMP(current%opt%section,name)) THEN
     singlesection = TRIM(name)
     EXIT
@@ -752,7 +784,7 @@ END IF
 
 ! Find longest parameter name and length of the standard values
 current => prms%firstLink
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   maxNameLen = MAX(maxNameLen, current%opt%GETNAMELEN())
   maxValueLen = MAX(maxValueLen, current%opt%GETVALUELEN())
   current => current%next
@@ -772,7 +804,7 @@ WRITE(fmtComment,*) commentLen
 WRITE(fmtNamespace,*) spaceNameLen
 WRITE(fmtValuespace,*) spaceValueLen
 current => prms%firstLink
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   IF ((LEN_TRIM(singlesection).EQ.0).OR.(STRICMP(singlesection,current%opt%section))) THEN
     IF (.NOT.STRICMP(section,current%opt%section)) THEN
       section = current%opt%section
@@ -816,7 +848,7 @@ DO WHILE (associated(current))
     END IF
 
     ! print ------ line at the end of a section in markdown mode
-    IF (associated(current%next).AND.markdown) THEN
+    IF (ASSOCIATED(current%next).AND.markdown) THEN
       IF (.NOT.STRICMP(section,current%next%opt%section)) THEN
         SWRITE(UNIT_stdOut,'('//fmtLineLen//'("-"))')
         SWRITE(UNIT_stdOut,*) ''
@@ -825,13 +857,15 @@ DO WHILE (associated(current))
   END IF
   current => current%next
 END DO
-END SUBROUTINE
+END SUBROUTINE PrintDefaultParameterFile
+
 
 !==================================================================================================================================
 !> Creates a new link to a option-object, 'next' is the following link in the linked list
 !==================================================================================================================================
 FUNCTION constructor_Link(opt, next)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -846,12 +880,14 @@ constructor_Link%next => next
 ALLOCATE(constructor_Link%opt, SOURCE=opt)
 END FUNCTION constructor_Link
 
+
 !==================================================================================================================================
 !> Count number of times a parameter is used within a file in case of multiple parameters. This only calls the internal
 !> function countoption_ of the parameters class.
 !==================================================================================================================================
 FUNCTION CountOption(name) result(no)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 USE MOD_Options
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -863,12 +899,16 @@ INTEGER                     :: no    !< number of parameters
 no = prms%CountOption_(name)
 END FUNCTION CountOption
 
+
 !==================================================================================================================================
 !> General routine to get an option. This routine is called from GETINT,GETREAL,GETLOGICAL,GETSTR to get the value a non-array
 !> option.
 !==================================================================================================================================
 SUBROUTINE GetGeneralOption(value, name, proposal)
+! MODULES
 USE MOD_Options
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name     !< parameter name
@@ -876,14 +916,16 @@ CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal !< reference value
 CLASS(*)                             :: value    !< parameter value
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-CLASS(link),POINTER   :: current
-CLASS(Option),POINTER :: opt
-CHARACTER(LEN=255)    :: proposal_loc
+CLASS(link),POINTER           :: current
+CLASS(Option),POINTER         :: opt
+CHARACTER(LEN=255)            :: proposal_loc
+CHARACTER(LEN=20)             :: fmtName
+INTEGER                       :: ind,mode
 !==================================================================================================================================
 
 ! iterate over all options
 current => prms%firstLink
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   ! if name matches option
   IF (current%opt%NAMEEQUALS(name).AND.(.NOT.current%opt%isRemoved)) THEN
     opt => current%opt
@@ -899,6 +941,9 @@ DO WHILE (associated(current))
         RETURN
       END IF
     END IF
+    ! reset mode to default
+    mode = 0
+
     ! copy value from option to result variable
     SELECT TYPE (opt)
     CLASS IS (IntOption)
@@ -919,11 +964,31 @@ DO WHILE (associated(current))
     CLASS IS (StringOption)
       SELECT TYPE(value)
       TYPE IS (STR255)
+        ! If the string contains a comma, strip it and provide the first part of this string. This might occur when directly running a regressioncheck file
+        ind = INDEX(opt%value,",")
+        IF (ind.GT.0) THEN
+          opt%value = opt%value(1:ind-1)
+          ! Print option and value to stdout. Custom print, so do it here
+          WRITE(fmtName,*) prms%maxNameLen
+          SWRITE(UNIT_stdOut,'(A3)', ADVANCE='NO')  " | "
+          CALL set_formatting("blue")
+          SWRITE(UNIT_stdOut,"(A"//fmtName//")", ADVANCE='NO') TRIM(name)
+          CALL clear_formatting()
+          SWRITE(UNIT_stdOut,'(A3)', ADVANCE='NO')  " | "
+          CALL opt%printValue(prms%maxValueLen)
+          SWRITE(UNIT_stdOut,"(A3)", ADVANCE='NO') ' | '
+          CALL set_formatting("cyan")
+          SWRITE(UNIT_stdOut,'(A7)', ADVANCE='NO')  "*SPLIT"
+          CALL clear_formatting()
+          SWRITE(UNIT_stdOut,"(A3)") ' | '
+          ! Set mode to indicate print already occured
+          mode = 1
+        END IF
         value%chars = opt%value
       END SELECT
     END SELECT
     ! print option and value to stdout
-    CALL opt%print(prms%maxNameLen, prms%maxValueLen, mode=0)
+    IF (mode.EQ.0) CALL opt%print(prms%maxNameLen, prms%maxValueLen, mode=0)
     ! remove the option from the linked list of all parameters
     IF(prms%removeAfterRead) current%opt%isRemoved = .TRUE.
     RETURN
@@ -935,12 +1000,16 @@ CALL Abort(__STAMP__, &
     'or already read (use GET... routine only for multiple options more than once).')
 END SUBROUTINE GetGeneralOption
 
+
 !==================================================================================================================================
 !> General routine to get an array option. This routine is called from GETINTARRAY,GETREALARRAY,GETLOGICALARRAY,GETSTRARRAY to get
 !> the value an array option.
 !==================================================================================================================================
 SUBROUTINE GetGeneralArrayOption(value, name, no, proposal)
+! MODULES
 USE MOD_Options
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name      !< parameter name
@@ -957,7 +1026,7 @@ CHARACTER(LEN=255)    :: proposal_loc
 
 ! iterate over all options
 current => prms%firstLink
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   ! if name matches option
   IF (current%opt%NAMEEQUALS(name).AND.(.NOT.current%opt%isRemoved)) THEN
     opt => current%opt
@@ -1015,10 +1084,14 @@ CALL Abort(__STAMP__, &
     'or already read (use GET... routine only for multiple options more than once).')
 END SUBROUTINE GetGeneralArrayOption
 
+
 !==================================================================================================================================
 !> Get integer, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETINT(name, proposal) result(value)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN) :: name              !< parameter name
@@ -1029,10 +1102,15 @@ value = -1
 CALL GetGeneralOption(value, name, proposal)
 END FUNCTION GETINT
 
+
 !==================================================================================================================================
 !> Get logical, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETLOGICAL(name, proposal) result(value)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN) :: name              !< parameter name
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal !< reference value
@@ -1042,10 +1120,15 @@ value = .FALSE.
 CALL GetGeneralOption(value, name, proposal)
 END FUNCTION GETLOGICAL
 
+
 !==================================================================================================================================
 !> Get real, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETREAL(name, proposal) result(value)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name     !< parameter name
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal !< reference value
@@ -1055,10 +1138,15 @@ value = -1.0
 CALL GetGeneralOption(value, name, proposal)
 END FUNCTION GETREAL
 
+
 !==================================================================================================================================
 !> Get string, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETSTR(name, proposal) result(value)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name     !< parameter name
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal !< reference value
@@ -1070,10 +1158,15 @@ CALL GetGeneralOption(tmp, name, proposal)
 value = tmp%chars
 END FUNCTION GETSTR
 
+
 !==================================================================================================================================
 !> Get integer array, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETINTARRAY(name, no, proposal) result(value)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name      !< parameter name
 INTEGER,INTENT(IN)                   :: no        !< size of array
@@ -1084,10 +1177,15 @@ value = -1
 CALL GetGeneralArrayOption(value, name, no, proposal)
 END FUNCTION GETINTARRAY
 
+
 !==================================================================================================================================
 !> Get logical array, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETLOGICALARRAY(name, no, proposal) result(value)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name      !< parameter name
 INTEGER,INTENT(IN)                   :: no        !< size of array
@@ -1098,10 +1196,15 @@ value = .FALSE.
 CALL GetGeneralArrayOption(value, name, no, proposal)
 END FUNCTION GETLOGICALARRAY
 
+
 !==================================================================================================================================
 !> Get real array, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETREALARRAY(name, no, proposal) RESULT(value)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name      !< parameter name
 INTEGER,INTENT(IN)                   :: no        !< size of array
@@ -1112,10 +1215,15 @@ value = -1.
 CALL GetGeneralArrayOption(value, name, no, proposal)
 END FUNCTION GETREALARRAY
 
+
 !==================================================================================================================================
 !> Get string array, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETSTRARRAY(name, no, proposal) result(value)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name      !< parameter name
 INTEGER,INTENT(IN)                   :: no        !< size of array
@@ -1131,10 +1239,15 @@ DO i = 1, no
 END DO ! i = 1, no
 END FUNCTION GETSTRARRAY
 
+
 !==================================================================================================================================
 !> Get string array, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETDESCRIPTION(name) result(description)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name        !< parameter name
 CHARACTER(LEN=1000)                  :: description !< description
@@ -1143,7 +1256,7 @@ CLASS(link),POINTER :: current
 !==================================================================================================================================
 ! iterate over all options and compare names
 current => prms%firstLink
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   IF (current%opt%NAMEEQUALS(name)) THEN
     description = current%opt%description
   END IF
@@ -1151,13 +1264,18 @@ DO WHILE (associated(current))
 END DO
 END FUNCTION GETDESCRIPTION
 
+
 !==================================================================================================================================
 !> GETINT for options with string values. Requires a map that provides the link between the
 !> possible integer values and the corresponding named values. This map is set using the addStrListEntry routine during
 !> parameter definition. If there is no named value to an option passed as int a warning is returned.
 !==================================================================================================================================
 FUNCTION GETINTFROMSTR(name) result(value)
+! MODULES
 USE MOD_StringTools ,ONLY: ISINT, STRICMP
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)   :: name        !< parameter name
 INTEGER                       :: value       !< return value
@@ -1167,10 +1285,12 @@ CLASS(Option),POINTER         :: opt
 INTEGER                       :: i
 LOGICAL                       :: found
 INTEGER                       :: listSize         ! current size of list
+INTEGER                       :: ind
+CHARACTER(LEN=20)             :: fmtName
 !==================================================================================================================================
 ! iterate over all options and compare names
 current => prms%firstLink
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   IF (current%opt%NAMEEQUALS(name).AND.(.NOT.current%opt%isRemoved)) THEN
     opt => current%opt
     SELECT TYPE (opt)
@@ -1179,7 +1299,7 @@ DO WHILE (associated(current))
       opt%foundInList = .TRUE.
       ! Size of list with string-integer pairs
       listSize = SIZE(opt%strList)
-      ! Check if an integer has been specfied directly
+      ! Check if an integer has been specified directly
       IF (ISINT(opt%value)) THEN
         READ(opt%value,*) value
         found=.FALSE.
@@ -1201,7 +1321,7 @@ DO WHILE (associated(current))
         IF(prms%removeAfterRead) current%opt%isRemoved = .TRUE.
         RETURN
       END IF
-      ! If a string has been supplied, check if this string exists in the list and set it's integer representation according to the
+      ! If a string has been supplied, check if this string exists in the list and set its integer representation according to the
       ! mapping
       DO i=1,listSize
         IF (STRICMP(opt%strList(i), opt%value)) THEN
@@ -1213,22 +1333,53 @@ DO WHILE (associated(current))
           RETURN
         END IF
       END DO
-      CALL Abort(__STAMP__,&
-          "Unknown value for option: "//TRIM(name))
+
+      ! If a string contains a comma, check if the first part of this string exists in the list and set its integer representation
+      ! according to the mapping. This might occur when directly running a regressioncheck file
+      DO i=1,listSize
+        ind = INDEX(opt%value,",")
+        IF (STRICMP(opt%strList(i), opt%value(1:ind-1))) THEN
+          value = opt%intList(i)
+          opt%listIndex = i ! Store index of the mapping
+          ! print option and value to stdout. Custom print, so do it here
+          WRITE(fmtName,*) prms%maxNameLen
+          SWRITE(UNIT_stdOut,'(A3)', ADVANCE='NO')  " | "
+          CALL set_formatting("blue")
+          SWRITE(UNIT_stdOut,"(A"//fmtName//")", ADVANCE='NO') TRIM(name)
+          CALL clear_formatting()
+          SWRITE(UNIT_stdOut,'(A3)', ADVANCE='NO')  " | "
+          CALL opt%printValue(prms%maxValueLen)
+          SWRITE(UNIT_stdOut,"(A3)", ADVANCE='NO') ' | '
+          CALL set_formatting("cyan")
+          SWRITE(UNIT_stdOut,'(A7)', ADVANCE='NO')  "*SPLIT"
+          CALL clear_formatting()
+          SWRITE(UNIT_stdOut,"(A3)") ' | '
+          ! CALL opt%print(prms%maxNameLen, prms%maxValueLen, mode=0)
+          ! remove the option from the linked list of all parameters
+          IF(prms%removeAfterRead) current%opt%isRemoved = .TRUE.
+          RETURN
+        END IF
+      END DO
+      CALL Abort(__STAMP__,"Unknown value for option: "//TRIM(name))
     END SELECT
   END IF
   current => current%next
 END DO
+
 CALL Abort(__STAMP__,&
     "Unknown option: "//TRIM(name)//" or already read (use GET... routine only for multiple options more than once).")
 END FUNCTION GETINTFROMSTR
+
 
 !===================================================================================================================================
 !> Add an entry to the mapping of string and integer values for the StringToInt option.
 !===================================================================================================================================
 SUBROUTINE addStrListEntry(name,string_in,int_in)
-USE MOD_Globals,     ONLY: abort
+! MODULES
+USE MOD_Globals,     ONLY: Abort
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)    :: name      !< parameter name
 CHARACTER(LEN=*),INTENT(IN)    :: string_in !< (IN) string used for the option value
@@ -1243,7 +1394,7 @@ INTEGER           ,ALLOCATABLE :: intListTmp(:)    ! temporary integer list
 !===================================================================================================================================
 ! iterate over all options and compare names
 current => prms%firstLink
-DO WHILE (associated(current))
+DO WHILE (ASSOCIATED(current))
   IF (current%opt%NAMEEQUALS(name)) THEN
     opt => current%opt
     SELECT TYPE (opt)
@@ -1296,12 +1447,14 @@ CALL Abort(__STAMP__,&
 
 END SUBROUTINE addStrListEntry
 
+
 !===================================================================================================================================
 !> This routing extracts a parameter file from the userblock of a state file
 !===================================================================================================================================
 SUBROUTINE ExtractParameterFile(filename,prmfile,userblockFound)
 ! MODULES
 USE MOD_StringTools ,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -1317,25 +1470,17 @@ LOGICAL               :: iniFound
 !==================================================================================================================================
 
 IF (MPIRoot) THEN
-  IF (.NOT.FILEEXISTS(filename)) THEN
-    CALL CollectiveStop(__STAMP__,&
-        "File '"//TRIM(filename)//"' does not exist.")
-  END IF
+  IF (.NOT.FILEEXISTS(filename)) &
+    CALL CollectiveStop(__STAMP__,"File '"//TRIM(filename)//"' does not exist.")
 
-  SWRITE(UNIT_stdOut,*)'| Extract parameter file from "',TRIM(filename),'" to "',TRIM(prmfile),'"'
+  SWRITE(UNIT_stdOut,'(A,A,A,A)') ' | Extract parameter file from "',TRIM(filename),'" to "',TRIM(prmfile),'"'
 
   ! Open parameter file for reading
   OPEN(NEWUNIT=fileUnit,FILE=TRIM(filename),STATUS='OLD',ACTION='READ',ACCESS='SEQUENTIAL',IOSTAT=stat)
-  IF(stat.NE.0) THEN
-    CALL Abort(__STAMP__,&
-        "Could not open '"//TRIM(filename)//"'")
-  END IF
+  IF (stat.NE.0) CALL Abort(__STAMP__,"Could not open '"//TRIM(filename)//"'")
 
   OPEN(NEWUNIT=iniUnit,FILE=TRIM(prmfile),STATUS='UNKNOWN',ACTION='WRITE',ACCESS='SEQUENTIAL',IOSTAT=stat)
-  IF(stat.NE.0) THEN
-    CALL Abort(__STAMP__,&
-        "Could not open '"//TRIM(prmfile)//"'")
-  END IF
+  IF (stat.NE.0) CALL Abort(__STAMP__,"Could not open '"//TRIM(prmfile)//"'")
 
   iniFound = .FALSE.
   userblockFound = .FALSE.
@@ -1355,7 +1500,7 @@ IF (MPIRoot) THEN
       userblockFound = STRICMP(tmp,"{[(")
     END IF
     IF (.NOT.userblockFound) THEN
-      SWRITE(*,*) "No Userblock found!"
+      SWRITE(UNIT_stdOut,'(A)') "No Userblock found!"
       EXIT
     END IF
 
@@ -1387,6 +1532,7 @@ CALL MPI_BCAST(userblockFound,1,MPI_LOGICAL,0,MPI_COMM_FLEXI,iError)
 
 END SUBROUTINE ExtractParameterFile
 
+
 !===================================================================================================================================
 !> This routine modifies the value for all occurences of a specific parmeter in a given parameter file.
 !> Currently only implemented for parameters with scalar integer values.
@@ -1395,6 +1541,7 @@ SUBROUTINE ModifyParameterFile(prmfile,prmName,prmValue,prmChanged)
 ! MODULES
 USE MOD_Globals
 USE MOD_StringTools ,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -1414,23 +1561,15 @@ TYPE(Varying_String)  :: aStr
 prmChanged = .FALSE.
 
 IF (MPIRoot) THEN
-  IF (.NOT.FILEEXISTS(prmfile)) THEN
-    CALL CollectiveStop(__STAMP__,&
-        "File '"//TRIM(prmfile)//"' does not exist.")
-  END IF
+  IF (.NOT.FILEEXISTS(prmfile)) &
+    CALL CollectiveStop(__STAMP__,"File '"//TRIM(prmfile)//"' does not exist.")
 
   ! 1. First copy the parameter file to a temporary file and change the parameter values if necessary
   OPEN(NEWUNIT=copyUnit,FILE=TRIM(prmfile),STATUS='UNKNOWN',ACTION='READ',ACCESS='SEQUENTIAL',IOSTAT=stat)
-  IF(stat.NE.0) THEN
-    CALL Abort(__STAMP__,&
-        "Could not open '"//TRIM(prmfile)//"'")
-  END IF
+  IF (stat.NE.0) CALL Abort(__STAMP__,"Could not open '"//TRIM(prmfile)//"'")
 
   OPEN(NEWUNIT=fileUnit,FILE=TRIM(prmfile_copy),STATUS='UNKNOWN',ACTION='WRITE',ACCESS='SEQUENTIAL',IOSTAT=stat)
-  IF(stat.NE.0) THEN
-    CALL Abort(__STAMP__,&
-        "Could not open '"//TRIM(prmfile)//"'")
-  END IF
+  IF (stat.NE.0) CALL Abort(__STAMP__,"Could not open '"//TRIM(prmfile_copy)//"'")
 
   DO
     ! read a line into 'aStr'
@@ -1475,14 +1614,17 @@ END SUBROUTINE ModifyParameterFile
 !> Clear parameters list 'prms'.
 !===================================================================================================================================
 SUBROUTINE FinalizeParameters()
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CLASS(link), POINTER         :: current, tmp
 !===================================================================================================================================
 
 IF(ASSOCIATED(prms%firstlink))THEN
   current => prms%firstLink
-  DO WHILE (associated(current%next))
+  DO WHILE (ASSOCIATED(current%next))
     DEALLOCATE(current%opt)
     NULLIFY(current%opt)
     tmp => current%next
@@ -1498,6 +1640,7 @@ IF(ASSOCIATED(prms%firstlink))THEN
 END IF
 NULLIFY(prms%firstLink)
 NULLIFY(prms%lastLink)
+
 END SUBROUTINE FinalizeParameters
 
 END MODULE MOD_ReadInTools
