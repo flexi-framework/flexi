@@ -153,12 +153,12 @@ if [ -n "$CHANGED" ]; then
 
   if [ $FILEERR -ne 0 ]; then
     printf "${RED}The following file(s) exceed the file size limit ($SIZESINGLELIMIT bytes)${NC}\n"
-    printf "$FILEDENYLINE"
+    printf "$SIZEDENYLINE"
   fi
 
   if [ $FILEWARN -ne 0 ]; then
     printf "${YELLOW}The following large file(s) are about to be committed (>$SIZESINGLEWARN bytes)${NC}\n"
-    printf "$FILEWARNLINE"
+    printf "$SIZEWARNLINE"
   fi
 
   if [ $FILESUMERR -ne 0 ]; then
