@@ -18,9 +18,11 @@
 #===================================================================================================================================
 
 # Executables, command -v is safe with sh
+BN_EXE=$(command -v basename)
 DU_EXE=$(command -v du)
 GIT_EXE=$(command -v git)
 LS_EXE=$(command -v ls)
+TR_EXE=$(command -v tr)
 
 # Check if override is requested
 if [ "$GIT_OVERRIDE_LIMITS" = "1" ]; then
@@ -42,10 +44,18 @@ NUMBERWARN=100
 
 # Local variables
 ERROR=0
-FILEWARN=0
 FILEERR=0
+FILEWARN=0
 FILESUM=0
-EXEWARN=0
+FILESUMERR=0
+FILESUMWARN=0
+EXEERR=0
+TABERR=0
+
+EXELINE=''
+TABLINE=''
+SIZEWARNLINE=''
+SIZEDENYLINE=''
 
 # Check if file is opened in a terminal
 if test -t 1; then
@@ -65,7 +75,8 @@ CHANGED=$($GIT_EXE diff --staged --name-only)
 # Check if any changes are present
 if [ -n "$CHANGED" ]; then
   # Sort found files by size (-S) in reverse ordering (-r)
-  SORTED=$($LS_EXE -Shsr "$CHANGED" 2> /dev/null)
+  CHANGED=$(echo "$CHANGED" | $TR_EXE '\n' ' ')
+  SORTED=$($LS_EXE --sort=size -r $CHANGED 2> /dev/null)
   NUMBER=$($GIT_EXE diff --staged --numstat | wc -l)
 
   # Check the number of files
@@ -83,7 +94,7 @@ if [ -n "$CHANGED" ]; then
     #  -f  True if FILE exists and is a regular file.
     if [ -f "$file" ]; then
       # -b, --bytes           equivalent to '--apparent-size --block-size=1'
-      LINE=$($DU_EXE -h "$file")
+      LINE=$($LS_EXE -alhs "$file")
       FILESIZE=$($DU_EXE -b "$file" | cut -d '	' -f1) # this is a tab, not a white space
 
       # Sum up the total file sizes
@@ -92,47 +103,81 @@ if [ -n "$CHANGED" ]; then
       # Check the file size limit
       if [ "$FILESIZE" -gt "$SIZESINGLELIMIT" ]; then
         # Error header
-        if [ "$FILEERR" -eq 0 ]; then
-          printf "${RED}The following file(s) exceed the file size limit ($SIZESINGLELIMIT bytes)${NC}\n"
-          ERROR=1
-          FILEERR=1
-        fi
-        printf "$LINE\n"
+        ERROR=1
+        FILEERR=1
+        SIZEDENYLINE="$LINE\n$SIZEDENYLINE"
       # Check the file size warning
       elif [ "$FILESIZE" -gt "$SIZESINGLEWARN" ]; then
-        # Error header
-        if [ "$FILEWARN" -eq 0 ]; then
-          printf "${YELLOW}The following large file(s) are about to be committed (>$SIZESINGLEWARN bytes)${NC}\n"
-          FILEWARN=1
-        fi
-        printf "$LINE\n"
+        # Warning header
+        FILEWARN=1
+        SIZEWARNLINE="$LINE\n$SIZEWARNLINE"
       fi
     fi
 
     # Check total file size
     if [ "$FILESUM" -gt "$SIZETOTALLIMIT" ]; then
       # Error header
-      printf "${RED}The total file size exceeds the size limit ($SIZETOTALLIMIT bytes)${NC}\n"
       ERROR=1
+      FILESUMERR=1
     # Check the file size warning
     elif [ "$FILESUM" -gt "$SIZETOTALWARN" ]; then
       # Error header
-      printf "${YELLOW}Total file size to be committed ($FILESUM bytes)${NC}\n"
+      FILESUMWARN=1
     fi
 
     # Check if file is executable
     if [ -x "$file" ]; then
       # Error header
-      if [ "$EXEWARN" -eq 0 ]; then
-        printf "${RED}The following file(s) are executable, which is not allowed. Remove the execute permission via 'chmod -x filename' and try again.${NC}\n"
-        EXEWARN=1
-      fi
-      LINE=$($LS_EXE -alFhs "$file")
-      printf "$LINE\n"
       ERROR=1
+      EXEERR=1
+      LINE=$($LS_EXE -alhs "$file")
+      EXELINE="$LINE\n$EXELINE"
+    fi
+
+    # Check for tab characters in specific file endings
+    name=$($BN_EXE -- "$file")
+    ext="${name##*.}"
+    name="${name%.*}"
+    if [ "$ext" = "txt" ] || [ "$ext" = "f90" ] || [ "$ext" = "ini" ]; then
+      # -P, --perl-regexp         PATTERNS are Perl regular expressions
+      NbrOfLinesWithTabs=$(grep -P '\t' $file | wc -l)
+      if [ "${NbrOfLinesWithTabs}" -gt 0 ]; then
+        LINE=$($LS_EXE -alhs "$file")
+        ERROR=1
+        TABERR=1
+        TABLINE="$LINE\n$TABLINE"
+      fi
     fi
 
   done
+
+  if [ $FILEERR -ne 0 ]; then
+    printf "${RED}The following file(s) exceed the file size limit ($SIZESINGLELIMIT bytes)${NC}\n"
+    printf "$FILEDENYLINE"
+  fi
+
+  if [ $FILEWARN -ne 0 ]; then
+    printf "${YELLOW}The following large file(s) are about to be committed (>$SIZESINGLEWARN bytes)${NC}\n"
+    printf "$FILEWARNLINE"
+  fi
+
+  if [ $FILESUMERR -ne 0 ]; then
+    printf "${RED}The total file size exceeds the size limit ($SIZETOTALLIMIT bytes)${NC}\n"
+  fi
+
+  if [ $FILESUMWARN -ne 0 ]; then
+    printf "${YELLOW}Total file size to be committed ($FILESUM bytes)${NC}\n"
+  fi
+
+  if [ "$EXEERR" -ne 0 ]; then
+    printf "${RED}The following file(s) are executable, which is not allowed. Remove the execute permission via 'chmod -x filename' and try again.${NC}\n"
+    printf "$EXELINE"
+  fi
+
+  if [ "$TABERR" -ne 0 ]; then
+    printf "${RED}The following file(s) contain tabs, which is not allowed. Remove the tab stops and try again.${NC}\n"
+    printf "$TABLINE"
+  fi
 
   # Abort if hook encountered any error
   if [ "$ERROR" -ne 0 ]; then
