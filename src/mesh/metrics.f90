@@ -708,7 +708,7 @@ DO iLocSide=2,5
     CALL ChangeBasisSurf(3,Nloc,Nloc,Vdm_CLN_N,tmp,tmp2)
     ! turn into right hand system of side
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
-      pq=SideToVol2(Nloc,p,q,0,iLocSide,PP_dim)
+      pq=SideToVol2(Nloc,p,q,flip,iLocSide,PP_dim)
       Ja_Face_l(dd,1:3,p,q)=tmp2(:,pq(1),pq(2))
     END DO; END DO ! p,q
   END DO ! dd

@@ -147,11 +147,7 @@ PPURE SUBROUTINE ProlongToFaceEntropy(&
 #ifdef WITHnVar
     TP_nVar,&
 #endif
-    Nloc,Vvol,Vface_master,Vface_slave,Uface_master,Uface_slave,L_Minus,L_Plus,doMPISides &
-#if FV_ENABLED
-    ,pureDG &
-#endif
-)
+    Nloc,Vvol,Vface_master,Vface_slave,Uface_master,Uface_slave,L_Minus,L_Plus,doMPISides)
 ! MODULES
 USE MOD_EOS,                ONLY: EntropyToCons
 USE MOD_Mesh_Vars,          ONLY: nElems
@@ -171,25 +167,17 @@ REAL,INTENT(INOUT)              :: Uface_master(TP_nVar,0:Nloc,0:ZDIM(Nloc),1:nS
 REAL,INTENT(INOUT)              :: Uface_slave( TP_nVar,0:Nloc,0:ZDIM(Nloc),1:nSides)
 REAL,INTENT(IN)                 :: L_Minus(0:Nloc),L_Plus(0:Nloc)
 LOGICAL,INTENT(IN)              :: doMPISides  != .TRUE. only YOUR MPISides are filled, =.FALSE. BCSides +InnerSides +MPISides MINE
-#if FV_ENABLED
-LOGICAL,INTENT(IN),OPTIONAL     :: pureDG      != .TRUE. prolongates all elements as DG elements
-#endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: firstSideID,lastSideID
 INTEGER                         :: ElemID,nbElemID,SideID
 !==================================================================================================================================
-
 ! Prolong the entropy variables
 CALL ProlongToFace(&
 #ifdef WITHnVar
     TP_nVar,&
 #endif
-    Nloc,Vvol,Vface_master,Vface_slave,L_Minus,L_Plus,doMPISides=doMPISides &
-#if FV_ENABLED
-    ,pureDG &
-#endif
-)
+    Nloc,Vvol,Vface_master,Vface_slave,L_Minus,L_Plus,doMPISides=doMPISides)
 
 ! Transform back to conservative variables
 IF(doMPISides)THEN

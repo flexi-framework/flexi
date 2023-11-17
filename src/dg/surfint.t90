@@ -84,45 +84,46 @@ DO SideID=firstSideID,lastSideID
   IF(ElemID.GT.0)THEN
     locSideID = SideToElem(S2E_LOC_SIDE_ID,SideID)
     flip      = 0
-    ! orient flux to fit flip and locSide to element local system
-#if (PP_NodeType == 1) && defined(SPLIT_DG)
-    ! Get the right metric terms
-    SELECT CASE(locSideID)
-      CASE(XI_MINUS  ) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_fTilde(:,:,:,:,ElemID,0); idx = 1; Leg = L_minus; LegHat = L_HatMinus
-      CASE(ETA_MINUS ) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_gTilde(:,:,:,:,ElemID,0); idx = 2; Leg = L_minus; LegHat = L_HatMinus
-      CASE(XI_PLUS )   ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_fTilde(:,:,:,:,ElemID,0); idx = 1; Leg = L_plus; LegHat = L_HatPlus
-      CASE(ETA_PLUS)   ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_gTilde(:,:,:,:,ElemID,0); idx = 2; Leg = L_plus; LegHat = L_HatPlus
-#if PP_dim == 3
-      CASE(ZETA_MINUS) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_hTilde(:,:,:,:,ElemID,0); idx = 3; Leg = L_minus; LegHat = L_HatMinus
-      CASE(ZETA_PLUS)  ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_hTilde(:,:,:,:,ElemID,0); idx = 3; Leg = L_plus; LegHat = L_HatPlus
-#endif
-    END SELECT
-#endif
-    DO q=0,ZDIM(Nloc); DO p=0,Nloc
-#if (PP_NodeType == 1) && defined(SPLIT_DG)
-      FluxB_sum = 0.0
-      DO l=0,PP_N
-        ijk(:)=S2V(:,l,p,q,flip,locSideID) !0: flip=0
-        CALL SplitDGVolume_pointer(U(:,ijk(1),ijk(2),ijk(3),ElemID),UPrim(:,ijk(1),ijk(2),ijk(3) ,ElemID),      &
-                                   U_master(:,p,q,SideID)  ,UPrim_master(:,p,q,SideID), &
-                                   Metrics(:,ijk(1),ijk(2),ijk(3)),Ja_face(idx,:,p,q,SideID),FluxB(:,ijk(idx)))
-        FluxB_sum = FluxB_sum + FluxB(:,ijk(idx)) * Leg(ijk(idx))
-      END DO
-#endif
-      ! note: for master sides, the mapping S2V2 should be a unit matrix
-#if (PP_NodeType == 1) && defined(SPLIT_DG)
-      DO l=0,PP_N
-        ijk(:)=S2V(:,l,p,q,flip,locSideID) !0: flip=0
-        Ut(:,ijk(1),ijk(2),ijk(3),ElemID) = Ut(:,ijk(1),ijk(2),ijk(3),ElemID) + &
-             (Flux_master(:,p,q,SideID) - 1./2.*(FluxB_sum - FluxB(:,ijk(idx))) * NormalSigns(locSideID)) * LegHat(ijk(idx))
-      END DO
-#else
-      FluxTmp(:,S2V2(1,p,q,flip,locSideID),S2V2(2,p,q,flip,locSideID)) = Flux_master(:,p,q,SideID)
-#endif
-    END DO; END DO ! p,q
+
 #if FV_ENABLED
     IF (FV_Elems_master(SideID).EQ.0) THEN ! DG Element
 #endif /* FV_ENABLED */
+      ! orient flux to fit flip and locSide to element local system
+#if (PP_NodeType == 1) && defined(SPLIT_DG)
+      ! Get the right metric terms
+      SELECT CASE(locSideID)
+        CASE(XI_MINUS  ) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_fTilde(:,:,:,:,ElemID,0); idx = 1; Leg = L_minus; LegHat = L_HatMinus
+        CASE(ETA_MINUS ) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_gTilde(:,:,:,:,ElemID,0); idx = 2; Leg = L_minus; LegHat = L_HatMinus
+        CASE(XI_PLUS )   ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_fTilde(:,:,:,:,ElemID,0); idx = 1; Leg = L_plus; LegHat = L_HatPlus
+        CASE(ETA_PLUS)   ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_gTilde(:,:,:,:,ElemID,0); idx = 2; Leg = L_plus; LegHat = L_HatPlus
+#if PP_dim == 3
+        CASE(ZETA_MINUS) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_hTilde(:,:,:,:,ElemID,0); idx = 3; Leg = L_minus; LegHat = L_HatMinus
+        CASE(ZETA_PLUS)  ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_hTilde(:,:,:,:,ElemID,0); idx = 3; Leg = L_plus; LegHat = L_HatPlus
+#endif
+      END SELECT
+#endif
+      DO q=0,ZDIM(Nloc); DO p=0,Nloc
+#if (PP_NodeType == 1) && defined(SPLIT_DG)
+        FluxB_sum = 0.0
+        DO l=0,PP_N
+          ijk(:)=S2V(:,l,p,q,flip,locSideID) !0: flip=0
+          CALL SplitDGVolume_pointer(U(:,ijk(1),ijk(2),ijk(3),ElemID),UPrim(:,ijk(1),ijk(2),ijk(3) ,ElemID),      &
+                                     U_master(:,p,q,SideID)  ,UPrim_master(:,p,q,SideID), &
+                                     Metrics(:,ijk(1),ijk(2),ijk(3)),Ja_face(idx,:,p,q,SideID),FluxB(:,ijk(idx)))
+          FluxB_sum = FluxB_sum + FluxB(:,ijk(idx)) * Leg(ijk(idx))
+        END DO
+#endif
+        ! note: for master sides, the mapping S2V2 should be a unit matrix
+#if (PP_NodeType == 1) && defined(SPLIT_DG)
+        DO l=0,PP_N
+          ijk(:)=S2V(:,l,p,q,flip,locSideID) !0: flip=0
+          Ut(:,ijk(1),ijk(2),ijk(3),ElemID) = Ut(:,ijk(1),ijk(2),ijk(3),ElemID) + &
+               (Flux_master(:,p,q,SideID) - 1./2.*(FluxB_sum - FluxB(:,ijk(idx))) * NormalSigns(locSideID)) * LegHat(ijk(idx))
+        END DO
+#else
+        FluxTmp(:,S2V2(1,p,q,flip,locSideID),S2V2(2,p,q,flip,locSideID)) = Flux_master(:,p,q,SideID)
+#endif
+      END DO; END DO ! p,q
 #if ((PP_NodeType==1 && !defined(SPLIT_DG)) || (PP_NodeType==2 && defined(EXACT_MM)))
       CALL DoSurfInt(&
 #ifdef WITHnVars
@@ -138,6 +139,11 @@ DO SideID=firstSideID,lastSideID
 #endif
 #if FV_ENABLED
     ELSE
+
+      DO q=0,ZDIM(Nloc); DO p=0,Nloc
+        FluxTmp(:,S2V2(1,p,q,flip,locSideID),S2V2(2,p,q,flip,locSideID)) = Flux_master(:,p,q,SideID)
+      END DO; END DO ! p,q
+
       CALL SurfInt_FV(&
 #ifdef WITHnVars
           TP_nVar, &
@@ -151,47 +157,46 @@ DO SideID=firstSideID,lastSideID
   IF(nbElemID.GT.0)THEN
     nblocSideID = SideToElem(S2E_NB_LOC_SIDE_ID,SideID)
     flip        = SideToElem(S2E_FLIP,SideID)
-    ! orient flux to fit flip and locSide to element local system
-#if (PP_NodeType == 1) && defined(SPLIT_DG)
-    ! Hack without MPI: SideID2 = ElemToSide(E2S_SIDE_ID,LocSideID,nbElemID)
-    ! Get the right metric terms
-    SELECT CASE(nblocSideID)
-      CASE(XI_MINUS  ) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_fTilde(:,:,:,:,nbElemID,0); idx = 1; Leg = L_minus; LegHat = L_HatMinus
-      CASE(ETA_MINUS ) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_gTilde(:,:,:,:,nbElemID,0); idx = 2; Leg = L_minus; LegHat = L_HatMinus
-      CASE(XI_PLUS )   ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_fTilde(:,:,:,:,nbElemID,0); idx = 1; Leg = L_plus; LegHat = L_HatPlus
-      CASE(ETA_PLUS)   ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_gTilde(:,:,:,:,nbElemID,0); idx = 2; Leg = L_plus; LegHat = L_HatPlus
-#if PP_dim == 3
-      CASE(ZETA_MINUS) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_hTilde(:,:,:,:,nbElemID,0); idx = 3; Leg = L_minus; LegHat = L_HatMinus
-      CASE(ZETA_PLUS)  ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_hTilde(:,:,:,:,nbElemID,0); idx = 3; Leg = L_plus; LegHat = L_HatPlus
-#endif
-    END SELECT
-#endif
-    DO q=0,ZDIM(Nloc); DO p=0,Nloc
-#if (PP_NodeType == 1) && defined(SPLIT_DG)
-      FluxB_sum = 0.0
-      ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V mapping
-      DO l=0,PP_N
-        ijk(:)=S2V(:,l,p,q,flip,nblocSideID) !0: flip=0
-        CALL SplitDGVolume_pointer(U(:,ijk(1),ijk(2),ijk(3),nbElemID),UPrim(:,ijk(1),ijk(2),ijk(3) ,nbElemID),      &
-                                   U_slave(:,p,q,SideID)             ,UPrim_slave(:,p,q,SideID) ,                   &
-                                   Metrics(:,ijk(1),ijk(2),ijk(3))   ,Ja_slave(idx,:,p,q,SideID),FluxB(:,ijk(idx)))
-        FluxB_sum = FluxB_sum + FluxB(:,ijk(idx)) * Leg(ijk(idx))
-      END DO
-#endif
-      ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V mapping
-#if (PP_NodeType == 1) && defined(SPLIT_DG)
-      DO l=0,PP_N
-        ijk(:)=S2V(:,l,p,q,flip,nblocSideID) !0: flip=0
-        Ut(:,ijk(1),ijk(2),ijk(3),nbElemID) = Ut(:,ijk(1),ijk(2),ijk(3),nbElemID) + &
-          (- Flux_slave(:,p,q,SideID) - 1./2.*(FluxB_sum - FluxB(:,ijk(idx))) * NormalSigns(nblocSideID)) * LegHat(ijk(idx))
-      END DO
-#else
-      FluxTmp(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID)) = -Flux_slave(:,p,q,SideID)
-#endif
-    END DO; END DO ! p,q
 #if FV_ENABLED
     IF (FV_Elems_slave(SideID).EQ.0) THEN ! DG Element
 #endif /* FV_ENABLED */
+      ! orient flux to fit flip and locSide to element local system
+#if (PP_NodeType == 1) && defined(SPLIT_DG)
+      ! Get the right metric terms
+      SELECT CASE(nblocSideID)
+        CASE(XI_MINUS  ) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_fTilde(:,:,:,:,nbElemID,0); idx = 1; Leg = L_minus; LegHat = L_HatMinus
+        CASE(ETA_MINUS ) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_gTilde(:,:,:,:,nbElemID,0); idx = 2; Leg = L_minus; LegHat = L_HatMinus
+        CASE(XI_PLUS )   ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_fTilde(:,:,:,:,nbElemID,0); idx = 1; Leg = L_plus; LegHat = L_HatPlus
+        CASE(ETA_PLUS)   ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_gTilde(:,:,:,:,nbElemID,0); idx = 2; Leg = L_plus; LegHat = L_HatPlus
+#if PP_dim == 3
+        CASE(ZETA_MINUS) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_hTilde(:,:,:,:,nbElemID,0); idx = 3; Leg = L_minus; LegHat = L_HatMinus
+        CASE(ZETA_PLUS)  ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_hTilde(:,:,:,:,nbElemID,0); idx = 3; Leg = L_plus; LegHat = L_HatPlus
+#endif
+      END SELECT
+#endif
+      DO q=0,ZDIM(Nloc); DO p=0,Nloc
+#if (PP_NodeType == 1) && defined(SPLIT_DG)
+        FluxB_sum = 0.0
+        ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V mapping
+        DO l=0,PP_N
+          ijk(:)=S2V(:,l,p,q,flip,nblocSideID) !0: flip=0
+          CALL SplitDGVolume_pointer(U(:,ijk(1),ijk(2),ijk(3),nbElemID),UPrim(:,ijk(1),ijk(2),ijk(3) ,nbElemID),      &
+                                     U_slave(:,p,q,SideID)             ,UPrim_slave(:,p,q,SideID) ,                   &
+                                     Metrics(:,ijk(1),ijk(2),ijk(3))   ,Ja_slave(idx,:,p,q,SideID),FluxB(:,ijk(idx)))
+          FluxB_sum = FluxB_sum + FluxB(:,ijk(idx)) * Leg(ijk(idx))
+        END DO
+#endif
+        ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V mapping
+#if (PP_NodeType == 1) && defined(SPLIT_DG)
+        DO l=0,PP_N
+          ijk(:)=S2V(:,l,p,q,flip,nblocSideID) !0: flip=0
+          Ut(:,ijk(1),ijk(2),ijk(3),nbElemID) = Ut(:,ijk(1),ijk(2),ijk(3),nbElemID) + &
+            (- Flux_slave(:,p,q,SideID) - 1./2.*(FluxB_sum - FluxB(:,ijk(idx))) * NormalSigns(nblocSideID)) * LegHat(ijk(idx))
+        END DO
+#else
+        FluxTmp(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID)) = -Flux_slave(:,p,q,SideID)
+#endif
+      END DO; END DO ! p,q
 #if ((PP_NodeType==1 && !defined(SPLIT_DG)) || (PP_NodeType==2 && defined(EXACT_MM)))
       CALL DoSurfInt(&
 #ifdef WITHnVars
@@ -207,6 +212,11 @@ DO SideID=firstSideID,lastSideID
 #endif
 #if FV_ENABLED
     ELSE
+
+      DO q=0,ZDIM(Nloc); DO p=0,Nloc
+        FluxTmp(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID)) = -Flux_slave(:,p,q,SideID)
+      END DO; END DO ! p,q
+
       CALL SurfInt_FV(&
 #ifdef WITHnVars
           TP_nVar, &
