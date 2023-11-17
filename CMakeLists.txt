@@ -113,6 +113,8 @@ ELSE()
   FILE(WRITE ${commit} "! Define the current commit hash. The default must remain empty, i.e., ''. Do not commit the changed file!\n#define GIT_CURRENT_COMMIT  ''\n")
   EXECUTE_PROCESS(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/setCommitHash.sh ${commit})
 ENDIF()
+# Make sure that the script is executed even though cmake is not explicitly executed after the commit is changed in git
+ADD_CUSTOM_TARGET(UpdateGitCommitHash COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/setCommitHash.sh ${commit})
 
 # =========================================================================
 # Check IPO support:
@@ -283,4 +285,4 @@ ENDIF()
 # =========================================================================
 # Install
 # =========================================================================
-INSTALL(FILES ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/configuration.cmake ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.txt DESTINATION bin)
+INSTALL(FILES ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/configuration.cmake DESTINATION bin)

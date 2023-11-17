@@ -132,7 +132,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                  :: iBC,nFVBoundaryType
+INTEGER                                  :: iBC,nFVBoundaryType,nModes_In
 !==================================================================================================================================
 IF(IndicatorInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,&
@@ -174,12 +174,14 @@ CASE(INDTYPE_DUCROSTIMESJST)
 #endif /* EQNSYSNR != 2 */
 CASE(INDTYPE_PERSSON)
   ! number of modes to be checked by Persson indicator
-  nModes = GETINT('nModes')
+  nModes_In = GETINT('nModes')
   ! For overintegration, the last PP_N-Nunder modes are empty. Add them to nModes, so we check non-empty ones
-  nModes = nModes+PP_N-MIN(NUnder,NFilter)
+  nModes_In = nModes_In+PP_N-MIN(NUnder,NFilter)
   ! Safety checks: At least one mode must be left and only values >0 make sense
-  nModes = MAX(1,MIN(PP_N-1,nModes))
-  SWRITE(UNIT_stdOut,'(A,I0)') ' | nModes = ', nModes
+  nModes = MAX(1,MIN(PP_N-1,nModes_In))
+  IF (nModes.NE.nModes_In) THEN
+    SWRITE(UNIT_stdOut,'(A,I0)') 'WARNING: nModes set by user not within range [1,PP_N-1]. Was instead set to nModes=', nModes
+  END IF
 #if FV_ENABLED == 2 || FV_ENABLED == 3
   T_FV   = 0.5*10**(-1.8*(PP_N+1)**.25) ! Eq.(42) in: S. Hennemann et al., J.Comp.Phy., 2021
   sdT_FV = s_FV/T_FV
