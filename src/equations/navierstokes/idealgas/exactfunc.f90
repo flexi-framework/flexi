@@ -87,6 +87,9 @@ CALL addStrListEntry('IniExactFunc','dmr'      ,13)
 #if PARABOLIC
 CALL addStrListEntry('IniExactFunc','blasius'  ,1338)
 #endif
+CALL addStrListEntry('IniExactFunc','sedov'    ,1342)
+CALL addStrListEntry('IniExactFunc','leblanc'  ,1344)
+CALL addStrListEntry('IniExactFunc','hui'      ,1346)
 CALL prms%CreateRealArrayOption(    'AdvVel',       "Advection velocity (v1,v2,v3) required for exactfunction CASE(2,21,4,8)")
 CALL prms%CreateRealOption(         'MachShock',    "Parameter required for CASE(10)", '1.5')
 CALL prms%CreateRealOption(         'PreShockDens', "Parameter required for CASE(10)", '1.0')
@@ -96,6 +99,9 @@ CALL prms%CreateRealOption(         'IniAmplitude', "Shu Vortex CASE(7)", '0.2')
 CALL prms%CreateRealOption(         'IniHalfwidth', "Shu Vortex CASE(7)", '0.2')
 CALL prms%CreateRealOption(         'P_Parameter', "Couette-Poiseuille flow CASE(8)", '0.0')
 CALL prms%CreateRealOption(         'U_Parameter', "Couette-Poiseuille flow CASE(8)", '0.01')
+CALL prms%CreateRealOption(         'eradius_in',   "Radius of high energy area CASE(1342)")
+CALL prms%CreateRealOption(         'leblanc_x0',   "Location of initial discontinity CASE(1344)")
+CALL prms%CreateRealArrayOption(    'Hui_Data',    "Orientation and axis intercept data for Hui problem CASE(1346)")
 #if PARABOLIC
 CALL prms%CreateRealOption(         'delta99_in',   "Blasius boundary layer CASE(1338)")
 CALL prms%CreateRealArrayOption(    'x_in',         "Blasius boundary layer CASE(1338)")
@@ -147,6 +153,18 @@ CASE(1338) ! Blasius boundary layer solution
   x_in            = GETREALARRAY('x_in',2,'(/0.,0./)')
   BlasiusInitDone = .TRUE. ! Mark Blasius init as done so we don't read the parameters again in BC init
 #endif
+CASE(1342) ! Energy radius in for Sedov
+  SWRITE(UNIT_stdOut,'(A)')' READING ERADIUS!'
+  eradius_in      = GETREAL('eradius_in')
+  SWRITE(UNIT_stdOut,'(A)')' INIT ERADIUS DONE!'
+CASE(1344) ! Discontinuity location for LeBlanc
+  SWRITE(UNIT_stdOut,'(A)')' READING LEBLANC_X0!'
+  leblanc_x0      = GETREAL('leblanc_x0')
+  SWRITE(UNIT_stdOut,'(A)')' INIT LEBLANC_X0 DONE!'
+CASE(1346) ! Axis angle (theta in rads) and Interface location (l) for Hui problem
+  SWRITE(UNIT_stdOut,'(A)')' READING HUI_INTERCEPT!'
+  Hui_Data    = GETREALARRAY('Hui_Data',2,'(/0.,1./)')
+  SWRITE(UNIT_stdOut,'(A)')' INIT HUI_INTERCEPT DONE!'
 CASE DEFAULT
 END SELECT ! IniExactFunc
 
@@ -184,6 +202,9 @@ USE MOD_Equation_Vars  ,ONLY: IniRefState,RefStateCons,RefStatePrim
 USE MOD_Timedisc_Vars  ,ONLY: fullBoundaryOrder,CurrentStage,dt,RKb,RKc,t
 USE MOD_TestCase       ,ONLY: ExactFuncTestcase
 USE MOD_EOS            ,ONLY: PrimToCons,ConsToPrim
+USE MOD_Exactfunc_Vars ,ONLY: eradius_in
+USE MOD_Exactfunc_Vars ,ONLY: leblanc_x0
+USE MOD_Exactfunc_Vars ,ONLY: Hui_Data
 #if PARABOLIC
 USE MOD_Eos_Vars       ,ONLY: mu0
 USE MOD_Exactfunc_Vars ,ONLY: delta99_in,x_in
@@ -616,6 +637,24 @@ CASE(1338) ! blasius
   END IF
   CALL PrimToCons(prim,resu)
 #endif
+CASE(1342) ! sedov
+  IF (X(1)**2.0 + X(2)**2.0.GE.eradius_in**2.0) THEN
+    Resu = RefStateCons(:,1)
+  ELSE
+    Resu = RefStateCons(:,2)
+  END IF
+CASE(1344) ! LeBlanc Shock Tube
+  IF (X(1).LE.leblanc_x0) THEN
+    Resu = RefStateCons(:,1)
+  ELSE
+    Resu = RefStateCons(:,2)
+  END IF
+CASE(1346) ! Hui Shock 2D
+  IF (X(2) - ((sin(Hui_Data(1)) + cos(Hui_Data(1)))*X(1) - Hui_Data(2))/(sin(Hui_Data(1)) - cos(Hui_Data(1))) .GT. 0 ) THEN
+    Resu = RefStateCons(:,1)
+  ELSE
+    Resu = RefStateCons(:,2)
+  END IF
 END SELECT ! ExactFunction
 #if PP_dim==2
 Resu(MOM3)=0.

@@ -1,0 +1,3 @@
+VelocityX = MomentumX / Density
+Pressure = 0.4 * (EnergyStagnationDensity - MomentumX*MomentumX / (2.0 * Density))
+sie = Pressure / (0.4 * Density)

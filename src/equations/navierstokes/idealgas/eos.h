@@ -46,7 +46,7 @@
 #define TOTAL_TEMPERATURE_H(T,Mach)    (T*(1+0.5*(kappa-1)*Mach**2))
 #define TOTAL_PRESSURE_H(p,Mach)       (p/((1+0.5*(kappa-1)*Mach**2)**(-kappa/(kappa-1.))))
 #define BETA_RIEMANN_H()               (SQRT(0.5*kappaM1/kappa))
-#define ROEC_RIEMANN_H(RoeH,RoeVel)    (SQRT(kappaM1*(RoeH-0.5*DOT_PRODUCT(RoeVel,RoeVel))))
+#define ROEC_RIEMANN_H(RoeH,RoeVel)    (SQRT(kappaM1*ABS(RoeH-0.5*DOT_PRODUCT(RoeVel,RoeVel))))
 #define ALPHA2_RIEMANN_H(RoeH,RoeVel,Roec,Delta_U)     (kappaM1/(Roec*Roec) * (Delta_U(1)*(RoeH-RoeVel(1)*RoeVel(1)) - Delta_U(6) + RoeVel(1)*Delta_U(2)))
 
 ! routines to compute physical quantities from conservative variables or extended variables
