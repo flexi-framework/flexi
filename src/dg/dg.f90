@@ -140,7 +140,6 @@ SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitDG
 
 
-
 !==================================================================================================================================
 !> Allocate and initialize the building blocks for the DG operator: Differentiation matrices and prolongation operators
 !==================================================================================================================================
@@ -560,17 +559,18 @@ IF(doTCSource)   CALL TestcaseSource(Ut)
 
 ! 14. Perform overintegration and apply Jacobian
 ! Perform overintegration (projection filtering type overintegration)
-IF(OverintegrationType.GT.0) THEN
-  CALL Overintegration(Ut)
-END IF
-! Apply Jacobian (for OverintegrationType==CUTOFFCONS this is already done within the Overintegration, but for DG only)
-IF (OverintegrationType.EQ.CUTOFFCONS) THEN
+SELECT CASE (OverintegrationType)
+  CASE (OVERINTEGRATIONTYPE_CONSCUTOFF )
+    CALL Overintegration(Ut)
 #if FV_ENABLED
-  CALL ApplyJacobianCons(Ut,toPhysical=.TRUE.,FVE=1)
-#endif
-ELSE
-  CALL ApplyJacobianCons(Ut,toPhysical=.TRUE.)
-END IF
+    CALL ApplyJacobianCons(Ut,toPhysical=.TRUE.,FVE=1)
+#endif /*FV_ENABLED*/
+  CASE (OVERINTEGRATIONTYPE_CUTOFF)
+    CALL Overintegration(Ut)
+    CALL ApplyJacobianCons(Ut,toPhysical=.TRUE.)
+  CASE DEFAULT
+    CALL ApplyJacobianCons(Ut,toPhysical=.TRUE.)
+END SELECT
 
 END SUBROUTINE DGTimeDerivative_weakForm
 

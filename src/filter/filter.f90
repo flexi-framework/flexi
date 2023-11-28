@@ -126,8 +126,16 @@ IF(FilterInitIsDone.OR.(.NOT.InterpolationInitIsDone))THEN
    CALL CollectiveStop(__STAMP__,'InitFilter not ready to be called or already called.')
    RETURN
 END IF
+
+! Filter always disabled in postiMode
+IF (postiMode) THEN
+  FilterType = FILTERTYPE_NONE
+  RETURN
+END IF
+
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT FILTER...'
+
 
 FilterType = GETINTFROMSTR('FilterType')
 
@@ -517,6 +525,7 @@ ELSE
   U_in = U_Eta
 END IF
 END SUBROUTINE Filter_Selective
+
 
 !==================================================================================================================================
 !> Deallocate filter arrays

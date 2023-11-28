@@ -144,8 +144,9 @@
 #define KILL(x) SWRITE(*,*) __FILE__,__LINE__,x; stop
 
 ! overintegration
-#define CUTOFF 1
-#define CUTOFFCONS 2
+#define OVERINTEGRATIONTYPE_NONE       0
+#define OVERINTEGRATIONTYPE_CUTOFF     1
+#define OVERINTEGRATIONTYPE_CONSCUTOFF 2
 
 ! PURE debug switch
 #if DEBUG

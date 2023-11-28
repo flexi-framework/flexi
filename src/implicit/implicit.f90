@@ -58,6 +58,7 @@ CONTAINS
 SUBROUTINE DefineParametersImplicit()
 ! MODULES
 USE MOD_ReadInTools ,ONLY: prms
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Implicit")
@@ -81,6 +82,7 @@ CALL prms%CreateIntOption(    'PredictorOrder', "Order of predictor to be used (
 
 END SUBROUTINE DefineParametersImplicit
 
+
 !===================================================================================================================================
 !> Initialize implicit time integration. Mainly read in parameters for the Newton and GMRES solvers and call preconditioner init.
 !===================================================================================================================================
@@ -99,7 +101,6 @@ USE MOD_Precond,           ONLY:InitPrecond
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -197,6 +198,7 @@ IF(TimeDiscType.EQ.'ESDIRK') THEN
   SWRITE(UNIT_stdOut,'(132("-"))')
 END IF
 END SUBROUTINE InitImplicit
+
 
 !===================================================================================================================================
 !> Solves the non-linear system with Newton
@@ -347,6 +349,7 @@ IF((Norm_F_Xk.GT.EpsNewton*Norm_F_X0).AND.(nInnerNewton.EQ.nNewtonIter)) THEN
 END IF
 
 END SUBROUTINE Newton
+
 
 !===================================================================================================================================
 !> Matrix free Linear Krylov subspace solver
