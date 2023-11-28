@@ -46,12 +46,12 @@ SUBROUTINE InitArea(AreaStr,locArea,AreaShape)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Areas_Vars
-USE MOD_ReadInTools
 USE MOD_Mesh_Vars,           ONLY: nElems,Elem_xGP
 USE MOD_Interpolation_Vars,  ONLY: NodeType
 #if USE_MPI
 USE MOD_Mesh_Readin,         ONLY: ELEMIPROC
 #endif /*USE_MPI*/
+USE MOD_ReadInTools
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -210,7 +210,7 @@ DO iElem=1,nElems
         c_pt  = locShape%xCenter(1:PP_dim)
 #endif
         dist  = SQRT(DOT_PRODUCT(c_pt-Elem_xGP(1:PP_dim,i,j,k,iElem),c_pt-Elem_xGP(1:PP_dim,i,j,k,iElem)))
-        SELECT CASE(SHAPE_REGION)
+        SELECT CASE(locArea%AreaShape)
           CASE(SHAPE_CYLINDRICAL_INNER)
             IF (dist.LT.locShape%Radius) THEN
               x_star(i,j,k) = 1.
