@@ -90,13 +90,14 @@ SUBROUTINE InitImplicit()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_DG_Vars,           ONLY: nDOFElem
+USE MOD_Filter_Vars,       ONLY: FilterType
 USE MOD_Implicit_Vars
-USE MOD_Mesh_Vars,         ONLY:MeshInitIsDone,nElems,nGlobalElems
-USE MOD_Interpolation_Vars,ONLY:InterpolationInitIsDone
-USE MOD_ReadInTools,       ONLY:GETINT,GETREAL,GETLOGICAL
-USE MOD_DG_Vars,           ONLY:nDOFElem
-USE MOD_TimeDisc_Vars,     ONLY:TimeDiscType,RKb_embedded
-USE MOD_Precond,           ONLY:InitPrecond
+USE MOD_Interpolation_Vars,ONLY: InterpolationInitIsDone
+USE MOD_Mesh_Vars,         ONLY: MeshInitIsDone,nElems,nGlobalElems
+USE MOD_Precond,           ONLY: InitPrecond
+USE MOD_ReadInTools,       ONLY: GETINT,GETREAL,GETLOGICAL
+USE MOD_TimeDisc_Vars,     ONLY: TimeDiscType,RKb_embedded
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -106,12 +107,19 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
-IF((.NOT.InterpolationInitIsDone).OR.(.NOT.MeshInitIsDone).OR.ImplicitInitIsDone)THEN
+IF (.NOT.InterpolationInitIsDone .OR. .NOT.MeshInitIsDone .OR.ImplicitInitIsDone) &
    CALL Abort(__STAMP__,'InitImplicit not ready to be called or already called.')
-END IF
+
 IF(TimeDiscType.EQ.'ESDIRK') THEN
   SWRITE(UNIT_stdOut,'(132("-"))')
   SWRITE(UNIT_stdOut,'(A)') ' INIT Implicit...'
+
+  SELECT CASE(FilterType)
+    CASE(FILTERTYPE_NONE,FILTERTYPE_CUTOFF)
+      ! Do nothing
+    CASE DEFAULT
+      CALL Abort(__STAMP__,'Only no or spectral cutoff filtering support with implicit time stepping!')
+  END SELECT
 
   nDOFVar1D     = PP_nVar*(PP_N+1)
   nDOFVarElem   = PP_nVar*nDOFElem

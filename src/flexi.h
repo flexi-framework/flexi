@@ -148,6 +148,12 @@
 #define OVERINTEGRATIONTYPE_CUTOFF     1
 #define OVERINTEGRATIONTYPE_CONSCUTOFF 2
 
+! filter
+#define FILTERTYPE_NONE   0
+#define FILTERTYPE_CUTOFF 1
+#define FILTERTYPE_MODAL  2
+#define FILTERTYPE_LAF    3
+
 ! PURE debug switch
 #if DEBUG
 #define PPURE

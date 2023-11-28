@@ -34,11 +34,6 @@ PROCEDURE(FilterInt),POINTER :: Filter_pointer     !< Point to the filter routin
 
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTEGER,PARAMETER      :: FILTERTYPE_NONE   = 0
-INTEGER,PARAMETER      :: FILTERTYPE_CUTOFF = 1
-INTEGER,PARAMETER      :: FILTERTYPE_MODAL  = 2
-INTEGER,PARAMETER      :: FILTERTYPE_LAF    = 3
-
 INTERFACE InitFilter
   MODULE PROCEDURE InitFilter
 END INTERFACE
@@ -189,9 +184,9 @@ IF(FilterType.GT.0) THEN
         END DO ! j
       END DO ! k
       IntegrationWeight(:,:,:,iElem,0) = IntegrationWeight(:,:,:,iElem,0) / Vol
-    END DO !iElem
+    END DO ! iElem
 
-  ! Compute normalization for LAF
+    ! Compute normalization for LAF
     normMod=((REAL(NFilter)+1)**(-2./3.)-2.**(-2./3.))/(REAL(PP_N+1)**(-2./3.)-REAL(NFilter+1)**(-2./3.))
     lim=1E-8
     eRatio=0.
