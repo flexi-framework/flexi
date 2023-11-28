@@ -74,8 +74,8 @@ IMPLICIT NONE
 REAL,INTENT(INOUT) :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< Time derivative of the volume integral (viscous part)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: i,j,k,l,iElem
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: f,g,h     !< Volume viscous fluxes at GP
+INTEGER                                       :: i,j,k,l,iElem
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: f,g,h           !< Volume viscous fluxes at GP
 !==================================================================================================================================
 ! Diffusive part
 DO iElem=1,nElems
@@ -133,10 +133,10 @@ IMPLICIT NONE
 REAL,INTENT(OUT)   :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< Time derivative of the volume integral (viscous part)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: i,j,k,l,iElem
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: f,g,h     !< Volume advective fluxes at GP
+INTEGER                                       :: i,j,k,l,iElem
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: f,g,h           !< Volume advective fluxes at GP
 #if VOLINT_VISC
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: fv,gv,hv  !< Volume viscous fluxes at GP
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: fv,gv,hv        !< Volume viscous fluxes at GP
 #endif
 !==================================================================================================================================
 ! Diffusive part
@@ -236,10 +236,10 @@ IMPLICIT NONE
 REAL,INTENT(OUT)   :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< Time derivative of the volume integral (viscous part)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: i,j,k,l,iElem
-REAL,DIMENSION(PP_nVar                     )  :: Flux         !< temp variable for split flux
+INTEGER                                       :: i,j,k,l,iElem
+REAL,DIMENSION(PP_nVar                     )  :: Flux            !< temp variable for split flux
 #if VOLINT_VISC
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: fv,gv,hv     !< Parabolic fluxes at GP
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: fv,gv,hv        !< Parabolic fluxes at GP
 #endif /*VOLINT_VISC*/
 !==================================================================================================================================
 DO iElem=1,nElems
@@ -276,6 +276,7 @@ DO iElem=1,nElems
 #else /*VOLINT_VISC*/
   ! We need to nullify the Ut array
   Ut(:,:,:,:,iElem) = 0.
+  ! For FV subblend only
 #if FV_ENABLED==3
   Ut_xi  (:,:,:,:,iElem) = 0.
   Ut_eta (:,:,:,:,iElem) = 0.

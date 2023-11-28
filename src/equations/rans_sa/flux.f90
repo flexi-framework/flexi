@@ -53,7 +53,9 @@ INTERFACE EvalDiffFlux3D
   MODULE PROCEDURE EvalDiffFlux3D_Point
   MODULE PROCEDURE EvalDiffFlux3D_Surface
   MODULE PROCEDURE EvalDiffFlux3D_Volume
+#if FV_ENABLED
   MODULE PROCEDURE EvalDiffFlux3D_Volume_FV
+#endif /*FV_ENABLED*/
 END INTERFACE
 #endif /*PARABOLIC*/
 
@@ -275,6 +277,7 @@ DO k=0,PP_NZ;  DO j=0,PP_N; DO i=0,PP_N
 END DO; END DO; END DO ! i,j,k
 END SUBROUTINE EvalDiffFlux3D_Volume
 
+#if FV_ENABLED
 !==================================================================================================================================
 !> Wrapper routine to compute the diffusive part of the RANS SA fluxes for a single volume cell
 !==================================================================================================================================
@@ -302,6 +305,7 @@ DO k=0,PP_N_zeta;  DO j=0,PP_N_eta; DO i=0,PP_N_xi
                                                  f(:,i,j,k),     g(:,i,j,k),     h(:,i,j,k))
 END DO; END DO; END DO ! i,j,k
 END SUBROUTINE EvalDiffFlux3D_Volume_FV
+#endif /*FV_ENABLED*/
 
 !==================================================================================================================================
 !> Wrapper routine to compute the diffusive part of the Navier-Stokes fluxes for a single side

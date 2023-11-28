@@ -206,11 +206,15 @@ D_Hat_T= TRANSPOSE(D_Hat)
 ! surfaces
 ALLOCATE(DVolSurf(0:N_in,0:N_in))
 #if (PP_NodeType==1)
+! Chan, J.: Efficient Entropy Stable Gauss Collocation Methods, JSC, 2019.
+! S = D - 0.5 V^T B V
+! Lagrange polynomials evaluated at the cell boundaries
 Vf(1,:) = L_Minus
 Vf(2,:) = L_Plus
 B(1,:)  = (/-1.,0./)
 B(2,:)  = (/ 0.,1./)
 DVolSurf = D - 1./2.*MATMUL(Minv,MATMUL(MATMUL(TRANSPOSE(Vf),B),Vf))
+! Transpose for efficiency
 DVolSurf = TRANSPOSE(DVolSurf)
 #else
 DVolSurf = D_T

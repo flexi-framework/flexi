@@ -141,6 +141,7 @@ DO iElem=1,nElems
   ! This is the only nullification we have to do, the rest will be overwritten accordingly. Nullify here to catch only the FV
   ! elements. Might be smarter to do this in a single, long operation?
   Ut_FV(:,0,:,:) = 0.
+  ! For FV subblend only
 #if FV_ENABLED == 3
   Ut_FV_xi  (:,:,:,:) = 0.
   Ut_FV_eta (:,:,:,:) = 0.

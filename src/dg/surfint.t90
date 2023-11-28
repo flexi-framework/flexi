@@ -13,8 +13,9 @@
 !=================================================================================================================================
 #include "flexi.h"
 
+#if (PP_NodeType == 1)
 !==================================================================================================================================
-!> In this routine, the surface integral will be computed
+!> In this routine, the surface integral will be computed for Gauss nodes
 !==================================================================================================================================
 SUBROUTINE SurfInt(&
 #ifdef WITHnVars
@@ -27,7 +28,7 @@ USE MOD_PreProc
 USE MOD_Mesh_Vars    ,ONLY: SideToElem,nSides,ElemToSide
 USE MOD_Mesh_Vars    ,ONLY: firstMPISide_YOUR,lastMPISide_MINE
 USE MOD_Mesh_Vars    ,ONLY: S2V2,nElems
-#if (PP_NodeType == 1) && defined(SPLIT_DG)
+#ifdef SPLIT_DG
 USE MOD_SplitFlux    ,ONLY: SplitDGVolume_pointer ! computes volume fluxes in split formulation
 USE MOD_Interpolation_Vars, ONLY: L_Minus,L_Plus
 USE MOD_Mesh_Vars    ,ONLY: NormalSigns,S2V,NormalDirs
@@ -38,17 +39,17 @@ USE MOD_Mesh_Vars    ,ONLY: Metrics_fTilde,Metrics_gTilde,nElems,Ja_face,Ja_slav
 USE MOD_Mesh_Vars    ,ONLY: Metrics_hTilde
 #endif
 #if FV_ENABLED
-USE MOD_FV_Vars   ,ONLY: FV_Elems_master,FV_Elems_slave,FV_w_inv
+USE MOD_FV_Vars      ,ONLY: FV_Elems_master,FV_Elems_slave,FV_w_inv
 #endif /* FV_ENABLED */
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 #ifdef WITHnVars
-INTEGER,INTENT(IN) :: TP_nVar     !< number of variables
+INTEGER,INTENT(IN) :: TP_nVar                                           !< number of variables
 #endif
-INTEGER,INTENT(IN) :: Nloc        !< (IN) Polynomial degree
-LOGICAL,INTENT(IN) :: doMPISides  !<= .TRUE. only MPISides_YOUR+MPIMortar are filled
-                                  !<=.FALSE. BCSides+(Mortar-)InnerSides+MPISides_MINE
+INTEGER,INTENT(IN) :: Nloc                                              !< (IN) Polynomial degree
+LOGICAL,INTENT(IN) :: doMPISides                                        !<= .TRUE. only MPISides_YOUR+MPIMortar are filled
+                                                                        !<=.FALSE. BCSides+(Mortar-)InnerSides+MPISides_MINE
 REAL,INTENT(IN)    :: Flux_master(1:TP_nVar,0:Nloc,0:ZDIM(Nloc),nSides) !< (IN) Flux on master side
 REAL,INTENT(IN)    :: Flux_slave (1:TP_nVar,0:Nloc,0:ZDIM(Nloc),nSides) !< (IN) Flux on slave side
 !> (IN) Lagrange polynomials evaluated at \f$\xi=+1\f$ and \f$\xi=-1\f$ and premultiplied by mass matrix
@@ -59,7 +60,7 @@ REAL,INTENT(INOUT) :: Ut(TP_nVar,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)   !< (INOU
 INTEGER            :: ElemID,nbElemID,locSideID,nblocSideID,SideID,p,q,flip
 INTEGER            :: firstSideID,lastSideID
 REAL               :: FluxTmp(1:TP_nVar,0:Nloc,0:ZDIM(Nloc))
-#if (PP_NodeType == 1) && defined(SPLIT_DG)
+#ifdef SPLIT_DG
 REAL               :: FluxB(TP_nVar,0:PP_N),FluxB_sum(TP_nVar),Leg(0:Nloc),LegHat(0:Nloc)
 INTEGER            :: l,ijk(3),idx
 REAL, POINTER      :: Metrics(:,:,:,:)
@@ -85,11 +86,21 @@ DO SideID=firstSideID,lastSideID
     locSideID = SideToElem(S2E_LOC_SIDE_ID,SideID)
     flip      = 0
 
+    ! Mateo-Gabín, A.: A flux-differencing formulation with Gauss nodes, JCP, 2023.
+    ! See eq. (5):
+    ! f_i+1 = f_i
+    !             + \sum_k^N S_ik f^hat_ik                               Volint with modified derivative matrix S
+    !>            − l_i(−1) (f^hat_iL − \sum_k l_k(−1) f^hat_Lk + f*_L)  Surint (left  side)
+    !>            + l_i( 1) (f^hat_iR − \sum_k l_k( 1) f^hat_Rk + f*_R)  Surint (right side)
+    ! f*    : numerical flux
+    ! f^hat : two-point flux
+    ! S = D - 0.5 V^T B V
+
 #if FV_ENABLED
     IF (FV_Elems_master(SideID).EQ.0) THEN ! DG Element
 #endif /* FV_ENABLED */
       ! orient flux to fit flip and locSide to element local system
-#if (PP_NodeType == 1) && defined(SPLIT_DG)
+#ifdef SPLIT_DG
       ! Get the right metric terms
       SELECT CASE(locSideID)
         CASE(XI_MINUS  ) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_fTilde(:,:,:,:,ElemID,0); idx = 1; Leg = L_minus; LegHat = L_HatMinus
@@ -103,19 +114,22 @@ DO SideID=firstSideID,lastSideID
       END SELECT
 #endif
       DO q=0,ZDIM(Nloc); DO p=0,Nloc
-#if (PP_NodeType == 1) && defined(SPLIT_DG)
+#ifdef SPLIT_DG
+        ! Calculate the split flux between each interior Gauss point and the respective boundary point: f^hat_Lk
         FluxB_sum = 0.0
         DO l=0,PP_N
+          ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V mapping
           ijk(:)=S2V(:,l,p,q,flip,locSideID) !0: flip=0
+          ! Similar to prolong to face of the two-point flux
           CALL SplitDGVolume_pointer(U(:,ijk(1),ijk(2),ijk(3),ElemID),UPrim(:,ijk(1),ijk(2),ijk(3) ,ElemID),      &
-                                     U_master(:,p,q,SideID)  ,UPrim_master(:,p,q,SideID), &
+                                     U_master(:,p,q,SideID)  ,UPrim_master(:,p,q,SideID),                         &
                                      Metrics(:,ijk(1),ijk(2),ijk(3)),Ja_face(idx,:,p,q,SideID),FluxB(:,ijk(idx)))
+          ! Sum up the split flux: \sum_k l_k(-1/1)
           FluxB_sum = FluxB_sum + FluxB(:,ijk(idx)) * Leg(ijk(idx))
         END DO
-#endif
-        ! note: for master sides, the mapping S2V2 should be a unit matrix
-#if (PP_NodeType == 1) && defined(SPLIT_DG)
+        ! Apply the resulting SurfInt in a line-wise manner to the interior DOFs, s.a.
         DO l=0,PP_N
+          ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V mapping
           ijk(:)=S2V(:,l,p,q,flip,locSideID) !0: flip=0
           Ut(:,ijk(1),ijk(2),ijk(3),ElemID) = Ut(:,ijk(1),ijk(2),ijk(3),ElemID) + &
                (Flux_master(:,p,q,SideID) - 1./2.*(FluxB_sum - FluxB(:,ijk(idx))) * NormalSigns(locSideID)) * LegHat(ijk(idx))
@@ -124,19 +138,16 @@ DO SideID=firstSideID,lastSideID
         FluxTmp(:,S2V2(1,p,q,flip,locSideID),S2V2(2,p,q,flip,locSideID)) = Flux_master(:,p,q,SideID)
 #endif
       END DO; END DO ! p,q
-#if ((PP_NodeType==1 && !defined(SPLIT_DG)) || (PP_NodeType==2 && defined(EXACT_MM)))
+
+#ifndef SPLIT_DG
+      ! Apply the resulting SurfInt
       CALL DoSurfInt(&
 #ifdef WITHnVars
           TP_nVar, &
 #endif
           Nloc,FluxTmp,L_HatMinus,   L_HatPlus,      locSideID,Ut(:,:,:,:,ElemID))
-#elif (PP_NodeType==2 && !defined(EXACT_MM))
-      CALL DoSurfInt(&
-#ifdef WITHnVars
-          TP_nVar, &
-#endif
-          Nloc,FluxTmp,L_HatMinus(0),L_HatPlus(Nloc),locSideID,Ut(:,:,:,:,ElemID))
-#endif
+#endif /*SPLIT_DG*/
+
 #if FV_ENABLED
     ELSE
 
@@ -161,7 +172,7 @@ DO SideID=firstSideID,lastSideID
     IF (FV_Elems_slave(SideID).EQ.0) THEN ! DG Element
 #endif /* FV_ENABLED */
       ! orient flux to fit flip and locSide to element local system
-#if (PP_NodeType == 1) && defined(SPLIT_DG)
+#ifdef SPLIT_DG
       ! Get the right metric terms
       SELECT CASE(nblocSideID)
         CASE(XI_MINUS  ) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_fTilde(:,:,:,:,nbElemID,0); idx = 1; Leg = L_minus; LegHat = L_HatMinus
@@ -175,20 +186,21 @@ DO SideID=firstSideID,lastSideID
       END SELECT
 #endif
       DO q=0,ZDIM(Nloc); DO p=0,Nloc
-#if (PP_NodeType == 1) && defined(SPLIT_DG)
+#ifdef SPLIT_DG
+        ! Calculate the split flux between each interior Gauss point and the respective boundary point: f^hat_Lk
         FluxB_sum = 0.0
-        ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V mapping
         DO l=0,PP_N
+          ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V mapping
           ijk(:)=S2V(:,l,p,q,flip,nblocSideID) !0: flip=0
+          ! Similar to prolong to face of the two-point flux
           CALL SplitDGVolume_pointer(U(:,ijk(1),ijk(2),ijk(3),nbElemID),UPrim(:,ijk(1),ijk(2),ijk(3) ,nbElemID),      &
                                      U_slave(:,p,q,SideID)             ,UPrim_slave(:,p,q,SideID) ,                   &
                                      Metrics(:,ijk(1),ijk(2),ijk(3))   ,Ja_slave(idx,:,p,q,SideID),FluxB(:,ijk(idx)))
           FluxB_sum = FluxB_sum + FluxB(:,ijk(idx)) * Leg(ijk(idx))
         END DO
-#endif
-        ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V mapping
-#if (PP_NodeType == 1) && defined(SPLIT_DG)
+        ! Apply the resulting SurfInt in a line-wise manner to the interior DOFs, s.a.
         DO l=0,PP_N
+          ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V mapping
           ijk(:)=S2V(:,l,p,q,flip,nblocSideID) !0: flip=0
           Ut(:,ijk(1),ijk(2),ijk(3),nbElemID) = Ut(:,ijk(1),ijk(2),ijk(3),nbElemID) + &
             (- Flux_slave(:,p,q,SideID) - 1./2.*(FluxB_sum - FluxB(:,ijk(idx))) * NormalSigns(nblocSideID)) * LegHat(ijk(idx))
@@ -197,19 +209,14 @@ DO SideID=firstSideID,lastSideID
         FluxTmp(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID)) = -Flux_slave(:,p,q,SideID)
 #endif
       END DO; END DO ! p,q
-#if ((PP_NodeType==1 && !defined(SPLIT_DG)) || (PP_NodeType==2 && defined(EXACT_MM)))
+#ifndef SPLIT_DG
       CALL DoSurfInt(&
 #ifdef WITHnVars
           TP_nVar, &
 #endif
           Nloc,FluxTmp,L_HatMinus,   L_HatPlus,      nblocSideID,Ut(:,:,:,:,nbElemID))
-#elif (PP_NodeType==2 && !defined(EXACT_MM))
-      CALL DoSurfInt(&
-#ifdef WITHnVars
-          TP_nVar, &
-#endif
-          Nloc,FluxTmp,L_HatMinus(0),L_HatPlus(Nloc),nblocSideID,Ut(:,:,:,:,nbElemID))
-#endif
+#endif /*SPLIT_DG*/
+
 #if FV_ENABLED
     ELSE
 
@@ -227,6 +234,155 @@ DO SideID=firstSideID,lastSideID
   END IF
 END DO ! SideID=1,nSides
 END SUBROUTINE SurfInt
+
+#elif (PP_NodeType == 2)
+!==================================================================================================================================
+!> In this routine, the surface integral will be computed for Gauss-Lobatto nodes
+!==================================================================================================================================
+SUBROUTINE SurfInt(&
+#ifdef WITHnVars
+        TP_nVar, &
+#endif
+        Nloc,Flux_master,Flux_slave,Ut,doMPISides,L_HatMinus,L_HatPlus)
+! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Mesh_Vars    ,ONLY: SideToElem,nSides,ElemToSide
+USE MOD_Mesh_Vars    ,ONLY: firstMPISide_YOUR,lastMPISide_MINE
+USE MOD_Mesh_Vars    ,ONLY: S2V2,nElems
+USE MOD_DG_Vars      ,ONLY: U,UPrim,U_master,U_slave,UPrim_master,UPrim_slave
+USE MOD_Mesh_Vars    ,ONLY: Metrics_fTilde,Metrics_gTilde,nElems,Ja_face,Ja_slave
+#if PP_dim==3 || VOLINT_VISC
+USE MOD_Mesh_Vars    ,ONLY: Metrics_hTilde
+#endif
+#if FV_ENABLED
+USE MOD_FV_Vars      ,ONLY: FV_Elems_master,FV_Elems_slave,FV_w_inv
+#endif /* FV_ENABLED */
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+#ifdef WITHnVars
+INTEGER,INTENT(IN) :: TP_nVar                                           !< number of variables
+#endif
+INTEGER,INTENT(IN) :: Nloc                                              !< (IN) Polynomial degree
+LOGICAL,INTENT(IN) :: doMPISides                                        !<= .TRUE. only MPISides_YOUR+MPIMortar are filled
+                                                                        !<=.FALSE. BCSides+(Mortar-)InnerSides+MPISides_MINE
+REAL,INTENT(IN)    :: Flux_master(1:TP_nVar,0:Nloc,0:ZDIM(Nloc),nSides) !< (IN) Flux on master side
+REAL,INTENT(IN)    :: Flux_slave (1:TP_nVar,0:Nloc,0:ZDIM(Nloc),nSides) !< (IN) Flux on slave side
+!> (IN) Lagrange polynomials evaluated at \f$\xi=+1\f$ and \f$\xi=-1\f$ and premultiplied by mass matrix
+REAL,INTENT(IN)    :: L_HatPlus(0:Nloc),L_HatMinus(0:Nloc)
+REAL,INTENT(INOUT) :: Ut(TP_nVar,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)   !< (INOUT) Time derivative of the solution
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: ElemID,nbElemID,locSideID,nblocSideID,SideID,p,q,flip
+INTEGER            :: firstSideID,lastSideID
+REAL               :: FluxTmp(1:TP_nVar,0:Nloc,0:ZDIM(Nloc))
+!==================================================================================================================================
+
+IF(doMPISides)THEN
+  ! MPI YOUR
+  firstSideID = firstMPISide_YOUR
+   lastSideID = nSides
+ELSE
+  ! inner sides and MPI mine
+  firstSideID = 1
+   lastSideID = lastMPISide_MINE
+END IF
+
+DO SideID=firstSideID,lastSideID
+  ElemID      = SideToElem(S2E_ELEM_ID,   SideID)
+  nbElemID    = SideToElem(S2E_NB_ELEM_ID,SideID)
+
+  ! master sides
+  IF(ElemID.GT.0)THEN
+    locSideID = SideToElem(S2E_LOC_SIDE_ID,SideID)
+    flip      = 0
+
+#if FV_ENABLED
+    ! orient flux to fit flip and locSide to element local system
+    IF (FV_Elems_master(SideID).EQ.0) THEN ! DG Element
+#endif /* FV_ENABLED */
+      ! Calculate the split flux between each interior Gauss point and the respective boundary point
+      DO q=0,ZDIM(Nloc); DO p=0,Nloc
+        ! note: for master sides, the mapping S2V2 should be a unit matrix
+        FluxTmp(:,S2V2(1,p,q,flip,locSideID),S2V2(2,p,q,flip,locSideID)) = Flux_master(:,p,q,SideID)
+      END DO; END DO ! p,q
+#ifdef EXACT_MM
+      CALL DoSurfInt(&
+#ifdef WITHnVars
+          TP_nVar, &
+#endif
+          Nloc,FluxTmp,L_HatMinus,   L_HatPlus,      locSideID,Ut(:,:,:,:,ElemID))
+#else /*EXACT_MM*/
+      CALL DoSurfInt(&
+#ifdef WITHnVars
+          TP_nVar, &
+#endif
+          Nloc,FluxTmp,L_HatMinus(0),L_HatPlus(Nloc),locSideID,Ut(:,:,:,:,ElemID))
+#endif /*EXACT_MM*/
+
+#if FV_ENABLED
+    ELSE
+
+      DO q=0,ZDIM(Nloc); DO p=0,Nloc
+        FluxTmp(:,S2V2(1,p,q,flip,locSideID),S2V2(2,p,q,flip,locSideID)) = Flux_master(:,p,q,SideID)
+      END DO; END DO ! p,q
+
+      CALL SurfInt_FV(&
+#ifdef WITHnVars
+          TP_nVar, &
+#endif
+      Nloc,FluxTmp,FV_w_inv,locSideID,Ut(:,:,:,:,ElemID))
+    END IF
+#endif /* FV_ENABLED */
+  END IF
+
+  ! slave sides
+  IF(nbElemID.GT.0)THEN
+    nblocSideID = SideToElem(S2E_NB_LOC_SIDE_ID,SideID)
+    flip        = SideToElem(S2E_FLIP,SideID)
+#if FV_ENABLED
+    IF (FV_Elems_slave(SideID).EQ.0) THEN ! DG Element
+#endif /* FV_ENABLED */
+      ! orient flux to fit flip and locSide to element local system
+      DO q=0,ZDIM(Nloc); DO p=0,Nloc
+        ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V mapping
+        FluxTmp(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID)) = -Flux_slave(:,p,q,SideID)
+      END DO; END DO ! p,q
+
+#ifdef EXACT_MM
+      CALL DoSurfInt(&
+#ifdef WITHnVars
+          TP_nVar, &
+#endif
+          Nloc,FluxTmp,L_HatMinus,   L_HatPlus,      nblocSideID,Ut(:,:,:,:,nbElemID))
+#else /*EXACT_MM*/
+      CALL DoSurfInt(&
+#ifdef WITHnVars
+          TP_nVar, &
+#endif
+          Nloc,FluxTmp,L_HatMinus(0),L_HatPlus(Nloc),nblocSideID,Ut(:,:,:,:,nbElemID))
+#endif /*EXACT_MM*/
+
+#if FV_ENABLED
+    ELSE
+
+      DO q=0,ZDIM(Nloc); DO p=0,Nloc
+        FluxTmp(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID)) = -Flux_slave(:,p,q,SideID)
+      END DO; END DO ! p,q
+
+      CALL SurfInt_FV(&
+#ifdef WITHnVars
+          TP_nVar, &
+#endif
+          Nloc,FluxTmp,FV_w_inv,nblocSideID,Ut(:,:,:,:,nbElemID))
+    END IF
+#endif /* FV_ENABLED */
+  END IF
+END DO ! SideID=1,nSides
+END SUBROUTINE SurfInt
+#endif /*(PP_NodeType == 1)*/
+
 
 #if FV_ENABLED
 !==================================================================================================================================

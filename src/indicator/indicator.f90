@@ -123,10 +123,10 @@ USE MOD_Mesh_Vars           ,ONLY: nElems
 USE MOD_IO_HDF5             ,ONLY: AddToElemData,ElementOut
 USE MOD_Overintegration_Vars,ONLY: NUnder
 USE MOD_Filter_Vars         ,ONLY: NFilter
-#if FV_ENABLED == 3
-USE MOD_Interpolation       ,ONLY: GetVandermonde
-USE MOD_Interpolation_Vars  ,ONLY: NodeTypeVISU,NodeType
-#endif /*FV_ENABLED == 3*/
+! #if FV_ENABLED == 3
+! USE MOD_Interpolation       ,ONLY: GetVandermonde
+! USE MOD_Interpolation_Vars  ,ONLY: NodeTypeVISU,NodeType
+! #endif /*FV_ENABLED == 3*/
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -189,11 +189,11 @@ CASE(INDTYPE_PERSSON)
   CALL Abort(__STAMP__, &
       "Persson indicator for FV-Blending only works with Navier-Stokes equations.")
 #endif /* EQNSYSNR != 2 */
-#if FV_ENABLED == 3
-  ALLOCATE(VdmGaussEqui(0:PP_N,0:PP_N))
-  CALL GetVandermonde(PP_N,NodeType,PP_N,NodeTypeVISU,VdmGaussEqui)
-  CALL CalcSobelFilter()
-#endif /*FV_ENABLED == 3*/
+! #if FV_ENABLED == 3
+!   ALLOCATE(VdmGaussEqui(0:PP_N,0:PP_N))
+!   CALL GetVandermonde(PP_N,NodeType,PP_N,NodeTypeVISU,VdmGaussEqui)
+!   CALL CalcSobelFilter()
+! #endif /*FV_ENABLED == 3*/
 #endif /*FV_ENABLED*/
 CASE(-1) ! legacy
   IndicatorType=INDTYPE_DG
@@ -291,9 +291,10 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
     IndValue(iElem) = IndPerssonBlend(U(:,:,:,:,iElem))
     IndValue(iElem) = 1. / (1. + EXP(-sdT_FV * (IndValue(iElem) - T_FV)))
     ! Call Sobel indicator
-    CALL SobelIndicator(U(:,:,:,:,iElem),IndValue(iElem),FV_alpha(:,:,:,:,iElem),iElem)
+    ! CALL SobelIndicator(U(:,:,:,:,iElem),IndValue(iElem),FV_alpha(:,:,:,:,iElem),iElem)
     ! Limit to alpha_max
-    FV_alpha(:,:,:,:,iElem) = MIN(FV_alpha(:,:,:,:,iElem)*IndValue(iElem),FV_alpha_max)
+    ! FV_alpha(:,:,:,:,iElem) = MIN(FV_alpha(:,:,:,:,iElem)*IndValue(iElem),FV_alpha_max)
+    FV_alpha(:,:,:,:,iElem) = MIN(IndValue(iElem),FV_alpha_max)
   END DO ! iElem
   ! CALL FV_ExtendAlpha(FV_alpha)
   ! Do not compute FV contribution for elements below threshold
