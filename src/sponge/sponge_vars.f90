@@ -30,8 +30,12 @@ LOGICAL                        :: SpongeViz     !< Turn on to write a visualizat
 LOGICAL                        :: CalcPruettDamping=.FALSE. !< true if temporally varying, solution adaptive Pruett baseflow is used
 INTEGER                        :: nSpongeElems  !< number of elements for which sponge is applied
 INTEGER,ALLOCATABLE            :: spongeMap(:)  !< mapping from Elem -> spongElem
+REAL,ALLOCATABLE,TARGET        :: SpBaseFlow(:,:,:,:,:) !< precompute global reference state for whole field
+REAL,POINTER                   :: SpBaseFlow_p(:,:,:,:,:) !< Ponter to SpBaseFlow
+INTEGER                        :: SpBaseFlowType        !< Specifies the type of baseflow
 REAL,ALLOCATABLE               :: damping(:)    !< Strenght of damping per face
 REAL,ALLOCATABLE               :: SpongeMat(:,:,:,:) !< precomputed sponge functions per DOF and sponge elem
-REAL,ALLOCATABLE,TARGET        :: SpBaseFlow(:,:,:,:,:) !< precompute global reference state for whole field
+REAL,ALLOCATABLE               :: tempFilterWidthSp(:)       !< Filter width of each sponge region
+REAL,ALLOCATABLE               :: SpongeDistance(:)     !< Array containing the distance of the ramping of the sponge
 !==================================================================================================================================
 END MODULE MOD_Sponge_Vars

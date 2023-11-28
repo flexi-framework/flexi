@@ -137,7 +137,7 @@ USE MOD_Equation_Vars,ONLY:IniExactFunc
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: iElem,i,j,k
-INTEGER             :: SpongeExactFunc,SpongeRefState,SpBaseFlowType
+INTEGER             :: SpongeExactFunc,SpongeRefState
 CHARACTER(LEN=255)  :: BaseFlowFile
 LOGICAL             :: validBaseFlowFile
 !==================================================================================================================================
@@ -145,12 +145,6 @@ doSponge=GETLOGICAL('SpongeLayer')
 IF(.NOT.doSponge) RETURN
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT SPONGE...'
-
-damping   = GETREAL('damping')
-IF(damping .LE. 0.)  THEN
-  doSponge = .FALSE.
-  RETURN
-END IF
 
 SpongeViz=GETLOGICAL('SpongeViz')
 
@@ -359,7 +353,6 @@ DO iRamp=1,nSpongeRamps
     IF (SpBaseFlowType.EQ.SPONGEBASEFLOW_PRUETT) THEN
       ! Warning: This is defined per element. Gets overwritten for overlapping sponges!!!
       tempFilterWidthSp(iElem)       = PruettTimeFilterWidth(iRamp)
-      TimeFilterWidthBaseflow(iElem) = PruettTimeFilterWidth(iRamp)
     END IF
     dampingFac(iRamp,iElem) = damping(iRamp)
     CYCLE
@@ -641,7 +634,7 @@ DO iSpongeElem=1,nSpongeElems
 #endif
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) - SpongeMat(   i,j,k,iSpongeElem) * &
-                          (U(:,i,j,k,iElem) - SpBaseFlow(:,i,j,k,iElem))
+                          (U(:,i,j,k,iElem) - SpBaseFlow_p(:,i,j,k,iElem))
     END DO; END DO; END DO
 #if FV_ENABLED
   END IF
