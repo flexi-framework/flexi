@@ -31,7 +31,6 @@ LOGICAL                        :: CalcPruettDamping=.FALSE. !< true if temporall
 INTEGER                        :: nSpongeElems  !< number of elements for which sponge is applied
 INTEGER,ALLOCATABLE            :: spongeMap(:)  !< mapping from Elem -> spongElem
 REAL,ALLOCATABLE,TARGET        :: SpBaseFlow(:,:,:,:,:) !< precompute global reference state for whole field
-REAL,POINTER                   :: SpBaseFlow_p(:,:,:,:,:) !< Ponter to SpBaseFlow
 INTEGER                        :: SpBaseFlowType        !< Specifies the type of baseflow
 REAL,ALLOCATABLE               :: damping(:)    !< Strenght of damping per face
 REAL,ALLOCATABLE               :: SpongeMat(:,:,:,:) !< precomputed sponge functions per DOF and sponge elem
