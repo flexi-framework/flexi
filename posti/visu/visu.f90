@@ -764,6 +764,7 @@ END SUBROUTINE visu
 SUBROUTINE FinalizeVisu()
 ! MODULES
 USE MOD_Globals
+USE MOD_Globals_Vars         ,ONLY: StartTime
 USE MOD_Commandline_Arguments,ONLY: FinalizeCommandlineArguments
 USE MOD_DG                   ,ONLY: FinalizeDG
 USE MOD_DG_Vars

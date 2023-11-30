@@ -297,14 +297,16 @@ END SUBROUTINE UpdateTimeStep
 SUBROUTINE AnalyzeTimeStep()
 ! MODULES
 USE MOD_Globals
+USE MOD_Globals_Vars        ,ONLY: SimulationEfficiency,StartTime,WallTime
+USE MOD_PreProc
 USE MOD_Analyze             ,ONLY: Analyze
-USE MOD_Analyze_Vars        ,ONLY: analyze_dt,WriteData_dt,tWriteData,nWriteData
+USE MOD_Analyze_Vars        ,ONLY: analyze_dt,WriteData_dt,tWriteData,nWriteData,PID
 USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
 USE MOD_DG                  ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars             ,ONLY: U
 USE MOD_Equation_Vars       ,ONLY: StrVarNames
 USE MOD_HDF5_Output         ,ONLY: WriteState,WriteBaseFlow
-USE MOD_Mesh_Vars           ,ONLY: MeshFile
+USE MOD_Mesh_Vars           ,ONLY: MeshFile,nGlobalElems
 USE MOD_Output              ,ONLY: Visualize,PrintAnalyze,PrintStatusLine
 USE MOD_PruettDamping       ,ONLY: TempFilterTimeDeriv
 USE MOD_RecordPoints        ,ONLY: RecordPoints,WriteRP
@@ -313,9 +315,11 @@ USE MOD_Sponge_Vars         ,ONLY: CalcPruettDamping
 USE MOD_TestCase            ,ONLY: AnalyzeTestCase
 USE MOD_TestCase_Vars       ,ONLY: nAnalyzeTestCase
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
-USE MOD_TimeDisc_Vars       ,ONLY: t,dt,dt_min,tAnalyze,tEnd,CalcTimeStart
+USE MOD_TimeDisc_Vars       ,ONLY: t,dt,dt_min,tAnalyze,iter_analyze,nRKStages,tEnd
 USE MOD_TimeDisc_Vars       ,ONLY: iter,iter_analyze,maxIter
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize,writeCounter
+USE MOD_Restart_Vars        ,ONLY: RestartTime,RestartWallTime
+USE MOD_TimeDisc_Vars       ,ONLY: CalcTimeStart,CalcTimeEnd
 #if FV_ENABLED == 1
 USE MOD_FV_Switching        ,ONLY: FV_Info
 #elif FV_ENABLED == 2
@@ -330,6 +334,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+REAL    :: WallTimeEnd               !> wall time of simulation end
 !===================================================================================================================================
 
 IF (iter.EQ.maxIter) THEN
@@ -340,6 +345,17 @@ END IF
 ! Call DG operator to fill face data, fluxes, gradients for analyze
 IF (doAnalyze) THEN
   CALL DGTimeDerivative_weakForm(t)
+END IF
+
+! determine the SimulationEfficiency and PID here,
+! because it is used in ComputeElemLoad -> WriteElemTimeStatistics
+IF(doAnalyze) THEN
+  ! Get calculation time per DOF
+  CalcTimeEnd          = FLEXITIME()
+  WallTimeEnd          = CalcTimeEnd
+  WallTime             = WallTimeEnd-StartTime
+  SimulationEfficiency = (t-RestartTime)/((WallTimeEnd-RestartWallTime)*nProcessors/3600.) ! in [s] / [CPUh]
+  PID                  = (CalcTimeEnd-CalcTimeStart)*REAL(nProcessors)/(REAL(nGlobalElems)*REAL((PP_N+1)**PP_dim)*REAL(iter_analyze))/nRKStages
 END IF
 
 ! Call your analysis routine for your testcase here.
