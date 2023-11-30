@@ -70,6 +70,8 @@ CALL prms%CreateLogicalOption(  "useCurvedsOld"      , "Controls usage of high-o
                                                        "high-order data and treat curved meshes as linear meshes.", '.TRUE.')
 CALL prms%CreateLogicalOption(  "useCurvedsNew"      , "Controls usage of high-order information in new mesh. Turn off to discard "//&
                                                        "high-order data and treat curved meshes as linear meshes.", '.TRUE.')
+CALL prms%CreateStringOption(   "NodeTypeNew  "      , "Change nodetype, tested for switching betwee GAUSS and GAUSS-LOBATTO "//& 
+                                                       "on the same mesh.")
 CALL prms%CreateIntOption(      "NInter"             , "Polynomial degree used for interpolation on new mesh (should be equal or  "//&
                                                        "higher than NNew) - the state will be interpolated to this degree and then "//&
                                                        "projected down to NNew")

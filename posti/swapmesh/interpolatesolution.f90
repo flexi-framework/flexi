@@ -44,7 +44,7 @@ USE MOD_Globals
 USE MOD_Basis,             ONLY: LagrangeInterpolationPolys,BarycentricWeights
 USE MOD_Interpolation,     ONLY: GetNodesAndWeights
 USE MOD_SwapMesh_Vars,     ONLY: equalElem,Vdm_GPNState_GPNNew
-USE MOD_SwapMesh_Vars,     ONLY: NState,NInter,NNew,NodeTypeState,RefState,nVar_State
+USE MOD_SwapMesh_Vars,     ONLY: NState,NInter,NNew,NodeTypeState,RefState,nVar_State,NodeTypeOut
 USE MOD_SwapMesh_Vars,     ONLY: Vdm_CLNInter_GPNNew
 USE MOD_SwapMesh_Vars,     ONLY: UOld,xiInter,InterToElem,nElemsNew,IPDone
 USE MOD_SwapMesh_Vars,     ONLY: Elem_IJK,ExtrudeTo3D,ExtrudeK
@@ -99,7 +99,7 @@ DO iElemNew=1,nElemsNew
   ! Equal elements
   IF(equalElem(iElemNew).GT.0) THEN
     iElemOld=equalElem(iElemNew)
-    IF(NState.EQ.NNew)THEN
+    IF((NState.EQ.Nnew).AND.(NodeTypeOut.EQ.NodetypeState))THEN
       U(:,:,:,:,iElemNew)=UOld(:,:,:,:,iElemOld)
     ELSE
       CALL ChangeBasisVolume(nVar_State,NState,NNew,Vdm_GPNState_GPNNew,UOld(:,:,:,:,iElemOld),U(:,:,:,:,iElemNew))
