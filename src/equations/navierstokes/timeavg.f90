@@ -77,7 +77,7 @@ IF((nVarAvg.EQ.0).AND.(nVarFluc.EQ.0))THEN
     'No quantities for time averaging have been specified. Please specify quantities or disable time averaging!')
 END IF
 #if FV_ENABLED == 1
-SWRITE(UNIT_stdOut,'(A)') 'Warning: If FV is enabled, time averaging is performed on integral cell mean values.'
+SWRITE(UNIT_stdOut,'(A)') 'Warning: If FV Switching is enabled, time averaging is performed on integral cell mean values.'
 #endif
 
 ! Define variables to be averaged
@@ -466,7 +466,7 @@ DO iElem=1,nElems
 #if PARABOLIC
   IF(CalcFluc(17).OR.CalcFluc(18))THEN  !'Dissipation via vel gradients'
 #if FV_ENABLED  == 1
-  STOP 'WriteTimeAverage for dissipation via vel gradients (DR_u / DR_S) not implemented yet for FV!'
+  STOP 'WriteTimeAverage for dissipation via vel gradients (DR_u / DR_S) not implemented yet for FV Switching!'
 #endif
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       GradVel(:,1)=GradUx(LIFT_VELV,i,j,k,iElem)
