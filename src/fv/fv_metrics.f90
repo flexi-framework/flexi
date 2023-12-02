@@ -375,9 +375,11 @@ DEALLOCATE(Geo)
 CALL FV_Build_Vdm_Gauss_FVboundary(PP_N, Vdm_Gauss_FVboundary)
 CALL GetVandermonde(NgeoRef, NodeType, PP_N, NodeType, Vdm_NgeoRef_N, modal=.TRUE.)
 Vdm_NgeoRef_FV = MATMUL(FV_Vdm, Vdm_NgeoRef_N)
+#if FV_RECONSTRUCT
 CALL GetVandermonde(PP_N,NodeTypeCL,PP_N,NodeType, Vdm_CLN_GaussN, modal=.FALSE.)
 Vdm_CLN_FV = MATMUL(FV_Vdm, Vdm_CLN_GaussN)
 Vdm_CLN_FVboundary = MATMUL(Vdm_Gauss_FVboundary, Vdm_CLN_GaussN)
+#endif
 DO iElem=1,nElems
   ! compute Jacobian
   CALL ChangeBasisVolume(1,NGeoRef,PP_N,Vdm_NgeoRef_FV,DetJac_Ref(:,:,:,:,iElem),FV_DetJac)
