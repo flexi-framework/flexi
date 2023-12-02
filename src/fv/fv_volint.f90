@@ -194,7 +194,7 @@ DO iElem=1,nElems
       Ut_FV_xi  (:,i  ,j,k) =                          - F_FV(:,j,k) * FV_SurfElemXi_sw(j,k,i,iElem) * FV_w_inv(i)
     END DO; END DO
 #endif /*FV_ENABLED*/
-  END DO ! i
+END DO ! i
 #if FV_ENABLED == 3
   DO i=1,PP_N-1
     Ut_FV_xi  (:,i,:,:) = Ut_FV_xi  (:,i,:,:) + Ut_FV_xi  (:,i-1,:,:)
@@ -256,7 +256,7 @@ DO iElem=1,nElems
       Ut_FV_eta (:,i,j  ,k) =                          - F_FV(:,i,k) * FV_SurfElemEta_sw(i,k,j,iElem) * FV_w_inv(j)
     END DO; END DO
 #endif /*FV_ENABLED*/
-  END DO ! j
+END DO ! j
 #if FV_ENABLED == 3
   DO j=1,PP_N-1
     Ut_FV_eta (:,:,j,:) = Ut_FV_eta (:,:,j,:) + Ut_FV_eta (:,:,j-1,:)
@@ -320,6 +320,9 @@ DO iElem=1,nElems
   ! 2. Blend the DG and the FV volume integral                     (Rueda-Ramírez, 2022; formula: 18)
   ! 3. Calculate the volume integral from the blended inner fluxes (Rueda-Ramírez, 2022; formula: 17)
 
+  ! u_t = - (f^hat_{i,i+1}-f^hat_{i-1,i})^DG - (f^hat_{i,i+1}-f^hat_{i-1,i})^FV
+  ! f^hat_{a,b} = (1-\alpha_{a,b}) f^hat_{a,b}^DG + \alpha_{a,b} f^hat_{a,b}^FV
+  ! f^hat_{i,i+1}^DG = f^hat_{i-1,i}^DG + f^hat_{i,i+1}^DG
   DO k=0,PP_NZ; DO j=0,PP_N
     ! Blend in xi   direction
     Flux_xi  (:,0,j,k)       = Ut_xi    (:,0,j,k,iElem)
@@ -339,32 +342,32 @@ DO iElem=1,nElems
   DO k=0,PP_NZ; DO i=0,PP_N
     ! Blend in eta  direction
     Flux_eta (:,i,0,k)       = Ut_eta   (:,i,0,k,iElem)
-    Ut_eta   (:,i,0,k,iElem) = Flux_eta (:,i,0,k      ) * (1.-FV_alpha(FV_int(2),i,0,k,iElem))  + Ut_FV_eta (:,i,0,k) * FV_alpha(FV_int(2),i,0,k,iElem)
+    Ut_eta   (:,i,0,k,iElem) = Flux_eta (:,i,0,k      ) * (1.-FV_alpha(FV_int(1),i,0,k,iElem))  + Ut_FV_eta (:,i,0,k) * FV_alpha(FV_int(1),i,0,k,iElem)
     Ut       (:,i,0,k,iElem) = Ut       (:,i,0,k,iElem) + Ut_eta (             :,i,0,k,iElem)
     DO j=1,PP_N-1
       Flux_eta (:,i,j,k)       = Flux_eta (:,i,j-1,k)     + Ut_eta (     :,i,j  ,k,iElem)
-      Ut_eta   (:,i,j,k,iElem) = Flux_eta (:,i,j  ,k)     * (1.-FV_alpha(FV_int(2),i,j  ,k,iElem)) + Ut_FV_eta (:,i,j,k) * FV_alpha(FV_int(2),i,j,k,iElem)
+      Ut_eta   (:,i,j,k,iElem) = Flux_eta (:,i,j  ,k)     * (1.-FV_alpha(FV_int(1),i,j  ,k,iElem)) + Ut_FV_eta (:,i,j,k) * FV_alpha(FV_int(1),i,j,k,iElem)
       Ut       (:,i,j,k,iElem) = Ut       (:,i,j,k,iElem) + (-Ut_eta (           :,i,j-1,k,iElem)  + Ut_eta    (:,i,j,k,iElem))
     END DO ! i
     ! Calculate the volume integral from the blended inner fluxes (Rueda-Ramírez, 2022; formula: 17)
     Flux_eta (:,i,PP_N,k)       = Ut_eta (  :,i,PP_N,k,iElem)
-    Ut_eta   (:,i,PP_N,k,iElem) = Flux_eta (:,i,PP_N  ,k) * (1.-FV_alpha(FV_int(2),i,PP_N,k,iElem)) + Ut_FV_eta (:,i,PP_N,k) * FV_alpha(FV_int(2),i,PP_N,k,iElem)
+    Ut_eta   (:,i,PP_N,k,iElem) = Flux_eta (:,i,PP_N  ,k) * (1.-FV_alpha(FV_int(1),i,PP_N,k,iElem)) + Ut_FV_eta (:,i,PP_N,k) * FV_alpha(FV_int(1),i,PP_N,k,iElem)
     Ut       (:,i,PP_N,k,iElem) = Ut(       :,i,PP_N,k,iElem) + Ut_eta (         :,i,PP_N,k,iElem)
   END DO; END DO ! j,k
 #if PP_dim == 3
   DO j=0,PP_N; DO i=0,PP_N
     ! Blend in zeta direction
     Flux_zeta(:,i,j,0)       = Ut_zeta  (:,i,j,0,iElem)
-    Ut_zeta  (:,i,j,0,iElem) = Flux_zeta(:,i,j,0      ) * (1.-FV_alpha(FV_int(3),i,j,0,iElem)) + Ut_FV_zeta(:,i,j,0) * FV_alpha(FV_int(3),i,j,0,iElem)
+    Ut_zeta  (:,i,j,0,iElem) = Flux_zeta(:,i,j,0      ) * (1.-FV_alpha(FV_int(1),i,j,0,iElem)) + Ut_FV_zeta(:,i,j,0) * FV_alpha(FV_int(1),i,j,0,iElem)
     Ut       (:,i,j,0,iElem) = Ut       (:,i,j,0,iElem) + Ut_zeta(             :,i,j,0,iElem)
     DO k=1,PP_NZ-1
       Flux_zeta(:,i,j,k)       = Flux_zeta(:,i,j,k-1)     + Ut_zeta(     :,i,j,k  ,iElem)
-      Ut_zeta  (:,i,j,k,iElem) = Flux_zeta(:,i,j,k  )     * (1.-FV_alpha(FV_int(3),i,j,k  ,iElem)) + Ut_FV_zeta(:,i,j,k) * FV_alpha(FV_int(3),i,j,k,iElem)
+      Ut_zeta  (:,i,j,k,iElem) = Flux_zeta(:,i,j,k  )     * (1.-FV_alpha(FV_int(1),i,j,k  ,iElem)) + Ut_FV_zeta(:,i,j,k) * FV_alpha(FV_int(1),i,j,k,iElem)
       Ut       (:,i,j,k,iElem) = Ut       (:,i,j,k,iElem) + (-Ut_zeta(           :,i,j,k-1,iElem)  + Ut_zeta(   :,i,j,k,iElem))
     END DO ! i
     ! Calculate the volume integral from the blended inner fluxes (Rueda-Ramírez, 2022; formula: 17)
     Flux_zeta(:,i,j,PP_N)       = Ut_zeta(  :,i,j,PP_N,iElem)
-    Ut_zeta  (:,i,j,PP_N,iElem) = Flux_zeta(:,i,j,PP_N  ) * (1.-FV_alpha(FV_int(3),i,j,PP_N,iElem)) + Ut_FV_zeta(:,i,j,PP_N) * FV_alpha(FV_int(3),i,j,PP_N,iElem)
+    Ut_zeta  (:,i,j,PP_N,iElem) = Flux_zeta(:,i,j,PP_N  ) * (1.-FV_alpha(FV_int(1),i,j,PP_N,iElem)) + Ut_FV_zeta(:,i,j,PP_N) * FV_alpha(FV_int(1),i,j,PP_N,iElem)
     Ut       (:,i,j,PP_N,iElem) = Ut(       :,i,j,PP_N,iElem) + Ut_zeta(         :,i,j,PP_N,iElem)
   END DO; END DO ! j,k
 #endif /* PP_dim == 3 */

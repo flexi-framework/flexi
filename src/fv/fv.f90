@@ -207,17 +207,40 @@ ALLOCATE(FV_alpha_slave( nSides))
 FV_alpha = 0.
 CALL AddToElemData(ElementOut,'FV_alpha',FV_alpha)
 
+#if PP_NodeType == 1
+ALLOCATE(FV_U_master(PP_nVar,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(FV_U_slave( PP_nVar,0:PP_N,0:PP_NZ,1:nSides))
+FV_U_master=0.
+FV_U_slave=0.
+
+! Repeat the U, U_Minus, U_Plus structure for the primitive quantities
+ALLOCATE(FV_UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(FV_UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides))
+FV_UPrim_master=0.
+FV_UPrim_slave=0.
+
+! Allocate two fluxes per side (necessary for coupling of FV and DG)
+ALLOCATE(FV_Flux_master(PP_nVar,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(FV_Flux_slave (PP_nVar,0:PP_N,0:PP_NZ,1:nSides))
+FV_Flux_master=0.
+FV_Flux_slave=0.
+#endif
+
 #elif FV_ENABLED == 3
 ! Initialize parameters for FV Blending
 FV_alpha_min = GETREAL('FV_alpha_min')
 FV_alpha_max = GETREAL('FV_alpha_max')
 
-FV_dim = 3
+FV_dim = 1 !3
 ALLOCATE(FV_int(FV_dim))
-DO i = 1,3
-  FV_int(i) = MERGE(i,1,FV_dim.EQ.3)
-END DO
+FV_int(:) = 1.
+!DO i = 1,3
+!  FV_int(i) = MERGE(i,1,FV_dim.EQ.3)
+!END DO
 ALLOCATE(FV_alpha(FV_dim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
+ALLOCATE(FV_alpha_master(nSides))
+ALLOCATE(FV_alpha_slave( nSides))
+
 ALLOCATE(Ut_xi(  PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
 ALLOCATE(Ut_eta( PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
 #if PP_dim == 3
@@ -529,8 +552,18 @@ SDEALLOCATE(FV_surf_gradU_slave)
 SDEALLOCATE(FV_alpha)
 SDEALLOCATE(FV_alpha_slave )
 SDEALLOCATE(FV_alpha_master)
+#if PP_NodeType == 1
+SDEALLOCATE(FV_U_slave )
+SDEALLOCATE(FV_U_master)
+SDEALLOCATE(FV_UPrim_slave )
+SDEALLOCATE(FV_UPrim_master)
+SDEALLOCATE(FV_Flux_slave )
+SDEALLOCATE(FV_Flux_master)
+#endif
 #elif FV_ENABLED == 3
 SDEALLOCATE(FV_alpha)
+SDEALLOCATE(FV_alpha_slave )
+SDEALLOCATE(FV_alpha_master)
 SDEALLOCATE(Ut_xi)
 SDEALLOCATE(Ut_eta)
 #if PP_dim == 3

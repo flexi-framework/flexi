@@ -114,12 +114,12 @@ IF(InterpolationInitIsDone.AND.FVInitBasisIsDone)THEN
     'InitFV_Basis not ready to be called or already called.')
 END IF
 
-#if PARABOLIC
-#if !(FV_RECONSTRUCT)
-CALL CollectiveStop(__STAMP__, &
-  'FV_RECONSTRUCT=0 and PARABOLIC=T is not allowed. Switch off PARABOLIC or switch on FV_RECONSTRUCT!')
-#endif
-#endif
+! #if PARABOLIC
+! #if !(FV_RECONSTRUCT)
+! CALL CollectiveStop(__STAMP__, &
+!   'FV_RECONSTRUCT=0 and PARABOLIC=T is not allowed. Switch off PARABOLIC or switch on FV_RECONSTRUCT!')
+! #endif
+! #endif
 
 ! The indicator value is used to decide where FV sub-cells are needed
 ! TODO: Force overwrite not so nice....

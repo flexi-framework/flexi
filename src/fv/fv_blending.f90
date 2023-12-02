@@ -40,6 +40,12 @@ INTERFACE FV_ProlongFValphaToFace
 END INTERFACE
 #endif
 
+#if ((FV_ENABLED >= 2) && (PP_NodeType == 1))
+INTERFACE FV_CommAlpha
+  MODULE PROCEDURE FV_CommAlpha
+END INTERFACE
+#endif
+
 #if FV_ENABLED == 2 || FV_ENABLED == 3
 INTERFACE FV_Info
   MODULE PROCEDURE FV_Info
@@ -48,6 +54,9 @@ END INTERFACE
 
 #if FV_ENABLED == 2
 PUBLIC::FV_ExtendAlpha
+#endif
+#if ((FV_ENABLED >= 2) && (PP_NodeType == 1))
+PUBLIC::FV_CommAlpha
 #endif
 #if FV_ENABLED == 2 || FV_ENABLED == 3
 PUBLIC::FV_Info
@@ -188,6 +197,46 @@ DO iSide = 1,nSides
   END IF
 END DO
 END SUBROUTINE FV_ComputeExtendedAlpha
+#endif
+
+#if ((FV_ENABLED >= 2) && (PP_NodeType == 1))
+!==================================================================================================================================
+!> Extend the blending coefficient FV_alpha
+!==================================================================================================================================
+SUBROUTINE FV_CommAlpha()
+! MODULES
+USE MOD_PreProc
+USE MOD_FV_Mortar        ,ONLY: FV_alpha_Mortar
+USE MOD_FV_Vars          ,ONLY: FV_alpha_master,FV_alpha_slave
+#if USE_MPI
+USE MOD_Mesh_Vars        ,ONLY: nSides
+USE MOD_MPI              ,ONLY: StartExchange_FV_alpha,FinishExchangeMPIData
+USE MOD_MPI_Vars         ,ONLY: MPIRequest_FV_Elems,nNbProcs
+#endif
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+! TODO: You get here two times the network latency. Could be optimized
+CALL FV_ProlongFValphaToFace()
+#if USE_MPI
+! Prolong blending factor to faces
+! CALL FV_ProlongFValphaToFace(doMPISides=.TRUE.)
+CALL FV_alpha_Mortar(FV_alpha_master,FV_alpha_slave,doMPISides=.TRUE.)
+CALL StartExchange_FV_alpha(FV_alpha_slave,1,nSides,MPIRequest_FV_Elems(:,SEND),MPIRequest_FV_Elems(:,RECV),SendID=2)
+#endif
+! CALL FV_ProlongFValphaToFace(doMPISides=.FALSE.)
+CALL FV_alpha_Mortar(FV_alpha_master,FV_alpha_slave,doMPISides=.FALSE.)
+#if USE_MPI
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_Elems)
+
+CALL StartExchange_FV_alpha(FV_alpha_master,1,nSides,MPIRequest_FV_Elems(:,SEND),MPIRequest_FV_Elems(:,RECV),SendID=1)
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_Elems)
+#endif
+END SUBROUTINE FV_CommAlpha
 #endif /* FV_ENABLED */
 
 

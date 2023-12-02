@@ -286,6 +286,10 @@ USE MOD_FV_Vars             ,ONLY: FV_Elems_master,FV_Elems_slave,FV_Elems_Sum
 USE MOD_FV_Mortar           ,ONLY: FV_Elems_Mortar
 USE MOD_FV                  ,ONLY: FV_DGtoFV,FV_ConsToPrim
 USE MOD_FV_VolInt           ,ONLY: FV_VolInt
+#if ((FV_ENABLED >= 2) && (PP_NodeType == 1))
+USE MOD_FV_Vars             ,ONLY: FV_U_master,FV_U_slave,FV_UPrim_master,FV_UPrim_slave
+USE MOD_FV_Vars             ,ONLY: FV_Flux_master,FV_Flux_slave
+#endif /*((FV_ENABLED >= 2) && (PP_NodeType == 1))*/
 #if USE_MPI
 USE MOD_MPI                 ,ONLY: StartExchange_FV_Elems
 #endif /*USE_MPI*/
@@ -374,14 +378,32 @@ Call ConsToEntropy(PP_N,V,U)
 #if USE_MPI
 ! Step 3 for all slave MPI sides
 ! 3.1)
-CALL StartReceiveMPIData(U_slave,DataSizeSide,1,nSides,MPIRequest_U(:,SEND),SendID=2) ! Receive MINE / U_slave: slave -> master
+CALL StartReceiveMPIData(U_slave   ,DataSizeSide,1,nSides,MPIRequest_U(:,SEND)   ,SendID=2) ! Receive MINE / U_slave: slave -> master
+#if (FV_ENABLED == 2) && (PP_NodeType==1)
+CALL StartReceiveMPIData(FV_U_slave,DataSizeSide,1,nSides,MPIRequest_FV_U(:,SEND),SendID=2) ! Receive MINE / FV_U_slave: slave -> master
+#endif
+
+#if (FV_ENABLED == 2) && (PP_NodeType==1)
+#ifdef PP_EntropyVars
+! TODO: blending
+#else
+CALL ProlongToFaceCons(PP_N,U,U_master,U_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
+CALL ProlongToFaceCons(PP_N,U,FV_U_master,FV_U_slave,L_Minus,L_Plus,doMPISides=.TRUE.,pureFV=.TRUE.)
+#endif /*ifdef PP_EntropyVars*/
+#else /*FV_ENABLED*/
 #ifdef PP_EntropyVars
 CALL ProlongToFaceCons(PP_N,V,V_master,V_slave,U_master,U_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
 #else
 CALL ProlongToFaceCons(PP_N,U,U_master,U_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
 #endif /*ifdef PP_EntropyVars*/
+#endif /*FV_ENABLED*/
+
 CALL U_MortarCons(U_master,U_slave,doMPISides=.TRUE.)
-CALL StartSendMPIData(   U_slave,DataSizeSide,1,nSides,MPIRequest_U(:,RECV),SendID=2) ! SEND YOUR / U_slave: slave -> master
+CALL StartSendMPIData(   U_slave,DataSizeSide,1,nSides,MPIRequest_U(:,RECV)   ,SendID=2) ! SEND YOUR / U_slave: slave -> master
+#if (FV_ENABLED == 2) && (PP_NodeType==1)
+CALL U_MortarCons(FV_U_master,FV_U_slave,doMPISides=.TRUE.)
+CALL StartSendMPIData(FV_U_slave,DataSizeSide,1,nSides,MPIRequest_FV_U(:,RECV),SendID=2) ! SEND YOUR / FV_U_slave: slave -> master
+#endif
 #if FV_ENABLED
 ! 3.2)
 CALL FV_Elems_Mortar(FV_Elems_master,FV_Elems_slave,doMPISides=.TRUE.)
@@ -401,12 +423,25 @@ CALL StartSendMPIData(   FV_multi_slave,DataSizeSidePrim,1,nSides,MPIRequest_FV_
 
 ! Step 3 for all remaining sides
 ! 3.1)
+#if (FV_ENABLED == 2) && (PP_NodeType==1)
+#ifdef PP_EntropyVars
+! TODO:
+#else
+CALL ProlongToFaceCons(PP_N,U,U_master,U_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
+CALL ProlongToFaceCons(PP_N,U,FV_U_master,FV_U_slave,L_Minus,L_Plus,doMPISides=.FALSE.,pureFV=.TRUE.)
+#endif /*ifdef PP_EntropyVars*/
+#else /*FV_ENABLED*/
 #ifdef PP_EntropyVars
 CALL ProlongToFaceCons(PP_N,V,V_master,V_slave,U_master,U_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
 #else
 CALL ProlongToFaceCons(PP_N,U,U_master,U_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
 #endif /*ifdef PP_EntropyVars*/
+#endif
+
 CALL U_MortarCons(U_master,U_slave,doMPISides=.FALSE.)
+#if (FV_ENABLED == 2) && (PP_NodeType==1)
+CALL U_MortarCons(FV_U_master,FV_U_slave,doMPISides=.FALSE.)
+#endif
 #if FV_ENABLED
 ! 3.2)
 CALL FV_Elems_Mortar(FV_Elems_master,FV_Elems_slave,doMPISides=.FALSE.)
@@ -422,6 +457,9 @@ CALL U_MortarPrim(FV_multi_master,FV_multi_slave,doMPiSides=.FALSE.)
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U)        ! U_slave: slave -> master
 #if FV_ENABLED
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_Elems) ! FV_Elems_slave: slave -> master
+#if (FV_ENABLED == 2) && (PP_NodeType==1)
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_U)     ! FV_U_slave: slave -> master
+#endif
 #if FV_RECONSTRUCT
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_gradU) ! FV_multi_slave: slave -> master
 #endif
@@ -432,12 +470,15 @@ CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_gradU) ! FV_multi_slave: sla
 !    Attention: For FV with 2nd order reconstruction U_master/slave and therewith UPrim_master/slave are still only 1st order
 ! TODO: Linadv?
 CALL GetPrimitiveStateSurface(U_master,U_slave,UPrim_master,UPrim_slave)
+#if (FV_ENABLED == 2) && (PP_NodeType==1)
+CALL GetPrimitiveStateSurface(FV_U_master,FV_U_slave,FV_UPrim_master,FV_UPrim_slave)
+#endif
 #if FV_ENABLED
 ! Build four-states-array for the 4 different combinations DG/DG(0), FV/DG(1), DG/FV(2) and FV/FV(3) a face can be.
 FV_Elems_Sum = FV_Elems_master + 2*FV_Elems_slave
 #endif
 
-#if FV_ENABLED && FV_RECONSTRUCT
+#if FV_RECONSTRUCT
 ! [ 5. Second order reconstruction (computation of slopes) ]
 !-------------------------------------------------------
 ! General idea at the faces: With the slave data from step 3.) reconstruct the slope over the interface on the master side
@@ -486,7 +527,7 @@ CALL FV_CalcGradients(UPrim,FV_surf_gradU,gradUxi,gradUeta,gradUzeta &
     ,gradUxi_central,gradUeta_central,gradUzeta_central &
 #endif /* VOLINT_VISC */
     )
-#endif /* FV_ENABLED && FV_RECONSTRUCT */
+#endif /* FV_RECONSTRUCT */
 
 #if PARABOLIC
 ! 6. Lifting
@@ -522,6 +563,7 @@ CALL VolInt(Ut)
 ! [ 9. Volume integral (advective and viscous) for all FV elements ]
 CALL FV_VolInt(UPrim,Ut)
 #endif
+
 
 #if (FV_ENABLED == 2) && PARABOLIC
 ! [10. Compute viscous volume integral contribution separately and add to Ut (FV-blending only)]
@@ -578,21 +620,47 @@ CALL StartReceiveMPIData(Flux_slave, DataSizeSide, 1,nSides,MPIRequest_Flux( :,S
 CALL FillFlux(t,Flux_master,Flux_slave,U_master,U_slave,UPrim_master,UPrim_slave,doMPISides=.TRUE.)
 CALL StartSendMPIData(   Flux_slave, DataSizeSide, 1,nSides,MPIRequest_Flux( :,RECV),SendID=1)
                                                                               ! Send MINE  /   Flux_slave: master -> slave
+
+#if ((FV_ENABLED == 2) && (PP_NodeType == 1))
+CALL StartReceiveMPIData(FV_Flux_slave, DataSizeSide, 1,nSides,MPIRequest_FV_Flux( :,SEND),SendID=1)
+                                                                              ! Receive YOUR / Flux_slave: master -> slave
+CALL FillFlux(t,FV_Flux_master,FV_Flux_slave,FV_U_master,FV_U_slave,FV_UPrim_master,FV_UPrim_slave,doMPISides=.TRUE.,pureFV=.TRUE.)
+CALL StartSendMPIData(   FV_Flux_slave, DataSizeSide, 1,nSides,MPIRequest_FV_Flux( :,RECV),SendID=1)
+                                                                              ! Send MINE  /   Flux_slave: master -> slave
+#endif /*((FV_ENABLED == 2) && (PP_NodeType == 1))*/
 #endif /*USE_MPI*/
 
 ! 11.3)
 CALL FillFlux(t,Flux_master,Flux_slave,U_master,U_slave,UPrim_master,UPrim_slave,doMPISides=.FALSE.)
 ! 11.4)
 CALL Flux_MortarCons(Flux_master,Flux_slave,doMPISides=.FALSE.,weak=.TRUE.)
+
+#if ((FV_ENABLED == 2) && (PP_NodeType == 1))
+! 11.3)
+CALL FillFlux(t,FV_Flux_master,FV_Flux_slave,FV_U_master,FV_U_slave,FV_UPrim_master,FV_UPrim_slave,doMPISides=.FALSE.)
+! 11.4)
+CALL Flux_MortarCons(FV_Flux_master,FV_Flux_slave,doMPISides=.FALSE.,weak=.TRUE.)
+! 11.5)
+CALL SurfIntCons(PP_N,Flux_master,Flux_slave,FV_Flux_master,FV_Flux_slave,Ut,.FALSE.,L_HatMinus,L_hatPlus)
+#else
 ! 11.5)
 CALL SurfIntCons(PP_N,Flux_master,Flux_slave,Ut,.FALSE.,L_HatMinus,L_hatPlus)
+#endif
 
 #if USE_MPI
 ! 11.4)
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux )                       ! Flux_slave: master -> slave
 CALL Flux_MortarCons(Flux_master,Flux_slave,doMPISides=.TRUE.,weak=.TRUE.)
+#if ((FV_ENABLED == 2) && (PP_NodeType == 1))
+! 11.4)
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_Flux )                       ! Flux_slave: master -> slave
+CALL Flux_MortarCons(FV_Flux_master,FV_Flux_slave,doMPISides=.TRUE.,weak=.TRUE.)
+! 11.5)
+CALL SurfIntCons(PP_N,Flux_master,Flux_slave,FV_Flux_master,FV_Flux_slave,Ut,.TRUE.,L_HatMinus,L_HatPlus)
+#else
 ! 11.5)
 CALL SurfIntCons(PP_N,Flux_master,Flux_slave,Ut,.TRUE.,L_HatMinus,L_HatPlus)
+#endif
 #endif /*USE_MPI*/
 
 ! 12. Swap to right sign :)

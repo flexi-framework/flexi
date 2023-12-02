@@ -52,6 +52,9 @@ INTEGER,PARAMETER :: TP_nVar = PP_nVar
 
 INTERFACE SurfIntCons
   MODULE PROCEDURE SurfInt
+#if ((FV_ENABLED==2) && (PP_NodeType==1))
+  MODULE PROCEDURE SurfIntBlend
+#endif
 END INTERFACE
 
 INTERFACE DoSurfIntCons

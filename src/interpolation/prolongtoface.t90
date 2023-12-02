@@ -23,7 +23,7 @@ PPURE SUBROUTINE ProlongToFace(&
 #endif
     Nloc,Uvol,Uface_master,Uface_slave,L_Minus,L_Plus,doMPISides &
 #if FV_ENABLED
-    ,pureDG &
+    ,pureDG,pureFV &
 #endif
 )
 ! MODULES
@@ -48,6 +48,7 @@ REAL,INTENT(IN)                 :: L_Minus(0:Nloc),L_Plus(0:Nloc)
 LOGICAL,INTENT(IN)              :: doMPISides  != .TRUE. only YOUR MPISides are filled, =.FALSE. BCSides +InnerSides +MPISides MINE
 #if FV_ENABLED
 LOGICAL,INTENT(IN),OPTIONAL     :: pureDG      != .TRUE. prolongates all elements as DG elements
+LOGICAL,INTENT(IN),OPTIONAL     :: pureFV      != .TRUE. prolongates all elements as FV elements
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -61,8 +62,10 @@ REAL                            :: Uface(TP_nVar,0:Nloc,0:ZDIM(Nloc))
 
 #if FV_ENABLED
 isFV(:) = 0
-IF (.NOT.PRESENT(pureDG)) THEN
+IF (.NOT.PRESENT(pureDG).AND..NOT.PRESENT(pureFV)) THEN
   isFV(:) = FV_Elems(:)
+ELSEIF (PRESENT(pureFV)) THEN
+  IF(pureFV) isFV(:) = 1
 ELSE
   IF(.NOT.pureDG) isFV(:) = FV_Elems(:)
 END IF

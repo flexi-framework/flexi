@@ -318,7 +318,7 @@ DO iElem=1,nElems
                                  Metrics_gTilde(:,i,j,k,iElem,0),Metrics_gTilde(:,i,l,k,iElem,0),Flux)
 #if FV_ENABLED == 3
       ! 1.1 Compute the weighted flux
-      Ut_eta (:,i,j,k,iElem) = Ut_eta (:,i,j,k,iElem) + DVolSurf(l,j)*Flux(:)!*wGP(i)
+      Ut_eta (:,i,j,k,iElem) = Ut_eta (:,i,j,k,iElem) + DVolSurf(l,j)*Flux(:)!*wGP(j)
       ! symmetry
       Ut_eta (:,i,l,k,iElem) = Ut_eta (:,i,l,k,iElem) + DVolSurf(j,l)*Flux(:)!*wGP(l)
 #else
@@ -343,7 +343,7 @@ DO iElem=1,nElems
                                  Metrics_hTilde(:,i,j,k,iElem,0),Metrics_hTilde(:,i,j,l,iElem,0),Flux)
 #if FV_ENABLED == 3
       ! 1.1 Compute the weighted flux
-      Ut_zeta(:,i,j,k,iElem) = Ut_zeta(:,i,j,k,iElem) + DVolSurf(l,k)*Flux(:)!*wGP(i)
+      Ut_zeta(:,i,j,k,iElem) = Ut_zeta(:,i,j,k,iElem) + DVolSurf(l,k)*Flux(:)!*wGP(k)
       ! symmetry
       Ut_zeta(:,i,j,l,iElem) = Ut_zeta(:,i,j,l,iElem) + DVolSurf(k,l)*Flux(:)!*wGP(l)
 #else
@@ -353,10 +353,10 @@ DO iElem=1,nElems
       Ut(:,i,j,l,iElem) = Ut(:,i,j,l,iElem) + DVolSurf(k,l)*Flux(:)
 #endif /*FV_ENABLED == 3*/
 #if VOLINT_VISC
-       ! add up time derivative
-       Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + D_Hat_T(l,k)*hv(:,i,j,l)
-       ! symmetry
-       Ut(:,i,j,l,iElem) = Ut(:,i,j,l,iElem) + D_Hat_T(k,l)*hv(:,i,j,k)
+      ! add up time derivative
+      Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + D_Hat_T(l,k)*hv(:,i,j,l)
+      ! symmetry
+      Ut(:,i,j,l,iElem) = Ut(:,i,j,l,iElem) + D_Hat_T(k,l)*hv(:,i,j,k)
 #endif /*VOLINT_VISC*/
     END DO ! l
 #endif /*PP_dim==3*/

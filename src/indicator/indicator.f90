@@ -234,6 +234,9 @@ USE MOD_Lifting_Vars     ,ONLY: gradUx,gradUy,gradUz
 #endif
 #if FV_ENABLED == 2
 USE MOD_FV_Blending      ,ONLY: FV_ExtendAlpha
+#if PP_NodeType == 1
+USE MOD_FV_Blending      ,ONLY: FV_CommAlpha
+#endif
 USE MOD_FV_Vars          ,ONLY: FV_alpha,FV_alpha_min,FV_alpha_max,FV_doExtendAlpha
 USE MOD_Indicator_Vars   ,ONLY: sdT_FV,T_FV
 #elif FV_ENABLED == 3
@@ -286,6 +289,9 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
   DO iElem=1,nElems
     IF (FV_alpha(iElem) .LT. FV_alpha_min) FV_alpha(iElem) = 0.
   END DO ! iElem
+#if PP_NodeType == 1
+  IF (.NOT.FV_doExtendAlpha) CALL FV_CommAlpha()
+#endif
 #elif FV_ENABLED == 3
   DO iElem=1,nElems
     IndValue(iElem) = IndPerssonBlend(U(:,:,:,:,iElem))
@@ -301,6 +307,7 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
   DO iElem=1,nElems
     IF (MAXVAL(FV_alpha(:,:,:,:,iElem)) .LT. FV_alpha_min) FV_alpha(:,:,:,:,iElem) = 0.
   END DO ! iElem
+  ! IF (.NOT.FV_doExtendAlpha) CALL FV_CommAlpha()
 #else
   DO iElem=1,nElems
     IF (FV_Elems(iElem).EQ.0) THEN ! DG Element

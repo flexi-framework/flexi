@@ -71,6 +71,17 @@ REAL                   :: FV_alpha_max           !< Maximal blending coefficient
 REAL                   :: FV_alpha_extScale      !< Amount alpha is scaled when extended into neighbouring elements.
 LOGICAL                :: FV_doExtendAlpha       !< Flag whether alpha should be extended into neighbouring elements
 INTEGER                :: FV_nExtendAlpha        !< Number of times alpha should be passed towards neighboring elements per timestep
+
+REAL,ALLOCATABLE       :: FV_U_master(:,:,:,:)      !< 1D/2D Solution on face nodes for the master sides,
+                                                    !< size [1..NVar,0..N,0..NZ,all_master_sides]
+REAL,ALLOCATABLE       :: FV_U_slave(:,:,:,:)       !< 1D/2D Solution on face nodes for the slave sides,
+                                                    !< size [1..NVar,0..N,0..NZ,all_slave_sides]
+REAL,ALLOCATABLE       :: FV_UPrim_master(:,:,:,:)  !< 1D/2D Solution on face nodes for the master sides,
+                                                    !< size [1..NVarPrim,0..N,0..NZ,all_master_sides]
+REAL,ALLOCATABLE       :: FV_UPrim_slave(:,:,:,:)   !< 1D/2D Solution on face nodes for the slave sides,
+                                                    !< size [1..NVarPrim,0..N,0..NZ,all_slave_sides]
+REAL,ALLOCATABLE       :: FV_Flux_master(:,:,:,:)
+REAL,ALLOCATABLE       :: FV_Flux_slave(:,:,:,:)
 #endif /*FV_ENABLED==2*/
 
 ! FV/DG Blending
@@ -78,6 +89,8 @@ INTEGER                :: FV_nExtendAlpha        !< Number of times alpha should
 INTEGER                :: FV_dim                 !< Dimension of the FV blending
 INTEGER,ALLOCATABLE    :: FV_int(:)              !< Mapping   of the FV blending
 REAL,ALLOCATABLE       :: FV_alpha(:,:,:,:,:)    !< Blending coefficient
+REAL,ALLOCATABLE       :: FV_alpha_master(:)     !< Prolongated blending coefficient on master sides
+REAL,ALLOCATABLE       :: FV_alpha_slave( :)     !< Prolongated blending coefficient on slave  sides
 REAL                   :: FV_alpha_min           !< Minimal blending coefficient (all elems below are treated as pure DG)
 REAL                   :: FV_alpha_max           !< Maximal blending coefficient
 REAL,ALLOCATABLE       :: Ut_xi(  :,:,:,:,:)
