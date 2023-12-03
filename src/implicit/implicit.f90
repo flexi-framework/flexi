@@ -58,6 +58,7 @@ CONTAINS
 SUBROUTINE DefineParametersImplicit()
 ! MODULES
 USE MOD_ReadInTools ,ONLY: prms
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Implicit")
@@ -81,6 +82,7 @@ CALL prms%CreateIntOption(    'PredictorOrder', "Order of predictor to be used (
 
 END SUBROUTINE DefineParametersImplicit
 
+
 !===================================================================================================================================
 !> Initialize implicit time integration. Mainly read in parameters for the Newton and GMRES solvers and call preconditioner init.
 !===================================================================================================================================
@@ -88,29 +90,36 @@ SUBROUTINE InitImplicit()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_DG_Vars,           ONLY: nDOFElem
+USE MOD_Filter_Vars,       ONLY: FilterType
 USE MOD_Implicit_Vars
-USE MOD_Mesh_Vars,         ONLY:MeshInitIsDone,nElems,nGlobalElems
-USE MOD_Interpolation_Vars,ONLY:InterpolationInitIsDone
-USE MOD_ReadInTools,       ONLY:GETINT,GETREAL,GETLOGICAL
-USE MOD_DG_Vars,           ONLY:nDOFElem
-USE MOD_TimeDisc_Vars,     ONLY:TimeDiscType,RKb_embedded
-USE MOD_Precond,           ONLY:InitPrecond
+USE MOD_Interpolation_Vars,ONLY: InterpolationInitIsDone
+USE MOD_Mesh_Vars,         ONLY: MeshInitIsDone,nElems,nGlobalElems
+USE MOD_Precond,           ONLY: InitPrecond
+USE MOD_ReadInTools,       ONLY: GETINT,GETREAL,GETLOGICAL
+USE MOD_TimeDisc_Vars,     ONLY: TimeDiscType,RKb_embedded
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
-IF((.NOT.InterpolationInitIsDone).OR.(.NOT.MeshInitIsDone).OR.ImplicitInitIsDone)THEN
+IF (.NOT.InterpolationInitIsDone .OR. .NOT.MeshInitIsDone .OR.ImplicitInitIsDone) &
    CALL Abort(__STAMP__,'InitImplicit not ready to be called or already called.')
-END IF
+
 IF(TimeDiscType.EQ.'ESDIRK') THEN
   SWRITE(UNIT_stdOut,'(132("-"))')
   SWRITE(UNIT_stdOut,'(A)') ' INIT Implicit...'
+
+  SELECT CASE(FilterType)
+    CASE(FILTERTYPE_NONE,FILTERTYPE_CUTOFF)
+      ! Do nothing
+    CASE DEFAULT
+      CALL Abort(__STAMP__,'Only no or spectral cutoff filtering support with implicit time stepping!')
+  END SELECT
 
   nDOFVar1D     = PP_nVar*(PP_N+1)
   nDOFVarElem   = PP_nVar*nDOFElem
@@ -197,6 +206,7 @@ IF(TimeDiscType.EQ.'ESDIRK') THEN
   SWRITE(UNIT_stdOut,'(132("-"))')
 END IF
 END SUBROUTINE InitImplicit
+
 
 !===================================================================================================================================
 !> Solves the non-linear system with Newton
@@ -347,6 +357,7 @@ IF((Norm_F_Xk.GT.EpsNewton*Norm_F_X0).AND.(nInnerNewton.EQ.nNewtonIter)) THEN
 END IF
 
 END SUBROUTINE Newton
+
 
 !===================================================================================================================================
 !> Matrix free Linear Krylov subspace solver
