@@ -59,7 +59,7 @@ ENDIF()
 # SplitDG
 # =========================================================================
 OPTION(FLEXI_SPLIT_DG "Use split DG formulation" OFF)
-CMAKE_DEPENDENT_OPTION(FLEXI_PROLONG_ENTROPY "Prolong on entropy variables" OFF
+CMAKE_DEPENDENT_OPTION(FLEXI_PROLONG_ENTROPY "Prolong on entropy variables" ON
 	                     "FLEXI_SPLIT_DG; FLEXI_EQNSYSNAME STREQUAL navierstokes; FLEXI_NODETYPE STREQUAL GAUSS" ON)
 IF(FLEXI_SPLIT_DG)
   ADD_DEFINITIONS(-DSPLIT_DG)
@@ -234,8 +234,25 @@ SET_PROPERTY(CACHE FLEXI_TESTCASE PROPERTY STRINGS ${TESTCASES})
 # =========================================================================
 # Unit test at end of compilation
 # =========================================================================
-OPTION(FLEXI_UNITTESTS "Enable unit tests after build" ON)
-MARK_AS_ADVANCED(FORCE FLEXI_UNITTESTS)
+# Check is unit tests can be activated
+IF(FLEXI_NODETYPE STREQUAL "GAUSS")
+  IF(FLEXI_SPLIT_DG)
+    SET(ACTIVATE_UNIT_TEST OFF)
+    # Check if unit tests were previously activated
+    IF(FLEXI_UNITTESTS)
+      MESSAGE(WARNING "Unit tests automatically disabled (FLEXI_UNITTESTS=OFF) with\n FLEXI_SPLIT_DG = ${FLEXI_SPLIT_DG}\n FLEXI_NODETYPE = ${FLEXI_NODETYPE}.")
+      SET(FLEXI_UNITTESTS OFF)
+    ENDIF()
+  ELSE()
+    SET(ACTIVATE_UNIT_TEST ON)
+  ENDIF()
+ELSE()
+  SET(ACTIVATE_UNIT_TEST ON)
+ENDIF()
+
+# Enable unit testing only when ACTIVATE_UNIT_TEST=ON
+CMAKE_DEPENDENT_OPTION(FLEXI_UNITTESTS "Enable unit tests after build" ON "ACTIVATE_UNIT_TEST" OFF)
+
 IF(FLEXI_UNITTESTS)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/unitTests/CMakeLists.txt)
 ENDIF()

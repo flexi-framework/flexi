@@ -55,7 +55,7 @@ REAL,ALLOCATABLE                      :: DVolSurf(:,:)          !< Transpose of 
 ! DG solution (JU or U) vectors)
 REAL,ALLOCATABLE,TARGET               :: U(:,:,:,:,:)           !< Solution variable for each equation, node and element,
                                                                 !< size [1..NVar,0..N,0..N,0..N,nElems].
-#if ((PP_NodeType==1) && defined(PP_EntropyVars))
+#ifdef PP_EntropyVars
 REAL,ALLOCATABLE,TARGET               :: V   (:,:,:,:,:)        !< Entropy variables for each node and element,
                                                                 !< size \([1..PP_nVar,0..N,0..N,0..N,nElems]\).
 REAL,ALLOCATABLE                      :: V_master(:,:,:,:)      !< 2D Solution on face nodes for the master sides,
