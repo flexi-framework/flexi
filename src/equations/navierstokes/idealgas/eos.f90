@@ -430,12 +430,11 @@ REAL,DIMENSION(PP_nVar),INTENT(IN)   :: entropy !< vector of entropy variables
 REAL,DIMENSION(PP_nVar),INTENT(OUT)  :: cons    !< vector of conservative variables
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                                 :: s,entropy2(5),rhoe
-!!==================================================================================================================================
-!
+REAL                                 :: s,entropy2(PP_nVar),rhoe
+!==================================================================================================================================
 entropy2 = entropy*kappaM1
-s      = kappa - entropy2(1) + 0.5 * SUM(entropy2(2:4)**2) / entropy2(5)
-rhoe   = (kappaM1 / ((-entropy2(5))**kappa))**(skappaM1) * EXP(-s*skappaM1)
+s        = kappa - entropy2(1) + 0.5 * SUM(entropy2(2:4)**2) / entropy2(5)
+rhoe     = (kappaM1 / ((-entropy2(5))**kappa))**(skappaM1) * EXP(-s*skappaM1)
 
 cons(DENS) = - rhoe * entropy2(5) ! ρ = -p * W[5]
 cons(MOMV) = rhoe * entropy2(2:4)
@@ -477,8 +476,8 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: Nloc                                  !< local polynomial degree of solution representation
-REAL,INTENT(IN)    :: entropy(PP_nVar,0:Nloc,0:ZDIM(Nloc))  !< vector of primitive variables
-REAL,INTENT(OUT)   :: cons(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)) !< vector of conservative variables
+REAL,INTENT(IN)    :: entropy(PP_nVar,0:Nloc,0:ZDIM(Nloc))  !< vector of entropy variables
+REAL,INTENT(OUT)   :: cons(PP_nVar   ,0:Nloc,0:ZDIM(Nloc))  !< vector of conservative variables
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: p,q

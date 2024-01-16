@@ -193,10 +193,10 @@ END IF
 
 DO SideID=firstSideID,lastSideID
   ElemID    = SideToElem(S2E_ELEM_ID,SideID)
-  IF(ElemID.GT.0)   CALL EntropyToCons(TP_nVar,Vface_master(:,:,:,SideID),Uface_master(:,:,:,SideID))
+  IF(ElemID.GT.0)   CALL EntropyToCons(Nloc,Vface_master(:,:,:,SideID),Uface_master(:,:,:,SideID))
 
   nbElemID  = SideToElem(S2E_NB_ELEM_ID,SideID)
-  IF(nbElemID.GT.0) CALL EntropyToCons(TP_nVar,Vface_slave(:,:,:,SideID) ,Uface_slave(:,:,:,SideID))
+  IF(nbElemID.GT.0) CALL EntropyToCons(Nloc,Vface_slave(:,:,:,SideID) ,Uface_slave(:,:,:,SideID))
 END DO
 
 END SUBROUTINE ProlongToFaceEntropy

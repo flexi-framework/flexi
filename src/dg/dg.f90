@@ -422,12 +422,10 @@ CALL StartSendMPIData(   FV_multi_slave,DataSizeSidePrim,1,nSides,MPIRequest_FV_
 ! Step 3 for all remaining sides
 ! 3.1)
 #if (FV_ENABLED == 2) && (PP_NodeType==1)
-#ifdef PP_EntropyVars
-! TODO:
-#else
+#ifndef PP_EntropyVars
 CALL ProlongToFaceCons(PP_N,U,U_master,U_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
 CALL ProlongToFaceCons(PP_N,U,FV_U_master,FV_U_slave,L_Minus,L_Plus,doMPISides=.FALSE.,pureFV=.TRUE.)
-#endif /*ifdef PP_EntropyVars*/
+#endif /*ifndef PP_EntropyVars*/
 #else /*FV_ENABLED*/
 #ifdef PP_EntropyVars
 CALL ProlongToFaceCons(PP_N,V,V_master,V_slave,U_master,U_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
