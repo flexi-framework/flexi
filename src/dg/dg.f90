@@ -384,12 +384,10 @@ CALL StartReceiveMPIData(FV_U_slave,DataSizeSide,1,nSides,MPIRequest_FV_U(:,SEND
 #endif
 
 #if (FV_ENABLED == 2) && (PP_NodeType==1)
-#ifdef PP_EntropyVars
-! TODO: blending
-#else
+#ifndef PP_EntropyVars
 CALL ProlongToFaceCons(PP_N,U,U_master,U_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
 CALL ProlongToFaceCons(PP_N,U,FV_U_master,FV_U_slave,L_Minus,L_Plus,doMPISides=.TRUE.,pureFV=.TRUE.)
-#endif /*ifdef PP_EntropyVars*/
+#endif /*ifndef PP_EntropyVars*/
 #else /*FV_ENABLED*/
 #ifdef PP_EntropyVars
 CALL ProlongToFaceCons(PP_N,V,V_master,V_slave,U_master,U_slave,L_Minus,L_Plus,doMPISides=.TRUE.)

@@ -119,7 +119,10 @@ FV_Elems_Max = 0.
 IF(PRESENT(pureFV))THEN
   IF(pureFV) FV_Elems_Max(firstSideID:lastSideID) = 1.
 ELSE
-  DO SideID=firstSideID,lastSideID
+  DO SideID=1,nBCSides
+    FV_Elems_Max(SideID) = FV_Elems_master(SideID)
+  END DO
+  DO SideID=firstSideID_wo_BC,lastSideID
     FV_Elems_Max(SideID) = MAX(FV_Elems_master(SideID),FV_Elems_slave(SideID))
   END DO
 END IF
@@ -168,7 +171,6 @@ END DO ! SideID
 IF(.NOT.doMPISides)THEN
   DO SideID=1,nBCSides
 #if FV_ENABLED
-    ! FVEM = FV_Elems_master(SideID)
     FVEM = FV_Elems_Max(SideID)
 #endif
     CALL GetBoundaryFlux(SideID,t,PP_N,&
