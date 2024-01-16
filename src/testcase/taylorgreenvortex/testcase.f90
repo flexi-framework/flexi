@@ -255,6 +255,7 @@ USE MOD_PreProc
 USE MOD_Globals
 USE MOD_TestCase_Vars
 USE MOD_DG_Vars,        ONLY: U
+USE MOD_EOS,            ONLY: ConsToPrim
 #if PARABOLIC
 USE MOD_Lifting_Vars,   ONLY: GradUx,GradUy,GradUz
 USE MOD_EOS_Vars,       ONLY: mu0
@@ -264,8 +265,8 @@ USE MOD_Viscosity,      ONLY: muSuth
 USE MOD_EOS_Vars,       ONLY: ExpoSuth
 #endif
 #endif /* PARABOLIC */
-USE MOD_Analyze_Vars,   ONLY: NAnalyze,Vdm_GaussN_NAnalyze,wGPVolAnalyze
-USE MOD_EOS_Vars,       ONLY: KappaM1,R,sKappaM1,Kappa
+USE MOD_Analyze_Vars,   ONLY: NAnalyze,Vdm_GaussN_NAnalyze,wGPVolAnalyze,Vol
+USE MOD_EOS_Vars,       ONLY: sKappaM1,Kappa
 USE MOD_Mesh_Vars,      ONLY: sJ
 USE MOD_ChangeBasis,    ONLY: ChangeBasis3D
 USE MOD_Mesh_Vars,      ONLY: nElems
@@ -278,225 +279,190 @@ IMPLICIT NONE
 REAL,INTENT(IN)                 :: t                      !< simulation time
 LOGICAL,INTENT(IN)              :: doFlush                !< indicate that data has to be written
 !----------------------------------------------------------------------------------------------------------------------------------
-!----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER                         :: i,j,k,iElem
+REAL                            :: UPrim(PP_nVarPrim)
+REAL                            ::  U_NAnalyze(PP_nVar,0:NAnalyze,0:NAnalyze,0:NAnalyze)
+REAL                            :: sJ_NAnalyze(      1,0:NAnalyze,0:NAnalyze,0:NAnalyze)
+REAL                            :: sJ_N(1,0:PP_N,0:PP_N,0:PP_N) ! local array for sJ due to interface of changeBasis
+REAL                            :: IntFactor                     ! Integration weights and Jacobian
+REAL                            :: T_mean                        ! Mean temperature
+REAL                            :: Entropy                       ! Mean entropy in the domain
+REAL                            :: uPrime
+REAL                            :: Ekin,Ekin_comp                ! Integrated incompr/compr. kin. energy (0.5*u*u and 0.5*rho*u*u)
+#if USE_MPI
+REAL                            :: Ekin_Glob,Ekin_comp_Glob,T_mean_Glob,Entropy_Glob
+#endif
 #if PARABOLIC
-INTEGER                         :: p,q
+INTEGER                         :: ii
 REAL                            :: GradVel(1:3,1:3)
 REAL                            :: GradVelx(1:3,0:NAnalyze,0:NAnalyze,0:NAnalyze)
 REAL                            :: GradVely(1:3,0:NAnalyze,0:NAnalyze,0:NAnalyze)
 REAL                            :: GradVelz(1:3,0:NAnalyze,0:NAnalyze,0:NAnalyze)
-REAL                            :: S(1:3,1:3)                    ! Strain rate tensor S (symmetric)
+REAL                            :: S( 1:3,1:3)                   ! Strain rate tensor S (symmetric)
 REAL                            :: Sd(1:3,1:3)                   ! Deviatoric part of the strain rate tensor S
 REAL                            :: divU                          ! Divergence of velocity vector
-REAL                            :: ens                           ! Integrand: 0.5*rho*omega*omega
-REAL                            :: eps3                          ! Integrand: p*(div u)
-REAL                            :: u_tens, s_tens, sd_tens       ! matrix : matrix product, integrands of Gradvel, S, Sd
-REAL                            :: Enstrophy_comp
-REAL                            :: DR_u,DR_S,DR_Sd,DR_p           ! Contributions to dissipation rate
-REAL                            :: Vorticity(1:3),max_Vorticity
-REAL                            :: ED_S,ED_D
-#endif
-INTEGER                         :: ii,i,j,k
-REAL                            :: Vel(1:3),Volume,Ekin,uprime
-REAL                            :: U_NAnalyze(1:PP_nVar,0:NAnalyze,0:NAnalyze,0:NAnalyze)
-REAL                            :: sJ_NAnalyze(       1,0:NAnalyze,0:NAnalyze,0:NAnalyze)
-REAL                            :: mean_temperature, temperature
-REAL                            :: Entropy,mean_Entropy
-REAL                            :: E,E_comp                      ! Integrands: 0.5*v*v, 0.5*rho*v*v
-REAL                            :: Intfactor                     ! Integrationweights and Jacobian
-REAL                            :: Ekin_comp
-REAL                            :: Pressure
+REAL                            :: Vorticity(1:3)                ! Vorticity = curl(Velocity)
+REAL                            :: Vorticity_max                 ! max. vorticity in domain
+REAL                            :: Enstr                         ! Enstrophy
+REAL                            :: DR_u,DR_S,DR_Sd,DR_p          ! Contributions to dissipation rates
+REAL                            :: ED_S,ED_D                     ! Solenoidal and dilitational dissipation rates
 #if USE_MPI
-#if PARABOLIC
-REAL                            :: DR_u_Glob,max_Vorticity_glob,DR_S_glob,DR_Sd_Glob,DR_p_Glob,Enstrophy_comp_glob,ED_S_Glob,ED_D_Glob
+REAL                            :: DR_u_Glob,DR_S_glob,DR_Sd_Glob,DR_p_Glob,ED_S_Glob,ED_D_Glob,Enstr_Glob,Vorticity_max_glob
 #endif
-REAL                            :: Volume_Glob,Ekin_glob,Ekin_comp_glob,mean_temperature_glob,mean_Entropy_Glob
-#endif
-REAL                            :: sJ_N(1, 0:PP_N, 0:PP_N, 0:PP_N) ! local array for sJ
+#endif /* PARABOLIC */
 !==================================================================================================================================
-Volume=0.
-Ekin=0.
-Ekin_comp=0.
+! The general workflow of the routine is as follows:
+!
+! 1. Nullify quantities
+! 2. Interpolate solution and gradients to analyze mesh
+! 3. Precompute primitive and gradient-based quantities
+! 4. Integrate
+! 5. Communicate via MPI
+! 6. Normalize
+! 7. Write to File
 
+
+!----------------------------------------------------------------------------------------------------------------------------------
+! 1. Nullify Quantities
+!----------------------------------------------------------------------------------------------------------------------------------
+Ekin=0.;Ekin_comp=0.
+T_mean=0.;Entropy=0.
 #if PARABOLIC
 DR_u=0.;DR_S=0.;DR_Sd=0.;DR_p=0.;ED_S=0.;ED_D=0.
-Enstrophy_comp=0.
-max_Vorticity=-1.
+Enstr=0.;Vorticity_max=0.
 #endif
-mean_Temperature=0.
-mean_Entropy=0.
 
-DO ii=1,nElems
-
+DO iElem=1,nElems
+  !----------------------------------------------------------------------------------------------------------------------------------
+  ! 2. Interpolate solution and gradients to analyze mesh
+  sJ_N(1,:,:,:)=sJ(:,:,:,iElem,0)
+  CALL ChangeBasis3D(      1, PP_N, NAnalyze, Vdm_GaussN_NAnalyze,          sJ_N, sJ_NAnalyze)
+  ! Interpolate the solution to the analyze grid
+  CALL ChangeBasis3D(PP_nVar, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, U(:,:,:,:,iElem),  U_NAnalyze)
 #if PARABOLIC
   ! Interpolate the gradient of the velocity to the analyze grid
-  CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUx(LIFT_VELV,:,:,:,ii), GradVelx)
-  CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUy(LIFT_VELV,:,:,:,ii), GradVely)
-  CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUz(LIFT_VELV,:,:,:,ii), GradVelz)
+  CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUx(LIFT_VELV,:,:,:,iElem), GradVelx)
+  CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUy(LIFT_VELV,:,:,:,iElem), GradVely)
+  CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUz(LIFT_VELV,:,:,:,iElem), GradVelz)
 #endif
-  ! Interpolate the Jacobian to the analyze grid
-  sJ_N(1,:,:,:)=sJ(:,:,:,ii,0)
-  CALL ChangeBasis3D(1, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, sJ_N(1:1,0:PP_N,0:PP_N,0:PP_N), sJ_NAnalyze(1:1,:,:,:))
-  ! Interpolate the solution to the analyze grid
-  CALL ChangeBasis3D(PP_nVar, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, U(1:PP_nVar,:,:,:,ii), U_NAnalyze(1:PP_nVar,:,:,:))
 
-  DO k=0,NAnalyze
-    DO j=0,NAnalyze
-      DO i=0,NAnalyze
-        ! compute primitive gradients (of u,v,w) at each GP
-        Vel(1:3)=U_NAnalyze(MOMV,i,j,k)/U_NAnalyze(DENS,i,j,k)
+  DO k=0,NAnalyze;DO j=0,NAnalyze;DO i=0,NAnalyze
+    !----------------------------------------------------------------------------------------------------------------------------------
+    ! 3. Precompute primitive and gradient-based quantities
+    CALL ConsToPrim(UPrim,U_NAnalyze(:,i,j,k))
 #if PARABOLIC
-        GradVel(:,1)=GradVelx(:,i,j,k)
-        GradVel(:,2)=GradVely(:,i,j,k)
-        GradVel(:,3)=GradVelz(:,i,j,k)
-#endif
-        ! Pressure
-        Pressure=KappaM1*(U_NAnalyze(ENER,i,j,k)-0.5*SUM(U_NAnalyze(MOMV,i,j,k)*Vel(1:3)))
-#if PARABOLIC
-        ! compute divergence of velocity
-        divU=GradVel(1,1)+GradVel(2,2)+GradVel(3,3)
-        ! compute rate-of-strain tensor
-        S=0.5*(Gradvel+TRANSPOSE(GradVel))
-        ! deviatoric part of strain tensor
-        Sd=S
-        DO p=1,3
-          Sd(p,p)=Sd(p,p)-1./3.*divU
-        END DO
-#endif
-        ! compute kinetic energy integrand (incomp)
-        E=0.5*SUM(Vel(1:3)*Vel(1:3))
-        ! compute kinetic energy integrand (compr)
-        E_comp=U_NAnalyze(DENS,i,j,k)*E
-#if PARABOLIC
-        ! compute vorticity and max(vorticity)
-        Vorticity(1) = GradVel(3,2) - GradVel(2,3)
-        Vorticity(2) = GradVel(1,3) - GradVel(3,1)
-        Vorticity(3) = GradVel(2,1) - GradVel(1,2)
-        max_Vorticity=MAX(max_Vorticity,SQRT(SUM(Vorticity(:)*Vorticity(:))))
-        ! compute enstrophy integrand
-        ens=0.5*U_NAnalyze(DENS,i,j,k)*SUM(Vorticity(1:3)*Vorticity(1:3))
-        ! compute integrand for epsilon3, pressure contribution to dissipation (compressiblity effect)
-        eps3=Pressure*divU
-        ! Matrix : Matrix product for velocity gradient tensor, S:S and Sd:Sd
-        u_tens=0.;s_tens=0.;sd_tens=0.
-        DO p=1,3
-          DO q=1,3
-            u_tens=u_tens+GradVel(p,q)*GradVel(p,q)
-            s_tens=s_tens+S(p,q)*S(p,q)
-            sd_tens=sd_tens+Sd(p,q)*Sd(p,q)
-          END DO
-        END DO
-#endif
-        Intfactor=wGPVolAnalyze(i,j,k)/sJ_NAnalyze(1,i,j,k)
-        ! compute cell volume (total volumen of domain on proc)
-        Volume=Volume+Intfactor
-        ! compute integrals:
-          ! Kinetic Energy incompressible
-        Ekin=Ekin+E*Intfactor
-          ! Kinetic Energy compressible
-        Ekin_comp=Ekin_comp+E_comp*IntFactor
-#if PARABOLIC
-          ! Enstrophy compressible
-        Enstrophy_comp=Enstrophy_comp+ens*IntFactor
-          ! dissipation rate epsilon incomp from velocity gradient tensor (Diss Fauconnier)
-        DR_u=DR_u+u_tens*IntFactor
-          ! dissipation rate epsilon incomp from strain rate tensor (incomp) (Sagaut)
-        DR_S=DR_S+S_tens*IntFactor
-          ! dissipation rate epsilon 1 from deviatoric part of strain rate tensor Sd (compressible)
-        DR_SD=DR_SD+sd_tens*Intfactor
-          ! dissipation rate epsilon 3 from pressure times div u (compressible)
-        DR_p=DR_p+eps3*Intfactor
-#endif
-        ! Compute mean temperature
-        Temperature=KappaM1/R*(U_NAnalyze(ENER,i,j,k)/U_NAnalyze(DENS,i,j,k)-E)
-        mean_temperature=mean_temperature+Temperature*Intfactor
-#if PARABOLIC
-          ! solenoidal part of the kinetic energy dissipation
-        ED_S=ED_S+SUM(Vorticity(1:3)*Vorticity(1:3))*Intfactor*VISCOSITY_TEMPERATURE(Temperature)
-          ! dilatational component of the kinetic energy dissipation
-        ED_D=ED_D+divU*divU*Intfactor*VISCOSITY_TEMPERATURE(Temperature)
-#endif
-        ! compute mean entropy
-        Entropy=-sKappaM1*(U_NAnalyze(DENS,i,j,k)*(LOG(Pressure)-Kappa*LOG(U_NAnalyze(DENS,i,j,k))))
-        mean_Entropy=mean_Entropy+Entropy*Intfactor
-      END DO
+    ! compute velocity gradient tensor GradVel
+    GradVel(:,1)=GradVelx(:,i,j,k)
+    GradVel(:,2)=GradVely(:,i,j,k)
+    GradVel(:,3)=GradVelz(:,i,j,k)
+    ! compute divergence of velocity
+    divU=GradVel(1,1)+GradVel(2,2)+GradVel(3,3)
+    ! compute rate-of-strain tensor S
+    S=0.5*(Gradvel+TRANSPOSE(GradVel))
+    ! deviatoric part of strain tensor Sd
+    Sd=S
+    DO ii=1,3
+      Sd(ii,ii)=Sd(ii,ii)-1./3.*divU
     END DO
-  END DO
+    ! compute vorticity (curl of velocity) and max(vorticity)
+    Vorticity(1) = GradVel(3,2) - GradVel(2,3)
+    Vorticity(2) = GradVel(1,3) - GradVel(3,1)
+    Vorticity(3) = GradVel(2,1) - GradVel(1,2)
+    Vorticity_max=MAX(Vorticity_max,NORM2(Vorticity))
+#endif
+
+    !----------------------------------------------------------------------------------------------------------------------------------
+    ! 4. Integrate
+    IntFactor=wGPVolAnalyze(i,j,k)/sJ_NAnalyze(1,i,j,k) ! Integration weight and Jacobian
+      ! Temperature
+    T_mean   =T_mean   +IntFactor*UPrim(TEMP)
+      ! Entropy
+    Entropy  =Entropy  +IntFactor*(-sKappaM1)*UPrim(DENS)*(LOG(UPrim(PRES))-Kappa*LOG(UPrim(DENS)))
+      ! Kinetic Energy incompressible
+    Ekin     =Ekin     +IntFactor*0.5            *DOT_PRODUCT(UPrim(VELV),UPrim(VELV))
+      ! Kinetic Energy compressible
+    Ekin_comp=Ekin_comp+IntFactor*0.5*UPrim(DENS)*DOT_PRODUCT(UPrim(VELV),UPrim(VELV))
+#if PARABOLIC
+      ! Enstrophy compressible
+    Enstr=Enstr+IntFactor*0.5*UPrim(DENS)*DOT_PRODUCT(Vorticity,Vorticity)
+      ! dissipation rate epsilon incomp from velocity gradient tensor (Diss Fauconnier)
+    DR_u =DR_u +IntFactor*SUM(GradVel(:,:)*GradVel(:,:))
+      ! dissipation rate epsilon incomp from strain rate tensor (incomp) (Sagaut)
+    DR_S =DR_S +IntFactor*SUM( S(:,:)* S(:,:))
+      ! dissipation rate epsilon 1 from deviatoric part of strain rate tensor Sd (compressible)
+    DR_Sd=DR_Sd+IntFactor*SUM(Sd(:,:)*Sd(:,:))
+      ! dissipation rate epsilon 3 from compressibility effects (compressible)
+    DR_p =DR_p +IntFactor*UPrim(PRES)*divU
+      ! solenoidal part of the kinetic energy dissipation
+    ED_S =ED_S +IntFactor*VISCOSITY_TEMPERATURE(UPrim(TEMP))*DOT_PRODUCT(Vorticity,Vorticity)
+      ! dilatational component of the kinetic energy dissipation
+    ED_D =ED_D +IntFactor*VISCOSITY_TEMPERATURE(UPrim(TEMP))*divU**2
+#endif
+  END DO;END DO;END DO
 END DO
 
+!----------------------------------------------------------------------------------------------------------------------------------
+! 5. Communicate
 #if USE_MPI
-! MPI case: globalize Volume and analyze variables
-CALL MPI_REDUCE(Volume,Volume_Glob,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
-#if PARABOLIC
-CALL MPI_REDUCE(DR_u,DR_u_Glob,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
-CALL MPI_REDUCE(DR_S,DR_S_Glob,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
-CALL MPI_REDUCE(DR_Sd,DR_Sd_Glob,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
-CALL MPI_REDUCE(DR_p,DR_p_Glob,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
-CALL MPI_REDUCE(ED_S,ED_S_Glob,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
-CALL MPI_REDUCE(ED_D,ED_D_Glob,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
-CALL MPI_REDUCE(Enstrophy_comp,Enstrophy_comp_Glob,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
-CALL MPI_REDUCE(max_Vorticity,max_vorticity_Glob,1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
-#endif
-CALL MPI_REDUCE(Ekin,Ekin_Glob,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+CALL MPI_REDUCE(T_mean   ,   T_mean_Glob,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+CALL MPI_REDUCE(Entropy  ,  Entropy_Glob,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+CALL MPI_REDUCE(Ekin     ,     Ekin_Glob,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 CALL MPI_REDUCE(Ekin_comp,Ekin_comp_Glob,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
-CALL MPI_REDUCE(mean_temperature,mean_temperature_Glob,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
-CALL MPI_REDUCE(mean_Entropy,mean_Entropy_Glob,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
-Volume=Volume_Glob
-#if PARABOLIC
-DR_u=DR_u_Glob
-DR_S=DR_S_Glob
-DR_Sd=DR_SD_Glob
-DR_p=DR_p_Glob
-ED_S=ED_S_Glob
-ED_D=ED_D_Glob
-Enstrophy_comp=Enstrophy_comp_glob
-max_Vorticity=max_Vorticity_glob
-#endif
-Ekin=Ekin_Glob
+T_mean   =T_mean_Glob
+Entropy  =Entropy_Glob
+Ekin     =Ekin_Glob
 Ekin_comp=Ekin_comp_Glob
-mean_temperature=mean_temperature_Glob
-mean_Entropy=mean_Entropy_Glob
-IF(.NOT.MPIRoot) RETURN
-#  endif
-
-! some turbulent quantities
-uprime=SQRT(Ekin/Volume*2./3.)
-! for TGV = nu = mu, since rho = 1 = const
-!lambda=SQRT(15*mu0*uprime**2/(DR_u*mu0/(Volume)))
-!nu=(mu0**3./((DR_u*mu0/Volume)))**0.25
-!tnu=SQRT(mu0/(DR_u*mu0/Volume))
-!Rlambda=uprime*lambda/mu0
-
-! now do the normalization of integrals
-! warning, rho0=1 for the TGV runs, not in general case!
-Ekin=Ekin/Volume
-Ekin_comp=Ekin_comp/(rho0*Volume)
-
 #if PARABOLIC
-Enstrophy_comp=Enstrophy_comp/(rho0*Volume)
+CALL MPI_REDUCE(DR_u   , DR_u_Glob,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+CALL MPI_REDUCE(DR_S   , DR_S_Glob,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+CALL MPI_REDUCE(DR_Sd  ,DR_Sd_Glob,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+CALL MPI_REDUCE(DR_p   , DR_p_Glob,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+CALL MPI_REDUCE(ED_S   , ED_S_Glob,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+CALL MPI_REDUCE(ED_D   , ED_D_Glob,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+CALL MPI_REDUCE(Enstr  ,Enstr_Glob,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+CALL MPI_REDUCE(Vorticity_max,Vorticity_max_Glob,1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
+DR_u =DR_u_Glob
+DR_S =DR_S_Glob
+DR_Sd=DR_Sd_Glob
+DR_p =DR_p_Glob
+ED_S =ED_S_Glob
+ED_D =ED_D_Glob
+Enstr=Enstr_Glob
+Vorticity_max=Vorticity_max_Glob
+#endif /* PARABOLIC */
+#endif /* USE_MPI */
 
-DR_u=DR_u*mu0/Volume
-DR_S=DR_S*2.*mu0/(rho0*Volume)
-DR_SD=DR_SD*2.*mu0/(rho0*Volume)
-DR_p=-DR_p/(rho0*Volume)
-ED_S= ED_S/Volume
-ED_D= ED_D* 4./3./Volume
+IF(MPIRoot) THEN
+  !----------------------------------------------------------------------------------------------------------------------------------
+  ! 6. Normalize integrals
+  Ekin     =     Ekin/Vol
+  Ekin_comp=Ekin_comp/Vol/rho0
+  T_mean   =   T_Mean/Vol
+  Entropy  =  Entropy/Vol
+#if PARABOLIC
+  Enstr= Enstr/(rho0*Vol)
+  DR_u = DR_u *mu0/Vol
+  DR_S = DR_S *2.*mu0/(rho0*Vol)
+  DR_Sd= DR_Sd*2.*mu0/(rho0*Vol)
+  DR_p =-DR_p /(rho0*Vol)
+  ED_S = ED_S /Vol
+  ED_D = ED_D *4./3./Vol
 #endif
 
-mean_temperature=mean_temperature/Volume
-mean_Entropy=mean_Entropy/Volume
+  uPrime=SQRT(Ekin/Vol*2./3.)
 
-IF(MPIRoot)THEN
-  ioCounter=ioCounter+1
-  Time(ioCounter)                = t
+  !----------------------------------------------------------------------------------------------------------------------------------
+  ! 7. Write to file
+  ioCounter       = ioCounter+1
+  Time(ioCounter) = t
 #if PARABOLIC
-  writeBuf(1:nTGVvars,ioCounter) = (/DR_S,DR_Sd+DR_p,Ekin,Ekin_comp,Enstrophy_comp,DR_u,DR_S,DR_Sd,DR_p,&
-                                     max_Vorticity,mean_temperature,uprime,mean_entropy,ED_S,ED_D/)
+  writeBuf(1:nTGVvars,ioCounter) = (/DR_S,DR_Sd+DR_p,Ekin,Ekin_comp,Enstr,DR_u,DR_S,DR_Sd,DR_p,&
+                                     Vorticity_max,T_mean,uPrime,Entropy,ED_S,ED_D/)
 #else
-  writeBuf(1:nTGVvars,ioCounter) = (/Ekin,Ekin_comp,mean_temperature,uprime,mean_entropy/)
+  writeBuf(1:nTGVvars,ioCounter) = (/Ekin,Ekin_comp,T_mean,uPrime,Entropy/)
 #endif
-  IF(ioCounter.EQ.nWriteStats .OR. doFlush)THEN
+  IF((ioCounter.EQ.nWriteStats) .OR. doFlush) THEN
     CALL WriteStats()
     ioCounter=0
   END IF
