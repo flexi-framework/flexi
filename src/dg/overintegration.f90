@@ -22,10 +22,6 @@ MODULE MOD_Overintegration
 IMPLICIT NONE
 PRIVATE
 
-INTEGER,PARAMETER :: OVERINTEGRATIONTYPE_NONE       = 0
-INTEGER,PARAMETER :: OVERINTEGRATIONTYPE_CUTOFF     = 1
-INTEGER,PARAMETER :: OVERINTEGRATIONTYPE_CONSCUTOFF = 2
-
 !----------------------------------------------------------------------------------------------------------------------------------
 INTERFACE InitOverintegration
   MODULE PROCEDURE InitOverintegration
@@ -101,6 +97,13 @@ IF(OverintegrationInitIsDone.OR.(.NOT.InterpolationInitIsDone))THEN
   CALL CollectiveStop(__STAMP__,&
     'InitOverintegration not ready to be called or already called.')
 END IF
+
+! OverIntegration always disabled in postiMode
+IF (postiMode) THEN
+  OverintegrationType = OVERINTEGRATIONTYPE_NONE
+  RETURN
+END IF
+
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT OVERINTEGRATION...'
 

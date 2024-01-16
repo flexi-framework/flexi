@@ -34,11 +34,6 @@ PROCEDURE(FilterInt),POINTER :: Filter_pointer     !< Point to the filter routin
 
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTEGER,PARAMETER      :: FILTERTYPE_NONE   = 0
-INTEGER,PARAMETER      :: FILTERTYPE_CUTOFF = 1
-INTEGER,PARAMETER      :: FILTERTYPE_MODAL  = 2
-INTEGER,PARAMETER      :: FILTERTYPE_LAF    = 3
-
 INTERFACE InitFilter
   MODULE PROCEDURE InitFilter
 END INTERFACE
@@ -126,8 +121,16 @@ IF(FilterInitIsDone.OR.(.NOT.InterpolationInitIsDone))THEN
    CALL CollectiveStop(__STAMP__,'InitFilter not ready to be called or already called.')
    RETURN
 END IF
+
+! Filter always disabled in postiMode
+IF (postiMode) THEN
+  FilterType = FILTERTYPE_NONE
+  RETURN
+END IF
+
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT FILTER...'
+
 
 FilterType = GETINTFROMSTR('FilterType')
 
@@ -181,9 +184,9 @@ IF(FilterType.GT.0) THEN
         END DO ! j
       END DO ! k
       IntegrationWeight(:,:,:,iElem,0) = IntegrationWeight(:,:,:,iElem,0) / Vol
-    END DO !iElem
+    END DO ! iElem
 
-  ! Compute normalization for LAF
+    ! Compute normalization for LAF
     normMod=((REAL(NFilter)+1)**(-2./3.)-2.**(-2./3.))/(REAL(PP_N+1)**(-2./3.)-REAL(NFilter+1)**(-2./3.))
     lim=1E-8
     eRatio=0.
@@ -517,6 +520,7 @@ ELSE
   U_in = U_Eta
 END IF
 END SUBROUTINE Filter_Selective
+
 
 !==================================================================================================================================
 !> Deallocate filter arrays
