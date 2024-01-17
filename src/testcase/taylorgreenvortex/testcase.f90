@@ -228,7 +228,9 @@ REAL            :: prim(PP_nVarPrim)
 prim(VEL1) = U0*SIN(x(1))*COS(x(2))*COS(x(3))                                        ! (6)
 prim(VEL2) =-U0*COS(x(1))*SIN(x(2))*COS(x(3))                                        ! (6)
 prim(VEL3) = 0.                                                                      ! (6)
-prim(PRES) = p0 + (rho0*U0**2)/16. * (COS(2.*x(1))+COS(2.*x(3))) * (2.+COS(2.*x(3))) ! (7)
+! Expand product in (7) analytically to reduce influence of limited floating point precision
+prim(PRES) = p0 + (rho0*U0**2)/16.*( COS(2*x(1))*COS(2.*x(3)) + 2.*COS(2.*x(2)) + 2.*COS(2.*x(1)) + COS(2*x(2))*COS(2.*x(3)) ) ! (7)
+
 
 ! Two different variations of initialization are possible:
 ! Either set intial density field as constant and compute local temperature thermodynamically consistent or vice versa.
@@ -342,11 +344,9 @@ REAL                            :: DR_u_Glob,DR_S_glob,DR_Sd_Glob,DR_p_Glob,ED_S
 !----------------------------------------------------------------------------------------------------------------------------------
 ! 1. Nullify Quantities
 !----------------------------------------------------------------------------------------------------------------------------------
-Ekin=0.;Ekin_comp=0.
-T_mean=0.;Entropy=0.
+Ekin=0.;Ekin_comp=0.;T_mean=0.;Entropy=0.
 #if PARABOLIC
-DR_u=0.;DR_S=0.;DR_Sd=0.;DR_p=0.;ED_S=0.;ED_D=0.
-Enstr=0.;Vorticity_max=0.
+DR_u=0.;DR_S=0.;DR_Sd=0.;DR_p=0.;ED_S=0.;ED_D=0.;Enstr=0.;Vorticity_max=0.
 #endif
 
 DO iElem=1,nElems
@@ -466,7 +466,7 @@ IF(MPIRoot) THEN
   ED_D = ED_D *4./3./Vol
 #endif
 
-  uPrime=SQRT(Ekin/Vol*2./3.)
+  uPrime=SQRT(2./3.*Ekin)
 
   !----------------------------------------------------------------------------------------------------------------------------------
   ! 7. Write to file
