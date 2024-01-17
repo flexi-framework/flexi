@@ -221,7 +221,7 @@ USE MOD_HDF5_Input,         ONLY: ISVALIDHDF5FILE,GetVarNames,DatasetExists
 USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadAttribute,File_ID
 USE MOD_Interpolation_Vars, ONLY: InterpolationInitIsDone,NodeType
 USE MOD_Mesh_Vars,          ONLY: nGlobalElems,NGeo
-USE MOD_ReadInTools,        ONLY: GETLOGICAL,GETREAL,ExtractParameterFile,CompareParameterFile
+USE MOD_ReadInTools,        ONLY: GETLOGICAL,GETREAL!,ExtractParameterFile,CompareParameterFile
 USE MOD_Restart_Vars
 #if FV_ENABLED
 USE MOD_ReadInTools,        ONLY: GETINT
@@ -234,9 +234,9 @@ IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN) :: RestartFile_in !< state file to restart from
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-LOGICAL            :: ResetTime,validHDF5,prmChanged,userblockFound
+LOGICAL            :: ResetTime,validHDF5!,prmChanged,userblockFound
 REAL               :: StartT,EndT
-CHARACTER(LEN=255) :: ParameterFileOld
+! CHARACTER(LEN=255) :: ParameterFileOld
 !==================================================================================================================================
 IF(.NOT.InterpolationInitIsDone .OR. RestartInitIsDone) &
   CALL CollectiveStop(__STAMP__,'InitRestart not ready to be called or already called.')
@@ -266,24 +266,26 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
   ! Option to set the calculation time to 0 even tho performing a restart
   ResetTime = GETLOGICAL('ResetTime')
   IF (postiMode) ResetTime = .FALSE.
+  IF (ResetTime) RestartTime = 0.
+  CALL CloseDataFile()
 
-  ! Ensure this is not the same run starting over with ResetTime=T
-  IF (ResetTime) THEN
-    IF (.NOT.GETLOGICAL('ResetTimeOverride')) THEN
-      ! Extract the old parameter file
-      IF (MPIRoot) THEN
-        ParameterFileOld = ".flexi.old.ini"
-        CALL ExtractParameterFile(RestartFile,ParameterFileOld,userblockFound)
-
-        ! Compare it against the current file
-        IF (userblockFound) THEN
-          CALL CompareParameterFile(ParameterFile,ParameterFileOld,prmChanged)
-          IF (.NOT.prmChanged) &
-            CALL Abort(__STAMP__,'Running simulation with ResetTime=T, same parameter file and ResetTimeOverride=F!')
-        END IF ! userblockFound
-      END IF ! MPIRoot
-    END IF ! .NOT.ResetTimeOverride
-  END IF ! ResetTime
+  ! ! Ensure this is not the same run starting over with ResetTime=T
+  ! IF (ResetTime) THEN
+  !   IF (.NOT.GETLOGICAL('ResetTimeOverride')) THEN
+  !     ! Extract the old parameter file
+  !     IF (MPIRoot) THEN
+  !       ParameterFileOld = ".flexi.old.ini"
+  !       CALL ExtractParameterFile(RestartFile,ParameterFileOld,userblockFound)
+  !
+  !       ! Compare it against the current file
+  !       IF (userblockFound) THEN
+  !         CALL CompareParameterFile(ParameterFile,ParameterFileOld,prmChanged)
+  !         IF (.NOT.prmChanged) &
+  !           CALL Abort(__STAMP__,'Running simulation with ResetTime=T, same parameter file and ResetTimeOverride=F!')
+  !       END IF ! userblockFound
+  !     END IF ! MPIRoot
+  !   END IF ! .NOT.ResetTimeOverride
+  ! END IF ! ResetTime
 
   ! Check if number of elements match
   IF (nElems_Restart.NE.nGlobalElems) THEN
