@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2017 Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024 Prof. Claus-Dieter Munz
 ! Copyright (c) 2016-2017 Gregor Gassner (github.com/project-fluxo/fluxo)
 ! Copyright (c) 2016-2017 Florian Hindenlang (github.com/project-fluxo/fluxo)
 ! Copyright (c) 2016-2017 Andrew Winters (github.com/project-fluxo/fluxo)
@@ -71,7 +71,6 @@ INTERFACE FinalizeRiemann
   MODULE PROCEDURE FinalizeRiemann
 END INTERFACE
 
-
 PUBLIC::DefineParametersRiemann
 PUBLIC::InitRiemann
 PUBLIC::Riemann
@@ -82,7 +81,6 @@ PUBLIC::ViscousFlux
 !==================================================================================================================================
 
 CONTAINS
-
 
 !==================================================================================================================================
 !> Define parameters
@@ -130,6 +128,7 @@ CALL addStrListEntry('RiemannBC','avg',          PRM_RIEMANN_Average)
 #endif
 CALL addStrListEntry('RiemannBC','same',         PRM_RIEMANN_SAME)
 END SUBROUTINE DefineParametersRiemann
+
 
 !==================================================================================================================================!
 !> Initialize Riemann solver routines, read inner and BC Riemann solver parameters and set pointers
@@ -237,6 +236,7 @@ END SELECT
 #endif /*SPLIT_DG*/
 END SUBROUTINE InitRiemann
 
+
 !==================================================================================================================================
 !> Computes the numerical flux for a side calling the flux calculation pointwise.
 !> Conservative States are rotated into normal direction in this routine and are NOT backrotated: don't use it after this routine!!
@@ -270,13 +270,12 @@ ELSE
 END IF
 
 DO j=0,ZDIM(Nloc); DO i=0,Nloc
-  ! Momentum has to be rotatet using the normal system individual for each
+  ! Momentum has to be rotated using the normal system individual for each
   ! left state: U_L
   U_LL(EXT_DENS)=U_L(DENS,i,j)
   U_LL(EXT_SRHO)=1./U_LL(EXT_DENS)
   U_LL(EXT_ENER)=U_L(ENER,i,j)
   U_LL(EXT_PRES)=UPrim_L(PRES,i,j)
-
 
   ! rotate velocity in normal and tangential direction
   U_LL(EXT_VEL1)=DOT_PRODUCT(UPrim_L(VELV,i,j),nv(:,i,j))
@@ -326,7 +325,9 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
 #endif
   Fout(ENER,i,j)=F(ENER)
 END DO; END DO
+
 END SUBROUTINE Riemann_Side
+
 
 !==================================================================================================================================
 !> Computes the numerical flux
@@ -358,13 +359,12 @@ ELSE
   Riemann_loc => Riemann_pointer
 END IF
 
-! Momentum has to be rotatet using the normal system individual for each
+! Momentum has to be rotated using the normal system individual for each
 ! left state: U_L
 U_LL(EXT_DENS)=U_L(DENS)
 U_LL(EXT_SRHO)=1./U_LL(EXT_DENS)
 U_LL(EXT_ENER)=U_L(ENER)
 U_LL(EXT_PRES)=UPrim_L(PRES)
-
 
 ! rotate velocity in normal and tangential direction
 U_LL(EXT_VEL1)=DOT_PRODUCT(UPrim_L(VELV),nv(:))
@@ -410,10 +410,11 @@ Fout(MOMV)=nv(:)*F(MOM1)  &
 #if PP_dim==3
           +t2(:)*F(MOM3)
 #else
-          +0.
+          + 0.
 #endif
 Fout(ENER)=F(ENER)
 END SUBROUTINE Riemann_Point
+
 
 #if PARABOLIC
 !==================================================================================================================================
@@ -522,6 +523,7 @@ F(:)=0.5*(nv(1)*(diffFluxX_L(:)+diffFluxX_R(:)) &
          +nv(3)*(diffFluxZ_L(:)+diffFluxZ_R(:)))
 END SUBROUTINE ViscousFlux_Point
 #endif /* PARABOLIC */
+
 
 !==================================================================================================================================
 !> Local Lax-Friedrichs (Rusanov) Riemann solver
@@ -820,6 +822,7 @@ F= F - 0.5*(Alpha(1)*a(1)*r1 + &
 #endif /*SPLIT_DG*/
 END SUBROUTINE Riemann_RoeEntropyFix
 
+
 !=================================================================================================================================
 !> low mach number Roe's approximate Riemann solver according to Oßwald(2015)
 !=================================================================================================================================
@@ -1065,6 +1068,7 @@ ELSE
 END IF ! subsonic case
 END SUBROUTINE Riemann_HLLEM
 
+
 #ifdef SPLIT_DG
 !==================================================================================================================================
 !> Riemann solver using purely the average fluxes
@@ -1143,6 +1147,7 @@ F(ENER)      = F(ENER)      - 0.5*LambdaMax*( &
 END SUBROUTINE Riemann_CH
 #endif /*SPLIT_DG*/
 
+
 !==================================================================================================================================
 !> Finalize Riemann solver routines
 !==================================================================================================================================
@@ -1155,6 +1160,5 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !==================================================================================================================================
 END SUBROUTINE FinalizeRiemann
-
 
 END MODULE MOD_Riemann

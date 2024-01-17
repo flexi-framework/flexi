@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -53,7 +53,7 @@ USE MOD_Overintegration_Vars,ONLY: OverintegrationType
 USE MOD_Predictor           ,ONLY: FillInitPredictor
 USE MOD_RecordPoints        ,ONLY: RecordPoints
 USE MOD_RecordPoints_Vars   ,ONLY: RP_onProc
-USE MOD_Restart_Vars        ,ONLY: DoRestart,RestartTime
+USE MOD_Restart_Vars        ,ONLY: DoRestart,RestartTime,FlushInitialState
 USE MOD_TestCase            ,ONLY: AnalyzeTestCase,CalcForcing
 USE MOD_TimeDisc_Functions  ,ONLY: InitTimeStep,UpdateTimeStep,AnalyzeTimeStep
 USE MOD_TimeStep            ,ONLY: TimeStep
@@ -62,6 +62,7 @@ USE MOD_TimeDisc_Vars       ,ONLY: iter,iter_analyze,maxIter
 USE MOD_TimeDisc_Vars       ,ONLY: t,tStart,tEnd,dt,tAnalyze
 USE MOD_TimeDisc_Vars       ,ONLY: TimeDiscType
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize,writeCounter,nCalcTimestep
+USE MOD_TimeDisc_Vars       ,ONLY: time_start
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
 #if FV_ENABLED
 USE MOD_Indicator           ,ONLY: CalcIndicator
@@ -81,9 +82,15 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER                       :: TimeArray(8)              !< Array for system time
 !==================================================================================================================================
 
 SWRITE(UNIT_stdOut,'(132("-"))')
+
+! Get system time
+CALL DATE_AND_TIME(values=TimeArray)
+SWRITE(UNIT_stdOut,'(A,I2.2,A1,I2.2,A1,I4.4,A1,I2.2,A1,I2.2,A1,I2.2)') &
+  ' Sys date   :    ',timeArray(3),'.',timeArray(2),'.',timeArray(1),' ',timeArray(5),':',timeArray(6),':',timeArray(7)
 
 ! write number of grid cells and dofs only once per computation
 SWRITE(UNIT_stdOut,'(A13,ES16.7)')'#GridCells : ',REAL(nGlobalElems)
@@ -137,7 +144,7 @@ IF(DoPPLimiter) CALL PPLimiter()
 
 IF(.NOT.DoRestart) THEN
   SWRITE(UNIT_stdOut,'(A)') ' WRITING INITIAL SOLUTION:'
-ELSE
+ELSEIF (FlushInitialState) THEN
   SWRITE(UNIT_stdOut,'(A)') ' REWRITING SOLUTION:'
 END IF
 
@@ -172,6 +179,7 @@ CALL PPLimiter_Info(1_8)
 SWRITE(UNIT_stdOut,'(A)') ' CALCULATION RUNNING...'
 
 IF(TimeDiscType.EQ.'ESDIRK') CALL FillInitPredictor(t)
+CALL CPU_TIME(time_start)
 
 ! Run computation
 DO
@@ -192,7 +200,7 @@ DO
   ! Perform analysis at the end of the RK loop
   CALL AnalyzeTimeStep()
 
-  CALL PrintStatusLine(t,dt,tStart,tEnd)
+  CALL PrintStatusLine(t,dt,tStart,tEnd,iter,maxIter)
 
   IF(doFinalize) EXIT
 END DO

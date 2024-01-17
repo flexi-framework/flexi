@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -38,13 +38,14 @@ PUBLIC::GlobalVectorDotProduct
 
 CONTAINS
 
-
 !==================================================================================================================================
 !> Computes matrix inverse using LAPACK
 !> Input matrix should be a square matrix
 !==================================================================================================================================
 FUNCTION INVERSE(A) RESULT(AINV)
 ! MODULES
+USE MOD_Globals, ONLY: Abort
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -88,17 +89,15 @@ ELSE
   ! using partial pivoting with row interchanges.
   CALL DGETRF(n, n, Ainv, n, ipiv, info)
 
-  IF(info.NE.0)THEN
-    STOP 'Matrix is numerically singular!'
-  END IF
+  IF(info.NE.0) &
+    CALL Abort(__STAMP__,'INVERSE(A): Matrix is numerically singular! INFO = ',IntInfo=INFO)
 
   ! DGETRI computes the inverse of a matrix using the LU factorization
   ! computed by DGETRF.
   CALL DGETRI(n, Ainv, n, ipiv, work, n, info)
 
-  IF(info.NE.0)THEN
-    STOP 'Matrix inversion failed!'
-  END IF
+  IF(info.NE.0) &
+    CALL Abort(__STAMP__,'INVERSE(A): Matrix inversion failed! INFO = ',IntInfo=INFO)
 END IF
 END FUNCTION INVERSE
 
@@ -122,6 +121,7 @@ END FUNCTION INVERSE
 !!===================================================================================================================================
 !PURE FUNCTION ALMOSTEQUALRELATIVE(x,y,tol)
 !! MODULES
+! ! IMPLICIT VARIABLE HANDLING
 !IMPLICIT NONE
 !!----------------------------------------------------------------------------------------------------------------------------------
 !! INPUT/OUTPUT VARIABLES
@@ -132,6 +132,8 @@ END FUNCTION INVERSE
 !!==================================================================================================================================
 !ALMOSTEQUALRELATIVE=(ABS(x-y).LE.MAX(ABS(x),ABS(y))*tol)
 !END FUNCTION ALMOSTEQUALRELATIVE
+
+
 !PURE FUNCTION ALMOSTEQUALABSOLUTE(x,y,tol)
 !! MODULES
 !IMPLICIT NONE
@@ -152,6 +154,7 @@ END FUNCTION INVERSE
 !==================================================================================================================================
 PPURE FUNCTION CROSS(v1,v2)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
