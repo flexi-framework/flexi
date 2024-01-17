@@ -271,17 +271,19 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
   IF (ResetTime) THEN
     IF (.NOT.GETLOGICAL('ResetTimeOverride')) THEN
       ! Extract the old parameter file
-      ParameterFileOld = ".flexi.old.ini"
-      CALL ExtractParameterFile(RestartFile,ParameterFileOld,userblockFound)
+      IF (MPIRoot) THEN
+        ParameterFileOld = ".flexi.old.ini"
+        CALL ExtractParameterFile(RestartFile,ParameterFileOld,userblockFound)
 
-      ! Compare it against the current file
-      IF (userblockFound) THEN
-        CALL CompareParameterFile(ParameterFile,ParameterFileOld,prmChanged)
-        IF (.NOT.prmChanged) &
-          CALL CollectiveStop(__STAMP__,'Running simulation with ResetTime=T, same parameter file and ResetTimeOverride=F!')
-      END IF
-    END IF
-  END IF
+        ! Compare it against the current file
+        IF (userblockFound) THEN
+          CALL CompareParameterFile(ParameterFile,ParameterFileOld,prmChanged)
+          IF (.NOT.prmChanged) &
+            CALL Abort(__STAMP__,'Running simulation with ResetTime=T, same parameter file and ResetTimeOverride=F!')
+        END IF ! userblockFound
+      END IF ! MPIRoot
+    END IF ! .NOT.ResetTimeOverride
+  END IF ! ResetTime
 
   ! Check if number of elements match
   IF (nElems_Restart.NE.nGlobalElems) THEN

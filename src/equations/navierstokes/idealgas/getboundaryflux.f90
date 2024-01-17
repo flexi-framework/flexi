@@ -381,8 +381,8 @@ CASE(3,4,9,91,23,24,25,27)
         pb=pt     *(1+0.5*(kappa-1)*MaOut*MaOut)**(-kappa*sKappaM1)
 
         ! use total temperature
-        tt=UPrim_boundary(6,p,q)*(1+0.5*(kappa-1)*Ma   *Ma)  ! adiabatic/isentropic => unstable
-        tb=tt/(1+0.5*(kappa-1)*MaOut*MaOut)
+        ! tt=UPrim_boundary(6,p,q)*(1+0.5*(kappa-1)*Ma   *Ma)  ! adiabatic/isentropic => unstable
+        ! tb=tt/(1+0.5*(kappa-1)*MaOut*MaOut)
       ELSE
         ! use total pressure for supersonic
         pb=UPrim_boundary(PRES,p,q)+0.5*UPrim_boundary(DENS,p,q)*vmag*vmag

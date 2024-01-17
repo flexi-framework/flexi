@@ -442,9 +442,9 @@ CASE(5) !Roundjet Bogey Bailly 2002, Re=65000, x-axis is jet axis
   CALL RANDOM_NUMBER(random)
   ! Random disturbance +-5%; uniform distribution between -1,1
   random=0.05*2.*(random-0.5)
-  prim(VEL1)=prim(VEL1)+random*prim(2)
-  prim(VEL2)=x(2)/r_len*0.5*random*prim(2)
-  prim(VEL3)=x(3)/r_len*0.5*random*prim(2)
+  prim(VEL1)=prim(VEL1)+random*prim(VEL1)
+  prim(VEL2)=x(2)/r_len*0.5*random*prim(VEL1)
+  prim(VEL3)=x(3)/r_len*0.5*random*prim(VEL1)
   CALL PrimToCons(prim,ResuL)
   prim(VELV)  =0.
   CALL PrimToCons(prim,ResuR)
