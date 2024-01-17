@@ -87,10 +87,13 @@ USE MOD_ReadInTools ,ONLY: prms
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Testcase")
-CALL prms%CreateIntOption('nWriteStats', "Write testcase statistics to file at every n-th AnalyzeTestcase step.", '100')
+CALL prms%CreateIntOption('nWriteStats',      "Write testcase statistics to file at every n-th AnalyzeTestcase step.", '100')
 CALL prms%CreateIntOption('nAnalyzeTestCase', "Call testcase specific analysis routines every n-th timestep. "//&
-                                              "(Note: always called at global analyze level)"                   , '10')
-CALL prms%CreateRealOption('MachNumber', "Reference Mach number for TGV testcase", '0.1')
+                                              "(Note: always called at global analyze level)"                         , '10')
+CALL prms%CreateRealOption('MachNumber',      "Reference Mach number for TGV testcase", '0.1')
+CALL prms%CreateLogicalOption('IniConstDens', "True:  Initial Density     field is constant, Temperature entails fluctuations.\n&
+                                              &False: Initial Temperature field is constant, Density     entails fluctuations." &
+                                              ,'T')
 END SUBROUTINE DefineParametersTestcase
 
 
@@ -100,9 +103,9 @@ END SUBROUTINE DefineParametersTestcase
 SUBROUTINE InitTestcase()
 ! MODULES
 USE MOD_Globals
-USE MOD_ReadInTools,    ONLY: GETINT,GETREAL
-USE MOD_Output_Vars,    ONLY: ProjectName
 USE MOD_TestCase_Vars
+USE MOD_ReadInTools,    ONLY: GETINT,GETREAL,GETLOGICAL
+USE MOD_Output_Vars,    ONLY: ProjectName
 USE MOD_Output,         ONLY: InitOutputToFile
 USE MOD_EOS_Vars,       ONLY: Kappa,R
 #if (PP_VISC==1)
@@ -123,6 +126,9 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE TAYLOR-GREEN VORTEX...'
 ! Length of Buffer for TGV output
 nWriteStats      = GETINT( 'nWriteStats')
 nAnalyzeTestCase = GETINT( 'nAnalyzeTestCase')
+
+! Check whether initial density or rather temperature field should be constant
+IniConstDens = GETLOGICAL('IniConstDens')
 
 ! Get reference Mach number of TGV
 Ma0 = GETREAL('MachNumber')
@@ -193,13 +199,17 @@ END SUBROUTINE InitTestcase
 !> Specifies the initial conditions for the TGV testcase in a (weakly) compressible formulation with size [0,2*PI]^3 following:
 !>    "Comparison of high-order numerical methodologies for the simulation of the supersonic Taylor-Green Vortex flow",
 !>    Chapelier et al., Physics of Fluids, 2024.
+!>
+!> Two versions of initial conditions are implemented for the (weakly) compressible form. Either set initial density field as
+!> constant and compute the temperature field to be thermodynamically consistent to the intial pressure (containing fluctuations)
+!> or vice versa.
 !==================================================================================================================================
 SUBROUTINE ExactFuncTestcase(tIn,x,Resu,Resu_t,Resu_tt)
 ! MODULES
 USE MOD_Globals
 USE MOD_EOS,           ONLY: PrimToCons
 USE MOD_EOS_Vars,      ONLY: R
-USE MOD_Testcase_Vars, ONLY: rho0,U0,p0,T0
+USE MOD_Testcase_Vars, ONLY: rho0,U0,p0,T0,IniConstDens
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -212,17 +222,23 @@ REAL,INTENT(OUT)                :: Resu_tt(5)  !< second time deriv of exact fuc
 ! LOCAL VARIABLES
 REAL            :: prim(PP_nVarPrim)
 !==================================================================================================================================
-! Initial velocity, pressure and temperature fields with reference quantities:
+! Initial velocity and pressure with reference quantities:
 !   -U0,rho0 parameters set to unity in Testcase_Vars
 !   -T0,  p0 precomputed in InitTestcase based on U0, rho0 and user-specified Ma0
 prim(VEL1) = U0*SIN(x(1))*COS(x(2))*COS(x(3))                                        ! (6)
 prim(VEL2) =-U0*COS(x(1))*SIN(x(2))*COS(x(3))                                        ! (6)
 prim(VEL3) = 0.                                                                      ! (6)
 prim(PRES) = p0 + (rho0*U0**2)/16. * (COS(2.*x(1))+COS(2.*x(3))) * (2.+COS(2.*x(3))) ! (7)
-prim(TEMP) = T0                                                                      ! (8)
 
-! Density thermodynamically consistent to temperature field
-prim(DENS) = prim(PRES)/(prim(TEMP)*R)
+! Two different variations of initialization are possible:
+! Either set intial density field as constant and compute local temperature thermodynamically consistent or vice versa.
+IF(IniConstDens) THEN
+  prim(DENS) = rho0 ! Constant initial density
+  prim(TEMP) = prim(PRES)/(prim(DENS)*R)
+ELSE
+  prim(TEMP) = T0   ! Constant initial temperature
+  prim(DENS) = prim(PRES)/(prim(TEMP)*R)
+END IF
 
 CALL PrimToCons(prim,Resu)
 
