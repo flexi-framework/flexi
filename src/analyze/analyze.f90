@@ -287,6 +287,7 @@ USE MOD_Mesh_Vars,          ONLY: nGlobalElems
 USE MOD_Output,             ONLY: OutputToFile,PrintStatusLine
 USE MOD_Output_Vars,        ONLY: ProjectName
 USE MOD_TimeDisc_Vars,      ONLY: dt,tStart,tEnd,maxIter
+USE MOD_Restart_Vars,       ONLY: RestartTime
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -323,7 +324,7 @@ CALL AnalyzeEquation(Time)
 CALL AnalyzePerformance()
 CALL Benchmarking()
 
-IF(Time.GT.0.) THEN
+IF(Time.GT.RestartTime) THEN
   SWRITE(UNIT_stdOut,'(132("-"))')
   CALL PrintStatusLine(time,dt,tStart,tEnd,iter,maxIter,doETA=.TRUE.)
   SWRITE(UNIT_stdOut,'(132("."))')
