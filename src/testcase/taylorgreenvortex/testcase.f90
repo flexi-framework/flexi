@@ -241,7 +241,7 @@ USE MOD_ChangeBasis,    ONLY: ChangeBasis3D
 USE MOD_Mesh_Vars,      ONLY: nElems
 #if FV_ENABLED == 1
 USE MOD_FV_Vars,        ONLY: gradUxi_central,gradUeta_central,gradUzeta_central
-USE MOD_Analyze_Vars,   ONLY: FV_Vdm_NAnalyze,FV_wGPVolAnalyze
+USE MOD_Analyze_Vars,   ONLY: FV_Vdm_NAnalyze
 USE MOD_FV_Vars,        ONLY: FV_Elems
 #endif
 #if USE_MPI
@@ -310,9 +310,6 @@ DO ii=1,nElems
     CALL ChangeBasis3D(3, PP_N, NAnalyze, FV_Vdm_NAnalyze, gradUeta_central( LIFT_VELV,:,:,:,ii), GradVely)
     CALL ChangeBasis3D(3, PP_N, NAnalyze, FV_Vdm_NAnalyze, gradUzeta_central(LIFT_VELV,:,:,:,ii), GradVelz)
 #endif /*PARABOLIC*/
-    !Interpolate the jacobian to the analyze grid
-    sJ_N(1,:,:,:) = sJ(:,:,:,ii,1)
-    CALL ChangeBasis3D(1, PP_N, NAnalyze, FV_Vdm_NAnalyze, sJ_N(1:1,0:PP_N,0:PP_N,0:PP_N), sJ_NAnalyze(1:1,:,:,:))
     ! Interpolate the solution to the analyze grid
     CALL ChangeBasis3D(PP_nVar, PP_N, NAnalyze, FV_Vdm_NAnalyze, U(1:PP_nVar,:,:,:,ii), U_NAnalyze(1:PP_nVar,:,:,:))
   ELSE
@@ -323,14 +320,14 @@ DO ii=1,nElems
     CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUy(LIFT_VELV,:,:,:,ii), GradVely)
     CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUz(LIFT_VELV,:,:,:,ii), GradVelz)
 #endif /*PARABOLIC*/
-    !Interpolate the jacobian to the analyze grid
-    sJ_N(1,:,:,:)=sJ(:,:,:,ii,0)
-    CALL ChangeBasis3D(1, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, sJ_N(1:1,0:PP_N,0:PP_N,0:PP_N), sJ_NAnalyze(1:1,:,:,:))
     !Interpolate the solution to the analyze grid
     CALL ChangeBasis3D(PP_nVar, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, U(1:PP_nVar,:,:,:,ii), U_NAnalyze(1:PP_nVar,:,:,:))
 #if FV_ENABLED == 1
   END IF
 #endif /*FV_ENABLED*/
+  !Interpolate the jacobian to the analyze grid
+  sJ_N(1,:,:,:) = sJ(:,:,:,ii,0)
+  CALL ChangeBasis3D(1, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, sJ_N(1:1,0:PP_N,0:PP_N,0:PP_N), sJ_NAnalyze(1:1,:,:,:))
 
   DO k=0,NAnalyze
     DO j=0,NAnalyze
@@ -379,15 +376,7 @@ DO ii=1,nElems
           END DO
         END DO
 #endif
-#if FV_ENABLED == 1
-        IF(FV_Elems(ii).EQ.1) THEN  !FV element
-          Intfactor=FV_wGPVolAnalyze(i,j,k)/sJ_NAnalyze(1,i,j,k)
-        ELSE
-#endif /*FV_ENABLED*/
-          Intfactor=wGPVolAnalyze(i,j,k)/sJ_NAnalyze(1,i,j,k)
-#if FV_ENABLED == 1
-        END IF
-#endif /*FV_ENABLED*/
+        Intfactor=wGPVolAnalyze(i,j,k)/sJ_NAnalyze(1,i,j,k)
         ! compute cell volume (total volumen of domain on proc)
         Volume=Volume+Intfactor
         ! compute integrals:
