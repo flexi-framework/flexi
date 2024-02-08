@@ -70,7 +70,6 @@ REAL,ALLOCATABLE     :: wGPVolAnalyze(:,:,:)              !< product of GL integ
 REAL,ALLOCATABLE     :: Vdm_GaussN_NAnalyze(:,:)          !< Vandermonde for interpolating the solution to analyze points
 
 #if FV_ENABLED
-REAL,ALLOCATABLE     :: FV_wGPVolAnalyze(:,:,:)           !< product of GL integration weights used for analyze routines
 REAL,ALLOCATABLE     :: FV_Vdm_NAnalyze(:,:)              !< Vandermonde for interpolating the solution to analyze points
 #endif
 
