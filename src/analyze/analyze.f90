@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -69,7 +69,7 @@ CALL prms%CreateIntOption(    'AnalyzeRefState' ,"Define state used for analyze 
                                                  "Default: Same as IniRefState")
 CALL prms%CreateLogicalOption('doMeasureFlops',  "Set true to measure flop count, if compiled with PAPI.",&
                                                  '.TRUE.')
-CALL prms%CreateRealOption(   'PIDkill',         'Kill FLEXI if PID gets below this value (optional)',&
+CALL prms%CreateRealOption(   'PIDkill',         'Kill FLEXI if PID gets above this value (optional)',&
                                                  '-1.0')
 CALL prms%CreateIntOption(    'NCalcPID'         ,'Compute PID after every Nth timestep.',&
                                                   '1')
@@ -180,15 +180,12 @@ DO iSide=1,nSides
   END DO; END DO
 END DO
 #if USE_MPI
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,Vol ,1   ,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,Surf,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
 ! Communicate whether any processor has a surface at the respective boundary
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,hasAnalyzeSides,nBCs,MPI_LOGICAL,MPI_LOR,MPI_COMM_FLEXI,iError)
 #endif /*USE_MPI*/
-
 ! Prevent division by 0 if a BC has no sides associated with it (e.g. periodic)
-#if USE_MPI
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,Vol ,1   ,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,Surf,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
-#endif /*USE_MPI*/
 DO iSurf=1,nBCs
   IF (.NOT.hasAnalyzeSides(iSurf)) Surf(iSurf) = HUGE(1.)
 END DO
@@ -281,6 +278,7 @@ END SUBROUTINE InitAnalyzeBasis
 SUBROUTINE Analyze(Time,iter)
 ! MODULES
 USE MOD_Globals
+USE MOD_Globals_Vars,       ONLY: StartTime
 USE MOD_PreProc
 USE MOD_Analyze_Vars
 USE MOD_AnalyzeEquation,    ONLY: AnalyzeEquation
@@ -288,7 +286,8 @@ USE MOD_Benchmarking,       ONLY: Benchmarking
 USE MOD_Mesh_Vars,          ONLY: nGlobalElems
 USE MOD_Output,             ONLY: OutputToFile,PrintStatusLine
 USE MOD_Output_Vars,        ONLY: ProjectName
-USE MOD_TimeDisc_Vars,      ONLY: dt,tStart,tEnd
+USE MOD_TimeDisc_Vars,      ONLY: dt,tStart,tEnd,maxIter
+USE MOD_Restart_Vars,       ONLY: RestartTime
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -325,9 +324,9 @@ CALL AnalyzeEquation(Time)
 CALL AnalyzePerformance()
 CALL Benchmarking()
 
-IF(Time.GT.0.) THEN
+IF(Time.GT.RestartTime) THEN
   SWRITE(UNIT_stdOut,'(132("-"))')
-  CALL PrintStatusLine(time,dt,tStart,tEnd,doETA=.TRUE.)
+  CALL PrintStatusLine(time,dt,tStart,tEnd,iter,maxIter,doETA=.TRUE.)
   SWRITE(UNIT_stdOut,'(132("."))')
   SWRITE(UNIT_stdOut,'(A,A,A,F8.2,A)') ' FLEXI RUNNING ',TRIM(ProjectName),'... [',RunTime,' sec ]'
   SWRITE(UNIT_stdOut,'(132("-"))')
@@ -368,8 +367,8 @@ END IF
 PIDTimeEnd = FLEXITIME()
 PID        = (PIDTimeEnd-PIDTimeStart)*REAL(nProcessors)/(REAL(nGlobalElems)*REAL((PP_N+1)**PP_dim))/nRKStages
 
-! Abort if PID is too low
-IF (PID.LT.PID_kill) &
+! Abort if PID is too high
+IF (PID.GT.PID_kill) &
   CALL CollectiveStop(__STAMP__,'Aborting due to low performance, PID',RealInfo=PID)
 
 PIDTimeStart = PIDTimeStart

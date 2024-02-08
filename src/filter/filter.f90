@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -106,6 +106,7 @@ USE MOD_Mesh_Vars         ,ONLY:nElems,sJ
 #if PP_LIMITER
 USE MOD_PPLimiter         ,ONLY: InitPPLimiter
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -201,11 +202,11 @@ IF(FilterType.GT.0) THEN
   END SELECT
 
   !INFO
-  SWRITE(*,'(A)',ADVANCE='NO')'FILTER DIAGONAL: '
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')'FILTER DIAGONAL: '
   DO iDeg=0,PP_N-1
-    SWRITE(*,'(F7.3)',ADVANCE='NO')FilterMat(iDeg,iDeg)
+    SWRITE(UNIT_stdOut,'(F7.3)',ADVANCE='NO')FilterMat(iDeg,iDeg)
   END DO
-  SWRITE(*,'(F7.3)')FilterMat(PP_N,PP_N)
+  SWRITE(UNIT_stdOut,'(F7.3)')FilterMat(PP_N,PP_N)
 
   ! Assemble filter matrix in nodal space
   FilterMat=MATMUL(MATMUL(Vdm_Leg,FilterMat),sVdm_Leg)
@@ -231,6 +232,7 @@ SUBROUTINE HestFilter()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Filter_Vars,ONLY:HestFilterParam,FilterMat
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -275,6 +277,7 @@ USE MOD_Mesh_Vars,         ONLY: nElems
 #if FV_ENABLED
 USE MOD_FV_Vars,           ONLY: FV_Elems
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -461,6 +464,7 @@ SUBROUTINE Filter_Selective(NVar,FilterMat,U_in,filter_ind)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -531,6 +535,7 @@ USE MOD_Filter_Vars
 #if PP_LIMITER
 USE MOD_PPLimiter,    ONLY: FinalizePPLimiter
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 SDEALLOCATE(FilterMat)

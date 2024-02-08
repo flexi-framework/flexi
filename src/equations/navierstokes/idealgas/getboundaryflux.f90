@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -108,6 +108,7 @@ USE MOD_Exactfunc_Vars    ,ONLY: delta99_in,x_in,BlasiusInitDone
 #endif
 USE MOD_EOS               ,ONLY: ConsToPrim
 USE MOD_ExactFunc         ,ONLY: ExactFunc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -253,17 +254,16 @@ SUBROUTINE GetBoundaryState(SideID,t,Nloc,UPrim_boundary,UPrim_master,NormVec,Ta
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
 USE MOD_PreProc
-USE MOD_Globals      ,ONLY: Abort
-USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
-USE MOD_EOS          ,ONLY: ConsToPrim,PrimtoCons
-USE MOD_EOS          ,ONLY: PRESSURE_RIEMANN
-USE MOD_EOS_Vars     ,ONLY: sKappaM1,Kappa,KappaM1,R
-USE MOD_ExactFunc    ,ONLY: ExactFunc
-USE MOD_Equation_Vars,ONLY: IniExactFunc,BCDataPrim,RefStatePrim
-!----------------------------------------------------------------------------------------------------------------------------------
-! insert modules here
-!----------------------------------------------------------------------------------------------------------------------------------
+USE MOD_Globals        ,ONLY: Abort
+USE MOD_Mesh_Vars      ,ONLY: BoundaryType,BC
+USE MOD_EOS            ,ONLY: ConsToPrim,PrimtoCons
+USE MOD_EOS            ,ONLY: PRESSURE_RIEMANN
+USE MOD_EOS_Vars       ,ONLY: sKappaM1,Kappa,KappaM1,R
+USE MOD_ExactFunc      ,ONLY: ExactFunc
+USE MOD_Equation_Vars  ,ONLY: IniExactFunc,BCDataPrim,RefStatePrim
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)      :: SideID                                   !< ID of current side
 REAL,INTENT(IN)         :: t                                        !< current time (provided by time integration scheme)
@@ -274,8 +274,6 @@ REAL,INTENT(IN)         :: TangVec1(         3,0:Nloc,0:ZDIM(Nloc)) !< tangent s
 REAL,INTENT(IN)         :: TangVec2(         3,0:Nloc,0:ZDIM(Nloc)) !< tangent surface vectors 2
 REAL,INTENT(IN)         :: Face_xGP(         3,0:Nloc,0:ZDIM(Nloc)) !< positions of surface flux points
 REAL,INTENT(OUT)        :: UPrim_boundary(PRIM,0:Nloc,0:ZDIM(Nloc)) !< resulting boundary state
-
-! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: p,q
@@ -381,6 +379,10 @@ CASE(3,4,9,91,23,24,25,27)
         pt=UPrim_boundary(PRES,p,q)*((1+0.5*(kappa-1)*Ma   *Ma)   **( kappa*sKappaM1))  ! adiabatic/isentropic => unstable
         !pt=prim(5)+0.5*prim(1)*vmag*vmag
         pb=pt     *(1+0.5*(kappa-1)*MaOut*MaOut)**(-kappa*sKappaM1)
+
+        ! use total temperature
+        ! tt=UPrim_boundary(6,p,q)*(1+0.5*(kappa-1)*Ma   *Ma)  ! adiabatic/isentropic => unstable
+        ! tb=tt/(1+0.5*(kappa-1)*MaOut*MaOut)
       ELSE
         ! use total pressure for supersonic
         pb=UPrim_boundary(PRES,p,q)+0.5*UPrim_boundary(DENS,p,q)*vmag*vmag
@@ -400,7 +402,7 @@ CASE(3,4,9,91,23,24,25,27)
         IF (BCState.GT.0) THEN
           pb = RefStatePrim(5,BCState)
         ELSE
-          pb = RefStatePrim(5,MINLOC(ABS(RefStatePrim(5,:) - UPrim_boundary(5,p,q)),1))
+          pb = RefStatePrim(PRES,MINLOC(ABS(RefStatePrim(PRES,:) - UPrim_boundary(PRES,p,q)),1))
         END IF
         UPrim_boundary(DENS,p,q)=kappa*pb/c
         UPrim_boundary(PRES,p,q)=pb
@@ -436,6 +438,7 @@ CASE(3,4,9,91,23,24,25,27)
     Tt=RefStatePrim(1  ,BCState)
     nv=RefStatePrim(2:4,BCState)
     pt=RefStatePrim(5  ,BCState)
+
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
 
       ! Term A from paper with normal vector defined into the domain, dependent on p,q
@@ -459,6 +462,7 @@ CASE(3,4,9,91,23,24,25,27)
       Ma=SQRT(2./KappaM1*(Tt/Tb-1.))
       pb=pt*(1.+0.5*KappaM1*Ma**2)**(-kappa/kappam1)
       U=Ma*SQRT(Kappa*R*Tb)
+
       UPrim_boundary(DENS,p,q) = pb/(R*Tb)
       UPrim_boundary(PRES,p,q) = pb
 
@@ -513,6 +517,8 @@ USE MOD_EddyVisc_Vars,ONLY: muSGS_master
 #endif
 USE MOD_TestCase     ,ONLY: GetBoundaryFluxTestcase
 USE MOD_DG_Vars      ,ONLY: UPrim_Boundary
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)   :: SideID                                         !< ID of current side
@@ -806,6 +812,7 @@ USE MOD_Globals       ,ONLY: Abort
 USE MOD_Mesh_Vars     ,ONLY: BoundaryType,BC
 USE MOD_TestCase      ,ONLY: GetBoundaryFVgradientTestcase
 USE MOD_DG_Vars       ,ONLY: UPrim_Boundary
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -856,9 +863,10 @@ SUBROUTINE Lifting_GetBoundaryFlux(SideID,t,UPrim_master,Flux,NormVec,TangVec1,T
 USE MOD_Globals      ,ONLY: Abort
 USE MOD_PreProc
 USE MOD_DG_Vars      ,ONLY: UPrim_Boundary
-USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
 USE MOD_Lifting_Vars ,ONLY: doWeakLifting
+USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
 USE MOD_TestCase     ,ONLY: Lifting_GetBoundaryFluxTestcase
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -890,12 +898,12 @@ ELSE
   CASE(3,4) ! No-slip wall BCs
     DO q=0,PP_NZ; DO p=0,PP_N
 #if PP_OPTLIFT == 0
-      Flux(LIFT_DENS,p,q) = UPrim_Boundary(1,p,q)
+      Flux(LIFT_DENS,p,q) = UPrim_Boundary(DENS,p,q)
       Flux(LIFT_VELV,p,q) = 0.
-      Flux(LIFT_TEMP,p,q) = UPrim_Boundary(6,p,q)
+      Flux(LIFT_TEMP,p,q) = UPrim_Boundary(TEMP,p,q)
 #else
       Flux(LIFT_VELV,p,q) = 0.
-      Flux(LIFT_TEMP,p,q) = UPrim_Boundary(6,p,q)
+      Flux(LIFT_TEMP,p,q) = UPrim_Boundary(TEMP,p,q)
 #endif
     END DO; END DO !p,q
   CASE(9,91)
@@ -904,12 +912,12 @@ ELSE
     DO q=0,PP_NZ; DO p=0,PP_N
       ! Compute Flux
 #if PP_OPTLIFT == 0
-      Flux(LIFT_DENS,p,q) = UPrim_master(1,p,q)
-      Flux(LIFT_VELV,p,q) = UPrim_boundary(2:4,p,q)
-      Flux(LIFT_TEMP,p,q) = UPrim_master(6,p,q)
+      Flux(LIFT_DENS,p,q) = UPrim_master(DENS,p,q)
+      Flux(LIFT_VELV,p,q) = UPrim_boundary(VELV,p,q)
+      Flux(LIFT_TEMP,p,q) = UPrim_master(TEMP,p,q)
 #else
-      Flux(LIFT_VELV,p,q) = UPrim_boundary(2:4,p,q)
-      Flux(LIFT_TEMP,p,q) = UPrim_master(6,p,q)
+      Flux(LIFT_VELV,p,q) = UPrim_boundary(VELV,p,q)
+      Flux(LIFT_TEMP,p,q) = UPrim_master(TEMP,p,q)
 #endif
     END DO; END DO !p,q
   CASE(1) !Periodic already filled!
@@ -949,6 +957,7 @@ USE MOD_Interpolation_Vars,ONLY:L_minus,L_plus
 #endif
 USE MOD_ChangeBasisByDim  ,ONLY:ChangeBasisVolume
 USE MOD_EOS               ,ONLY:ConsToPrim
+! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -964,7 +973,7 @@ INTEGER                       :: p,q,SideID,ElemID,locSide
 CHARACTER(LEN=255)            :: NodeType_HDF5
 LOGICAL                       :: InterpolateSolution
 !==================================================================================================================================
-SWRITE(UNIT_stdOut,'(A,A)')'  Read BC state from file "',FileName
+SWRITE(UNIT_stdOut,'(A,A)')'  Read BC state from file "',TRIM(FileName)
 CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL GetDataProps(nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5)
 

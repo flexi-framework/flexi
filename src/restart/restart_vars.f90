@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -27,11 +27,14 @@ INTEGER            :: N_Restart = 0                   !< polynomial degree of re
 INTEGER            :: nElems_Restart                  !< number of elements in restart file
 LOGICAl            :: RestartInitIsDone   = .FALSE.   !< flag if restart routines are finished
 LOGICAl            :: DoRestart           = .FALSE.   !< flag whether a restart should actually be performed
+LOGICAl            :: FlushInitialState   = .FALSE.   !< During restart delete the state restart file when FlushInitialState=T
 LOGICAL            :: InterpolateSolution = .FALSE.   !< flag whether restart solution should be interpolated
                                                       !< if node type or polynomial degree are different
 CHARACTER(LEN=255) :: RestartFile = ''                !< name of restart file
 CHARACTER(LEN=255) :: NodeType_Restart                !< node type of restart file
 REAL               :: RestartTime                     !< time at which computation is resumed
+REAL               :: RestartWallTime                 !< wall time at the beginning of a simulation OR
+                                                      !< when a restart is performed via Load Balance
 INTEGER            :: RestartMode         = -1        !< -1) Initial value, routines default to state file mode
                                                       !<  1) restart from State file
                                                       !<  2) restart from timeAvg file, conservative variables

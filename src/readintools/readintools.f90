@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -144,6 +144,10 @@ INTERFACE ModifyParameterFile
   MODULE PROCEDURE ModifyParameterFile
 END INTERFACE
 
+INTERFACE CompareParameterFile
+  MODULE PROCEDURE CompareParameterFile
+END INTERFACE
+
 INTERFACE FinalizeParameters
   MODULE PROCEDURE FinalizeParameters
 END INTERFACE
@@ -165,6 +169,7 @@ PUBLIC :: addStrListEntry
 PUBLIC :: FinalizeParameters
 PUBLIC :: ExtractParameterFile
 PUBLIC :: ModifyParameterFile
+PUBLIC :: CompareParameterFile
 
 TYPE(Parameters) :: prms
 PUBLIC :: prms
@@ -271,6 +276,10 @@ END SUBROUTINE CreateIntOption
 !> Create a new integer option with a optional string representation. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
 SUBROUTINE CreateIntFromStringOption(this, name, description, value, multiple)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -289,6 +298,10 @@ END SUBROUTINE CreateIntFromStringOption
 !> Create a new logical option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
 SUBROUTINE CreateLogicalOption(this, name, description, value, multiple)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -307,6 +320,10 @@ END SUBROUTINE CreateLogicalOption
 !> Create a new real option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
 SUBROUTINE CreateRealOption(this, name, description, value, multiple)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -1608,6 +1625,80 @@ END IF
 CALL MPI_BCAST(prmChanged,1,MPI_LOGICAL,0,MPI_COMM_FLEXI,iError)
 #endif /*USE_MPI*/
 END SUBROUTINE ModifyParameterFile
+
+
+!===================================================================================================================================
+!> This routine modifies the value for all occurences of a specific parmeter in a given parameter file.
+!> Currently only implemented for parameters with scalar integer values.
+!===================================================================================================================================
+SUBROUTINE CompareParameterFile(prmfile1,prmfile2,prmChanged)
+! MODULES
+USE MOD_Globals
+USE MOD_StringTools ,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN)  :: prmfile1    !< name of first  parameter file to be compared
+CHARACTER(LEN=*),INTENT(IN)  :: prmfile2    !< name of second parameter file to be compared
+LOGICAL,INTENT(OUT)          :: prmChanged  !< flag to indicate whether parameter files are different
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER               :: stat1,stat2,prm1Unit,prm2Unit
+INTEGER               :: i
+CHARACTER(LEN=255)    :: tmp1=""
+CHARACTER(LEN=255)    :: tmp2=""
+TYPE(Varying_String)  :: aStr
+!==================================================================================================================================
+prmChanged = .FALSE.
+
+IF (MPIRoot) THEN
+  IF (.NOT.FILEEXISTS(prmfile1)) &
+    CALL CollectiveStop(__STAMP__,"File '"//TRIM(prmfile1)//"' does not exist.")
+
+  IF (.NOT.FILEEXISTS(prmfile2)) &
+    CALL CollectiveStop(__STAMP__,"File '"//TRIM(prmfile2)//"' does not exist.")
+
+  ! Open both parameter files
+  OPEN(NEWUNIT=prm1Unit,FILE=TRIM(prmfile1),STATUS='UNKNOWN',ACTION='READ',ACCESS='SEQUENTIAL',IOSTAT=stat1)
+  IF (stat1.NE.0) CALL Abort(__STAMP__,"Could not open '"//TRIM(prmfile1)//"'")
+
+  OPEN(NEWUNIT=prm2Unit,FILE=TRIM(prmfile2),STATUS='UNKNOWN',ACTION='READ',ACCESS='SEQUENTIAL',IOSTAT=stat2)
+  IF (stat2.NE.0) CALL Abort(__STAMP__,"Could not open '"//TRIM(prmfile2)//"'")
+
+  DO
+    ! read a line into 'aStr'
+    CALL Get(prm1Unit,aStr,iostat=stat1)
+    tmp1 = TRIM(CHAR(aStr))
+    CALL Get(prm2Unit,aStr,iostat=stat2)
+    tmp2 = TRIM(CHAR(aStr))
+
+    ! Strip all ocurring whitespaces and comments from the line
+    DO i = 1,LEN(tmp1)
+      IF(STRICMP(tmp1(i:i),"!"))       EXIT  ! Exit if comments start
+      IF(STRICMP(tmp1(i:i)," "))       CYCLE ! Cycle over whitespaces
+
+      ! Exit on first difference
+      IF(.NOT.STRICMP(tmp1(i:i),tmp2(i:i))) THEN
+        prmChanged = .TRUE.
+        CLOSE(prm1Unit)
+        CLOSE(prm2Unit)
+        RETURN
+      END IF
+    END DO
+
+    ! EXIT if we have reached the end of the file
+    IF(IS_IOSTAT_END(stat1)) EXIT
+    IF(IS_IOSTAT_END(stat2)) EXIT
+  END DO
+
+  CLOSE(prm1Unit)
+  CLOSE(prm2Unit)
+END IF
+#if USE_MPI
+CALL MPI_BCAST(prmChanged,1,MPI_LOGICAL,0,MPI_COMM_FLEXI,iError)
+#endif /*USE_MPI*/
+END SUBROUTINE CompareParameterFile
 
 
 !===================================================================================================================================
