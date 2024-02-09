@@ -237,6 +237,11 @@ USE MOD_Analyze_Vars,       ONLY: wGPVolAnalyze,Vdm_GaussN_NAnalyze
 USE MOD_Basis,              ONLY: InitializeVandermonde
 USE MOD_Interpolation,      ONLY: GetNodesAndWeights
 USE MOD_Interpolation_Vars, ONLY: NodeTypeGL
+#if FV_ENABLED == 1
+USE MOD_Analyze_Vars,       ONLY: FV_Vdm_NAnalyze
+USE MOD_FV_Basis,           ONLY: FV_Build_X_w_BdryX
+USE MOD_FV_Vars,            ONLY: FV_CellType
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -252,6 +257,10 @@ INTEGER                          :: i,j
 #if PP_dim == 3
 INTEGER                          :: k
 #endif
+#if FV_ENABLED == 1
+REAL                             :: dummy1(0:Nloc),dummy2(0:Nloc)
+REAL                             :: FV_BdryX(0:Nloc+1)
+#endif
 !==================================================================================================================================
 ALLOCATE(wGPVolAnalyze(0:Nloc,0:Nloc,0:ZDIM(Nloc)),Vdm_GaussN_NAnalyze(0:Nloc,0:N_in))
 CALL GetNodesAndWeights(Nloc,NodeTypeGL,XiAnalyze,wAnalyze)
@@ -265,6 +274,12 @@ END DO; END DO; END DO
 DO j=0,Nloc; DO i=0,Nloc
   wGPVolAnalyze(i,j,0) = wAnalyze(i)*wAnalyze(j)
 END DO; END DO
+#endif
+
+#if FV_ENABLED == 1
+CALL FV_Build_X_w_BdryX(Nloc, dummy1, dummy2, FV_BdryX, FV_CellType)
+ALLOCATE(FV_Vdm_NAnalyze(0:Nloc,0:N_in))
+CALL InitializeVandermonde(N_in,Nloc,wBary,xGP,FV_BdryX,FV_Vdm_NAnalyze)
 #endif
 
 END SUBROUTINE InitAnalyzeBasis
@@ -485,6 +500,9 @@ SUBROUTINE FinalizeAnalyze()
 ! MODULES
 USE MOD_AnalyzeEquation,    ONLY: FinalizeAnalyzeEquation
 USE MOD_Analyze_Vars,       ONLY: AnalyzeInitIsDone,wGPSurf,wGPVol,Surf,wGPVolAnalyze,Vdm_GaussN_NAnalyze,ElemVol
+#if FV_ENABLED == 1
+USE MOD_Analyze_Vars,       ONLY: FV_Vdm_NAnalyze
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -496,6 +514,9 @@ SDEALLOCATE(Surf)
 SDEALLOCATE(wGPVol)
 SDEALLOCATE(wGPSurf)
 SDEALLOCATE(ElemVol)
+#if FV_ENABLED == 1
+SDEALLOCATE(FV_Vdm_NAnalyze)
+#endif
 AnalyzeInitIsDone = .FALSE.
 
 END SUBROUTINE FinalizeAnalyze

@@ -69,6 +69,10 @@ INTEGER              :: AnalyzeRefState                   !< State used for anal
 REAL,ALLOCATABLE     :: wGPVolAnalyze(:,:,:)              !< product of GL integration weights used for analyze routines
 REAL,ALLOCATABLE     :: Vdm_GaussN_NAnalyze(:,:)          !< Vandermonde for interpolating the solution to analyze points
 
+#if FV_ENABLED
+REAL,ALLOCATABLE     :: FV_Vdm_NAnalyze(:,:)              !< Vandermonde for interpolating the solution to analyze points
+#endif
+
 CHARACTER(LEN=255)   :: Filename_ErrNorm                  !< filename into which error norms are written
 
 LOGICAL              :: AnalyzeInitIsDone = .FALSE.       !< marks whether analyze routines have been inittialized
