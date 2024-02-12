@@ -72,7 +72,6 @@ CALL prms%CreateLogicalOption('DoDisplayPrecond',"Display building time of preco
 
 END SUBROUTINE DefineParametersPrecond
 
-
 !===================================================================================================================================
 !> Initialize preconditioner and call initialize of type of preconditioner
 !===================================================================================================================================
@@ -156,7 +155,6 @@ PrecondInitIsDone = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT PRECONDITIONER DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitPrecond
-
 
 !===================================================================================================================================
 !> Build preconditioner for each element, calls a type of preconditioner. The block Jacobi preconditioner only takes into account
@@ -298,7 +296,7 @@ IF((PrecondType.EQ.1).OR.(PrecondType.EQ.3))THEN
 END IF
 #endif
 
-IF(DoDisplayPrecond) Time=FLEXITIME()
+IF(DoDisplayPrecond) Time=FLEXITIME(MPI_COMM_FLEXI)
 
 DO iElem=1,nElems
   Ploc=0.
@@ -357,10 +355,12 @@ DO iElem=1,nElems
 END DO !iElem
 
 IF(DoDisplayPrecond)THEN
-  Time=FLEXITIME()-Time
+  Time=FLEXITIME(MPI_COMM_FLEXI)-Time
 #if USE_MPI
   CALL MPI_REDUCE(Time,TimeMPI,1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
-  IF(MPIRoot) Time=TimeMPI
+  IF(MPIRoot) THEN
+    Time=TimeMPI
+  END IF
 #endif /*USE_MPI*/
   SWRITE(UNIT_stdOut,'(A,F11.3,A)')' TOTAL DERIVATING & INVERTING TIME =[',Time,' ]'
   SWRITE(UNIT_stdOut,'(A)')' BUILD PRECONDITIONER DONE!'
@@ -368,7 +368,6 @@ IF(DoDisplayPrecond)THEN
 END IF
 
 END SUBROUTINE  BuildPrecond
-
 
 !===================================================================================================================================
 !> Apply the preconditioner to the state vector from the linear solver
@@ -409,7 +408,6 @@ CASE(1)
   CALL ApplyILU(v,z)
 END SELECT
 END SUBROUTINE  ApplyPrecond
-
 
 !===================================================================================================================================
 !> Debug routine for checking block Jacobian preconditioners. Output options include the non-inverted and the inverted
@@ -490,7 +488,6 @@ IF((DebugMatrix.GE.3))THEN
 END IF !DebugMatrix >= 3
 
 END SUBROUTINE CheckBJPrecond
-
 
 !===================================================================================================================================
 !> Finalizes variables

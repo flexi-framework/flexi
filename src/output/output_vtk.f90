@@ -455,6 +455,7 @@ IF((.NOT.PostiParallel_loc.AND.MPIRoot).OR.PostiParallel_loc)THEN
   Buffer='_';WRITE(ivtk) TRIM(Buffer)
 END IF
 
+
 #if USE_MPI
 IF(.NOT.PostiParallel_loc)THEN
   IF(MPIRoot)THEN
@@ -480,7 +481,7 @@ IF(.NOT.PostiParallel_loc)THEN
       DO iProc=1,nProcessors-1
         nElems_proc=nElems_glob(iProc)
         IF (nElems_proc.GT.0) THEN
-          CALL MPI_RECV(buf(:,:,:,1:nElems_proc),nElems_proc*NVisu_elem,MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_FLEXI,MPI_STATUS_IGNORE,iError)
+          CALL MPI_RECV(buf(:,:,:,1:nElems_proc),nElems_proc*NVisu_elem,MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_FLEXI,MPIstatus,iError)
           WRITE(ivtk) REAL(buf(:,:,:,1:nElems_proc),4)
         END IF
       END DO !iProc
@@ -525,13 +526,13 @@ IF(.NOT.PostiParallel_loc)THEN
     DO iProc=1,nProcessors-1
       nElems_proc=nElems_glob(iProc)
       IF (nElems_proc.GT.0) THEN
-        CALL MPI_RECV(buf2(:,:,:,:,1:nElems_proc),nElems_proc*NVisu_elem*3,MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_FLEXI,MPI_STATUS_IGNORE,iError)
+        CALL MPI_RECV(buf2(:,:,:,:,1:nElems_proc),nElems_proc*NVisu_elem*3,MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_FLEXI,MPIstatus,iError)
         WRITE(ivtk) REAL(buf2(:,:,:,:,1:nElems_proc),4)
       END IF
     END DO !iProc
   ELSE
     IF (nElems.GT.0) THEN
-      CALL MPI_SEND(Coord(:,:,:,:,:),nElems*NVisu_elem*3,MPI_DOUBLE_PRECISION,0,0,MPI_COMM_FLEXI,iError)
+      CALL MPI_SEND(Coord(:,:,:,:,:),nElems*NVisu_elem*3,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_FLEXI,iError)
     END IF
 #endif /*USE_MPI*/
   END IF !MPIRoot

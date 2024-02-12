@@ -14,7 +14,6 @@
 !===================================================================================================================================
 ! Here, preprocessor variables for different equation systems and abbreviations for specific expressions are defined
 !===================================================================================================================================
-#include "mpi.h"
 
 ! Abbrevations
 #ifdef SUN
