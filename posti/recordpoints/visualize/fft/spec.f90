@@ -131,7 +131,7 @@ INTEGER                         :: iSample,iVar,iRP,iStart,iEnd
 REAL                            :: df
 COMPLEX,ALLOCATABLE             :: in(:),out(:)
 INTEGER(KIND=8)                 :: plan
-REAL                            :: Time
+REAL                            :: Time,StartTime
 REAL                            :: Time_Block
 REAL,ALLOCATABLE                :: RPData_tmp(:)
 REAL                            :: M_t,RMS_t,RMS_PSD

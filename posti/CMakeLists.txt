@@ -32,6 +32,11 @@ SET_TARGET_PROPERTIES(libposti PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
 TARGET_LINK_LIBRARIES(libposti libflexishared)
 ADD_DEPENDENCIES(libposti libflexishared)
 
+# When using Ninja, CMake tries to parallelize the build resulting in missing module files. Add a dummy target to ensure synchronization
+ADD_CUSTOM_TARGET(libpostitarget)
+ADD_DEPENDENCIES(libpostitarget libflexishared)
+ADD_DEPENDENCIES(libposti libpostitarget)
+
 # =========================================================================
 # FFTW library
 # =========================================================================

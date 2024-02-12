@@ -8,6 +8,6 @@ MESSAGE(STATUS "Posti: building ${TOOL_NAME} tool.")
 INCLUDE_DIRECTORIES( ${TOOL_DIR})
 
 # Standalone Posti executable
-add_exec(             posti_${TOOL_NAME} ${TOOL_DIR}/posti_to3D.f90)
+ADD_EXEC(             posti_${TOOL_NAME} ${TOOL_DIR}/posti_to3D.f90)
 TARGET_LINK_LIBRARIES(posti_${TOOL_NAME} libflexishared)
 ADD_DEPENDENCIES(     posti_${TOOL_NAME} libflexishared)

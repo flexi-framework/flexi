@@ -20,7 +20,12 @@ ADD_LIBRARY(${TOOL_NAME}lib STATIC $<TARGET_OBJECTS:${TOOL_NAME}libF90>)
 TARGET_LINK_LIBRARIES(${TOOL_NAME}lib libposti)
 ADD_DEPENDENCIES(${TOOL_NAME}libF90 libflexishared libposti)
 
+# When using Ninja, CMake tries to parallelize the build resulting in missing module files. Add a dummy target to ensure synchronization
+ADD_CUSTOM_TARGET(${TOOL_NAME}target)
+ADD_DEPENDENCIES(${TOOL_NAME}target libflexishared)
+ADD_DEPENDENCIES(${TOOL_NAME}libF90 ${TOOL_NAME}target)
+
 # Standalone Posti executable
-add_exec(             posti_${TOOL_NAME} ${TOOL_DIR}/posti_swapmesh.f90)
+ADD_EXEC(             posti_${TOOL_NAME} ${TOOL_DIR}/posti_swapmesh.f90)
 TARGET_LINK_LIBRARIES(posti_${TOOL_NAME} ${TOOL_NAME}lib libflexishared)
 ADD_DEPENDENCIES(     posti_${TOOL_NAME} ${TOOL_NAME}lib libflexishared)
