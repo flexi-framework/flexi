@@ -90,25 +90,6 @@ IF(LIBS_USE_MPI)
 
   MESSAGE(STATUS "Compiling with [${LIBS_MPI_NAME}] (v${MPI_C_LIBRARY_VERSION})")
   ADD_DEFINITIONS(-DUSE_MPI=1)
-
-  # =========================================================================
-  # CHECK SUPPORT MPI F08
-  # > Technically, mpi_f08 should always be available since we require SHM support
-  # =========================================================================
-  IF (LIBS_MPI_NAME MATCHES "OpenMPI")
-    IF (MPI_Fortran_LIB_NAMES MATCHES ".*mpi_usempif08.*")
-      ADD_DEFINITIONS(-DMPI_F08=1)
-      MESSAGE(STATUS "Compiling with [mpi_f08] standard")
-    ELSE()
-      REMOVE_DEFINITIONS(-DMPI_F08)
-      MESSAGE(STATUS "Compiling with [mpi] (legacy) standard")
-    ENDIF()
-  # Assume other compilers support mpi_f08
-  ELSE()
-    ADD_DEFINITIONS(-DMPI_F08=1)
-    MESSAGE(STATUS "Compiling with [mpi_f08] standard")
-  ENDIF()
-
 ELSE()
   ADD_DEFINITIONS(-DUSE_MPI=0)
 ENDIF()
