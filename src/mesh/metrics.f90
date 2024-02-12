@@ -254,7 +254,7 @@ REAL    :: xiCL_N(0:PP_N)   ,wBaryCL_N(0:PP_N)
 REAL    :: xi0(3),dxi(3),length(3)
 
 #if USE_MPI
-INTEGER           :: MPIRequest_Geo(nNbProcs,2)
+MPI_TYPE_REQUEST  :: MPIRequest_Geo(nNbProcs,2)
 REAL,ALLOCATABLE  :: Geo(:,:,:,:,:)
 #endif
 

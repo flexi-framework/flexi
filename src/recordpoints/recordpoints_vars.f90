@@ -11,13 +11,15 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
+#include "flexi.h"
+
 !==================================================================================================================================
 !> Variables needed for the evaluation of the record points
 !==================================================================================================================================
 MODULE MOD_RecordPoints_Vars
 ! MODULES
 #if USE_MPI
-USE mpi
+USE __MPI__
 #endif
 
 IMPLICIT NONE
@@ -57,7 +59,7 @@ CHARACTER(LEN=255) :: StrVarNames(PP_nVar)    !< RP variables names for output
 #if USE_MPI
 INTEGER            :: myRPrank                !< rank within RP communicator
 INTEGER            :: nRP_Procs               !< number of procs with RPs
-INTEGER            :: RP_COMM=MPI_COMM_NULL   !< MPI RP communicator
+MPI_TYPE_COMM      :: RP_COMM=MPI_COMM_NULL   !< MPI RP communicator
 #endif /* USE_MPI */
 
 END MODULE MOD_recordPoints_Vars

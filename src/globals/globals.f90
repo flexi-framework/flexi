@@ -20,7 +20,7 @@ MODULE MOD_Globals
 USE ISO_C_BINDING
 ! MODULES
 #if USE_MPI
-USE mpi
+USE __MPI__
 #endif
 USE ISO_C_BINDING
 IMPLICIT NONE
@@ -37,14 +37,14 @@ CHARACTER(LEN=255)::ErrorFileName='NOT_SET'                                   !<
 INTEGER           ::iError                                                    !< default error handle
 INTEGER           ::myRank,myLocalRank,myLeaderRank,myWorkerRank
 INTEGER           ::nProcessors,nLocalProcs,nLeaderProcs,nWorkerProcs
-INTEGER           ::MPI_COMM_FLEXI !< Flexi MPI communicator
 LOGICAL           ::MPIRoot                                                   !< flag whether process is MPI root process
 LOGICAL           ::MPILocalRoot                                              !< flag whether process is root of MPI subgroup
 #if USE_MPI
-INTEGER           ::MPIStatus(MPI_STATUS_SIZE)
-INTEGER           ::MPI_COMM_NODE   =MPI_COMM_NULL                            !< local node subgroup
-INTEGER           ::MPI_COMM_LEADERS=MPI_COMM_NULL                            !< all node masters
-INTEGER           ::MPI_COMM_WORKERS=MPI_COMM_NULL                            !< all non-master nodes
+! MPI_TYPE_STATUS   ::MPIStatus(MPI_STATUS_SIZE)
+MPI_TYPE_COMM     ::MPI_COMM_FLEXI                                            !< Flexi MPI communicator
+MPI_TYPE_COMM     ::MPI_COMM_NODE   =MPI_COMM_NULL                            !< local node subgroup
+MPI_TYPE_COMM     ::MPI_COMM_LEADERS=MPI_COMM_NULL                            !< all node masters
+MPI_TYPE_COMM     ::MPI_COMM_WORKERS=MPI_COMM_NULL                            !< all non-master nodes
 #endif
 
 LOGICAL           :: doGenerateUnittestReferenceData
@@ -55,7 +55,7 @@ LOGICAL           :: postiMode=.FALSE.                                        !<
 ! Overload the MPI interface because MPICH fails to provide it
 ! > https://github.com/pmodels/mpich/issues/2659
 ! > https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node263.htm
-#if LIBS_MPICH_FIX_SHM_INTERFACE
+#if LIBS_MPICH_FIX_SHM_INTERFACE && !MPI_F08
 INTERFACE MPI_WIN_ALLOCATE_SHARED
   SUBROUTINE PMPI_WIN_ALLOCATE_SHARED(SIZE, DISP_UNIT, INFO, COMM, BASEPTR, WIN, IERROR)
       USE, INTRINSIC ::  ISO_C_BINDING, ONLY : C_PTR
@@ -75,7 +75,7 @@ INTERFACE MPI_WIN_SHARED_QUERY
       TYPE(C_PTR)    :: BASEPTR
   END SUBROUTINE
 END INTERFACE
-#endif /*LIBS_MPICH_FIX_SHM_INTERFACE*/
+#endif /*LIBS_MPICH_FIX_SHM_INTERFACE && !MPI_F08 */
 
 INTERFACE Abort
   MODULE PROCEDURE Abort
@@ -562,13 +562,19 @@ END SUBROUTINE DisplaySimulationTime
 !==================================================================================================================================
 !> Calculates current time (own function because of a laterMPI implementation)
 !==================================================================================================================================
-FUNCTION FLEXITIME(Comm)
+FUNCTION FLEXITIME(      &
+#if USE_MPI
+                    Comm &
+#endif /*USE_MPI*/
+                  )
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER, INTENT(IN),OPTIONAL    :: Comm                                       !< global mpi communicator
-REAL                            :: FlexiTime                                  !< output time
+#if USE_MPI
+MPI_TYPE_COMM,INTENT(IN),OPTIONAL :: Comm                                       !< global mpi communicator
+#endif /*USE_MPI*/
+REAL                              :: FlexiTime                                  !< output time
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
