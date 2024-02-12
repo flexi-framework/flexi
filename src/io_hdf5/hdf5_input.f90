@@ -101,7 +101,7 @@ CALL H5OPEN_F(iError)
 CALL H5PCREATE_F(H5P_FILE_ACCESS_F, Plist_ID, iError)
 #if USE_MPI
 ! Setup file access property list with parallel I/O access (MPI)
-CALL H5PSET_FAPL_MPIO_F(Plist_ID,MPI_COMM_FLEXI, MPIInfo, iError)
+CALL H5PSET_FAPL_MPIO_F_(Plist_ID,MPI_COMM_FLEXI, MPIInfo, iError)
 #endif /*USE_MPI*/
 
 ! Check if file exists
@@ -186,7 +186,7 @@ CALL H5OPEN_F(iError)
 CALL H5PCREATE_F(H5P_FILE_ACCESS_F, Plist_ID, iError)
 #if USE_MPI
 ! Setup file access property list with parallel I/O access (MPI)
-CALL H5PSET_FAPL_MPIO_F(Plist_ID,MPI_COMM_FLEXI, MPIInfo, iError)
+CALL H5PSET_FAPL_MPIO_F_(Plist_ID,MPI_COMM_FLEXI, MPIInfo, iError)
 #endif /*USE_MPI*/
 
 ! Check if file exists
@@ -656,6 +656,7 @@ END SUBROUTINE ReadAttribute
 SUBROUTINE GetNextFileName(FileName,NextFileName_HDF5,single)
 ! MODULES
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -679,7 +680,7 @@ CALL H5PCREATE_F(H5P_FILE_ACCESS_F, Plist_ID, iError)
 #if USE_MPI
 IF(.NOT.single)THEN
   ! Set property list to MPI IO
-  CALL H5PSET_FAPL_MPIO_F(Plist_ID, MPI_COMM_FLEXI, MPI_INFO_NULL, iError)
+  CALL H5PSET_FAPL_MPIO_F_(Plist_ID, MPI_COMM_FLEXI, MPI_INFO_NULL, iError)
 END IF
 #endif /*USE_MPI*/
 ! Open file
