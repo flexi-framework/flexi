@@ -43,7 +43,6 @@ END INTERFACE
 
 CONTAINS
 
-
 #if PP_VISC == 1
 !==================================================================================================================================
 !> Sutherland's formula can be used to derive the dynamic viscosity of an ideal gas as a function of the temperature

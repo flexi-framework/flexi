@@ -101,6 +101,13 @@ IF(LIBS_USE_MPI)
 
   MESSAGE(STATUS "Compiling with [${LIBS_MPI_NAME}] (v${MPI_C_LIBRARY_VERSION})")
   ADD_DEFINITIONS(-DUSE_MPI=1)
+
+  # LUMI needs even more help here
+  IF("${CMAKE_FQDN_HOST}" MATCHES ".can")
+    SET(MPI_C_COMPILER       cc)
+    SET(MPI_CXX_COMPILER     CC)
+    SET(MPI_Fortran_COMPILER ftn)
+  ENDIF()
 ELSE()
   ADD_DEFINITIONS(-DUSE_MPI=0)
 ENDIF()
