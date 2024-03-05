@@ -9,6 +9,8 @@ SITE_NAME(CMAKE_HOSTNAME)
 # =========================================================================
 # CMake generator settings
 # =========================================================================
+SET(USED_CMAKE_GENERATOR "${CMAKE_GENERATOR}" CACHE STRING "Expose CMAKE_GENERATOR (cannot be changed here)" FORCE)
+MESSAGE(STATUS "Using cmake generator: ${CMAKE_GENERATOR}")
 IF("${CMAKE_GENERATOR}" MATCHES "Ninja")
   # CMake introduced the CMAKE_COLOR_DIAGNOSTICS flag with 3.24.0, https://gitlab.kitware.com/cmake/cmake/-/merge_requests/6990
   IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.24.0"))
@@ -93,7 +95,7 @@ IF (CMAKE_FQDN_HOST MATCHES "hawk\.hww\.hlrs\.de$")
   MESSAGE(STATUS "Compiling on Hawk")
   # Overwrite compiler target architecture
   IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang")
-    SET(FLEXI_INSTRUCTION "-march=znver2")
+    SET(FLEXI_INSTRUCTION "-march=znver2 -mtune=znver2")
   ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
     SET(FLEXI_INSTRUCTION "-xCORE-AVX2")
   ENDIF()
@@ -107,7 +109,7 @@ ELSEIF (CMAKE_FQDN_HOST MATCHES "sng\.lrz\.de$")
   MESSAGE(STATUS "Compiling on SuperMUC")
   # Overwrite compiler target architecture
   IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang")
-    SET(FLEXI_INSTRUCTION "-march=skylake-avx512")
+    SET(FLEXI_INSTRUCTION "-march=skylake-avx512 -mtune=skylake-avx512")
   ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
     SET(FLEXI_INSTRUCTION "-xSKYLAKE-AVX512")
     # Explicitely enable usage of AVX512 registers
@@ -120,7 +122,7 @@ ELSEIF (CMAKE_FQDN_HOST MATCHES "sng\.lrz\.de$")
 ELSEIF(CMAKE_FQDN_HOST MATCHES "\.can$")
   MESSAGE(STATUS "Compiling on LUMI")
   IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
-    SET(FLEXI_INSTRUCTION "-march=znver3")
+    SET(FLEXI_INSTRUCTION "-march=znver3 -mtune=znver3")
   ELSE()
     MESSAGE(FATAL_ERROR "LUMI currently only supported using the GNU Compiler Collection (GCC). Please load/swap the following modules: LUMI PrgEnv-gnu cray-hdf5-parallel")
   ENDIF()
@@ -128,7 +130,7 @@ ELSEIF(CMAKE_FQDN_HOST MATCHES "\.can$")
 # IAG Prandtl
 ELSEIF(CMAKE_FQDN_HOST MATCHES "^(prandtl|grafik.*)\.iag\.uni\-stuttgart\.de")
   MESSAGE(STATUS "Compiling on ${CMAKE_HOSTNAME}")
-  SET(FLEXI_INSTRUCTION "-march=native")
+  SET(FLEXI_INSTRUCTION "-march=native -mtune=native")
   # Set LUSTRE definition to account for filesystem
   ADD_DEFINITIONS(-DLUSTRE)
 
@@ -136,7 +138,7 @@ ELSEIF (CMAKE_FQDN_HOST MATCHES "^ila(head.*|cfd.*)\.ila.uni\-stuttgart\.de")
   MESSAGE(STATUS "Compiling on ILA cluster")
   # Overwrite compiler target architecture
   IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang")
-    SET(FLEXI_INSTRUCTION "-march=core-avx2")
+    SET(FLEXI_INSTRUCTION "-march=core-avx2 -mtune=core-avx2")
   ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
     SET(FLEXI_INSTRUCTION "-xCORE-AVX2")
   ENDIF()
@@ -145,20 +147,20 @@ ELSEIF (CMAKE_FQDN_HOST MATCHES "^ila(head.*|cfd.*)\.ila.uni\-stuttgart\.de")
 
 ELSEIF (CMAKE_FQDN_HOST MATCHES "^(xenon.*|argon.*)\.ila.uni\-stuttgart\.de")
   MESSAGE(STATUS "Compiling on ILA student cluster")
-  SET(FLEXI_INSTRUCTION "-march=native")
+  SET(FLEXI_INSTRUCTION "-march=native -mtune=native")
   # Work around MPI-IO issue 4446 on machines mountng storage via NFS
   ADD_DEFINITIONS(-DNFS)
 
 ELSEIF ("${CMAKE_FQDN_HOST}" MATCHES "gitlab\.ila\.uni\-stuttgart\.de")
   MESSAGE(STATUS "Compiling on ILA Gitlab")
   ADD_DEFINITIONS(-DVDM_ANALYTICAL)
-  SET(FLEXI_INSTRUCTION "-march=native")
+  SET(FLEXI_INSTRUCTION "-march=native -mtune=native")
 
 ELSE()
   MESSAGE(STATUS "Compiling on a generic machine [${CMAKE_HOSTNAME}]")
   # Set compiler target architecture
   IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang" OR CMAKE_Fortran_COMPILER_ID MATCHES "Cray")
-    SET(FLEXI_INSTRUCTION "-march=native")
+    SET(FLEXI_INSTRUCTION "-march=native -mtune=native")
   ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
     SET(FLEXI_INSTRUCTION "-xHost")
   ENDIF()
@@ -183,7 +185,9 @@ IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
     SET (C_FLAGS_INITIALIZED "yes" CACHE INTERNAL "Flag if compiler flags are already initialized" )
     SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -fdefault-double-8 -fbackslash -ffree-line-length-0 -finit-real=snan -finit-integer=snan -Wno-lto-type-mismatch -lstdc++ -DGNU")
     # LUMI has an issue with argument types in MPI(CH) calls
-    SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -fallow-argument-mismatch")
+    IF(CMAKE_FQDN_HOST MATCHES "\.can$")
+      SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -fallow-argument-mismatch")
+    ENDIF()
   ENDIF()
   # initialize all variables as signalling NaNs to force the user to correctly initialize these data types
   SET (CMAKE_Fortran_FLAGS_RELEASE   "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
