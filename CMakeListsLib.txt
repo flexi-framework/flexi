@@ -359,7 +359,7 @@ IF(NOT LIBS_BUILD_MATH_LIB)
   ENDIF()
 
   # VDM inverse, replace lapack with analytical solution
-  IF (CMAKE_BUILD_TYPE MATCHES "Debug" AND "${CMAKE_HOSTNAME}" MATCHES "login" AND FQDN MATCHES "hawk.hww.hlrs.de")
+  IF (CMAKE_BUILD_TYPE MATCHES "Debug" AND "${CMAKE_HOSTNAME}" MATCHES "login" AND CMAKE_FQDN_HOST MATCHES "hawk.hww.hlrs.de")
     MESSAGE(STATUS "Compiling FLEXI in debug mode on Hawk with system math lib. Setting VDM inverse to analytical solution")
     ADD_DEFINITIONS(-DVDM_ANALYTICAL)
   ENDIF()
