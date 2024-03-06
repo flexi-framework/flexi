@@ -5,7 +5,7 @@ SET(TOOL_NAME "dmd")
 SET(TOOL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/posti/dmd")
 
 MESSAGE(STATUS "Posti: building ${TOOL_NAME} tool.")
-INCLUDE_DIRECTORIES( ${TOOL_DIR}) 
+INCLUDE_DIRECTORIES( ${TOOL_DIR})
 
 FILE(GLOB ${TOOL_NAME}F90 ${TOOL_DIR}/dmd.f90
                           ${TOOL_DIR}/dmd_vars.f90
@@ -13,7 +13,9 @@ FILE(GLOB ${TOOL_NAME}F90 ${TOOL_DIR}/dmd.f90
                           ${TOOL_DIR}/navierstokes/equationDmd_vars.f90)
 
 ADD_LIBRARY(${TOOL_NAME}libF90 OBJECT ${${TOOL_NAME}F90})
-SET_TARGET_PROPERTIES(${TOOL_NAME}libF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
+SET_TARGET_PROPERTIES(${TOOL_NAME}libF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
+                                                    COMPILE_OPTIONS "-fPIC"
+                                                    CMAKE_POSITION_INDEPENDENT_CODE ON)
 ADD_LIBRARY(${TOOL_NAME}lib STATIC $<TARGET_OBJECTS:${TOOL_NAME}libF90>)
 ADD_DEPENDENCIES(${TOOL_NAME}libF90 libflexishared)
 

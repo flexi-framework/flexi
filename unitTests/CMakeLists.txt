@@ -9,7 +9,9 @@ function(add_unit_test target)
     # INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/unitTests)
     TARGET_LINK_LIBRARIES(${target} libflexishared)
     # Set properties of target
-    SET_TARGET_PROPERTIES(${target} PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
+    SET_TARGET_PROPERTIES(${target} PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
+                                               COMPILE_OPTIONS "-fPIC"
+                                               CMAKE_POSITION_INDEPENDENT_CODE ON)
     SET_TARGET_PROPERTIES(${target} PROPERTIES LINKER_LANGUAGE Fortran)
     SET_TARGET_PROPERTIES(${target} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/unitTests/lib"
                                                LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/unitTests/lib"
@@ -23,7 +25,7 @@ function(add_unit_test target)
 endfunction()
 
 # CMake can always request position independent code
-SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
+# SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Enable testing in general
 ENABLE_TESTING()

@@ -26,7 +26,9 @@ FILE(GLOB_RECURSE postiF90 ./posti/common/vtkOutput/*.f90
                            ./posti/common/spline/*.f90)
 ADD_LIBRARY(libposti STATIC ${postiF90})
 SET_TARGET_PROPERTIES(libposti PROPERTIES OUTPUT_NAME "libposti")
-SET_TARGET_PROPERTIES(libposti PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
+SET_TARGET_PROPERTIES(libposti PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
+                                          COMPILE_OPTIONS "-fPIC"
+                                          CMAKE_POSITION_INDEPENDENT_CODE ON)
 TARGET_LINK_LIBRARIES(libposti libflexishared)
 ADD_DEPENDENCIES(libposti libflexishared)
 
@@ -80,7 +82,9 @@ IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT OR POSTI_HIT_INIT OR POSTI_HIT_FILTER
 
   # Build static FFTW library to be included in each POSTI tool
   ADD_LIBRARY(fftwlib STATIC ${CMAKE_CURRENT_SOURCE_DIR}/posti/common/fftw/fftw.f90)
-  SET_TARGET_PROPERTIES(fftwlib PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
+  SET_TARGET_PROPERTIES(fftwlib PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
+                                           COMPILE_OPTIONS "-fPIC"
+                                           CMAKE_POSITION_INDEPENDENT_CODE ON)
   TARGET_LINK_LIBRARIES(fftwlib ${FFTW_LIBRARIES})
   TARGET_INCLUDE_DIRECTORIES(fftwlib PRIVATE ${FFTW_INCLUDE_DIR})
   IF(SELFBUILTEXTERNALS)

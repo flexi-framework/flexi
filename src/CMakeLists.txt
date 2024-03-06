@@ -249,6 +249,8 @@ FUNCTION(add_exec target)
   ADD_EXECUTABLE(       ${target} ${ARGN})
   TARGET_LINK_LIBRARIES(${target} libflexishared)
   SET_TARGET_PROPERTIES(${target} PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
+                                             COMPILE_OPTIONS "-fPIC"
+                                             CMAKE_POSITION_INDEPENDENT_CODE ON
                                              LINKER_LANGUAGE Fortran)
   INSTALL(PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${target} DESTINATION bin)
   STRING(TOUPPER ${target} TARGETUP)
@@ -262,7 +264,9 @@ FUNCTION(add_lib_shared target)
   ADD_LIBRARY(          ${target} SHARED ${ARGN})
   TARGET_LINK_LIBRARIES(${target} libflexistatic userblocklib stacksizelib ${linkedlibs})
   SET_TARGET_PROPERTIES(${target} PROPERTIES PREFIX ""
-                                             COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
+                                             COMPILE_FLAGS   ${FLEXI_COMPILE_FLAGS}
+                                             COMPILE_OPTIONS "-fPIC"
+                                             CMAKE_POSITION_INDEPENDENT_CODE ON
                                              LINKER_LANGUAGE Fortran)
   INSTALL(TARGETS ${target} LIBRARY PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
                                                 GROUP_READ GROUP_EXECUTE
@@ -358,10 +362,14 @@ ENDIF()
 
 # define libs
 ADD_LIBRARY(          libflexistaticF90 OBJECT ${flexiF90})
-SET_TARGET_PROPERTIES(libflexistaticF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
+SET_TARGET_PROPERTIES(libflexistaticF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
+                                                   COMPILE_OPTIONS "-fPIC"
+                                                   CMAKE_POSITION_INDEPENDENT_CODE ON)
 ADD_LIBRARY(          libflexistatic    STATIC $<TARGET_OBJECTS:libflexistaticF90>)
 SET_TARGET_PROPERTIES(libflexistatic    PROPERTIES PREFIX ""
-                                        OUTPUT_NAME "libflexif90")
+                                                   COMPILE_OPTIONS "-fPIC"
+                                                   CMAKE_POSITION_INDEPENDENT_CODE ON
+                                                   OUTPUT_NAME "libflexif90")
 IF(SELFBUILTEXTERNALS)
   ADD_DEPENDENCIES(libflexistaticF90 ${SELFBUILTEXTERNALS})
 ENDIF()
@@ -378,7 +386,9 @@ ADD_LIBRARY(userblocklib STATIC ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/print_userbloc
 ADD_DEPENDENCIES(userblocklib generateUserblock)
 
 ADD_LIBRARY(stacksizelib STATIC ./src/globals/stacksize.c)
-SET_TARGET_PROPERTIES(stacksizelib userblocklib PROPERTIES LANGUAGE C LINKER_LANGUAGE C
+SET_TARGET_PROPERTIES(stacksizelib userblocklib PROPERTIES LANGUAGE C
+                                                           LINKER_LANGUAGE C
+                                                           COMPILE_OPTIONS "-fPIC"
                                                            CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # we link the statically built libs
