@@ -87,6 +87,7 @@ IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Interpolation")
 CALL prms%CreateIntOption('N'    , "Polynomial degree of computation to represent to solution")
+
 END SUBROUTINE DefineParametersInterpolation
 
 
@@ -143,8 +144,8 @@ CALL InitInterpolationBasis(PP_N, xGP ,wGP ,wBary ,L_Minus ,L_Plus ,Vdm_Leg ,sVd
 InterpolationInitIsDone = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT INTERPOLATION DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
-END SUBROUTINE InitInterpolation
 
+END SUBROUTINE InitInterpolation
 
 
 !==================================================================================================================================
@@ -309,6 +310,7 @@ ELSE
   END SELECT
 END IF !present wIP
 IF(PRESENT(wIPBary)) CALL BarycentricWeights(N_in,xIP,wIPBary)
+
 END SUBROUTINE GetNodesAndWeights
 
 
@@ -386,6 +388,7 @@ ELSE
     END IF
   END IF
 END IF
+
 END SUBROUTINE GetVandermonde
 
 
@@ -407,6 +410,7 @@ REAL                               :: xIP(0:N_in)
 !==================================================================================================================================
 CALL GetNodesAndWeights(N_in,NodeType_in,xIP)
 CALL PolynomialDerivativeMatrix(N_in,xIP,D)
+
 END SUBROUTINE GetDerivativeMatrix
 
 
@@ -434,6 +438,7 @@ SDEALLOCATE(Vdm_Leg)
 SDEALLOCATE(sVdm_Leg)
 
 InterpolationInitIsDone = .FALSE.
+
 END SUBROUTINE FinalizeInterpolation
 
 END MODULE MOD_Interpolation
