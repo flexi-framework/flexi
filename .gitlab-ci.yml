@@ -331,3 +331,4 @@ github:
     - git clone --single-branch git@gitlab.iag.uni-stuttgart.de:flexi/flexi.git flexi_github
     - cd flexi_github
     - git push --mirror git@github.com:flexi-framework/flexi.git
+    - git push --mirror git@github.com:flexi-framework/flexi-extensions.git
