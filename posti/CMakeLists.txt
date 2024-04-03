@@ -26,9 +26,16 @@ FILE(GLOB_RECURSE postiF90 ./posti/common/vtkOutput/*.f90
                            ./posti/common/spline/*.f90)
 ADD_LIBRARY(libposti STATIC ${postiF90})
 SET_TARGET_PROPERTIES(libposti PROPERTIES OUTPUT_NAME "libposti")
-SET_TARGET_PROPERTIES(libposti PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
+SET_TARGET_PROPERTIES(libposti PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
+                                          COMPILE_OPTIONS "-fPIC"
+                                          CMAKE_POSITION_INDEPENDENT_CODE ON)
 TARGET_LINK_LIBRARIES(libposti libflexishared)
 ADD_DEPENDENCIES(libposti libflexishared)
+
+# When using Ninja, CMake tries to parallelize the build resulting in missing module files. Add a dummy target to ensure synchronization
+ADD_CUSTOM_TARGET(libpostitarget)
+ADD_DEPENDENCIES(libpostitarget libflexishared)
+ADD_DEPENDENCIES(libposti libpostitarget)
 
 # =========================================================================
 # FFTW library
@@ -47,8 +54,8 @@ IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT OR POSTI_HIT_INIT OR POSTI_HIT_FILTER
   IF (LIBS_USE_OPENMP)
     FIND_LIBRARY(FFTW_OMP_LIBRARY NAMES fftw3_omp HINTS $ENV{FFTW_DIR}/lib ${LIBS_EXTERNAL_LIB_DIR}/fftw/build/lib)
   ENDIF()
-  IF(FFTW_INCLUDES STREQUAL "FFTW_INCLUDES-NOTFOUND" OR  FFTW_LIBRARY STREQUAL "FFTW_LIBRARY-NOTFOUND"
-		                                     OR (FFTW_OMP_LIBRARY STREQUAL "FFTW_OMP_LIBRARY-NOTFOUND" AND LIBS_USE_OPENMP))
+  IF(FFTW_INCLUDES STREQUAL "FFTW_INCLUDES-NOTFOUND" OR  FFTW_LIBRARY     STREQUAL "FFTW_LIBRARY-NOTFOUND"
+                                                     OR (FFTW_OMP_LIBRARY STREQUAL "FFTW_OMP_LIBRARY-NOTFOUND" AND LIBS_USE_OPENMP))
     SET(FFTW_FLAGS tar xzf ${POSTI_FFTWTAG}.tar.gz && FC=${CMAKE_Fortran_COMPILER} CC=${CMAKE_C_COMPILER} F77=${CMAKE_F77_COMPILER} ${POSTI_FFTWDIR}/src/fftw/${POSTI_FFTWTAG}/configure --prefix=${POSTI_FFTWDIR}/build)
     IF (LIBS_USE_OPENMP)
       LIST(APPEND FFTW_FLAGS --enable-openmp)
@@ -60,7 +67,7 @@ IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT OR POSTI_HIT_INIT OR POSTI_HIT_FILTER
         ${${GITSHALLOW}}
         PREFIX  ${POSTI_FFTWDIR}
         UPDATE_COMMAND ""
-	CONFIGURE_COMMAND ${FFTW_FLAGS}
+        CONFIGURE_COMMAND ${FFTW_FLAGS}
         BUILD_IN_SOURCE 1
       )
     SET(FFTW_INCLUDE_DIR ${POSTI_FFTWDIR}/build/include)
@@ -80,7 +87,9 @@ IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT OR POSTI_HIT_INIT OR POSTI_HIT_FILTER
 
   # Build static FFTW library to be included in each POSTI tool
   ADD_LIBRARY(fftwlib STATIC ${CMAKE_CURRENT_SOURCE_DIR}/posti/common/fftw/fftw.f90)
-  SET_TARGET_PROPERTIES(fftwlib PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
+  SET_TARGET_PROPERTIES(fftwlib PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
+                                           COMPILE_OPTIONS "-fPIC"
+                                           CMAKE_POSITION_INDEPENDENT_CODE ON)
   TARGET_LINK_LIBRARIES(fftwlib ${FFTW_LIBRARIES})
   TARGET_INCLUDE_DIRECTORIES(fftwlib PRIVATE ${FFTW_INCLUDE_DIR})
   IF(SELFBUILTEXTERNALS)

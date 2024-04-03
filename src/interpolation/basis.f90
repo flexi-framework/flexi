@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -99,11 +99,12 @@ CONTAINS
 !==================================================================================================================================
 SUBROUTINE buildLegendreVdm(N_In,xi_In,Vdm_Leg,sVdm_Leg)
 ! MODULES
-USE MOD_Globals,ONLY:abort
+USE MOD_Globals,ONLY:Abort
 USE MOD_PreProc,ONLY:PP_RealTolerance
 #ifndef VDM_ANALYTICAL
 USE MOD_Mathtools,ONLY:INVERSE
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -146,16 +147,16 @@ END DO
 CALL InitializeVandermonde(N_In,N_In,wBary_Loc,xi_In,xGauss,Vdm_Lag)
 sVdm_Leg=MATMUL(Vdm_Leg_Gauss,Vdm_Lag)
 dummy=ABS(SUM(ABS(MATMUL(sVdm_Leg,Vdm_Leg)))/(N_In+1.)-1.)
-IF(dummy.GT.15.*PP_RealTolerance) CALL ABORT(__STAMP__,&
-                                         'problems in MODAL<->NODAL Vandermonde ',999,dummy)
+IF(dummy.GT.15.*PP_RealTolerance) CALL Abort(__STAMP__,&
+                                         'buildLegendreVdm: problems in MODAL<->NODAL Vandermonde ',999,dummy)
 #else
 ! Lapack
 sVdm_Leg=INVERSE(Vdm_Leg)
 
 !check (Vdm_Leg)^(-1)*Vdm_Leg := I
 dummy=ABS(SUM(ABS(MATMUL(sVdm_Leg,Vdm_Leg)))/(N_In+1.)-1.)
-IF(dummy.GT.10.*PP_RealTolerance) CALL ABORT(__STAMP__,&
-                                         'problems in MODAL<->NODAL Vandermonde ',999,dummy)
+IF(dummy.GT.10.*PP_RealTolerance) CALL Abort(__STAMP__,&
+                                         'problems in Legendre Vandermonde ',999,dummy)
 #endif
 END SUBROUTINE buildLegendreVdm
 
@@ -167,6 +168,7 @@ END SUBROUTINE buildLegendreVdm
 !===================================================================================================================================
 PPURE SUBROUTINE InitializeVandermonde(N_In,N_Out,wBary_In,xi_In,xi_Out,Vdm)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -193,6 +195,8 @@ END SUBROUTINE InitializeVandermonde
 !> algorithm 22, Kopriva book
 !===================================================================================================================================
 ELEMENTAL SUBROUTINE LegendrePolynomialAndDerivative(N_in,x,L,Lder)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -240,7 +244,9 @@ END SUBROUTINE LegendrePolynomialAndDerivative
 !> Compute Chebychev-Gauss nodes and integration weights (algorithm 27, Kopriva book)
 !==================================================================================================================================
 PPURE SUBROUTINE ChebyshevGaussNodesAndWeights(N_in,xGP,wGP)
+! MODULES
 USE MOD_Preproc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -267,7 +273,9 @@ END SUBROUTINE ChebyshevGaussNodesAndWeights
 !> Compute Chebychev-Gauss-Lobatto nodes and integration weights (algorithm 27, Kopriva book)
 !==================================================================================================================================
 PPURE SUBROUTINE ChebyGaussLobNodesAndWeights(N_in,xGP,wGP)
+! MODULES
 USE MOD_Preproc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -295,7 +303,9 @@ END SUBROUTINE ChebyGaussLobNodesAndWeights
 !> Compute Clenshaw-Curtis nodes and integration weights
 !==================================================================================================================================
 PPURE SUBROUTINE ClenshawCurtisNodesAndWeights(N_in,xGP,wGP)
+! MODULES
 USE MOD_Preproc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -417,6 +427,7 @@ END SUBROUTINE LegGaussRadauNodesAndWeights
 SUBROUTINE LegendreGaussNodesAndWeights(N_in,xGP,wGP)
 !MODULES
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -532,6 +543,8 @@ END SUBROUTINE qAndLEvaluationRadau
 !> Recursive algorithm using the N_in-1 N_in-2 Legendre polynomials. (Algorithm 24, Kopriva book)
 !==================================================================================================================================
 ELEMENTAL SUBROUTINE qAndLEvaluation(N_in,x,q,qder,L)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -568,6 +581,7 @@ SUBROUTINE LegGaussLobNodesAndWeights(N_in,xGP,wGP)
 ! MODULES
 USE MOD_Preproc
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -636,6 +650,8 @@ END SUBROUTINE LegGaussLobNodesAndWeights
 !> Computes barycentric (interpolation) weights for interpolation polynomial given by set of nodes. (Algorithm 30, Kopriva book)
 !==================================================================================================================================
 PPURE SUBROUTINE BarycentricWeights(N_in,xGP,wBary)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -662,6 +678,8 @@ END SUBROUTINE BarycentricWeights
 !> Computes polynomial differentiation matrix for interpolation polynomial given by set of nodes. (Algorithm 37, Kopriva book)
 !==================================================================================================================================
 PPURE SUBROUTINE PolynomialDerivativeMatrix(N_in,xGP,D)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -692,7 +710,9 @@ END SUBROUTINE PolynomialDerivativeMatrix
 !> Based on Algorithm 139, Kopriva
 !==================================================================================================================================
 ELEMENTAL FUNCTION ALMOSTEQUAL(x,y)
+! MODULES
 USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -718,6 +738,8 @@ END FUNCTION ALMOSTEQUAL
 !> Algorithm 34, Kopriva book
 !============================================================================================================================
 PPURE SUBROUTINE LagrangeInterpolationPolys(x,N_in,xGP,wBary,L)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

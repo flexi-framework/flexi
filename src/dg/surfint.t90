@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -25,16 +25,16 @@ SUBROUTINE SurfInt(&
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Mesh_Vars    ,ONLY: SideToElem,nSides,ElemToSide
+USE MOD_Mesh_Vars    ,ONLY: SideToElem,nSides
 USE MOD_Mesh_Vars    ,ONLY: firstMPISide_YOUR,lastMPISide_MINE
 USE MOD_Mesh_Vars    ,ONLY: S2V2,nElems
 #ifdef SPLIT_DG
 USE MOD_SplitFlux    ,ONLY: SplitDGVolume_pointer ! computes volume fluxes in split formulation
 USE MOD_Interpolation_Vars, ONLY: L_Minus,L_Plus
 USE MOD_Mesh_Vars    ,ONLY: NormalSigns,S2V,NormalDirs
-#endif
 USE MOD_DG_Vars      ,ONLY: U,UPrim,U_master,U_slave,UPrim_master,UPrim_slave
 USE MOD_Mesh_Vars    ,ONLY: Metrics_fTilde,Metrics_gTilde,nElems,Ja_face,Ja_slave
+#endif
 #if PP_dim==3 || VOLINT_VISC
 USE MOD_Mesh_Vars    ,ONLY: Metrics_hTilde
 #endif
@@ -61,7 +61,7 @@ INTEGER            :: ElemID,nbElemID,locSideID,nblocSideID,SideID,p,q,flip
 INTEGER            :: firstSideID,lastSideID
 REAL               :: FluxTmp(1:TP_nVar,0:Nloc,0:ZDIM(Nloc))
 #ifdef SPLIT_DG
-REAL               :: FluxB(TP_nVar,0:PP_N),FluxB_sum(TP_nVar),Leg(0:Nloc),LegHat(0:Nloc)
+REAL               :: FluxB(TP_nVar,0:Nloc),FluxB_sum(TP_nVar),Leg(0:Nloc),LegHat(0:Nloc)
 INTEGER            :: l,ijk(3),idx
 REAL, POINTER      :: Metrics(:,:,:,:)
 #endif
@@ -103,13 +103,13 @@ DO SideID=firstSideID,lastSideID
 #ifdef SPLIT_DG
       ! Get the right metric terms
       SELECT CASE(locSideID)
-        CASE(XI_MINUS  ) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_fTilde(:,:,:,:,ElemID,0); idx = 1; Leg = L_minus; LegHat = L_HatMinus
-        CASE(ETA_MINUS ) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_gTilde(:,:,:,:,ElemID,0); idx = 2; Leg = L_minus; LegHat = L_HatMinus
-        CASE(XI_PLUS )   ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_fTilde(:,:,:,:,ElemID,0); idx = 1; Leg = L_plus; LegHat = L_HatPlus
-        CASE(ETA_PLUS)   ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_gTilde(:,:,:,:,ElemID,0); idx = 2; Leg = L_plus; LegHat = L_HatPlus
+        CASE(XI_MINUS  ) ; Metrics => Metrics_fTilde(:,:,:,:,ElemID,0); idx = 1; Leg = L_minus; LegHat = L_HatMinus
+        CASE(ETA_MINUS ) ; Metrics => Metrics_gTilde(:,:,:,:,ElemID,0); idx = 2; Leg = L_minus; LegHat = L_HatMinus
+        CASE(XI_PLUS )   ; Metrics => Metrics_fTilde(:,:,:,:,ElemID,0); idx = 1; Leg = L_plus; LegHat = L_HatPlus
+        CASE(ETA_PLUS)   ; Metrics => Metrics_gTilde(:,:,:,:,ElemID,0); idx = 2; Leg = L_plus; LegHat = L_HatPlus
 #if PP_dim == 3
-        CASE(ZETA_MINUS) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_hTilde(:,:,:,:,ElemID,0); idx = 3; Leg = L_minus; LegHat = L_HatMinus
-        CASE(ZETA_PLUS)  ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_hTilde(:,:,:,:,ElemID,0); idx = 3; Leg = L_plus; LegHat = L_HatPlus
+        CASE(ZETA_MINUS) ; Metrics => Metrics_hTilde(:,:,:,:,ElemID,0); idx = 3; Leg = L_minus; LegHat = L_HatMinus
+        CASE(ZETA_PLUS)  ; Metrics => Metrics_hTilde(:,:,:,:,ElemID,0); idx = 3; Leg = L_plus; LegHat = L_HatPlus
 #endif
       END SELECT
 #endif
@@ -117,7 +117,7 @@ DO SideID=firstSideID,lastSideID
 #ifdef SPLIT_DG
         ! Calculate the split flux between each interior Gauss point and the respective boundary point: f^hat_Lk
         FluxB_sum = 0.0
-        DO l=0,PP_N
+        DO l=0,Nloc
           ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V mapping
           ijk(:)=S2V(:,l,p,q,flip,locSideID) !0: flip=0
           ! Similar to prolong to face of the two-point flux
@@ -128,7 +128,7 @@ DO SideID=firstSideID,lastSideID
           FluxB_sum = FluxB_sum + FluxB(:,ijk(idx)) * Leg(ijk(idx))
         END DO
         ! Apply the resulting SurfInt in a line-wise manner to the interior DOFs, s.a.
-        DO l=0,PP_N
+        DO l=0,Nloc
           ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V mapping
           ijk(:)=S2V(:,l,p,q,flip,locSideID) !0: flip=0
           Ut(:,ijk(1),ijk(2),ijk(3),ElemID) = Ut(:,ijk(1),ijk(2),ijk(3),ElemID) + &
@@ -175,13 +175,13 @@ DO SideID=firstSideID,lastSideID
 #ifdef SPLIT_DG
       ! Get the right metric terms
       SELECT CASE(nblocSideID)
-        CASE(XI_MINUS  ) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_fTilde(:,:,:,:,nbElemID,0); idx = 1; Leg = L_minus; LegHat = L_HatMinus
-        CASE(ETA_MINUS ) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_gTilde(:,:,:,:,nbElemID,0); idx = 2; Leg = L_minus; LegHat = L_HatMinus
-        CASE(XI_PLUS )   ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_fTilde(:,:,:,:,nbElemID,0); idx = 1; Leg = L_plus; LegHat = L_HatPlus
-        CASE(ETA_PLUS)   ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_gTilde(:,:,:,:,nbElemID,0); idx = 2; Leg = L_plus; LegHat = L_HatPlus
+        CASE(XI_MINUS  ) ; Metrics => Metrics_fTilde(:,:,:,:,nbElemID,0); idx = 1; Leg = L_minus; LegHat = L_HatMinus
+        CASE(ETA_MINUS ) ; Metrics => Metrics_gTilde(:,:,:,:,nbElemID,0); idx = 2; Leg = L_minus; LegHat = L_HatMinus
+        CASE(XI_PLUS )   ; Metrics => Metrics_fTilde(:,:,:,:,nbElemID,0); idx = 1; Leg = L_plus; LegHat = L_HatPlus
+        CASE(ETA_PLUS)   ; Metrics => Metrics_gTilde(:,:,:,:,nbElemID,0); idx = 2; Leg = L_plus; LegHat = L_HatPlus
 #if PP_dim == 3
-        CASE(ZETA_MINUS) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_hTilde(:,:,:,:,nbElemID,0); idx = 3; Leg = L_minus; LegHat = L_HatMinus
-        CASE(ZETA_PLUS)  ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_hTilde(:,:,:,:,nbElemID,0); idx = 3; Leg = L_plus; LegHat = L_HatPlus
+        CASE(ZETA_MINUS) ; Metrics => Metrics_hTilde(:,:,:,:,nbElemID,0); idx = 3; Leg = L_minus; LegHat = L_HatMinus
+        CASE(ZETA_PLUS)  ; Metrics => Metrics_hTilde(:,:,:,:,nbElemID,0); idx = 3; Leg = L_plus; LegHat = L_HatPlus
 #endif
       END SELECT
 #endif
@@ -190,8 +190,8 @@ DO SideID=firstSideID,lastSideID
 #ifdef SPLIT_DG
         ! Calculate the split flux between each interior Gauss point and the respective boundary point: f^hat_Lk
         FluxB_sum = 0.0
-        DO l=0,PP_N
-          ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V mapping
+        DO l=0,Nloc
+        !   ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V mapping
           ijk(:)=S2V(:,l,p,q,flip,nblocSideID) !0: flip=0
           ! Similar to prolong to face of the two-point flux
           CALL SplitDGVolume_pointer(U(:,ijk(1),ijk(2),ijk(3),nbElemID),UPrim(:,ijk(1),ijk(2),ijk(3) ,nbElemID),      &
@@ -200,7 +200,7 @@ DO SideID=firstSideID,lastSideID
           FluxB_sum = FluxB_sum + FluxB(:,ijk(idx)) * Leg(ijk(idx))
         END DO
         ! Apply the resulting SurfInt in a line-wise manner to the interior DOFs, s.a.
-        DO l=0,PP_N
+        DO l=0,Nloc
           ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V mapping
           ijk(:)=S2V(:,l,p,q,flip,nblocSideID) !0: flip=0
           Ut(:,ijk(1),ijk(2),ijk(3),nbElemID) = Ut(:,ijk(1),ijk(2),ijk(3),nbElemID) + &
@@ -250,7 +250,7 @@ SUBROUTINE SurfIntBlend(&
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Mesh_Vars    ,ONLY: SideToElem,nSides,ElemToSide
+USE MOD_Mesh_Vars    ,ONLY: SideToElem,nSides
 USE MOD_Mesh_Vars    ,ONLY: firstMPISide_YOUR,lastMPISide_MINE
 USE MOD_Mesh_Vars    ,ONLY: S2V2,nElems
 #ifdef SPLIT_DG
@@ -477,7 +477,7 @@ SUBROUTINE SurfInt(&
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Mesh_Vars    ,ONLY: SideToElem,nSides,ElemToSide
+USE MOD_Mesh_Vars    ,ONLY: SideToElem,nSides
 USE MOD_Mesh_Vars    ,ONLY: firstMPISide_YOUR,lastMPISide_MINE
 USE MOD_Mesh_Vars    ,ONLY: S2V2,nElems
 USE MOD_DG_Vars      ,ONLY: U,UPrim,U_master,U_slave,UPrim_master,UPrim_slave

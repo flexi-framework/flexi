@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -30,9 +30,14 @@ CHARACTER(LEN=255) :: testcase = "taylorgreenvortex"  !< name of testcase
 !----------------------------------------------------------------------------------------------------------------------------------
 REAL,ALLOCATABLE   :: Time(:)           !< times of log data (nWriteStats)
 REAL,ALLOCATABLE   :: writeBuf(:,:)     !< log data (nTGVVars+1,nWriteStats)
-REAL               :: MachNumber        !< Mach number of TGV
+REAL               :: Ma0               !< reference Mach number of TGV
+REAL,PARAMETER     :: rho0=1.           !< reference density
+REAL,PARAMETER     ::   U0=1.           !< magnitude of speed
+REAL               ::   T0              !< initial, constant reference temperature
+REAL               ::   p0              !< background pressure
+LOGICAL            :: IniConstDens      !< flag to indicate whether initial density or rather temperature field should be constant
 #if PARABOLIC
-INTEGER,PARAMETER  :: nTGVvars=13       !< Number of variables to be evaluated for TGV, time not included
+INTEGER,PARAMETER  :: nTGVvars=15       !< Number of variables to be evaluated for TGV, time not included
 #else
 INTEGER,PARAMETER  :: nTGVvars=5        !< Number of variables to be evaluated for TGV, time not included
 #endif

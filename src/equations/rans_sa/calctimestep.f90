@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -55,6 +55,7 @@ USE MOD_Mesh_Vars,ONLY:sJ,Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,nElems
 #if PARABOLIC
 USE MOD_EOS_Vars ,ONLY:KappasPr
 #endif /*PARABOLIC*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -87,6 +88,7 @@ DO FVE=0,FV_SIZE
   END DO
 END DO
 #endif /*PARABOLIC*/
+
 END SUBROUTINE
 
 
@@ -115,6 +117,7 @@ USE MOD_Viscosity
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -214,6 +217,7 @@ errType=INT(-TimeStep(3))
 #endif /*USE_MPI*/
 ViscousTimeStep=(TimeStep(2) .LT. TimeStep(1))
 CalcTimeStep=MINVAL(TimeStep(1:2))
+
 END FUNCTION CALCTIMESTEP
 
 
@@ -222,6 +226,7 @@ END FUNCTION CALCTIMESTEP
 !==================================================================================================================================
 SUBROUTINE FinalizeCalctimestep()
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 SDEALLOCATE(MetricsAdv)

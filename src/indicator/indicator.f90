@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -28,8 +28,8 @@
 MODULE MOD_Indicator
 ! MODULES
 IMPLICIT NONE
-
 PRIVATE
+!----------------------------------------------------------------------------------------------------------------------------------
 
 INTEGER,PARAMETER :: INDTYPE_DG             = 0
 INTEGER,PARAMETER :: INDTYPE_FV             = 1
@@ -123,23 +123,23 @@ USE MOD_Mesh_Vars           ,ONLY: nElems
 USE MOD_IO_HDF5             ,ONLY: AddToElemData,ElementOut
 USE MOD_Overintegration_Vars,ONLY: NUnder
 USE MOD_Filter_Vars         ,ONLY: NFilter
-! #if FV_ENABLED == 3
-! USE MOD_Interpolation       ,ONLY: GetVandermonde
-! USE MOD_Interpolation_Vars  ,ONLY: NodeTypeVISU,NodeType
-! #endif /*FV_ENABLED == 3*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                  :: iBC,nFVBoundaryType,nModes_In
+INTEGER                                  :: nModes_In
+#if FV_ENABLED == 1
+INTEGER                                  :: iBC,nFVBoundaryType
+#endif
 !==================================================================================================================================
 IF(IndicatorInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,&
     "InitIndicator not ready to be called or already called.")
 END IF
 SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT INDICATORS...'
+SWRITE(UNIT_stdOut,'(A)') ' INIT INDICATOR...'
 
 ! Read in  parameters
 #if FV_ENABLED == 2 || FV_ENABLED == 3
@@ -189,11 +189,6 @@ CASE(INDTYPE_PERSSON)
   CALL Abort(__STAMP__, &
       "Persson indicator for FV-Blending only works with Navier-Stokes equations.")
 #endif /* EQNSYSNR != 2 */
-! #if FV_ENABLED == 3
-!   ALLOCATE(VdmGaussEqui(0:PP_N,0:PP_N))
-!   CALL GetVandermonde(PP_N,NodeType,PP_N,NodeTypeVISU,VdmGaussEqui)
-!   CALL CalcSobelFilter()
-! #endif /*FV_ENABLED == 3*/
 #endif /*FV_ENABLED*/
 CASE(-1) ! legacy
   IndicatorType=INDTYPE_DG
@@ -206,6 +201,7 @@ CALL AddToElemData(ElementOut,'IndValue',RealArray=IndValue)
 
 IndVar = GETINT('IndVar')
 
+#if FV_ENABLED == 1
 ! FV element at boundaries
 FVBoundaries    = GETLOGICAL('FVBoundaries')
 nFVBoundaryType = CountOption('FVBoundaryType')
@@ -213,6 +209,7 @@ ALLOCATE(FVBoundaryType(nFVBoundaryType))
 DO iBC=1,nFVBoundaryType
   FVBoundaryType(iBC) = GETINT('FVBoundaryType','0')! which BCType should be at an FV element? Default value means every BC will be FV
 END DO
+#endif /* FV_ENABLED == 1 */
 
 IndicatorInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT INDICATOR DONE!'
@@ -244,8 +241,8 @@ USE MOD_FV_Vars          ,ONLY: FV_alpha,FV_alpha_min,FV_alpha_max
 USE MOD_Indicator_Vars   ,ONLY: sdT_FV,T_FV
 #else
 USE MOD_FV_Vars          ,ONLY: FV_Elems,FV_sVdm
+USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisVolume
 #endif /*FV_ENABLED==2*/
-USE MOD_ChangeBasisByDim ,ONLY:ChangeBasisVolume
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -255,8 +252,8 @@ REAL,INTENT(IN)           :: t                                            !< Sim
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                   :: iElem
+#if FV_ENABLED == 1
 REAL,POINTER              :: U_P(:,:,:,:)
-#if !(FV_ENABLED == 2 || FV_ENABLED == 3)
 REAL,TARGET               :: U_DG(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 #endif
 !==================================================================================================================================
@@ -265,9 +262,9 @@ REAL,TARGET               :: U_DG(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 IF (t.LT.IndStartTime) THEN
 #if FV_ENABLED == 1
   IndValue = HUGE(1.)
-#else
+#elif FV_ENABLED >= 2
   FV_alpha = FV_alpha_max
-#endif
+#endif /*FV_ENABLED*/
   RETURN
 END IF
 
@@ -296,10 +293,7 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
   DO iElem=1,nElems
     IndValue(iElem) = IndPerssonBlend(U(:,:,:,:,iElem))
     IndValue(iElem) = 1. / (1. + EXP(-sdT_FV * (IndValue(iElem) - T_FV)))
-    ! Call Sobel indicator
-    ! CALL SobelIndicator(U(:,:,:,:,iElem),IndValue(iElem),FV_alpha(:,:,:,:,iElem),iElem)
     ! Limit to alpha_max
-    ! FV_alpha(:,:,:,:,iElem) = MIN(FV_alpha(:,:,:,:,iElem)*IndValue(iElem),FV_alpha_max)
     FV_alpha(:,:,:,:,iElem) = MIN(IndValue(iElem),FV_alpha_max)
   END DO ! iElem
   ! CALL FV_ExtendAlpha(FV_alpha)
@@ -320,8 +314,10 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
   END DO ! iElem
 #endif /*FV_ENABLED==2*/
 #if EQNSYSNR == 2 /* NAVIER-STOKES */
+#if FV_ENABLED
 CASE(INDTYPE_JAMESON)
   IndValue = JamesonIndicator(U)
+#endif
 #if PARABOLIC
 CASE(INDTYPE_DUCROS)
   IndValue = DucrosIndicator(gradUx,gradUy,gradUz)
@@ -351,8 +347,10 @@ CASE DEFAULT ! unknown Indicator Type
     "Unknown IndicatorType!")
 END SELECT
 
+#if FV_ENABLED == 1
 ! obtain indicator value for elements that contain domain boundaries
 CALL IndFVBoundaries(IndValue)
+#endif /*!FV_ENABLED == 1*/
 
 END SUBROUTINE CalcIndicator
 
@@ -440,16 +438,19 @@ IndValue=LOG10(IndValue)
 
 END FUNCTION IndPersson
 
+
 #if EQNSYSNR == 2 /* NAVIER-STOKES */
 #if PARABOLIC
 !==================================================================================================================================
 !> Indicator by Ducros.
 !==================================================================================================================================
 FUNCTION DucrosIndicator(gradUx, gradUy, gradUz) RESULT(IndValue)
+! MODULES
 USE MOD_PreProc
 USE MOD_Mesh_Vars          ,ONLY: nElems,sJ
 USE MOD_Analyze_Vars       ,ONLY: wGPVol
 USE MOD_FV_Vars            ,ONLY: FV_Elems
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -495,14 +496,16 @@ END DO ! iElem
 END FUNCTION DucrosIndicator
 #endif /* PARABOLIC */
 
+
 !==================================================================================================================================
 !> Indicator by Jameson.
 !==================================================================================================================================
 FUNCTION JamesonIndicator(U) RESULT(IndValue)
+! MODULES
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Indicator_Vars     ,ONLY: IndVar
-USE MOD_EOS_Vars           ,ONLY: KappaM1
+USE MOD_EOS_Vars           ,ONLY: sKappaM1,KappaM1,R
 USE MOD_Interpolation_Vars ,ONLY: L_Minus,L_Plus
 USE MOD_Mesh_Vars          ,ONLY: nElems,nSides
 USE MOD_Mesh_Vars          ,ONLY: firstMortarInnerSide,lastMortarInnerSide,firstMortarMPISide,lastMortarMPISide
@@ -518,8 +521,9 @@ USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExc
 #endif
 USE MOD_FillMortar1        ,ONLY: U_Mortar1,Flux_Mortar1
 USE MOD_FV_Vars            ,ONLY: FV_Elems,FV_Elems_master,FV_Elems_slave
-!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 REAL,INTENT(IN)           :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)              !< Solution
 REAL                      :: IndValue(1:nElems)                                  !< Value of the indicator (Return Value)
@@ -550,13 +554,24 @@ INTEGER                   :: DataSizeSide_loc
 SELECT CASE(IndVar)
 CASE(1:PP_nVar)
   UJameson(1,:,:,:,:) = U(IndVar,:,:,:,:)
-CASE(6)
+CASE(6) ! Pressure
   DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       UE(EXT_CONS)=U(:,i,j,k,iElem)
       UE(EXT_SRHO)=1./UE(EXT_DENS)
       UE(EXT_VELV)=VELOCITY_HE(UE)
       UJameson(1,i,j,k,iElem)=PRESSURE_HE(UE)
+    END DO; END DO; END DO! i,j,k=0,PP_N
+  END DO ! iElem
+CASE(7) ! Entropy
+  DO iElem=1,nElems
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+      UE(EXT_CONS) = U(:,i,j,k,iElem)
+      UE(EXT_SRHO) = 1./UE(EXT_DENS)
+      UE(EXT_VELV) = VELOCITY_HE(UE)
+      UE(EXT_PRES) = PRESSURE_HE(UE)
+      UE(EXT_TEMP) = TEMPERATURE_HE(UE)
+      UJameson(1,i,j,k,iElem) = ENTROPY_HE(UE)
     END DO; END DO; END DO! i,j,k=0,PP_N
   END DO ! iElem
 END SELECT
@@ -722,144 +737,6 @@ IF (IndValue .LT. EPSILON(1.)) IndValue = EPSILON(IndValue)
 
 END FUNCTION IndPerssonBlend
 #endif /*FV_ENABLED==2 || FV_ENABLED==3*/
-
-
-#if FV_ENABLED==3
-!==================================================================================================================================
-!
-!==================================================================================================================================
-SUBROUTINE CalcSobelFilter()
-! MODULES
-USE MOD_Indicator_Vars   ,ONLY: SobelFilterMatrix
-!==================================================================================================================================
-! Sobel filter in x-direction
-SobelFilterMatrix(1,1,1)=-1.
-SobelFilterMatrix(1,1,2)= 0.
-SobelFilterMatrix(1,1,3)= 1.
-SobelFilterMatrix(1,2,1)=-2.
-SobelFilterMatrix(1,2,2)= 0.
-SobelFilterMatrix(1,2,3)= 2.
-SobelFilterMatrix(1,3,1)=-1.
-SobelFilterMatrix(1,3,2)= 0.
-SobelFilterMatrix(1,3,3)= 1.
-
-! Sobel filter in y-direction
-SobelFilterMatrix(2,1,1)=-1.
-SobelFilterMatrix(2,1,2)=-2.
-SobelFilterMatrix(2,1,3)=-1.
-SobelFilterMatrix(2,2,1)= 0.
-SobelFilterMatrix(2,2,2)= 0.
-SobelFilterMatrix(2,2,3)= 0.
-SobelFilterMatrix(2,3,1)= 1.
-SobelFilterMatrix(2,3,2)= 2.
-SobelFilterMatrix(2,3,3)= 1.
-
-END SUBROUTINE CalcSobelFilter
-
-
-!==================================================================================================================================
-!
-!==================================================================================================================================
-SUBROUTINE SobelIndicator (U,IndVal,FV_alpha,iElem)
-! MODULES
-USE MOD_PreProc
-USE MOD_Globals
-USE MOD_Indicator_Vars      ,ONLY: SobelFilterMatrix,VdmGaussEqui
-USE MOD_Mesh_Vars           ,ONLY: Elem_xGP,sJ
-USE MOD_FV_Vars             ,ONLY: FV_alpha_min,FV_dim
-USE MOD_Analyze_Vars        ,ONLY: wGPVol
-USE MOD_Interpolation_Vars  ,ONLY: sVdm_Leg
-USE MOD_ChangeBasisByDim    ,ONLY: ChangeBasisVolume
-#if EQNSYSNR == 2 /* NAVIER-STOKES */
-USE MOD_EOS_Vars
-#endif /* NAVIER-STOKES */
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)                       :: U(       PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   !< Solution
-REAL,INTENT(IN)                       :: IndVal
-REAL,INTENT(INOUT)                    :: FV_alpha(FV_dim ,0:PP_N,0:PP_N,0:PP_NZ)
-INTEGER,INTENT(IN)                    :: iElem
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-#if EQNSYSNR == 2 /* NAVIER-STOKES */
-REAL                                  :: UE(1:PP_2Var)
-REAL                                  :: binaryEdgeMap_Pre(0:PP_N,0:PP_N,0:PP_NZ)
-REAL                                  :: signU,U_Max,U_Min,BEMMax
-#endif /* NAVIER-STOKES */
-INTEGER                               :: i,j,k
-REAL                                  :: U_loc(0:PP_N+2,0:PP_N+2,0:PP_NZ+2)
-REAL                                  :: z_x(0:PP_N,0:PP_N),dx(3,0:PP_N,0:PP_N,0:PP_NZ)
-REAL                                  :: z_y(0:PP_N,0:PP_N),IntegrationWeight
-REAL                                  :: FV_alpha_norm
-!==================================================================================================================================
-
-IF(IndVal.LT.FV_alpha_min) RETURN
-U_loc = 0.
-
-#if EQNSYSNR == 2 /* NAVIER-STOKES */
-DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-  UE(EXT_CONS) = U(:,i,j,k)
-  ! UE(EXT_SRHO) = 1./UE(EXT_DENS)
-  ! UE(EXT_VELV) = VELOCITY_HE(UE)
-  ! IF (PRESSURE_HE(UE)>0. .AND. UE(EXT_DENS)>0) THEN; signU =  1
-  ! ELSE                                             ; signU = -1
-  ! END IF
-  ! U_loc(i+1,j+1,k+1) = PRESSURE_HE(UE)*UE(EXT_DENS)!*signU
-  U_loc(i+1,j+1,k+1) = UE(EXT_DENS) !*signU
-END DO; END DO; END DO! i,j,k=0,PP_N
-#endif /* NAVIER-STOKES */
-
-! Transform nodal solution to a modal representation
-CALL ChangeBasisVolume(PP_N,PP_N,VdmGaussEqui,U_loc(1:PP_N+1,1:PP_N+1,1:PP_NZ+1),U_loc(1:PP_N+1,1:PP_N+1,1:PP_NZ+1))
-
-! padding
-U_loc(0     ,:     ,:      ) = U_loc(1     ,:     ,:       )
-U_loc(PP_N+2,:     ,:      ) = U_loc(PP_N+1,:     ,:       )
-U_loc(:     ,0     ,:      ) = U_loc(:     ,1     ,:       )
-U_loc(:     ,PP_N+2,:      ) = U_loc(:     ,PP_N+1,:       )
-U_loc(:     ,:     ,0      ) = U_loc(:     ,:      ,1      )
-U_loc(:     ,:     ,PP_NZ+2) = U_loc(:     ,:      ,PP_NZ+1)
-
-FV_alpha = 0.
-IF (FV_dim.EQ.3) THEN
-  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    FV_alpha(1,i,j,k) = ABS(DOT_PRODUCT(SobelFilterMatrix(1,1,:),U_loc(i:i+2,j+1  ,k+1  )))
-    FV_alpha(2,i,j,k) = ABS(DOT_PRODUCT(SobelFilterMatrix(1,1,:),U_loc(i+1  ,j:j+2,k+1  )))
-    FV_alpha(3,i,j,k) = ABS(DOT_PRODUCT(SobelFilterMatrix(1,1,:),U_loc(i+1  ,j+1  ,k:k+2)))
-
-    FV_alpha_norm = NORM2(FV_alpha(:,i,j,k))
-
-    IF (FV_alpha_norm.GT.1.E-3) THEN
-      FV_alpha(:,i,j,k) = FV_alpha(:,i,j,k)/FV_alpha_norm
-    END IF ! FV_alpha_norm.GT.1.E-3
-
-  END DO; END DO; END DO ! k,j,i
-ELSE
-  z_x = 0.
-  z_y = 0.
-
-  ! Inner DOFs
-  DO k=0,PP_NZ
-    DO j=0,PP_N
-      DO i=0,PP_N
-        z_x(i,j) = z_x(i,j) + SUM(MATMUL(SobelFilterMatrix(1,:,:),U_loc(i:i+2,j:j+2,k)))
-        z_y(i,j) = z_y(i,j) + SUM(MATMUL(SobelFilterMatrix(2,:,:),U_loc(i:i+2,j:j+2,k)))
-      END DO
-    END DO
-
-    ! FV_alpha(1,0:PP_N,0:PP_N,k) = SQRT(z_x**2 + z_y**2)
-    FV_alpha(1,0:PP_N,0:PP_N,k) = NORM2((/z_x,z_y/))
-  END DO
-
-  U_Max = MAXVAL(FV_alpha(FV_dim,:,:,:))
-  IF (U_max.GT.1.E-3) THEN
-    FV_alpha(FV_dim,:,:,:) = FV_alpha(FV_dim,:,:,:)/U_Max
-  END IF
-END IF
-
-END SUBROUTINE SobelIndicator
-#endif /* FV_ENABLED==3 */
 #endif /* EQNSYSNR == 2 */
 
 
@@ -913,14 +790,14 @@ END SUBROUTINE IndFVBoundaries
 SUBROUTINE FinalizeIndicator()
 ! MODULES
 USE MOD_Indicator_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
-IndicatorInitIsDone=.FALSE.
 SDEALLOCATE(IndValue)
 SDEALLOCATE(FVBoundaryType)
-#if FV_ENABLED == 3
-SDEALLOCATE(VdmGaussEqui)
-#endif /*FV_ENABLED == 3*/
+
+IndicatorInitIsDone=.FALSE.
+
 END SUBROUTINE FinalizeIndicator
 
 END MODULE MOD_Indicator
