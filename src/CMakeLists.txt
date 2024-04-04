@@ -173,7 +173,7 @@ SET(FLEXI_FV "OFF" CACHE STRING "Enable Finite Volume subcell shock capturing")
 SET_PROPERTY(CACHE FLEXI_FV PROPERTY STRINGS OFF SWITCH BLEND)
 
 CMAKE_DEPENDENT_OPTION(FLEXI_FV_RECONSTRUCTION "Enable 2nd order reconstruction for FV" ON
-	                                             "FLEXI_FV" ON) # Everyhting except "OFF" is logically "ON"
+                                               "FLEXI_FV" ON) # Everything except "OFF" is logically "ON"
 
 IF(NOT (FLEXI_FV STREQUAL "OFF"))
   IF(    FLEXI_FV STREQUAL "SWITCH")
@@ -223,8 +223,21 @@ SET_PROPERTY(CACHE FLEXI_TESTCASE PROPERTY STRINGS ${TESTCASES})
 # =========================================================================
 # Unit test at end of compilation
 # =========================================================================
-OPTION(FLEXI_UNITTESTS "Enable unit tests after build" ON)
-MARK_AS_ADVANCED(FORCE FLEXI_UNITTESTS)
+# Check is unit tests can be activated
+IF(BUILD_TYPE_LC MATCHES "sanitize" AND LIBS_USE_MPI)
+  SET(ACTIVATE_UNIT_TEST OFF)
+  # Check if unit tests were previously activated
+  IF(FLEXI_UNITTESTS AND LIBS_MPI_NAME MATCHES "OpenMPI")
+    MESSAGE(WARNING "Unit tests automatically disabled (FLEXI_UNITTESTS=OFF) with\n CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}\n LIBS_USE_MPI = ${LIBS_USE_MPI}\nas the tests will always fail due to memory errors returned from the MPI library.")
+    SET(FLEXI_UNITTESTS OFF)
+  ENDIF()
+ELSE()
+  SET(ACTIVATE_UNIT_TEST ON)
+ENDIF()
+
+# Enable unit testing only when ACTIVATE_UNIT_TEST=ON
+CMAKE_DEPENDENT_OPTION(FLEXI_UNITTESTS "Enable unit tests after build" ON "ACTIVATE_UNIT_TEST" OFF)
+
 IF(FLEXI_UNITTESTS)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/unitTests/CMakeLists.txt)
 ENDIF()
@@ -236,17 +249,24 @@ FUNCTION(add_exec target)
   ADD_EXECUTABLE(       ${target} ${ARGN})
   TARGET_LINK_LIBRARIES(${target} libflexishared)
   SET_TARGET_PROPERTIES(${target} PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
+                                             COMPILE_OPTIONS "-fPIC"
+                                             CMAKE_POSITION_INDEPENDENT_CODE ON
                                              LINKER_LANGUAGE Fortran)
   INSTALL(PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${target} DESTINATION bin)
   STRING(TOUPPER ${target} TARGETUP)
   ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --cyan "SUCCESS: ${TARGETUP} BUILD COMPLETE!")
+  # Strip executable/shared library when building in release mode
+  ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD DEPENDS "${target}" COMMAND $<$<CONFIG:release>:${CMAKE_STRIP}> ARGS --strip-unneeded $<TARGET_FILE:${target}>)
+  ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD DEPENDS "${target}" COMMAND $<$<CONFIG:release>:${CMAKE_STRIP}> ARGS --strip-unneeded $<TARGET_FILE:libflexishared>)
 ENDFUNCTION()
 
 FUNCTION(add_lib_shared target)
   ADD_LIBRARY(          ${target} SHARED ${ARGN})
   TARGET_LINK_LIBRARIES(${target} libflexistatic userblocklib stacksizelib ${linkedlibs})
   SET_TARGET_PROPERTIES(${target} PROPERTIES PREFIX ""
-                                             COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
+                                             COMPILE_FLAGS   ${FLEXI_COMPILE_FLAGS}
+                                             COMPILE_OPTIONS "-fPIC"
+                                             CMAKE_POSITION_INDEPENDENT_CODE ON
                                              LINKER_LANGUAGE Fortran)
   INSTALL(TARGETS ${target} LIBRARY PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
                                                 GROUP_READ GROUP_EXECUTE
@@ -342,10 +362,14 @@ ENDIF()
 
 # define libs
 ADD_LIBRARY(          libflexistaticF90 OBJECT ${flexiF90})
-SET_TARGET_PROPERTIES(libflexistaticF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
-ADD_LIBRARY(          libflexistatic STATIC $<TARGET_OBJECTS:libflexistaticF90>)
-SET_TARGET_PROPERTIES(libflexistatic PROPERTIES PREFIX ""
-                                     OUTPUT_NAME "libflexif90")
+SET_TARGET_PROPERTIES(libflexistaticF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
+                                                   COMPILE_OPTIONS "-fPIC"
+                                                   CMAKE_POSITION_INDEPENDENT_CODE ON)
+ADD_LIBRARY(          libflexistatic    STATIC $<TARGET_OBJECTS:libflexistaticF90>)
+SET_TARGET_PROPERTIES(libflexistatic    PROPERTIES PREFIX ""
+                                                   COMPILE_OPTIONS "-fPIC"
+                                                   CMAKE_POSITION_INDEPENDENT_CODE ON
+                                                   OUTPUT_NAME "libflexif90")
 IF(SELFBUILTEXTERNALS)
   ADD_DEPENDENCIES(libflexistaticF90 ${SELFBUILTEXTERNALS})
 ENDIF()
@@ -354,16 +378,18 @@ ENDIF()
 #EXECUTE_PROCESS(COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/src/output/print_userblock.c ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/src/output/print_userblock.c ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} COPYONLY)
 ADD_CUSTOM_TARGET(generateUserblock COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/tools/userblock/generate_userblock.sh
-                                                   ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-                                                   ${CMAKE_BINARY_DIR}
-                                                   "${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}"
-                                                   ${CMAKE_CURRENT_SOURCE_DIR})
+                                               ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+                                               ${CMAKE_BINARY_DIR}
+                                              "${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}"
+                                               ${CMAKE_CURRENT_SOURCE_DIR})
 ADD_LIBRARY(userblocklib STATIC ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/print_userblock.c)
 ADD_DEPENDENCIES(userblocklib generateUserblock)
 
 ADD_LIBRARY(stacksizelib STATIC ./src/globals/stacksize.c)
-SET_TARGET_PROPERTIES(stacksizelib userblocklib PROPERTIES LANGUAGE C LINKER_LANGUAGE C
-                                                           COMPILE_FLAGS "-fPIC")
+SET_TARGET_PROPERTIES(stacksizelib userblocklib PROPERTIES LANGUAGE C
+                                                           LINKER_LANGUAGE C
+                                                           COMPILE_OPTIONS "-fPIC"
+                                                           CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # we link the statically built libs
 ADD_LIB_SHARED(       libflexishared ./src/flexilib.f90)
@@ -371,6 +397,8 @@ SET_TARGET_PROPERTIES(libflexishared PROPERTIES OUTPUT_NAME "libflexi")
 ADD_DEPENDENCIES(     libflexishared libflexistatic userblocklib stacksizelib ${INTERNALLIBS})
 ADD_EXEC(        flexi ./src/flexi.f90)
 ADD_DEPENDENCIES(flexi libflexistatic userblocklib stacksizelib ${INTERNALLIBS})
+# Make sure that the script is executed even though cmake is not explicitly executed after the commit is changed in git
+ADD_DEPENDENCIES(flexi UpdateGitCommitHash)
 
 # special compiler flags to avoid warnings for empty functions of testcase.f90 and overwrite of intrinsic abort in globals.f90
 IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")

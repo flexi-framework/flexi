@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -31,32 +31,25 @@ SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-! Private Part --------------------------------------------------------------------------------------------------------------------
+
 INTERFACE FillIni
   MODULE PROCEDURE FillIni
 END INTERFACE
 
-
-! Public Part ----------------------------------------------------------------------------------------------------------------------
 INTERFACE InitDG
   MODULE PROCEDURE InitDG
 END INTERFACE
-
 
 INTERFACE DGTimeDerivative_weakForm
   MODULE PROCEDURE DGTimeDerivative_weakForm
 END INTERFACE
 
-
 INTERFACE FinalizeDG
   MODULE PROCEDURE FinalizeDG
 END INTERFACE
 
-
 PUBLIC::InitDG,DGTimeDerivative_weakForm,FinalizeDG
 !==================================================================================================================================
-
-
 
 CONTAINS
 
@@ -75,6 +68,7 @@ USE MOD_Interpolation_Vars,   ONLY: InterpolationInitIsDone
 USE MOD_Restart_Vars,         ONLY: DoRestart,RestartInitIsDone
 USE MOD_Mesh_Vars,            ONLY: nElems,nSides,Elem_xGP,MeshInitIsDone
 USE MOD_ChangeBasisByDim,     ONLY: ChangeBasisVolume
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -83,10 +77,8 @@ IMPLICIT NONE
 !==================================================================================================================================
 
 ! Check if all the necessary initialization is done before
-IF((.NOT.InterpolationInitIsDone).OR.(.NOT.MeshInitIsDone).OR.(.NOT.RestartInitIsDone).OR.DGInitIsDone)THEN
-  CALL CollectiveStop(__STAMP__,&
-    'InitDG not ready to be called or already called.')
-END IF
+IF((.NOT.InterpolationInitIsDone).OR.(.NOT.MeshInitIsDone).OR.(.NOT.RestartInitIsDone).OR.DGInitIsDone) &
+  CALL CollectiveStop(__STAMP__,'InitDG not ready to be called or already called.')
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT DG...'
 
@@ -140,11 +132,10 @@ SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitDG
 
 
-
 !==================================================================================================================================
 !> Allocate and initialize the building blocks for the DG operator: Differentiation matrices and prolongation operators
 !==================================================================================================================================
-SUBROUTINE InitDGbasis(N_in,xGP,wGP,L_Minus,L_Plus,D,D_T,D_Hat,D_Hat_T,L_HatMinus,L_HatPlus)
+SUBROUTINE InitDGBasis(N_in,xGP,wGP,L_Minus,L_Plus,D,D_T,D_Hat,D_Hat_T,L_HatMinus,L_HatPlus)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
 USE MOD_Interpolation,    ONLY: GetNodesAndWeights
@@ -203,8 +194,8 @@ DVolSurf(N_in,N_in) = DVolSurf(N_in,N_in) - 1.0/(2.0 * wGP(N_in))  ! = 0. (for L
 ! interpolate to left and right face (1 and -1 in reference space) and pre-divide by mass matrix
 L_HatPlus  = MATMUL(Minv,L_Plus)
 L_HatMinus = MATMUL(Minv,L_Minus)
-END SUBROUTINE InitDGbasis
 
+END SUBROUTINE InitDGBasis
 
 
 !==================================================================================================================================
@@ -280,6 +271,7 @@ USE MOD_EddyVisc_Vars       ,ONLY: ComputeEddyViscosity, muSGS, muSGS_master, mu
 USE MOD_ProlongToFace       ,ONLY: ProlongToFace
 USE MOD_TimeDisc_Vars       ,ONLY: CurrentStage
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -381,9 +373,9 @@ CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U)        ! U_slave: slave -> m
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_Elems) ! FV_Elems_slave: slave -> master
 #if FV_RECONSTRUCT
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_gradU) ! FV_multi_slave: slave -> master
-#endif
-#endif
-#endif
+#endif /*FV_RECONSTRUCT*/
+#endif /*FV_ENABLED*/
+#endif /*USE_MPI*/
 
 ! 4. Convert face data from conservative to primitive variables
 !    Attention: For FV with 2nd order reconstruction U_master/slave and therewith UPrim_master/slave are still only 1st order
@@ -392,7 +384,7 @@ CALL GetPrimitiveStateSurface(U_master,U_slave,UPrim_master,UPrim_slave)
 #if FV_ENABLED
 ! Build four-states-array for the 4 different combinations DG/DG(0), FV/DG(1), DG/FV(2) and FV/FV(3) a face can be.
 FV_Elems_Sum = FV_Elems_master + 2*FV_Elems_slave
-#endif
+#endif /*FV_ENABLED*/
 
 #if FV_ENABLED && FV_RECONSTRUCT
 ! [ 5. Second order reconstruction (computation of slopes) ]
@@ -432,7 +424,7 @@ CALL FV_gradU_mortar(FV_surf_gradU,doMPISides=.FALSE.)
 #if USE_MPI
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux)   ! FV_surf_gradU: master -> slave
 CALL FV_gradU_mortar(FV_surf_gradU,doMPISides=.TRUE.)
-#endif
+#endif /*USE_MPI*/
 ! 5.4)
 CALL FV_SurfCalcGradients_BC(UPrim_master,FV_surf_gradU,t)
 ! 5.5)
@@ -460,16 +452,15 @@ CALL Lifting(UPrim,UPrim_master,UPrim_slave,t)
 IF(CurrentStage.EQ.1) THEN
 #if USE_MPI
   CALL StartReceiveMPIData(muSGS_slave,DataSizeSideSGS,1,nSides,MPIRequest_SGS(:,RECV),SendID=2)
-#endif
+#endif /*USE_MPI*/
   CALL ComputeEddyViscosity()
 #if USE_MPI
   CALL ProlongToFace(1,PP_N,muSGS,muSGS_master,muSGS_slave,L_Minus,L_Plus,.TRUE.)
   CALL StartSendMPIData   (muSGS_slave,DataSizeSideSGS,1,nSides,MPIRequest_SGS(:,SEND),SendID=2)
-#endif
+#endif /*USE_MPI*/
   CALL ProlongToFace(1,PP_N,muSGS,muSGS_master,muSGS_slave,L_Minus,L_Plus,.FALSE.)
 END IF
 #endif /* EDDYVISCOSITY */
-
 #endif /*PARABOLIC*/
 
 ! 8. Compute volume integral contribution and add to Ut
@@ -478,7 +469,7 @@ CALL VolInt(Ut)
 #if FV_ENABLED
 ! [ 9. Volume integral (advective and viscous) for all FV elements ]
 CALL FV_VolInt(UPrim,Ut)
-#endif
+#endif /*FV_ENABLED*/
 
 #if (FV_ENABLED == 2) && PARABOLIC
 ! [10. Compute viscous volume integral contribution separately and add to Ut (FV-blending only)]
@@ -562,20 +553,20 @@ IF(doTCSource)   CALL TestcaseSource(Ut)
 
 ! 14. Perform overintegration and apply Jacobian
 ! Perform overintegration (projection filtering type overintegration)
-IF(OverintegrationType.GT.0) THEN
-  CALL Overintegration(Ut)
-END IF
-! Apply Jacobian (for OverintegrationType==CUTOFFCONS this is already done within the Overintegration, but for DG only)
-IF (OverintegrationType.EQ.CUTOFFCONS) THEN
+SELECT CASE (OverintegrationType)
+  CASE (OVERINTEGRATIONTYPE_CONSCUTOFF )
+    CALL Overintegration(Ut)
 #if FV_ENABLED
-  CALL ApplyJacobianCons(Ut,toPhysical=.TRUE.,FVE=1)
-#endif
-ELSE
-  CALL ApplyJacobianCons(Ut,toPhysical=.TRUE.)
-END IF
+    CALL ApplyJacobianCons(Ut,toPhysical=.TRUE.,FVE=1)
+#endif /*FV_ENABLED*/
+  CASE (OVERINTEGRATIONTYPE_CUTOFF)
+    CALL Overintegration(Ut)
+    CALL ApplyJacobianCons(Ut,toPhysical=.TRUE.)
+  CASE DEFAULT
+    CALL ApplyJacobianCons(Ut,toPhysical=.TRUE.)
+END SELECT
 
 END SUBROUTINE DGTimeDerivative_weakForm
-
 
 
 !==================================================================================================================================
@@ -599,14 +590,14 @@ REAL,INTENT(OUT)                :: U(PP_nVar,0:Nloc,0:Nloc,0:ZDIM(Nloc),nElems) 
 INTEGER                         :: i,j,k,iElem
 !==================================================================================================================================
 
-! Evaluate the initial solution at the nodes and fill the solutin vector U.
+! Evaluate the initial solution at the nodes and fill the solution vector U.
 DO iElem=1,nElems
   DO k=0,ZDIM(Nloc); DO j=0,Nloc; DO i=0,Nloc
     CALL ExactFunc(IniExactFunc,0.,xGP(1:3,i,j,k,iElem),U(:,i,j,k,iElem))
   END DO; END DO; END DO
 END DO
-END SUBROUTINE FillIni
 
+END SUBROUTINE FillIni
 
 
 !==================================================================================================================================
@@ -617,6 +608,7 @@ SUBROUTINE FinalizeDG()
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
 USE MOD_DG_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -644,7 +636,7 @@ SDEALLOCATE(UPrim_slave)
 SDEALLOCATE(UPrim_boundary)
 
 DGInitIsDone = .FALSE.
-END SUBROUTINE FinalizeDG
 
+END SUBROUTINE FinalizeDG
 
 END MODULE MOD_DG

@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -141,6 +141,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER     :: nModes_In
 !==================================================================================================================================
 IF(.NOT.FVInitBasisIsDone)THEN
    CALL CollectiveStop(__STAMP__,&
@@ -162,11 +163,17 @@ FV_IndUpperThreshold = GETREAL('FV_IndUpperThreshold')
 FV_toDG_indicator = GETLOGICAL('FV_toDG_indicator')
 IF (FV_toDG_indicator) THEN
   FV_toDG_limit = GETREAL('FV_toDG_limit')
-  ! If the main indicator is not already the persson indicator, then we need to read in the parameters
+  ! If the main indicator is not already the Persson indicator, then we need to read in the parameters
   IF (IndicatorType .NE. 2) THEN
-    nModes = GETINT('nModes')
-    nModes = MAX(1,MIN(PP_N-1,nModes+PP_N-MIN(NUnder,NFilter)))
-    SWRITE(UNIT_stdOut,'(A,I0)') ' | nModes = ', nModes
+    ! number of modes to be checked by Persson indicator
+    nModes_In = GETINT('nModes')
+    ! For overintegration, the last PP_N-Nunder modes are empty. Add them to nModes, so we check non-empty ones
+    nModes_In = nModes_In+PP_N-MIN(NUnder,NFilter)
+    ! Safety checks: At least one mode must be left and only values >0 make sense
+    nModes = MAX(1,MIN(PP_N-1,nModes_In))
+    IF (nModes.NE.nModes_In) THEN
+      SWRITE(UNIT_stdOut,'(A,I0)') 'WARNING: nModes set by user not within range [1,PP_N-1]. Was instead set to nModes=', nModes
+    END IF
   END IF
 END IF
 
@@ -498,7 +505,7 @@ SDEALLOCATE(FV_surf_gradU_slave)
 SDEALLOCATE(FV_alpha)
 SDEALLOCATE(FV_alpha_slave )
 SDEALLOCATE(FV_alpha_master)
-#endif
+#endif /*FV_ENABLED == 2*/
 
 FVInitIsDone=.FALSE.
 END SUBROUTINE FinalizeFV

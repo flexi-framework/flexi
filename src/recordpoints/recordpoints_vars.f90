@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -56,8 +56,8 @@ CHARACTER(LEN=255) :: StrVarNames(PP_nVar)    !< RP variables names for output
 !----------------------------------------------------------------------------------------------------------------------------------
 #if USE_MPI
 INTEGER            :: myRPrank                !< rank within RP communicator
-INTEGER            :: RP_COMM=MPI_COMM_NULL   !< MPI RP communicator
 INTEGER            :: nRP_Procs               !< number of procs with RPs
+INTEGER            :: RP_COMM=MPI_COMM_NULL   !< MPI RP communicator
 #endif /* USE_MPI */
 
 END MODULE MOD_recordPoints_Vars

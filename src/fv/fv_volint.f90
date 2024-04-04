@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -98,7 +98,7 @@ DO iElem=1,nElems
 #if FV_ENABLED == 1
   IF (FV_Elems(iElem) .EQ. 0) CYCLE ! DG Element
 #elif FV_ENABLED == 2
-  IF (FV_alpha(iElem) .LT. EPSILON(0.)) CYCLE
+  IF (FV_alpha(iElem) .LT. FV_alpha_min) CYCLE
 #endif
 
 #if VOLINT_VISC

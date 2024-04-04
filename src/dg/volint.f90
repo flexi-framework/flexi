@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2017 Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024 Prof. Claus-Dieter Munz
 ! Copyright (c) 2016-2017 Gregor Gassner (github.com/project-fluxo/fluxo)
 ! Copyright (c) 2016-2017 Florian Hindenlang (github.com/project-fluxo/fluxo)
 ! Copyright (c) 2016-2017 Andrew Winters (github.com/project-fluxo/fluxo)
@@ -22,7 +22,7 @@
 !> Computes the volume integral contribution based on U and updates Ut
 !> Volume integral is split into integral of advection and diffusion part
 !==================================================================================================================================
-#include "flexi.h"
+
 MODULE MOD_VolInt
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
@@ -42,7 +42,6 @@ INTERFACE VolInt_Visc
   MODULE PROCEDURE VolInt_weakForm_Visc
 END INTERFACE
 #endif
-
 
 PUBLIC::VolInt
 #if  PARABOLIC && !VOLINT_VISC
@@ -68,6 +67,7 @@ USE MOD_Lifting_Vars ,ONLY: gradUx,gradUy,gradUz
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -127,6 +127,7 @@ USE MOD_Lifting_Vars ,ONLY: gradUx,gradUy,gradUz
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -185,6 +186,7 @@ END DO ! iElem
 END SUBROUTINE VolInt_weakForm
 #endif
 
+
 #ifdef SPLIT_DG
 !==================================================================================================================================
 !> Computes the advection and viscous part volume integral in SplitDG formulation
@@ -223,6 +225,7 @@ USE MOD_Lifting_Vars ,ONLY: gradUx,gradUy,gradUz
 USE MOD_FV_Vars      ,ONLY: FV_Elems
 #endif
 USE MOD_SplitFlux    ,ONLY:SplitDGVolume_pointer ! computes volume fluxes in split formulation
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -334,12 +337,14 @@ END DO ! iElem
 END SUBROUTINE VolInt_splitForm
 #endif /*SPLIT_DG*/
 
+
 !==================================================================================================================================
 !> Compute the tranformed states for all conservative variables using the metric terms
 !==================================================================================================================================
 PPURE SUBROUTINE VolInt_Metrics(nDOFs,f,g,h,Mf,Mg,Mh)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -381,7 +386,5 @@ DO i=1,nDOFs
 #endif
 END DO ! i
 END SUBROUTINE VolInt_Metrics
-
-
 
 END MODULE MOD_VolInt

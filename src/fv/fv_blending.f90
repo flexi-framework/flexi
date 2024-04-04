@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -168,14 +168,12 @@ DO iSide = 1,nSides
   nbElemID  = SideToElem(S2E_NB_ELEM_ID,iSide)
 
   ! master sides
-  IF(ElemID.GT.0)THEN
+  IF (ElemID .GT. 0) &
     FV_alpha_current(ElemID)   = MAX(FV_alpha_current(ElemID)  ,MAX(FV_alpha_master(iSide),FV_alpha_slave(iSide)))
-  END IF
 
   ! slave sides
-  IF(nbElemID.GT.0)THEN
+  IF (nbElemID .GT. 0) &
     FV_alpha_current(nbElemID) = MAX(FV_alpha_current(nbElemID),MAX(FV_alpha_master(iSide),FV_alpha_slave(iSide)))
-  END IF
 END DO
 END SUBROUTINE FV_ComputeExtendedAlpha
 

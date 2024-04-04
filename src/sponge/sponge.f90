@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -292,7 +292,7 @@ REAL,ALLOCATABLE                        :: SpRadius(:)                 ! Radius 
 REAL,ALLOCATABLE                        :: SpAxis(:,:)                 ! Axis of the cylindrical sponge layer (only 3D)
 #endif
 !==================================================================================================================================
-SWRITE(UNIT_stdOut,'(A)') '  Initialize Sponge Ramping Function...'
+SWRITE(UNIT_stdOut,'(A)') ' | Initialize Sponge Ramping Function...'
 
 ! Precalculation of the sponge strength on the whole domain to determine actual sponge region
 

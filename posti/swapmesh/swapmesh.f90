@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -97,6 +97,8 @@ MeshFileOld = GETSTR('MeshFileOld',TRIM(MeshFile_state))
 
 ! New mesh file, the state will be interpolated to this one
 MeshFileNew = GETSTR('MeshFileNew')
+
+NodeTypeOut = GETSTR('NodeTypeNew',NodeTypeState)
 
 ! Curved meshes or not
 useCurvedsOld = GETLOGICAL("useCurvedsOld")
@@ -307,7 +309,7 @@ END SUBROUTINE ReadMeshCoords
 SUBROUTINE prepareVandermonde()
 ! MODULES
 USE MOD_Swapmesh_Vars,       ONLY: NInter,NNew,NState,NState,NGeoOld,NGeoNew,NSuper
-USE MOD_Swapmesh_Vars,       ONLY: NodeTypeState,nElemsNew,xCLInter
+USE MOD_Swapmesh_Vars,       ONLY: NodeTypeState,nElemsNew,xCLInter,NodeTypeOut
 USE MOD_Swapmesh_Vars,       ONLY: Vdm_CLNGeo_EquiNSuper,Vdm_CLNInter_GPNNew,Vdm_GPNState_GPNNew
 USE MOD_Swapmesh_Vars,       ONLY: xCLNew
 USE MOD_Interpolation,       ONLY: GetVandermonde
@@ -330,12 +332,12 @@ CALL GetVandermonde(NGeoOld,NodeTypeCL,NSuper,NodeTypeVISU,Vdm_CLNGeo_EquiNSuper
 
 ! Vandermonde from interpolation CL to new solution G/GL
 ALLOCATE(Vdm_CLNInter_GPNNew(0:NNew,0:NInter))
-CALL GetVandermonde(NInter,NodeTypeCL,NNew,NodeType,Vdm_CLNInter_GPNNew)
+CALL GetVandermonde(NInter,NodeTypeCL,NNew,NodeTypeOut,Vdm_CLNInter_GPNNew)
 
 ! Vandermonde for direct interpolation in equal elements
-IF(NNew.NE.NState)THEN
+IF((NNew.NE.NState).OR.(NodeTypeState.NE.NodeTypeOut))THEN
   ALLOCATE(Vdm_GPNState_GPNNew(0:NNew,0:NState))
-  CALL GetVandermonde(NState,NodeTypeState,NNew,NodeType,Vdm_GPNState_GPNNew)
+  CALL GetVandermonde(NState,NodeTypeState,NNew,NodeTypeOut,Vdm_GPNState_GPNNew)
 END IF
 
 IF(NGeoNew.NE.NInter)THEN
@@ -471,15 +473,32 @@ END SUBROUTINE ReadOldStateFile
 !===================================================================================================================================
 SUBROUTINE WriteNewStateFile()
 ! MODULES                                                                                                                          !
-USE MOD_HDF5_Output,        ONLY: WriteState
-USE MOD_Swapmesh_Vars,      ONLY: Time_State,MeshFileNew
+USE MOD_PreProc
+USE MOD_Globals
+USE MOD_IO_HDF5            
+USE MOD_HDF5_Output        
+USE MOD_Output_Vars,        ONLY: ProjectName
+USE MOD_Swapmesh_Vars,      ONLY: Time_State,MeshFileNew,NodeTypeOut,NodeTypeState
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+CHARACTER(LEN=255)             :: FileName,FileType
+
 !===================================================================================================================================
 CALL WriteState(TRIM(MeshFileNew),Time_State,Time_State,isErrorFile=.FALSE.)
+
+! Update the nodetype attribute in the State file, delete old attri and rewrite
+IF (NodeTypeOut.NE.NodeTypeState) THEN
+  SWRITE(UNIT_stdOut,'(A)') "Updating NodeType in Statefile to new NodeType."
+  FileType=MERGE('ERROR_State','State      ',.FALSE.)
+  FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(FileType),Time_State))//'.h5'
+  CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+  CALL H5ADELETE_F(   File_ID,'NodeType',iError)
+  CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/NodeTypeOut/))
+  CALL CloseDataFile()
+END IF
 END SUBROUTINE WriteNewStateFile
 
 !===================================================================================================================================
