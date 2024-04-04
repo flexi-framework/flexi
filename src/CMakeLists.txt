@@ -170,6 +170,8 @@ ENDIF()
 
 # =========================================================================
 # FV subcell shock capturing
+# SWITCH: switching
+# BLEND/SBLEND: element-wise/DOF-wise blending
 # =========================================================================
 SET(FLEXI_FV "OFF" CACHE STRING "Enable Finite Volume subcell shock capturing")
 SET_PROPERTY(CACHE FLEXI_FV PROPERTY STRINGS OFF SWITCH BLEND SBLEND)

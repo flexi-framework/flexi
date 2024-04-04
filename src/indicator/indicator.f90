@@ -142,7 +142,7 @@ SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT INDICATOR...'
 
 ! Read in  parameters
-#if FV_ENABLED == 2 || FV_ENABLED == 3
+#if FV_ENABLED >= 2
 IndicatorType = INDTYPE_PERSSON
 #else
 IndicatorType = GETINTFROMSTR('IndicatorType')
@@ -182,7 +182,7 @@ CASE(INDTYPE_PERSSON)
   IF (nModes.NE.nModes_In) THEN
     SWRITE(UNIT_stdOut,'(A,I0)') 'WARNING: nModes set by user not within range [1,PP_N-1]. Was instead set to nModes=', nModes
   END IF
-#if FV_ENABLED == 2 || FV_ENABLED == 3
+#if FV_ENABLED >= 2
   T_FV   = 0.5*10**(-1.8*(PP_N+1)**.25) ! Eq.(42) in: S. Hennemann et al., J.Comp.Phy., 2021
   sdT_FV = s_FV/T_FV
 #if EQNSYSNR != 2 /* NOT NAVIER-STOKES */
@@ -287,7 +287,7 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
     IF (FV_alpha(iElem) .LT. FV_alpha_min) FV_alpha(iElem) = 0.
   END DO ! iElem
 #if PP_NodeType == 1
-  IF (.NOT.FV_doExtendAlpha) CALL FV_CommAlpha()
+  IF (.NOT.FV_doExtendAlpha) CALL FV_CommAlpha(FV_alpha)
 #endif
 #elif FV_ENABLED == 3
   DO iElem=1,nElems
@@ -296,12 +296,10 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
     ! Limit to alpha_max
     FV_alpha(:,:,:,:,iElem) = MIN(IndValue(iElem),FV_alpha_max)
   END DO ! iElem
-  ! CALL FV_ExtendAlpha(FV_alpha)
   ! Do not compute FV contribution for elements below threshold
   DO iElem=1,nElems
     IF (MAXVAL(FV_alpha(:,:,:,:,iElem)) .LT. FV_alpha_min) FV_alpha(:,:,:,:,iElem) = 0.
   END DO ! iElem
-  ! IF (.NOT.FV_doExtendAlpha) CALL FV_CommAlpha()
 #else
   DO iElem=1,nElems
     IF (FV_Elems(iElem).EQ.0) THEN ! DG Element
@@ -687,7 +685,7 @@ END DO ! iElem
 END FUNCTION JamesonIndicator
 
 
-#if FV_ENABLED == 2 || FV_ENABLED == 3
+#if FV_ENABLED >= 2
 !==================================================================================================================================
 !> Determine, if given a modal representation solution "U_Modal" is oscillating
 !> Indicator value is scaled to \f$\sigma=0 \ldots 1\f$
@@ -736,7 +734,7 @@ END DO
 IF (IndValue .LT. EPSILON(1.)) IndValue = EPSILON(IndValue)
 
 END FUNCTION IndPerssonBlend
-#endif /*FV_ENABLED==2 || FV_ENABLED==3*/
+#endif /* FV_ENABLED>=2 */
 #endif /* EQNSYSNR == 2 */
 
 

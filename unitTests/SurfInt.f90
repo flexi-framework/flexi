@@ -149,7 +149,7 @@ CALL InitSplitDG(0)
 ! Call SurfInt
 CALL SurfIntCons(NRef,Flux_nVar,Flux_nVar,Ut,.FALSE.,L_HatMinus,L_HatPlus)
 #if ((PP_NodeType==1) && defined(SPLIT_DG))
-DO i=1,PP_nVar
+DO i=2,PP_nVar
   Ut(i,:,:,:,:) = Ut(1,:,:,:,:)
 END DO
 #endif /*((PP_NodeType==1) && defined(SPLIT_DG))*/

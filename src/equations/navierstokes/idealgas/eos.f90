@@ -403,14 +403,14 @@ s      = LOG(p) - kappa*LOG(cons(DENS))
 rho_p  = cons(DENS)/p
 
 ! Convert to entropy variables
-entropy(1)   = (kappa-s)*skappaM1 - rho_p * 0.5*SUM(vel**2)  ! (γ - s) / (γ - 1) - (ρu^2 + ρv^2 + ρw^2) / ρ / 2p,
-entropy(2:3) = rho_p*vel(1:2)        ! ρu / p
+entropy(DENS)      = (kappa-s)*skappaM1 - rho_p * 0.5*SUM(vel**2)  ! (γ - s) / (γ - 1) - (ρu^2 + ρv^2 + ρw^2) / ρ / 2p,
+entropy(MOM1:MOM2) = rho_p*vel(1:2)        ! ρu / p
 #if (PP_dim==3)
-entropy(4)   = rho_p*vel(3)
+entropy(MOM3)      = rho_p*vel(3)
 #else
-entropy(4)   = 0.
+entropy(MOM3)      = 0.
 #endif
-entropy(5)   = - rho_p          ! -ρ / p
+entropy(ENER)      = - rho_p          ! -ρ / p
 
 END SUBROUTINE ConsToEntropy
 
@@ -433,15 +433,15 @@ REAL,DIMENSION(PP_nVar),INTENT(OUT)  :: cons    !< vector of conservative variab
 REAL                                 :: s,entropy2(PP_nVar),rhoe
 !==================================================================================================================================
 entropy2 = entropy*kappaM1
-s        = kappa - entropy2(1) + 0.5 * SUM(entropy2(2:4)**2) / entropy2(5)
-rhoe     = (kappaM1 / ((-entropy2(5))**kappa))**(skappaM1) * EXP(-s*skappaM1)
+s        = kappa - entropy2(DENS) + 0.5 * SUM(entropy2(MOMV)**2) / entropy2(ENER)
+rhoe     = (kappaM1 / ((-entropy2(ENER))**kappa))**(skappaM1) * EXP(-s*skappaM1)
 
-cons(DENS) = - rhoe * entropy2(5) ! ρ = -p * W[5]
-cons(MOMV) = rhoe * entropy2(2:4)
+cons(DENS) = - rhoe * entropy2(ENER) ! ρ = -p * W[5]
+cons(MOMV) = rhoe * entropy2(MOMV)
 #if (PP_dim==2)
 cons(MOM3) = 0.
 #endif
-cons(ENER) = rhoe * (1 - SUM(entropy2(2:4)**2) * 0.5/ entropy2(5)) !sKappaM1*p+0.5*SUM(cons(MOMV)*vel)
+cons(ENER) = rhoe * (1 - SUM(entropy2(MOMV)**2) * 0.5/ entropy2(ENER)) !sKappaM1*p+0.5*SUM(cons(MOMV)*vel)
 
 END SUBROUTINE EntropyToCons
 

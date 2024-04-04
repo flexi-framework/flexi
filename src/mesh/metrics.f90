@@ -50,6 +50,12 @@ MODULE MOD_Metrics
 ! MODULES
 IMPLICIT NONE
 PRIVATE
+
+INTEGER,PARAMETER    :: GeoSize=10       !< number of entries in each line of ElemInfo
+INTEGER,PARAMETER    :: Geo_SurfElem=1
+INTEGER,PARAMETER    :: Geo_NormVec(3)=(/2,3,4/)
+INTEGER,PARAMETER    :: Geo_TangVec1(3)=(/5,6,7/)
+INTEGER,PARAMETER    :: Geo_TangVec2(3)=(/8,9,10/)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -565,20 +571,20 @@ END DO !iElem=1,nElems
 
 #if USE_MPI
 ! Send surface geomtry informations from mpi master to mpi slave
-ALLOCATE(Geo(13,0:PP_N,0:PP_NZ,0:FV_SIZE,firstMPISide_MINE:nSides))
+ALLOCATE(Geo(GeoSize,0:PP_N,0:PP_NZ,0:FV_SIZE,firstMPISide_MINE:nSides))
 Geo=0.
-Geo(1,:,:,:,:)    = SurfElem(    :,0:PP_NZ,:,firstMPISide_MINE:nSides)
-Geo(2:4,:,:,:,:)  = NormVec (  :,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
-Geo(5:7,:,:,:,:)  = TangVec1(  :,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
-Geo(8:10,:,:,:,:) = TangVec2(  :,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
+Geo(Geo_SurfElem,:,:,:,:)    = SurfElem(    :,0:PP_NZ,:,firstMPISide_MINE:nSides)
+Geo(Geo_NormVec ,:,:,:,:)  = NormVec (  :,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
+Geo(Geo_TangVec1,:,:,:,:)  = TangVec1(  :,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
+Geo(Geo_TangVec2,:,:,:,:) = TangVec2(  :,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
 MPIRequest_Geo=MPI_REQUEST_NULL
-CALL StartReceiveMPIData(Geo,10*(PP_N+1)**(PP_dim-1)*(FV_SIZE+1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,RECV),SendID=1) ! Receive YOUR / Geo: master -> slave
-CALL StartSendMPIData(   Geo,10*(PP_N+1)**(PP_dim-1)*(FV_SIZE+1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,SEND),SendID=1) ! SEND MINE / Geo: master -> slave
+CALL StartReceiveMPIData(Geo,GeoSize*(PP_N+1)**(PP_dim-1)*(FV_SIZE+1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,RECV),SendID=1) ! Receive YOUR / Geo: master -> slave
+CALL StartSendMPIData(   Geo,GeoSize*(PP_N+1)**(PP_dim-1)*(FV_SIZE+1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,SEND),SendID=1) ! SEND MINE / Geo: master -> slave
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Geo)
-SurfElem  (:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(1   ,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
-NormVec (:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(2:4 ,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
-TangVec1(:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(5:7 ,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
-TangVec2(:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(8:10,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
+SurfElem  (:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(Geo_SurfElem,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
+NormVec (:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(Geo_NormVec ,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
+TangVec1(:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(Geo_TangVec1,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
+TangVec2(:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(Geo_TangVec2,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
 DEALLOCATE(Geo)
 #endif /*USE_MPI*/
 

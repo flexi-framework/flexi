@@ -552,7 +552,7 @@ CALL FV_VolInt(UPrim,Ut)
 #endif /*FV_ENABLED*/
 
 
-#if (FV_ENABLED == 2) && PARABOLIC
+#if (FV_ENABLED >= 2) && PARABOLIC
 ! [10. Compute viscous volume integral contribution separately and add to Ut (FV-blending only)]
 CALL VolInt_Visc(Ut)
 #endif
