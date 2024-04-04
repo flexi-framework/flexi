@@ -76,8 +76,8 @@ USE MOD_FV_Vars   ,ONLY: FV_Elems,FV_sdx_XI,FV_sdx_ETA
 #if PP_dim == 3
 USE MOD_FV_Vars   ,ONLY: FV_sdx_ZETA
 #endif
-!----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
 ! real_in, real_out, real_out, log_in
 REAL,INTENT(IN)    :: UPrim          (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< primitive volume solution
@@ -88,8 +88,8 @@ REAL,INTENT(OUT)   :: FV_multi_slave (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)      
 LOGICAL,INTENT(IN) :: doMPIsides                                       !< =.TRUE. only MPI sides are filled, =.FALSE. inner sides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: p,q,i,j,k,locSideID,ElemID,SideID,flip,firstSideID,lastSideID,ijk0(3),ijk(2)
-REAL    :: tmp(PP_nVarPrim,0:PP_N,0:PP_NZ)
+INTEGER            :: p,q,i,j,k,locSideID,ElemID,SideID,flip,firstSideID,lastSideID,ijk0(3),ijk(2)
+REAL               :: tmp(PP_nVarPrim,0:PP_N,0:PP_NZ)
 !==================================================================================================================================
 
 ! First process the Slave sides
@@ -433,7 +433,7 @@ DO iElem=1,nElems
     gradUzeta_central(:,i,j,k,iElem) = 0.5*(gradUzeta_tmp(PRIM_LIFT,i,j,k)+gradUzeta_tmp(PRIM_LIFT,i,j,k+1))
 #endif
   END DO; END DO; END DO! i,j,k=0,PP_N
-#endif
+#endif /*VOLINT_VISC*/
 END DO
 
 END SUBROUTINE FV_CalcGradients
@@ -611,6 +611,21 @@ END SUBROUTINE FV_SurfCalcGradients_Parabolic
 
 !==================================================================================================================================
 !> Calculate gradients used for the viscous fluxes on faces
+!> The calculation of the gradient which are tangential to their respective side is done with the following 6 Point Stencil:
+!>           __________________________________
+!>          |          |           |           |
+!>          |          |           |           |
+!>          |(i-1,j+1)-|> (i,j+1) -|> (i+1,j+1)|
+!>          |          |           |           |
+!>          |__________|____=>_____|___________|
+!>          |          |    =>     |           |
+!>    j^    |          |           |           |
+!>     |    | (i-1,j) -|>  (i,j)  -|> (i+1,j)  |
+!>     |    |          |           |           |
+!>     |    |__________|___________|___________|
+!>     |----------> i
+!> => : Averaged Gradient to calulate, where the averaging is a simple arithmetic mean between all 4 FD stencils
+!> -> : Simple FD Gradient between to cells
 !==================================================================================================================================
 SUBROUTINE FV_CalcGradients_Parabolic(iElem,gradUxi_tmp,gradUeta_tmp  &
 #if PP_dim==3
@@ -643,20 +658,14 @@ REAL,INTENT(IN)     :: gradUzeta_tmp(PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N+1)
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: i,j,k
-REAL    :: gradUxi_central_face_xi    (PP_nVarLifting,0:PP_N-1,0:PP_N  ,0:PP_NZ  )
-REAL    :: gradUxi_central_face_eta   (PP_nVarLifting,0:PP_N  ,0:PP_N-1,0:PP_NZ  )
-REAL    :: gradUeta_central_face_xi   (PP_nVarLifting,0:PP_N-1,0:PP_N  ,0:PP_NZ  )
-REAL    :: gradUeta_central_face_eta  (PP_nVarLifting,0:PP_N  ,0:PP_N-1,0:PP_NZ  )
-REAL    :: gradUxi_central_face       (PP_nVarLifting,0:PP_N+1,0:PP_N  ,0:PP_NZ  )
-REAL    :: gradUeta_central_face      (PP_nVarLifting,0:PP_N  ,0:PP_N+1,0:PP_NZ  )
+INTEGER             :: i,j,k
+REAL                :: gradU_central_face_xi    (PP_dim,PP_nVarLifting,0:PP_N-1,0:PP_N  ,0:PP_NZ  )
+REAL                :: gradU_central_face_eta   (PP_dim,PP_nVarLifting,0:PP_N  ,0:PP_N-1,0:PP_NZ  )
+REAL                :: gradUxi_central_face     (       PP_nVarLifting,0:PP_N+1,0:PP_N  ,0:PP_NZ  )
+REAL                :: gradUeta_central_face    (       PP_nVarLifting,0:PP_N  ,0:PP_N+1,0:PP_NZ  )
 #if (PP_dim==3)
-REAL    :: gradUxi_central_face_zeta  (PP_nVarLifting,0:PP_N  ,0:PP_N  ,0:PP_NZ-1)
-REAL    :: gradUeta_central_face_zeta (PP_nVarLifting,0:PP_N  ,0:PP_N  ,0:PP_NZ-1)
-REAL    :: gradUzeta_central_face_xi  (PP_nVarLifting,0:PP_N-1,0:PP_N  ,0:PP_NZ  )
-REAL    :: gradUzeta_central_face_eta (PP_nVarLifting,0:PP_N  ,0:PP_N-1,0:PP_NZ  )
-REAL    :: gradUzeta_central_face_zeta(PP_nVarLifting,0:PP_N  ,0:PP_N  ,0:PP_NZ-1)
-REAL    :: gradUzeta_central_face     (PP_nVarLifting,0:PP_N  ,0:PP_N  ,0:PP_NZ+1)
+REAL                :: gradU_central_face_zeta  (PP_dim,PP_nVarLifting,0:PP_N  ,0:PP_N  ,0:PP_NZ-1)
+REAL                :: gradUzeta_central_face   (       PP_nVarLifting,0:PP_N  ,0:PP_N  ,0:PP_NZ+1)
 #endif
 !==================================================================================================================================
 ! NOTE: Main steps:
@@ -680,114 +689,119 @@ END DO; END DO; END DO! i,j,k=0,PP_N
 #endif
 
 ! 2. Calculate the gradients in xi-, eta-, zeta-direction on all FV inner sides via aritmetic mean of four neighbour cells
+! First the gradients normal to the gradient normal to the sides is copied
+! From Green's theorem: du(xi)_dxi = 1/dxi (u_{i+1,j,k} - u_{i,j,k})
 DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N-1
-  gradUxi_central_face_xi(:,i,j,k)    = gradUxi_central_face(:,i+1,j,k)
+  gradU_central_face_xi(1,:,i,j,k)   = gradUxi_central_face(:,i+1,j,k)
 END DO; END DO; END DO
 
 DO k=0,PP_NZ; DO j=0,PP_N-1; DO i=0,PP_N
-  gradUeta_central_face_eta(:,i,j,k)  = gradUeta_central_face(:,i,j+1,k)
+  gradU_central_face_eta(2,:,i,j,k)  = gradUeta_central_face(:,i,j+1,k)
 END DO; END DO; END DO
 
 #if (PP_dim==3)
 DO k=0,PP_NZ-1; DO j=0,PP_N; DO i=0,PP_N
-  gradUzeta_central_face_zeta(:,i,j,k)= gradUzeta_central_face(:,i,j,k+1)
+  gradU_central_face_zeta(3,:,i,j,k) = gradUzeta_central_face(:,i,j,k+1)
 END DO; END DO; END DO
 #endif
 
+! Now the gradients along the sides are calculated
+! From Green's theorem (FD gradient): du(eta)_dxi = 1/deta (u_{i+1/2,j+1/2,k} - u_{i+1/2,j+1/2,k})
+! To prevent checkerboarding: u_{i+1/2,j+1/2,k} = 1/4 (u_{i,j,k}+u_{i,j+1,k}+u_{i+1,j,k}+u_{i+1,j+1,k})
 DO k=0,PP_NZ; DO j=0,PP_N-1; DO i=0,PP_N
-  gradUxi_central_face_eta(:,i,j,k)   = 0.25*(gradUxi_central_face(:,i  ,j  ,k  ) + &
+  gradU_central_face_eta(1,:,i,j,k)   = 0.25*(gradUxi_central_face(:,i  ,j  ,k  ) + &
                                               gradUxi_central_face(:,i+1,j  ,k  ) + &
                                               gradUxi_central_face(:,i  ,j+1,k  ) + &
                                               gradUxi_central_face(:,i+1,j+1,k  ))
 END DO; END DO; END DO
 
 DO k=0,PP_NZ; DO j=0,PP_N  ; DO i=0,PP_N-1
-  gradUeta_central_face_xi(:,i,j,k)   = 0.25*(gradUeta_central_face(:,i  ,j  ,k  ) + &
-                                              gradUeta_central_face(:,i+1,j  ,k  ) + &
-                                              gradUeta_central_face(:,i  ,j+1,k  ) + &
-                                              gradUeta_central_face(:,i+1,j+1,k  ))
+  gradU_central_face_xi(2,:,i,j,k)   = 0.25*(gradUeta_central_face(:,i  ,j  ,k  ) + &
+                                             gradUeta_central_face(:,i+1,j  ,k  ) + &
+                                             gradUeta_central_face(:,i  ,j+1,k  ) + &
+                                             gradUeta_central_face(:,i+1,j+1,k  ))
 END DO; END DO; END DO
 
 #if (PP_dim==3)
 DO k=0,PP_NZ-1; DO j=0,PP_N; DO i=0,PP_N
-  gradUxi_central_face_zeta(:,i,j,k)  = 0.25*(gradUxi_central_face(:,i  ,j  ,k  ) + &
+  gradU_central_face_zeta(1,:,i,j,k)  = 0.25*(gradUxi_central_face(:,i  ,j  ,k  ) + &
                                               gradUxi_central_face(:,i+1,j  ,k  ) + &
                                               gradUxi_central_face(:,i  ,j  ,k+1) + &
                                               gradUxi_central_face(:,i+1,j  ,k+1))
 END DO; END DO; END DO
 
 DO k=0,PP_NZ-1  ; DO j=0,PP_N; DO i=0,PP_N
-  gradUeta_central_face_zeta(:,i,j,k) = 0.25*(gradUeta_central_face(:,i  ,j  ,k  ) + &
-                                              gradUeta_central_face(:,i  ,j  ,k+1) + &
-                                              gradUeta_central_face(:,i  ,j+1,k  ) + &
-                                              gradUeta_central_face(:,i  ,j+1,k+1))
+  gradU_central_face_zeta(2,:,i,j,k) = 0.25*(gradUeta_central_face(:,i  ,j  ,k  ) + &
+                                             gradUeta_central_face(:,i  ,j  ,k+1) + &
+                                             gradUeta_central_face(:,i  ,j+1,k  ) + &
+                                             gradUeta_central_face(:,i  ,j+1,k+1))
 END DO; END DO; END DO
 
 DO k=0,PP_NZ; DO j=0,PP_N  ; DO i=0,PP_N-1
-  gradUzeta_central_face_xi(:,i,j,k)  = 0.25*(gradUzeta_central_face(:,i  ,j  ,k  ) + &
-                                              gradUzeta_central_face(:,i+1,j  ,k  ) + &
-                                              gradUzeta_central_face(:,i  ,j  ,k+1) + &
-                                              gradUzeta_central_face(:,i+1,j  ,k+1))
+  gradU_central_face_xi(3,:,i,j,k)  = 0.25*(gradUzeta_central_face(:,i  ,j  ,k  ) + &
+                                            gradUzeta_central_face(:,i+1,j  ,k  ) + &
+                                            gradUzeta_central_face(:,i  ,j  ,k+1) + &
+                                            gradUzeta_central_face(:,i+1,j  ,k+1))
 END DO; END DO; END DO
 
 DO k=0,PP_NZ  ; DO j=0,PP_N-1; DO i=0,PP_N
-  gradUzeta_central_face_eta(:,i,j,k) = 0.25*(gradUzeta_central_face(:,i  ,j  ,k  ) + &
-                                              gradUzeta_central_face(:,i  ,j  ,k+1) + &
-                                              gradUzeta_central_face(:,i  ,j+1,k  ) + &
-                                              gradUzeta_central_face(:,i  ,j+1,k+1))
+  gradU_central_face_eta(3,:,i,j,k) = 0.25*(gradUzeta_central_face(:,i  ,j  ,k  ) + &
+                                            gradUzeta_central_face(:,i  ,j  ,k+1) + &
+                                            gradUzeta_central_face(:,i  ,j+1,k  ) + &
+                                            gradUzeta_central_face(:,i  ,j+1,k+1))
 END DO; END DO; END DO
 #endif
 
 ! 3. Calculate the gradients in x-, y-, z-direction on all FV inner sides with corresponding FV-metrics
 DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N-1
 #if (PP_dim==3)
-  gradUx_xi(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_xi(1,i,j,k,iElem)*gradUxi_central_face_xi  (:,i,j,k) &
-                           + FV_Metrics_gTilde_sJ_xi(1,i,j,k,iElem)*gradUeta_central_face_xi (:,i,j,k) &
-                           + FV_Metrics_hTilde_sJ_xi(1,i,j,k,iElem)*gradUzeta_central_face_xi(:,i,j,k)
-  gradUy_xi(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_xi(2,i,j,k,iElem)*gradUxi_central_face_xi  (:,i,j,k) &
-                           + FV_Metrics_gTilde_sJ_xi(2,i,j,k,iElem)*gradUeta_central_face_xi (:,i,j,k) &
-                           + FV_Metrics_hTilde_sJ_xi(2,i,j,k,iElem)*gradUzeta_central_face_xi(:,i,j,k)
-  gradUz_xi(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_xi(3,i,j,k,iElem)*gradUxi_central_face_xi  (:,i,j,k) &
-                           + FV_Metrics_gTilde_sJ_xi(3,i,j,k,iElem)*gradUeta_central_face_xi (:,i,j,k) &
-                           + FV_Metrics_hTilde_sJ_xi(3,i,j,k,iElem)*gradUzeta_central_face_xi(:,i,j,k)
+  gradUx_xi(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_xi(1,i,j,k,iElem)*gradU_central_face_xi(1,:,i,j,k) &
+                           + FV_Metrics_gTilde_sJ_xi(1,i,j,k,iElem)*gradU_central_face_xi(2,:,i,j,k) &
+                           + FV_Metrics_hTilde_sJ_xi(1,i,j,k,iElem)*gradU_central_face_xi(3,:,i,j,k)
+  gradUy_xi(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_xi(2,i,j,k,iElem)*gradU_central_face_xi(1,:,i,j,k) &
+                           + FV_Metrics_gTilde_sJ_xi(2,i,j,k,iElem)*gradU_central_face_xi(2,:,i,j,k) &
+                           + FV_Metrics_hTilde_sJ_xi(2,i,j,k,iElem)*gradU_central_face_xi(3,:,i,j,k)
+  gradUz_xi(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_xi(3,i,j,k,iElem)*gradU_central_face_xi(1,:,i,j,k) &
+                           + FV_Metrics_gTilde_sJ_xi(3,i,j,k,iElem)*gradU_central_face_xi(2,:,i,j,k) &
+                           + FV_Metrics_hTilde_sJ_xi(3,i,j,k,iElem)*gradU_central_face_xi(3,:,i,j,k)
 #else
-  gradUx_xi(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_xi(1,i,j,k,iElem)*gradUxi_central_face_xi  (:,i,j,k) &
-                           + FV_Metrics_gTilde_sJ_xi(1,i,j,k,iElem)*gradUeta_central_face_xi (:,i,j,k)
-  gradUy_xi(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_xi(2,i,j,k,iElem)*gradUxi_central_face_xi  (:,i,j,k) &
-                           + FV_Metrics_gTilde_sJ_xi(2,i,j,k,iElem)*gradUeta_central_face_xi (:,i,j,k)
+  gradUx_xi(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_xi(1,i,j,k,iElem)*gradU_central_face_xi(1,:,i,j,k) &
+                           + FV_Metrics_gTilde_sJ_xi(1,i,j,k,iElem)*gradU_central_face_xi(2,:,i,j,k)
+  gradUy_xi(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_xi(2,i,j,k,iElem)*gradU_central_face_xi(1,:,i,j,k) &
+                           + FV_Metrics_gTilde_sJ_xi(2,i,j,k,iElem)*gradU_central_face_xi(2,:,i,j,k)
 #endif
 END DO; END DO; END DO! i,j,k=0,PP_N
 
 DO k=0,PP_NZ; DO j=0,PP_N-1; DO i=0,PP_N
 #if (PP_dim==3)
-  gradUx_eta(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_eta(1,i,j,k,iElem)*gradUxi_central_face_eta  (:,i,j,k) &
-                            + FV_Metrics_gTilde_sJ_eta(1,i,j,k,iElem)*gradUeta_central_face_eta (:,i,j,k) &
-                            + FV_Metrics_hTilde_sJ_eta(1,i,j,k,iElem)*gradUzeta_central_face_eta(:,i,j,k)
-  gradUy_eta(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_eta(2,i,j,k,iElem)*gradUxi_central_face_eta  (:,i,j,k) &
-                            + FV_Metrics_gTilde_sJ_eta(2,i,j,k,iElem)*gradUeta_central_face_eta (:,i,j,k) &
-                            + FV_Metrics_hTilde_sJ_eta(2,i,j,k,iElem)*gradUzeta_central_face_eta(:,i,j,k)
-  gradUz_eta(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_eta(3,i,j,k,iElem)*gradUxi_central_face_eta  (:,i,j,k) &
-                            + FV_Metrics_gTilde_sJ_eta(3,i,j,k,iElem)*gradUeta_central_face_eta (:,i,j,k) &
-                            + FV_Metrics_hTilde_sJ_eta(3,i,j,k,iElem)*gradUzeta_central_face_eta(:,i,j,k)
+  gradUx_eta(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_eta(1,i,j,k,iElem)*gradU_central_face_eta(1,:,i,j,k) &
+                            + FV_Metrics_gTilde_sJ_eta(1,i,j,k,iElem)*gradU_central_face_eta(2,:,i,j,k) &
+                            + FV_Metrics_hTilde_sJ_eta(1,i,j,k,iElem)*gradU_central_face_eta(3,:,i,j,k)
+  gradUy_eta(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_eta(2,i,j,k,iElem)*gradU_central_face_eta(1,:,i,j,k) &
+                            + FV_Metrics_gTilde_sJ_eta(2,i,j,k,iElem)*gradU_central_face_eta(2,:,i,j,k) &
+                            + FV_Metrics_hTilde_sJ_eta(2,i,j,k,iElem)*gradU_central_face_eta(3,:,i,j,k)
+  gradUz_eta(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_eta(3,i,j,k,iElem)*gradU_central_face_eta(1,:,i,j,k) &
+                            + FV_Metrics_gTilde_sJ_eta(3,i,j,k,iElem)*gradU_central_face_eta(2,:,i,j,k) &
+                            + FV_Metrics_hTilde_sJ_eta(3,i,j,k,iElem)*gradU_central_face_eta(3,:,i,j,k)
 #else
-  gradUx_eta(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_eta(1,i,j,k,iElem)*gradUxi_central_face_eta  (:,i,j,k) &
-                            + FV_Metrics_gTilde_sJ_eta(1,i,j,k,iElem)*gradUeta_central_face_eta (:,i,j,k)
-  gradUy_eta(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_eta(2,i,j,k,iElem)*gradUxi_central_face_eta  (:,i,j,k) &
-                            + FV_Metrics_gTilde_sJ_eta(2,i,j,k,iElem)*gradUeta_central_face_eta (:,i,j,k)
+  gradUx_eta(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_eta(1,i,j,k,iElem)*gradU_central_face_eta(1,:,i,j,k) &
+                            + FV_Metrics_gTilde_sJ_eta(1,i,j,k,iElem)*gradU_central_face_eta(2,:,i,j,k)
+  gradUy_eta(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_eta(2,i,j,k,iElem)*gradU_central_face_eta(1,:,i,j,k) &
+                            + FV_Metrics_gTilde_sJ_eta(2,i,j,k,iElem)*gradU_central_face_eta(2,:,i,j,k)
 #endif
 END DO; END DO; END DO! i,j,k=0,PP_N
 
 #if (PP_dim==3)
 DO k=0,PP_NZ-1; DO j=0,PP_N; DO i=0,PP_N
-  gradUx_zeta(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_zeta(1,i,j,k,iElem)*gradUxi_central_face_zeta  (:,i,j,k) &
-                             + FV_Metrics_gTilde_sJ_zeta(1,i,j,k,iElem)*gradUeta_central_face_zeta (:,i,j,k) &
-                             + FV_Metrics_hTilde_sJ_zeta(1,i,j,k,iElem)*gradUzeta_central_face_zeta(:,i,j,k)
-  gradUy_zeta(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_zeta(2,i,j,k,iElem)*gradUxi_central_face_zeta  (:,i,j,k) &
-                             + FV_Metrics_gTilde_sJ_zeta(2,i,j,k,iElem)*gradUeta_central_face_zeta (:,i,j,k) &
-                             + FV_Metrics_hTilde_sJ_zeta(2,i,j,k,iElem)*gradUzeta_central_face_zeta(:,i,j,k)
-  gradUz_zeta(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_zeta(3,i,j,k,iElem)*gradUxi_central_face_zeta  (:,i,j,k) &
-                             + FV_Metrics_gTilde_sJ_zeta(3,i,j,k,iElem)*gradUeta_central_face_zeta (:,i,j,k) &
-                             + FV_Metrics_hTilde_sJ_zeta(3,i,j,k,iElem)*gradUzeta_central_face_zeta(:,i,j,k)
+  gradUx_zeta(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_zeta(1,i,j,k,iElem)*gradU_central_face_zeta(1,:,i,j,k) &
+                             + FV_Metrics_gTilde_sJ_zeta(1,i,j,k,iElem)*gradU_central_face_zeta(2,:,i,j,k) &
+                             + FV_Metrics_hTilde_sJ_zeta(1,i,j,k,iElem)*gradU_central_face_zeta(3,:,i,j,k)
+  gradUy_zeta(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_zeta(2,i,j,k,iElem)*gradU_central_face_zeta(1,:,i,j,k) &
+                             + FV_Metrics_gTilde_sJ_zeta(2,i,j,k,iElem)*gradU_central_face_zeta(2,:,i,j,k) &
+                             + FV_Metrics_hTilde_sJ_zeta(2,i,j,k,iElem)*gradU_central_face_zeta(3,:,i,j,k)
+  gradUz_zeta(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ_zeta(3,i,j,k,iElem)*gradU_central_face_zeta(1,:,i,j,k) &
+                             + FV_Metrics_gTilde_sJ_zeta(3,i,j,k,iElem)*gradU_central_face_zeta(2,:,i,j,k) &
+                             + FV_Metrics_hTilde_sJ_zeta(3,i,j,k,iElem)*gradU_central_face_zeta(3,:,i,j,k)
 END DO; END DO; END DO! i,j,k=0,PP_N
 #endif
 
@@ -834,18 +848,12 @@ REAL,INTENT(IN)     :: gradUzeta_tmp(PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N+1)
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER           :: locSideID,SideID,p,q,flip,ijk(3)
-REAL              :: gradMapPrim_XI(PP_nVarLifting),gradMapPrim_ETA(PP_nVarLifting)
+INTEGER             :: locSideID,SideID,p,q,flip,ijk(3)
+REAL                :: gradMapPrim_XI(PP_nVarLifting),gradMapPrim_ETA(PP_nVarLifting)
 #if PP_dim==3
-REAL              :: gradMapPrim_Zeta(PP_nVarLifting)
+REAL                :: gradMapPrim_Zeta(PP_nVarLifting)
 #endif /* PP_dim==3 */
 !==================================================================================================================================
-! NOTE: Main steps:
-! 1. map gradients form GRAD to PRIM to LIFT on faces for viscous fluxes
-! 2. Calculate the gradients in xi-, eta-, zeta-direction on all FV inner sides via aritmetic mean of four neighbour cells
-!    (use the "unlimited" central gradients and not the "limited" gradients)
-! 3. Calculate the gradients in x-,  y- ,  z-   direction on all FV inner sides with corresponding FV-metrics
-!----------------------------------------------------------------------------------------------------------------------------------
 #if PP_dim==3
 DO locSideID = 1, 6
 #else
@@ -855,37 +863,47 @@ DO locSideID = 2, 5
   flip   = ElemToSide(E2S_FLIP   ,locSideID,iElem)
   DO q=0,PP_NZ; DO p=0,PP_N
     ijk = S2V(:,0,p,q,flip,locSideID)
+    ! calculate the local contribution depending on normal and tangential directiont
     SELECT CASE (locSideID)
       CASE(XI_MINUS, XI_PLUS)
+        ! Across DG Side
         IF (locSideID .EQ. XI_MINUS) THEN
           gradMapPrim_XI = gradUxi_tmp(PRIM_LIFT,ijk(2),ijk(3),ijk(1))
         ELSE
           gradMapPrim_XI = gradUxi_tmp(PRIM_LIFT,ijk(2),ijk(3),ijk(1)+1)
         END IF
-        gradMapPrim_Eta  = 0.5*(gradUeta_tmp(PRIM_LIFT,ijk(1),ijk(3),ijk(2))&
+        ! ETA parallel to DG Side: standard arithmetic mean for central gradient
+        gradMapPrim_Eta  = 0.5*(gradUeta_tmp(PRIM_LIFT,ijk(1),ijk(3),ijk(2)) &
                                +gradUeta_tmp(PRIM_LIFT,ijk(1),ijk(3),ijk(2)+1))
 #if PP_dim==3
-        gradMapPrim_Zeta = 0.5*(gradUzeta_tmp(PRIM_LIFT,ijk(1),ijk(2),ijk(3))&
+        ! ZETA parallel to DG Side: standard arithmetic mean for central gradient
+        gradMapPrim_Zeta = 0.5*(gradUzeta_tmp(PRIM_LIFT,ijk(1),ijk(2),ijk(3)) &
                                +gradUzeta_tmp(PRIM_LIFT,ijk(1),ijk(2),ijk(3)+1))
 #endif /* PP_dim==3 */
       CASE(ETA_MINUS, ETA_PLUS)
-        gradMapPrim_XI   = 0.5*(gradUxi_tmp(PRIM_LIFT,ijk(2),ijk(3),ijk(1))&
+        ! XI parallel to DG Side: standard arithmetic mean for central gradient
+        gradMapPrim_XI   = 0.5*(gradUxi_tmp(PRIM_LIFT,ijk(2),ijk(3),ijk(1)) &
                                +gradUxi_tmp(PRIM_LIFT,ijk(2),ijk(3),ijk(1)+1))
+        ! Across DG Side
         IF (locSideID .EQ. ETA_MINUS) THEN
           gradMapPrim_Eta = gradUeta_tmp(PRIM_LIFT,ijk(1),ijk(3),ijk(2))
         ELSE
           gradMapPrim_Eta = gradUeta_tmp(PRIM_LIFT,ijk(1),ijk(3),ijk(2)+1)
         END IF
 #if PP_dim==3
-        gradMapPrim_Zeta = 0.5*(gradUzeta_tmp(PRIM_LIFT,ijk(1),ijk(2),ijk(3))&
+        ! ZETA parallel to DG Side: standard arithmetic mean for central gradient
+        gradMapPrim_Zeta = 0.5*(gradUzeta_tmp(PRIM_LIFT,ijk(1),ijk(2),ijk(3)) &
                                +gradUzeta_tmp(PRIM_LIFT,ijk(1),ijk(2),ijk(3)+1))
 #endif /* PP_dim==3 */
 #if PP_dim==3
       CASE(ZETA_MINUS, ZETA_PLUS)
-        gradMapPrim_XI   = 0.5*(gradUxi_tmp(PRIM_LIFT,ijk(2),ijk(3),ijk(1))&
+        ! XI parallel to DG Side: standard arithmetic mean for central gradient
+        gradMapPrim_XI   = 0.5*(gradUxi_tmp(PRIM_LIFT,ijk(2),ijk(3),ijk(1)) &
                                +gradUxi_tmp(PRIM_LIFT,ijk(2),ijk(3),ijk(1)+1))
-        gradMapPrim_Eta  = 0.5*(gradUeta_tmp(PRIM_LIFT,ijk(1),ijk(3),ijk(2))&
+        ! ETA parallel to DG Side: standard arithmetic mean for central gradient
+        gradMapPrim_Eta  = 0.5*(gradUeta_tmp(PRIM_LIFT,ijk(1),ijk(3),ijk(2)) &
                                +gradUeta_tmp(PRIM_LIFT,ijk(1),ijk(3),ijk(2)+1))
+        ! Across DG Side
         IF (locSideID .EQ. ZETA_MINUS) THEN
           gradMapPrim_Zeta = gradUeta_tmp(PRIM_LIFT,ijk(1),ijk(2),ijk(3))
         ELSE
