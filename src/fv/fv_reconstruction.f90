@@ -657,7 +657,7 @@ REAL                :: gradU_central_face_eta   (PP_dim,PP_nVarLifting,0:PP_N  ,
 REAL                :: gradUxi_central_face     (       PP_nVarLifting,0:PP_N+1,0:PP_N  ,0:PP_NZ  )
 REAL                :: gradUeta_central_face    (       PP_nVarLifting,0:PP_N  ,0:PP_N+1,0:PP_NZ  )
 #if (PP_dim==3)
-REAL                :: gradU_central_face_zeta  (PP_dimPP_nVarLifting ,0:PP_N  ,0:PP_N  ,0:PP_NZ-1)
+REAL                :: gradU_central_face_zeta  (PP_dim,PP_nVarLifting,0:PP_N  ,0:PP_N  ,0:PP_NZ-1)
 REAL                :: gradUzeta_central_face   (       PP_nVarLifting,0:PP_N  ,0:PP_N  ,0:PP_NZ+1)
 #endif
 !==================================================================================================================================
