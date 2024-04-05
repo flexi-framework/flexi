@@ -98,7 +98,7 @@ IF (FV_doExtendAlpha) THEN
 
   DO i=1,FV_nExtendAlpha
     ! Prolong blending factor to faces
-    CALL FV_ProlongFValphaToFace()
+    CALL FV_ProlongFValphaToFace(FV_alpha)
 
     ! TODO: You get here two times the network latency. Could be optimized
 #if USE_MPI
@@ -130,7 +130,7 @@ END SUBROUTINE FV_ExtendAlpha
 SUBROUTINE FV_ProlongFValphaToFace(FV_alpha)
 ! MODULES
 USE MOD_FV_Vars         ,ONLY: FV_alpha_master,FV_alpha_slave
-USE MOD_Mesh_Vars       ,ONLY: SideToElem,nSides
+USE MOD_Mesh_Vars       ,ONLY: SideToElem,nSides,nElems
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
