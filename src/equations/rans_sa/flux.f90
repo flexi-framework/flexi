@@ -295,14 +295,17 @@ REAL,DIMENSION(PRIM,0:PP_N_xi,0:PP_N_eta,0:PP_N_zeta),INTENT(IN)           :: UP
 REAL,DIMENSION(PP_nVarLifting,0:PP_N_xi,0:PP_N_eta,0:PP_N_zeta),INTENT(IN) :: gradUx,gradUy,gradUz
 !> Physical fluxes in x,y,z directions
 REAL,DIMENSION(CONS,0:PP_N_xi,0:PP_N_eta,0:PP_N_zeta),INTENT(OUT)          :: f,g,h
-INTEGER, INTENT(IN)                                             :: iElem                !< element index in global array
+INTEGER,INTENT(IN)                                                         :: iElem                !< element index in global array
+INTEGER,INTENT(IN)                                                         :: PP_N_xi
+INTEGER,INTENT(IN)                                                         :: PP_N_eta
+INTEGER,INTENT(IN)                                                         :: PP_N_zeta
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: i,j,k
 !==================================================================================================================================
 DO k=0,PP_N_zeta;  DO j=0,PP_N_eta; DO i=0,PP_N_xi
   CALL EvalDiffFlux3D_Point(Uprim(:,i,j,k),gradUx(:,i,j,k),gradUy(:,i,j,k),gradUz(:,i,j,k), &
-                                                 f(:,i,j,k),     g(:,i,j,k),     h(:,i,j,k))
+                                                f(:,i,j,k),     g(:,i,j,k),     h(:,i,j,k))
 END DO; END DO; END DO ! i,j,k
 END SUBROUTINE EvalDiffFlux3D_Volume_FV
 #endif /*FV_ENABLED*/
