@@ -31,25 +31,32 @@ SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-
+! Private Part --------------------------------------------------------------------------------------------------------------------
 INTERFACE FillIni
   MODULE PROCEDURE FillIni
 END INTERFACE
 
+
+! Public Part ----------------------------------------------------------------------------------------------------------------------
 INTERFACE InitDG
   MODULE PROCEDURE InitDG
 END INTERFACE
+
 
 INTERFACE DGTimeDerivative_weakForm
   MODULE PROCEDURE DGTimeDerivative_weakForm
 END INTERFACE
 
+
 INTERFACE FinalizeDG
   MODULE PROCEDURE FinalizeDG
 END INTERFACE
 
+
 PUBLIC::InitDG,DGTimeDerivative_weakForm,FinalizeDG
 !==================================================================================================================================
+
+
 
 CONTAINS
 
@@ -466,7 +473,7 @@ CALL GetPrimitiveStateSurface(FV_U_master,FV_U_slave,FV_UPrim_master,FV_UPrim_sl
 FV_Elems_Sum = FV_Elems_master + 2*FV_Elems_slave
 #endif /*FV_ENABLED*/
 
-#if FV_RECONSTRUCT
+#if FV_ENABLED && FV_RECONSTRUCT
 ! [ 5. Second order reconstruction (computation of slopes) ]
 !-------------------------------------------------------
 ! General idea at the faces: With the slave data from step 3.) reconstruct the slope over the interface on the master side
@@ -515,7 +522,7 @@ CALL FV_CalcGradients(UPrim,FV_surf_gradU,gradUxi,gradUeta,gradUzeta &
     ,gradUxi_central,gradUeta_central,gradUzeta_central &
 #endif /* VOLINT_VISC */
     )
-#endif /* FV_RECONSTRUCT */
+#endif /* FV_ENABLED && FV_RECONSTRUCT */
 
 #if PARABOLIC
 ! 6. Lifting

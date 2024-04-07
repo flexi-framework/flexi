@@ -227,6 +227,20 @@ ELSE()
 ENDIF()
 
 # =========================================================================
+# Preconditioner for implicit
+# =========================================================================
+OPTION(FLEXI_USE_PRECONDITIONER "Use preconditioner for implicit" OFF)
+IF(FLEXI_USE_PRECONDITIONER)
+  IF (FLEXI_FV_RECONSTRUCTION AND FLEXI_PARABOLIC)
+    MESSAGE(SEND_ERROR "FLEXI_USE_PRECONDITIONER not supported for FLEXI_PARABOLIC and FLEXI_FV_RECONSTRUCTION enabled!")
+  ELSE()
+    ADD_DEFINITIONS(-DUSE_PRECOND=1)
+  ENDIF()
+ELSE()
+  ADD_DEFINITIONS(-DUSE_PRECOND=0)
+ENDIF()
+
+# =========================================================================
 # Test case
 # =========================================================================
 SET(   FLEXI_TESTCASE   "default"      CACHE STRING
@@ -307,7 +321,6 @@ FILE(GLOB_RECURSE flexiF90 ./src/interpolation/*.f90
                            ./src/filter/*.f90
                            ./src/io_hdf5/*.f90
                            ./src/timedisc/*.f90
-                           ./src/precond/*.f90
                            ./src/implicit/*.f90
                            ./src/testcase/${FLEXI_TESTCASE}/*.f90
                            # ./src/flexilib.f90
@@ -371,6 +384,11 @@ IF (FLEXI_FV)
   FILE(GLOB fvF90 ./src/indicator/*.f90
                   ./src/fv/*.f90)
   LIST(APPEND flexiF90 ${fvF90})
+ENDIF()
+
+IF (FLEXI_USE_PRECONDITIONER)
+  FILE(GLOB precondF90     ./src/precond/*.f90)
+  LIST(APPEND dgF90 ${precondF90})
 ENDIF()
 
 # define libs

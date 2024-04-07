@@ -11,6 +11,7 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
+#if USE_PRECOND
 #include "flexi.h"
 
 !===================================================================================================================================
@@ -513,3 +514,4 @@ PrecondInitIsDone = .FALSE.
 END SUBROUTINE FinalizePrecond
 
 END MODULE MOD_Precond
+#endif /*USE_PRECOND*/
