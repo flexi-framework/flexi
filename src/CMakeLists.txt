@@ -231,8 +231,14 @@ ENDIF()
 # =========================================================================
 OPTION(FLEXI_USE_PRECONDITIONER "Use preconditioner for implicit" OFF)
 IF(FLEXI_USE_PRECONDITIONER)
-  IF (FLEXI_FV_RECONSTRUCTION AND FLEXI_PARABOLIC)
-    MESSAGE(SEND_ERROR "FLEXI_USE_PRECONDITIONER not supported for FLEXI_PARABOLIC and FLEXI_FV_RECONSTRUCTION enabled!")
+  IF ((FLEXI_FV STREQUAL "BLEND") OR (FLEXI_FV STREQUAL "SBLEND"))
+    MESSAGE(SEND_ERROR "FLEXI_USE_PRECONDITIONER not supported for FV blending enabled!")
+  ELSEIF (FLEXI_FV STREQUAL "SWITCH")
+    IF (FLEXI_FV_RECONSTRUCTION AND FLEXI_PARABOLIC)
+      MESSAGE(SEND_ERROR "FLEXI_USE_PRECONDITIONER not supported for FLEXI_PARABOLIC and FLEXI_FV_RECONSTRUCTION enabled!")
+    ELSE()
+      ADD_DEFINITIONS(-DUSE_PRECOND=1)
+    ENDIF()
   ELSE()
     ADD_DEFINITIONS(-DUSE_PRECOND=1)
   ENDIF()
@@ -387,8 +393,10 @@ IF (FLEXI_FV)
 ENDIF()
 
 IF (FLEXI_USE_PRECONDITIONER)
-  FILE(GLOB precondF90     ./src/precond/*.f90)
-  LIST(APPEND dgF90 ${precondF90})
+  FILE(GLOB precondF90     ./src/precond/*.f90
+                           ./src/precond/jac_ex/*.f90
+                           ./src/precond/jac_fd/*.f90)
+  LIST(APPEND flexiF90 ${precondF90})
 ENDIF()
 
 # define libs

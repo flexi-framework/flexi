@@ -98,7 +98,7 @@ USE MOD_Mesh_Vars,         ONLY: MeshInitIsDone,nElems,nGlobalElems
 USE MOD_ReadInTools,       ONLY: GETINT,GETREAL,GETLOGICAL
 USE MOD_TimeDisc_Vars,     ONLY: TimeDiscType,RKb_embedded
 #if USE_PRECOND
-USE MOD_Precond,           ONLY:InitPrecond
+USE MOD_Precond,           ONLY: InitPrecond
 #endif /*USE_PRECOND*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
