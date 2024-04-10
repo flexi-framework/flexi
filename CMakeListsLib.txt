@@ -332,7 +332,6 @@ ENDIF()
 # Try to find system LAPACK/OpenBLAS
 FIND_PACKAGE(LAPACK QUIET)
 IF (LAPACK_FOUND)
-  LIST(APPEND linkedlibs ${LAPACK_LIBRARIES})
   MESSAGE (STATUS "[BLAS/Lapack] found in system libraries")
   SET(LIBS_BUILD_MATH_LIB OFF CACHE BOOL "Compile and build math library")
 ELSE()
