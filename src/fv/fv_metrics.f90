@@ -1169,7 +1169,7 @@ SDEALLOCATE(FV_Metrics_gTilde_sJ_zeta)
 SDEALLOCATE(FV_Metrics_hTilde_sJ_zeta)
 #endif
 #endif /* VOLINT_VISC */
-#endif
+#endif /*FV_RECONSTRUCT*/
 
 SDEALLOCATE(FV_Elems_master)
 END SUBROUTINE FinalizeFV_Metrics
