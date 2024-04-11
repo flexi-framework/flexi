@@ -185,11 +185,7 @@ ELSE
     ! Check if the computed and the reference solutions are within a given tolerance
     equal =  .TRUE.
     DO i=1,PP_nVar; DO j=0,NRef; DO k=0,NRef; DO l=0,NRefZ
-#if ((PP_NodeType==1) && defined(SPLIT_DG))
-      equal = ALMOSTEQUALABSORREL(Ut(i,j,k,l,1),Ut_ref(1,j,k,l,1),200.*PP_RealTolerance) .AND. equal
-#else
       equal = ALMOSTEQUALABSORREL(Ut(i,j,k,l,1),Ut_ref(1,j,k,l,1),100.*PP_RealTolerance) .AND. equal
-#endif
 #if FV_ENABLED
       equal = ALMOSTEQUALABSORREL(FV_Ut(i,j,k,l,1),FV_Ut_ref(1,j,k,l,1),100.*PP_RealTolerance) .AND. equal
 #endif
