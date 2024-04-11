@@ -121,9 +121,9 @@ DO SideID=firstSideID,lastSideID
           ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V mapping
           ijk(:)=S2V(:,l,p,q,flip,locSideID) !0: flip=0
           ! Similar to prolong to face of the two-point flux
-          CALL SplitDGVolume_pointer(U(:,ijk(1),ijk(2),ijk(3),ElemID),UPrim(:,ijk(1),ijk(2),ijk(3) ,ElemID),      &
-                                     U_master(:,p,q,SideID)  ,UPrim_master(:,p,q,SideID),                         &
-                                     Metrics(:,ijk(1),ijk(2),ijk(3)),Ja_face(idx,:,p,q,SideID),FluxB(:,ijk(idx)))
+          CALL SplitDGVolume_pointer(U(:,ijk(1),ijk(2),ijk(3),ElemID)     ,UPrim(:,ijk(1),ijk(2),ijk(3) ,ElemID),     &
+                                     U_master(:,p,q,SideID)               ,UPrim_master(:,p,q,SideID),                &
+                                     Metrics(:,ijk(1)+1,ijk(2)+1,ijk(3)+1),Ja_face(idx,:,p,q,SideID),FluxB(:,ijk(idx)))
           ! Sum up the split flux: \sum_k l_k(-1/1)
           FluxB_sum = FluxB_sum + FluxB(:,ijk(idx)) * Leg(ijk(idx))
         END DO
@@ -194,9 +194,9 @@ DO SideID=firstSideID,lastSideID
         !   ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V mapping
           ijk(:)=S2V(:,l,p,q,flip,nblocSideID) !0: flip=0
           ! Similar to prolong to face of the two-point flux
-          CALL SplitDGVolume_pointer(U(:,ijk(1),ijk(2),ijk(3),nbElemID),UPrim(:,ijk(1),ijk(2),ijk(3) ,nbElemID),      &
-                                     U_slave(:,p,q,SideID)             ,UPrim_slave(:,p,q,SideID) ,                   &
-                                     Metrics(:,ijk(1),ijk(2),ijk(3))   ,Ja_slave(idx,:,p,q,SideID),FluxB(:,ijk(idx)))
+          CALL SplitDGVolume_pointer(U(:,ijk(1),ijk(2),ijk(3),nbElemID)   ,UPrim(:,ijk(1),ijk(2),ijk(3) ,nbElemID),    &
+                                     U_slave(:,p,q,SideID)                ,UPrim_slave(:,p,q,SideID) ,                 &
+                                     Metrics(:,ijk(1)+1,ijk(2)+1,ijk(3)+1),Ja_slave(idx,:,p,q,SideID),FluxB(:,ijk(idx)))
           FluxB_sum = FluxB_sum + FluxB(:,ijk(idx)) * Leg(ijk(idx))
         END DO
         ! Apply the resulting SurfInt in a line-wise manner to the interior DOFs, s.a.
@@ -355,9 +355,9 @@ DO SideID=firstSideID,lastSideID
         ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V mapping
         ijk(:)=S2V(:,l,p,q,flip,locSideID) !0: flip=0
         ! Similar to prolong to face of the two-point flux
-        CALL SplitDGVolume_pointer(U(:,ijk(1),ijk(2),ijk(3),ElemID),UPrim(:,ijk(1),ijk(2),ijk(3) ,ElemID),      &
-                                   U_master(:,p,q,SideID)  ,UPrim_master(:,p,q,SideID),                         &
-                                   Metrics(:,ijk(1),ijk(2),ijk(3)),Ja_face(idx,:,p,q,SideID),FluxB(:,ijk(idx)))
+        CALL SplitDGVolume_pointer(U(:,ijk(1),ijk(2),ijk(3),ElemID)     ,UPrim(:,ijk(1),ijk(2),ijk(3) ,ElemID),     &
+                                   U_master(:,p,q,SideID)               ,UPrim_master(:,p,q,SideID),                &
+                                   Metrics(:,ijk(1)+1,ijk(2)+1,ijk(3)+1),Ja_face(idx,:,p,q,SideID),FluxB(:,ijk(idx)))
         ! Sum up the split flux: \sum_k l_k(-1/1)
         FluxB_sum = FluxB_sum + FluxB(:,ijk(idx)) * Leg(ijk(idx))
       END DO
@@ -422,9 +422,9 @@ DO SideID=firstSideID,lastSideID
         ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V mapping
         ijk(:)=S2V(:,l,p,q,flip,nblocSideID) !0: flip=0
         ! Similar to prolong to face of the two-point flux
-        CALL SplitDGVolume_pointer(U(:,ijk(1),ijk(2),ijk(3),nbElemID),UPrim(:,ijk(1),ijk(2),ijk(3) ,nbElemID),      &
-                                   U_slave(:,p,q,SideID)             ,UPrim_slave(:,p,q,SideID) ,                   &
-                                   Metrics(:,ijk(1),ijk(2),ijk(3))   ,Ja_slave(idx,:,p,q,SideID),FluxB(:,ijk(idx)))
+        CALL SplitDGVolume_pointer(U(:,ijk(1),ijk(2),ijk(3),nbElemID)   ,UPrim(:,ijk(1),ijk(2),ijk(3) ,nbElemID),    &
+                                   U_slave(:,p,q,SideID)                ,UPrim_slave(:,p,q,SideID) ,                 &
+                                   Metrics(:,ijk(1)+1,ijk(2)+1,ijk(3)+1),Ja_slave(idx,:,p,q,SideID),FluxB(:,ijk(idx)))
         FluxB_sum = FluxB_sum + FluxB(:,ijk(idx)) * Leg(ijk(idx))
       END DO
       ! Apply the resulting SurfInt in a line-wise manner to the interior DOFs, s.a.
