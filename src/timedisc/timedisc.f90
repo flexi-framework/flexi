@@ -69,7 +69,7 @@ USE MOD_Indicator           ,ONLY: CalcIndicator
 #endif /*FV_ENABLED*/
 #if FV_ENABLED == 1
 USE MOD_FV_Switching        ,ONLY: FV_FillIni,FV_Switch,FV_Info
-#elif FV_ENABLED == 2
+#elif FV_ENABLED == 2 || FV_ENABLED == 3
 USE MOD_FV_Blending         ,ONLY: FV_Info
 #endif /*FV_ENABLED == 1*/
 #if PP_LIMITER
@@ -122,7 +122,7 @@ SELECT CASE(OverintegrationType)
     CALL Overintegration(U)
 END SELECT
 
-#if FV_ENABLED == 2
+#if FV_ENABLED == 2 || FV_ENABLED == 3
 ! FV Blending requires the indicator before the DG operator
 CALL CalcIndicator(U,t)
 #endif

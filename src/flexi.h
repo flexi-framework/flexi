@@ -136,7 +136,7 @@
 
 ! Compute viscous contributions in volume integral
 ! NOT if FV-Blending or if non-parabolic
-#if (FV_ENABLED==2) || !PARABOLIC
+#if (FV_ENABLED>=2) || !PARABOLIC
 #define VOLINT_VISC 0
 #else
 #define VOLINT_VISC 1

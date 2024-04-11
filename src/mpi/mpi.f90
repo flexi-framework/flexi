@@ -178,6 +178,12 @@ ALLOCATE(MPIRequest_FV_Elems(nNbProcs,2) )
 ALLOCATE(MPIRequest_FV_gradU(nNbProcs,2) )
 MPIRequest_FV_Elems = MPI_REQUEST_NULL
 MPIRequest_FV_gradU = MPI_REQUEST_NULL
+#if ((FV_ENABLED == 2) && (PP_NodeType == 1))
+ALLOCATE(MPIRequest_FV_U(nNbProcs,2)    )
+ALLOCATE(MPIRequest_FV_Flux(nNbProcs,2) )
+MPIRequest_FV_U     = MPI_REQUEST_NULL
+MPIRequest_FV_Flux  = MPI_REQUEST_NULL
+#endif
 #if FV_RECONSTRUCT
 ALLOCATE(MPIRequest_Rec_MS(nNbProcs,2))
 ALLOCATE(MPIRequest_Rec_SM(nNbProcs,2))
@@ -446,6 +452,10 @@ SDEALLOCATE(MPIRequest_Flux)
 #if FV_ENABLED
 SDEALLOCATE(MPIRequest_FV_Elems)
 SDEALLOCATE(MPIRequest_FV_gradU)
+#if ((FV_ENABLED == 2) && (PP_NodeType == 1))
+SDEALLOCATE(MPIRequest_FV_U)
+SDEALLOCATE(MPIRequest_FV_Flux)
+#endif
 #if FV_RECONSTRUCT
 SDEALLOCATE(MPIRequest_Rec_MS)
 SDEALLOCATE(MPIRequest_Rec_SM)

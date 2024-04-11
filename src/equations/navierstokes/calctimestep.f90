@@ -187,7 +187,7 @@ DO iElem=1,nElems
 #endif /* PARABOLIC*/
   END DO; END DO; END DO ! i,j,k
 
-#if FV_ENABLED == 2
+#if FV_ENABLED >= 2
   dtElem(iElem)=MERGE(CFLScale(0),CFLScale(1),FV_alpha(iElem).LE.FV_alpha_min)*2./SUM(Max_Lambda)
 #else
   dtElem(iElem)=CFLScale(FVE)*2./SUM(Max_Lambda)
@@ -202,7 +202,7 @@ DO iElem=1,nElems
 
 #if PARABOLIC
   IF(SUM(Max_Lambda_v).GT.0.)THEN
-#if FV_ENABLED == 2
+#if FV_ENABLED == 2 || FV_ENABLED == 3
     dtElem(iElem)=MIN(dtElem(iElem),MINVAL(DFLScale(:))*4./SUM(Max_Lambda_v))
     TimeStepVisc= MIN(TimeStepVisc, MINVAL(DFLScale(:))*4./SUM(Max_Lambda_v))
 #else

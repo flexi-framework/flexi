@@ -59,11 +59,13 @@ ENDIF()
 # SplitDG
 # =========================================================================
 OPTION(FLEXI_SPLIT_DG "Use split DG formulation" OFF)
+CMAKE_DEPENDENT_OPTION(FLEXI_PROLONG_ENTROPY "Prolong on entropy variables" ON
+	                     "FLEXI_SPLIT_DG; FLEXI_EQNSYSNAME STREQUAL navierstokes; FLEXI_NODETYPE STREQUAL GAUSS" ON)
 IF(FLEXI_SPLIT_DG)
   ADD_DEFINITIONS(-DSPLIT_DG)
-  IF(FLEXI_NODETYPE STREQUAL "GAUSS")
-    MESSAGE(SEND_ERROR "FLEXI_SPLIT_DG only works on FLEXI_NODETYPE==GAUSS-LOBATTO points.")
-  ENDIF()
+    IF(FLEXI_PROLONG_ENTROPY)
+      ADD_DEFINITIONS(-DPP_EntropyVars)
+    ENDIF()
   IF(NOT FLEXI_EQNSYSNAME STREQUAL "navierstokes")
     MESSAGE(SEND_ERROR "FLEXI_SPLIT_DG only works for FLEXI_EQNSYSNAME==navierstokes.")
   ENDIF()
@@ -168,23 +170,34 @@ ENDIF()
 
 # =========================================================================
 # FV subcell shock capturing
+# SWITCH: switching
+# BLEND/SBLEND: element-wise/DOF-wise blending
 # =========================================================================
 SET(FLEXI_FV "OFF" CACHE STRING "Enable Finite Volume subcell shock capturing")
-SET_PROPERTY(CACHE FLEXI_FV PROPERTY STRINGS OFF SWITCH BLEND)
+SET_PROPERTY(CACHE FLEXI_FV PROPERTY STRINGS OFF SWITCH BLEND SBLEND)
 
 CMAKE_DEPENDENT_OPTION(FLEXI_FV_RECONSTRUCTION "Enable 2nd order reconstruction for FV" ON
                                                "FLEXI_FV" ON) # Everything except "OFF" is logically "ON"
 
 IF(NOT (FLEXI_FV STREQUAL "OFF"))
-  IF(    FLEXI_FV STREQUAL "SWITCH")
+  IF(   FLEXI_FV STREQUAL "SWITCH")
     ADD_DEFINITIONS(-DFV_ENABLED=1)
   ELSEIF(FLEXI_FV STREQUAL "BLEND")
     IF(NOT FLEXI_EQNSYSNAME STREQUAL "navierstokes")
       MESSAGE(SEND_ERROR "FLEXI_FV=BLEND only works for FLEXI_EQNSYSNAME==navierstokes.")
     ELSEIF(FLEXI_NODETYPE STREQUAL "GAUSS")
-      MESSAGE(SEND_ERROR "FLEXI_FV=BLEND only works on FLEXI_NODETYPE==GAUSS-LOBATTO points.")
+      IF (FLEXI_PROLONG_ENTROPY)
+        MESSAGE(SEND_ERROR "FLEXI_FV=BLEND with EntropyVars=ON only works on FLEXI_NODETYPE==GAUSS-LOBATTO points.")
+      ENDIF()
     ENDIF()
     ADD_DEFINITIONS(-DFV_ENABLED=2)
+  ELSEIF(FLEXI_FV STREQUAL "SBLEND")
+    IF(NOT FLEXI_EQNSYSNAME STREQUAL "navierstokes")
+      MESSAGE(SEND_ERROR "FLEXI_FV=SBLEND only works for FLEXI_EQNSYSNAME==navierstokes.")
+    ELSEIF(FLEXI_NODETYPE STREQUAL "GAUSS")
+      MESSAGE(SEND_ERROR "FLEXI_FV=SBLEND only works on FLEXI_NODETYPE==GAUSS-LOBATTO points.")
+    ENDIF()
+    ADD_DEFINITIONS(-DFV_ENABLED=3)
   ELSE()
     MESSAGE(SEND_ERROR "No such FV shock capturing known.")
   ENDIF()
@@ -193,7 +206,7 @@ IF(NOT (FLEXI_FV STREQUAL "OFF"))
     ADD_DEFINITIONS(-DFV_RECONSTRUCT=1)
   ELSE()
     ADD_DEFINITIONS(-DFV_RECONSTRUCT=0)
-    IF (FLEXI_PARABOLIC)
+    IF (FLEXI_PARABOLIC AND (NOT FLEXI_FV STREQUAL "BLEND"))
       MESSAGE(SEND_ERROR " FLEXI_PARABOLIC is enabled, please also enabled FLEXI_FV_RECONSTRUCTION or disable FLEXI_PARABOLIC")
     ENDIF()
   ENDIF()
@@ -211,6 +224,24 @@ IF(FLEXI_PERFORMANCE_OPTLIFT)
   ADD_DEFINITIONS(-DPP_OPTLIFT=1)
 ELSE()
   ADD_DEFINITIONS(-DPP_OPTLIFT=0)
+ENDIF()
+
+# =========================================================================
+# Preconditioner for implicit
+# =========================================================================
+OPTION(FLEXI_USE_PRECONDITIONER "Use preconditioner for implicit" OFF)
+IF(FLEXI_USE_PRECONDITIONER)
+  IF (NOT (FLEXI_FV STREQUAL "OFF"))
+    IF (FLEXI_FV_RECONSTRUCTION AND FLEXI_PARABOLIC)
+      MESSAGE(SEND_ERROR "FLEXI_USE_PRECONDITIONER not supported for FLEXI_PARABOLIC and FLEXI_FV_RECONSTRUCTION enabled!")
+    ELSE()
+      ADD_DEFINITIONS(-DUSE_PRECOND=1)
+    ENDIF()
+  ELSE()
+    ADD_DEFINITIONS(-DUSE_PRECOND=1)
+  ENDIF()
+ELSE()
+  ADD_DEFINITIONS(-DUSE_PRECOND=0)
 ENDIF()
 
 # =========================================================================
@@ -294,7 +325,6 @@ FILE(GLOB_RECURSE flexiF90 ./src/interpolation/*.f90
                            ./src/filter/*.f90
                            ./src/io_hdf5/*.f90
                            ./src/timedisc/*.f90
-                           ./src/precond/*.f90
                            ./src/implicit/*.f90
                            ./src/testcase/${FLEXI_TESTCASE}/*.f90
                            # ./src/flexilib.f90
@@ -358,6 +388,13 @@ IF (FLEXI_FV)
   FILE(GLOB fvF90 ./src/indicator/*.f90
                   ./src/fv/*.f90)
   LIST(APPEND flexiF90 ${fvF90})
+ENDIF()
+
+IF (FLEXI_USE_PRECONDITIONER)
+  FILE(GLOB precondF90     ./src/precond/*.f90
+                           ./src/precond/jac_ex/*.f90
+                           ./src/precond/jac_fd/*.f90)
+  LIST(APPEND flexiF90 ${precondF90})
 ENDIF()
 
 # define libs

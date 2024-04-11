@@ -258,8 +258,10 @@ USE MOD_Implicit          ,ONLY: Newton
 USE MOD_Implicit_Vars     ,ONLY: LinSolverRHS,adaptepsNewton,epsNewton,nDOFVarProc,nGMRESIterdt,NewtonConverged,nInnerGMRES
 USE MOD_Mathtools         ,ONLY: GlobalVectorDotProduct
 USE MOD_Mesh_Vars         ,ONLY: nElems
+#if USE_PRECOND
 USE MOD_Precond           ,ONLY: BuildPrecond
 USE MOD_Precond_Vars      ,ONLY: PrecondIter
+#endif /*USE_PRECOND*/
 USE MOD_Predictor         ,ONLY: Predictor,PredictorStoreValues
 USE MOD_TimeDisc_Vars     ,ONLY: dt,nRKStages,RKA_implicit,RKc_implicit,iter,CFLScale,CFLScale_Readin
 USE MOD_TimeDisc_Vars     ,ONLY: RKb_implicit,RKb_embedded,safety,ESDIRK_gamma
@@ -286,7 +288,9 @@ REAL    :: delta_embedded(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)          ! d
                                                                              ! full order scheme and embedded scheme
 !===================================================================================================================================
 !CALL DGTimeDerivative_weakForm(t)! has to be called before preconditioner to fill U_master/slave ! already called in timedisc
+#if USE_PRECOND
 IF ((iter==0).OR.(MOD(iter,PrecondIter)==0)) CALL BuildPrecond(t,ESDIRK_gamma,dt)
+#endif /*USE_PRECOND*/
 tStage                   = t
 Un                       = U
 Ut_implicit(:,:,:,:,:,1) = Ut

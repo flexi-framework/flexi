@@ -30,7 +30,7 @@ REAL                 :: tWriteData                        !< actual time at whic
 ! precomputed variables
 #if FV_ENABLED == 1
 INTEGER(KIND=8)      :: totalFV_nElems=0                  !< total number of FV elements in domain
-#elif FV_ENABLED == 2
+#elif FV_ENABLED == 2 || FV_ENABLED == 3
 REAL                 :: FV_totalAlpha=0.                  !< average of blending coefficient in domain
 #endif
 #if PP_LIMITER

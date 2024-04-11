@@ -252,7 +252,7 @@ REAL,INTENT(IN)                  :: wBary(0:N_in)         !< barycentric weights
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                             :: XiAnalyze(0:Nloc)
-REAL                             :: wAnalyze( 0:Nloc)  ! GL integration weights used for the analyze
+REAL                             :: wAnalyze (0:Nloc)
 INTEGER                          :: i,j
 #if PP_dim == 3
 INTEGER                          :: k

@@ -181,7 +181,7 @@ FVEM = 0
 IF (.NOT.(HyperbolicPrecond)) THEN
   IF(FVEM.EQ.0) CALL FillJacLiftingFlux(t,iElem)
 END IF
-#endif /*PARABOLIC*/
+#endif /*PARABOLIC */
 IF(doVol)THEN
   IF(FVEM.EQ.0)THEN
     CALL DGVolIntJac(BJ,iElem) !without sJ!      !d(F^a+F^v)/dU partial
@@ -200,7 +200,7 @@ IF(doVol)THEN
 #endif
     END IF
   END IF
-#endif /*PARABOLIC*/
+#endif /*PARABOLIC */
 END IF!doVol
 IF(doSurf) THEN
   CALL JacSurfInt(t,BJ,iElem)
@@ -276,7 +276,7 @@ SDEALLOCATE(R_Minus)
 SDEALLOCATE(R_Plus)
 SDEALLOCATE(JacLiftingFlux)
 #endif /*PARABOLIC*/
-#if FV_ENABLED && FV_RECONSTRUCT
+#if FV_RECONSTRUCT
 SDEALLOCATE(UPrim_extended)
 SDEALLOCATE(FV_sdx_XI_extended)
 SDEALLOCATE(FV_sdx_ETA_extended)

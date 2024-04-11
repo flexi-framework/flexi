@@ -944,7 +944,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Implicit_Vars         ,ONLY: nDOFVarElem
 USE MOD_FV_Vars               ,ONLY: FV_w_inv
-#if PARABOLIC
+#if PARABOLIC && FV_RECONSTRUCT
 USE MOD_Jac_Ex_Reconstruction ,ONLY: JacFVGradients_Vol,JacFVGradients_nb
 USE MOD_Jacobian              ,ONLY: dPrimTempdCons
 USE MOD_Precond_Vars          ,ONLY: NoFillIn
@@ -1289,7 +1289,7 @@ END DO
 #endif
 ! ETA-direction-------------------------------------------------------------------------------------------------------------------
 
-#if PARABOLIC
+#if PARABOLIC && FV_RECONSTRUCT
 IF (.NOT.HyperbolicPrecond) THEN
   ! Compute the following derivatives (depending on the FV gradient reconstruction):
   !  * dependency of the volume gradients w.r.t. the volume DOFs dQVol_dUvol
@@ -1602,7 +1602,7 @@ IF (.NOT.HyperbolicPrecond) THEN
   END DO !p
 #endif
 END IF !HyperbolicPrecond
-#endif /*PARABOLIC*/
+#endif /*PARABOLIC && FV_RECONSTRUCT*/
 END SUBROUTINE Assemble_JacSurfInt_FV
 
 #if PARABOLIC

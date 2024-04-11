@@ -31,11 +31,15 @@ REAL,ALLOCATABLE       :: IndValue(:)                 !< indicator output
 REAL                   :: IndStartTime                !< specify starting time of indicator evaluation
 LOGICAL                :: FVBoundaries = .FALSE.      !< specify if FV element is set at boundaries
 INTEGER,ALLOCATABLE    :: FVBoundaryType(:)           !< select at which kind of BCs FV elements should be used
-#if FV_ENABLED == 2
+#if FV_ENABLED == 2 || FV_ENABLED == 3
 REAL                   :: T_FV                        !< Threshold for FV blending as function of PP_N
 REAL,PARAMETER         :: s_FV = 9.21024              !< "Sharpness factor" for FV blending function according to
                                                       !< Eq.(45) in: S. Hennemann et al., J.Comp.Phy., 2021
 REAL                   :: sdT_FV                      !< Precomputed variable for FV blending
+#endif
+#if FV_ENABLED == 3
+REAL                   :: SobelFilterMatrix(1:2,1:3,1:3)
+REAL,ALLOCATABLE       :: VdmGaussEqui(:,:)
 #endif
 !==================================================================================================================================
 END MODULE MOD_Indicator_Vars
