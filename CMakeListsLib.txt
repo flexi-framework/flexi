@@ -119,14 +119,16 @@ ENDIF()
 # Try to find system HDF5 using CMake
 SET(LIBS_HDF5_CMAKE TRUE)
 FIND_PACKAGE(HDF5 NAMES hdf5 COMPONENTS C Fortran ${SEARCH_TYPE} QUIET PATH_SUFFIXES share/cmake)
-# Try to find the configure version
-SET(LIBS_HDF5_CMAKE FALSE)
-FIND_PACKAGE(HDF5 COMPONENTS C Fortran QUIET)
+IF (NOT HDF5_FOUND)
+  # Try to find the configure version
+  SET(LIBS_HDF5_CMAKE FALSE)
+  FIND_PACKAGE(HDF5 COMPONENTS C Fortran QUIET)
+ENDIF()
 # Hide all the HDF5 libs paths
 MARK_AS_ADVANCED(FORCE HDF5_DIR)
-# CMake version found
 IF (HDF5_FOUND)
-  IF(${CMAKE_VERSION} VERSION_LESS "3.10.0")
+  # CMake version found
+  IF(NOT LIBS_HDF5_CMAKE AND ${CMAKE_VERSION} VERSION_LESS "3.10.0")
     MESSAGE (WARNING "HDF5 built with CMake was found! This feature is only supported for CMake 3.10+ and HDF5 1.10.2+!")
   ENDIF()
   MESSAGE (STATUS "HDF5 C libs:${HDF5_FOUND} static:${HDF5_static_C_FOUND} and shared:${HDF5_shared_C_FOUND}")
@@ -332,7 +334,6 @@ ENDIF()
 # Try to find system LAPACK/OpenBLAS
 FIND_PACKAGE(LAPACK QUIET)
 IF (LAPACK_FOUND)
-  LIST(APPEND linkedlibs ${LAPACK_LIBRARIES})
   MESSAGE (STATUS "[BLAS/Lapack] found in system libraries")
   SET(LIBS_BUILD_MATH_LIB OFF CACHE BOOL "Compile and build math library")
 ELSE()
