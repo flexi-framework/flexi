@@ -25,8 +25,14 @@
 !>    Physics of fluids 11.4 (1999): 943-945.
 !>  - Lee, Myoungkyu, and Robert D. Moser. "Direct numerical simulation of turbulent channel flow up to Re_tau=5200."
 !>    Journal of Fluid Mechanics 774 (2015): 395-415.
-!> The channel halfwidth is set to 1 and the Reynolds number is thus set with mu0 = 1/Re_tau. Further, rho=1 and the pressure is
-!> computed to obtain the specified Bulk Mach number (Mach=0.1 for the Moser case). Hence, u_tau = tau = -dp/dx = 1 .
+!> The channel halfwidth is set to 1 and the Reynolds number is thus set with mu0 = 1/Re_tau. 
+!> CPG: It follows, rho=1 and the pressure is computed to obtain the specified Bulk Mach number 
+!> (Mach=0.1 for the Moser case). Hence, u_tau = tau = -dp/dx = 1 .
+!> CFR: Force constant mass flow in channel.
+!> Differences between forcing described in:
+!> Quadrio, M., et al. (2016). "Does the choice of the forcing term affect flow statistics in DNS of turbulent channel flow?" 
+!> European Journal of Mechanics - B/Fluids 55: 286-293.
+
 !==================================================================================================================================
 MODULE MOD_TestCase
 ! MODULES
@@ -35,6 +41,9 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
+
+INTEGER,PARAMETER :: FORCING_CPG             = 0
+INTEGER,PARAMETER :: FORCING_CFR             = 1
 
 INTERFACE DefineParametersTestcase
   MODULE PROCEDURE DefineParametersTestcase
@@ -95,12 +104,18 @@ CONTAINS
 SUBROUTINE DefineParametersTestcase()
 ! MODULES
 USE MOD_Globals
-USE MOD_ReadInTools ,ONLY: prms
+USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Testcase")
-CALL prms%CreateRealOption('ChannelMach', "Bulk mach number used in the channel testcase."                      , '0.1')
+CALL prms%CreateIntFromStringOption('ForcingType',"Specify type of forcing for turbulent channel flow to be used: CPG, CFR",'CPG')
+CALL addStrListEntry('ForcingType','CFR', FORCING_CFR)
+CALL addStrListEntry('ForcingType','CPG', FORCING_CPG)
+CALL prms%CreateRealOption('ChannelMach',  "Bulk mach number used in the channel testcase."                     , '0.1')
+CALL prms%CreateRealOption('massFlowRef',      "Prescribed massflow for testcase."                                     )
+CALL prms%CreateRealOption('ChannelLength',    "Length of computational domain for channel test case"         , '6.283')
+CALL prms%CreateStringOption('massFlowBCName', "Name of BC at which massflow is computed."                   , 'INFLOW')
 CALL prms%CreateIntOption('nWriteStats', "Write testcase statistics to file at every n-th AnalyzeTestcase step.", '100')
 CALL prms%CreateIntOption('nAnalyzeTestCase', "Call testcase specific analysis routines every n-th timestep. "//&
                                               "(Note: always called at global analyze level)"                   , '1000')
@@ -116,22 +131,26 @@ SUBROUTINE InitTestcase()
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_ReadInTools,        ONLY: GETINT,GETREAL
+USE MOD_ReadInTools,        ONLY: GETINT,GETREAL,GETINTFROMSTR,GETSTR
 USE MOD_Output_Vars,        ONLY: ProjectName
 USE MOD_Equation_Vars,      ONLY: RefStatePrim,IniRefState,RefStateCons
 USE MOD_EOS,                ONLY: PrimToCons
 USE MOD_EOS_Vars,           ONLY: kappa,mu0,R
+USE MOD_Mesh_Vars,          ONLY: nBCs,BoundaryName
 USE MOD_Output,             ONLY: InitOutputToFile
+USE MOD_StringTools,        ONLY: REALTOSTR
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,PARAMETER           :: c1 = 2.4390244 ! Empirical parameter for estimation of bulkVel
+CHARACTER(LEN=255)       :: massFlowBCName
+INTEGER                  :: i
+REAL,PARAMETER           :: c1 = 2.4390244            ! Empirical parameter for estimation of bulkVel
 REAL                     :: bulkMach,pressure
 REAL                     :: UE(PP_2Var)
-CHARACTER(LEN=7)         :: varnames(2)
+CHARACTER(LEN=18)        :: varnames(3)
 !==================================================================================================================================
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE CHANNEL...'
@@ -140,8 +159,23 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE CHANNEL...'
 CALL CollectiveStop(__STAMP__,'The testcase has not been implemented for FV yet!')
 #endif
 
+! Get information about forcing type
+ForcingType = GETINTFROMSTR("ForcingType")
+SELECT CASE(ForcingType)
+CASE(FORCING_CPG)
+  SWRITE(UNIT_stdOut,*) 'Forcing method in turbulent channel test case: Constant pressure gradient (CPG)'
+CASE(FORCING_CFR)
+  SWRITE(UNIT_stdOut,*) 'Forcing method in turbulent channel test case: Constant flow rate (CFR)'
+CASE DEFAULT
+  CALL CollectiveStop(__STAMP__,'Forcing method in turbulent channel test case unknown!')
+END SELECT
+
+! Get output information
 nWriteStats      = GETINT('nWriteStats')
-nAnalyzeTestCase = GETINT( 'nAnalyzeTestCase')
+nAnalyzeTestCase = GETINT('nAnalyzeTestCase')
+
+! Get mesh informations
+ChannelLength = GETREAL('ChannelLength',REALTOSTR(2*PP_Pi))
 
 ! Compute initial guess for bulk velocity for given Re_tau to compute background pressure
 Re_tau  = 1./mu0
@@ -158,16 +192,35 @@ UE(EXT_PRES)                   = RefStatePrim(PRES,IniRefState)
 RefStatePrim(TEMP,IniRefState) = TEMPERATURE_HE(UE)
 CALL PrimToCons(RefStatePrim(:,IniRefState),RefStateCons(:,IniRefState))
 
+! Prepare forcing.
+SELECT CASE(ForcingType)
+CASE(FORCING_CPG)
+  ! Imposed pressure gradient: = Re_tau^2*rho*nu^2/delta^3
+  dpdx = -1.
+CASE(FORCING_CFR)
+  ! Read in Massflow
+  massFlowRef    = GETREAL('massFlowRef',REALTOSTR(bulkVel*RefStatePrim(DENS,IniRefState)))
+  massFlowPrev   = massFlowRef
+  massFlowBCName = GETSTR( 'massFlowBCName')
+
+  massFlowBC=-1
+  DO i=1,nBCs
+    IF(TRIM(BoundaryName(i)).EQ.TRIM(massFlowBCName)) massFlowBC=i
+  END DO
+  IF(massFlowBC.EQ.-1) CALL Abort(__STAMP__,'No inflow BC found.')
+END SELECT
+
 IF(MPIRoot) THEN
   WRITE(UNIT_stdOut,*) 'Bulk velocity based on initial velocity Profile =',bulkVel
   WRITE(UNIT_stdOut,*) 'Associated Pressure for Mach = ',bulkMach,' is', pressure
 
   ! Initialize output of statistics to file
-  ALLOCATE(writeBuf(3,nWriteStats))
+  ALLOCATE(writeBuf(4,nWriteStats))
   Filename = TRIM(ProjectName)//'_Stats'
   varnames(1) = 'dpdx'
   varnames(2) = 'bulkVel'
-  CALL InitOutputToFile(Filename,'Statistics',2,varnames)
+  varnames(3) = 'massFlowRateGlobal'
+  CALL InitOutputToFile(Filename,'Statistics',3,varnames)
 END IF
 
 SWRITE(UNIT_stdOut,'(A)')' INIT TESTCASE CHANNEL DONE!'
@@ -249,7 +302,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_DG_Vars,        ONLY: U
 USE MOD_Mesh_Vars,      ONLY: sJ
-USE MOD_Analyze_Vars,   ONLY: wGPVol,Vol
+USE MOD_Analyze_Vars,   ONLY: wGPVol,Vol,Surf
 USE MOD_Mesh_Vars,      ONLY: nElems
 #if USE_MPI
 USE MOD_MPI_Vars
@@ -262,18 +315,64 @@ REAL,INTENT(IN)                 :: t,dt
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: i,j,k,iElem
+REAL                            :: massFlowGlobal
+#if USE_MPI
+REAL                            :: box(2)
+#endif
 !==================================================================================================================================
+
+! compute global statistics
+massFlowGlobal=0.
 BulkVel =0.
+
 DO iElem=1,nElems
-  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    massFlowGlobal = massFlowGlobal+U(MOM1,i,j,k,iElem)*wGPVol(i,j,k)/sJ(i,j,k,iElem,0)
     BulkVel = BulkVel+U(MOM1,i,j,k,iElem)/U(DENS,i,j,k,iElem)*wGPVol(i,j,k)/sJ(i,j,k,iElem,0)
   END DO; END DO; END DO
 END DO
 
 #if USE_MPI
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,BulkVel,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
+box(1) = massFlowGlobal; box(2) = BulkVel
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,box,2,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
+massFlowGlobal = box(1); BulkVel = box(2)
 #endif
+
 BulkVel = BulkVel/Vol
+massFlowGlobal = massFlowGlobal/ChannelLength ! averaged mass flow over channel length
+
+SELECT CASE(ForcingType)
+! Constant pressure gradient
+CASE(FORCING_CPG)
+  massFlow = massFlowGlobal
+
+! constant flow rate
+CASE(FORCING_CFR)
+  ! special treatment of first timestep
+  IF(firstTimestep)THEN
+    dtPrev=dt
+    massFlowPrev = massFlowRef
+    firstTimeStep=.FALSE.
+  END IF
+  
+  massFlow = massFlowGlobal ! use global
+  
+  ! 2. compute forcing term dp/dx
+  ! dpdx_n+1 = dpdx_n - (mRef - 2*m_n + m_n-1) / (surf*dt)
+  dpdx = dpdxPrev - 0.3*(massFlowRef - 2*massFlow + massFlowPrev) / (Surf(massFlowBC)*dt)
+  
+  !! proposed by Lenormand:
+  !!dpdx = dpdxPrev - (alpha*(massFlow-massFlowRef) + beta*(massFlowPrev - massFlowRef)) / (Surf(massFlowBC))
+  !alpha=2.
+  !beta =-0.2
+  !massFlowPredictor = massFlow+dt/dtPrev*(massFlow-massFlowPrev)
+  !dpdx = dpdxPrev + (alpha*(massFlowPredictor-massFlowRef) + beta*(massFlow - massFlowRef)) / (Surf(massFlowBC))
+  
+  massFlowPrev = massFlow
+  dpdxPrev     = dpdx
+  dtPrev       = dt
+END SELECT
+
 END SUBROUTINE CalcForcing
 
 
@@ -315,7 +414,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-CALL OutputToFile(FileName,writeBuf(1,1:ioCounter),(/2,ioCounter/),RESHAPE(writeBuf(2:3,1:ioCounter),(/2*ioCounter/)))
+CALL OutputToFile(FileName,writeBuf(1,1:ioCounter),(/3,ioCounter/),RESHAPE(writeBuf(2:4,1:ioCounter),(/3*ioCounter/)))
 ioCounter=0
 END SUBROUTINE WriteStats
 
@@ -336,7 +435,7 @@ LOGICAL,INTENT(IN)              :: doFlush                !< indicate that data 
 !==================================================================================================================================
 IF(MPIRoot)THEN
   ioCounter=ioCounter+1
-  writeBuf(:,ioCounter) = (/Time, dpdx, BulkVel/)
+  writeBuf(:,ioCounter) = (/Time, dpdx, BulkVel, massFlow/)
   IF(ioCounter.GE.nWriteStats .OR. doFlush) CALL WriteStats()
 END IF
 END SUBROUTINE AnalyzeTestCase
