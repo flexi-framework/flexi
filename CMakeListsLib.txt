@@ -16,9 +16,6 @@ MARK_AS_ADVANCED(FORCE LIBS_EXTERNAL_LIB_DIR)
 # =========================================================================
 # Origin pointing to IAG
 IF("${GIT_ORIGIN}" MATCHES ".iag.uni-stuttgart.de")
-# Strip leading and trailing white space
-STRING(STRIP ${GIT_ORIGIN} GIT_ORIGIN)
-MESSAGE(STATUS "Checking git origin: " ${GIT_ORIGIN})
   # Checked out using SSH
   IF("${GIT_ORIGIN}" MATCHES "^git@")
     SET(LIBS_DLPATH "git@gitlab.iag.uni-stuttgart.de:")
@@ -26,16 +23,6 @@ MESSAGE(STATUS "Checking git origin: " ${GIT_ORIGIN})
   # IF("${GIT_ORIGIN}" MATCHES "^https@")
   ELSE()
     SET(LIBS_DLPATH "https://gitlab.iag.uni-stuttgart.de/")
-  ENDIF()
-# Origin pointing to ILA
-ELSEIF("${GIT_ORIGIN}" MATCHES "ila.uni-stuttgart.de")
-  # Checked out using SSH
-  IF("${GIT_ORIGIN}" MATCHES "^git@")
-    SET(LIBS_DLPATH "git@gitlab.ila.uni-stuttgart.de:")
-  # Checked out using HTTPS
-  # IF("${GIT_ORIGIN}" MATCHES "^https@")
-  ELSE()
-    SET(LIBS_DLPATH "https://gitlab.ila.uni-stuttgart.de/")
   ENDIF()
 # Fallback to IAG libs
 ELSE()
