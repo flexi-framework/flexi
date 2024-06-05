@@ -251,6 +251,7 @@ END SUBROUTINE PrintPercentage
 SUBROUTINE PrintStatusLine(t,dt,tStart,tEnd,iter,maxIter,doETA)
 ! MODULES                                                                                                                          !
 USE MOD_Globals
+USE MOD_Globals_Vars  ,ONLY: epsMach
 USE MOD_PreProc
 USE MOD_Output_Vars   ,ONLY: doPrintStatusLine
 USE MOD_Restart_Vars  ,ONLY: DoRestart,RestartTime
@@ -374,7 +375,7 @@ IF(MPIRoot)THEN
   CALL CPU_TIME(time_remaining)
   time_remaining = time_remaining - time_start
   IF (percent_ETA.GT.0.0) time_remaining = time_remaining/percent_ETA - time_remaining
-  percent = percent*100.
+  percent = MAX(percent*100.,epsMach)
   secs = MOD(time_remaining,60.)
   time_remaining = time_remaining / 60
   mins = MOD(time_remaining,60.)
