@@ -312,12 +312,13 @@ INTEGER(KIND=8),INTENT(IN)      :: iter                   !< current iteration
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=40)               :: formatStr
+CHARACTER(LEN=255)              :: hilf
 REAL                            :: CalcTime,RunTime
 REAL                            :: L_Inf_Error(PP_nVar),L_2_Error(PP_nVar)
 !==================================================================================================================================
 ! Graphical output
-CalcTime=FLEXITIME()
-RunTime=CalcTime-StartTime
+CalcTime = FLEXITIME()
+RunTime  = CalcTime-StartTime
 SWRITE(UNIT_stdOut,'(A14,ES16.7)')' Sim time   : ',Time
 
 ! Calculate error norms
@@ -342,10 +343,10 @@ CALL Benchmarking()
 IF(Time.GT.RestartTime) THEN
   SWRITE(UNIT_stdOut,'(132("-"))')
   CALL PrintStatusLine(time,dt,tStart,tEnd,iter,maxIter,doETA=.TRUE.)
-  SWRITE(UNIT_stdOut,'(132("."))')
-  SWRITE(UNIT_stdOut,'(A,A,A,F8.2,A)') ' FLEXI RUNNING ',TRIM(ProjectName),'... [',RunTime,' sec ]'
-  SWRITE(UNIT_stdOut,'(132("-"))')
-  SWRITE(UNIT_stdOut,*)
+  WRITE(hilf,'(A,A,A)') 'RUNNING ',TRIM(ProjectName),'...'
+  CALL DisplaySimulationTime(CalcTime, StartTime, hilf)
+  ! SWRITE(UNIT_stdOut,'(132("-"))')
+  ! SWRITE(UNIT_stdOut,*)
 END IF
 END SUBROUTINE Analyze
 

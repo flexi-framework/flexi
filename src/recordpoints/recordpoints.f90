@@ -115,6 +115,7 @@ ELSE
   nVar_loc = PP_nVar
 END IF
 
+! Read parameters on all procs, otherwise output is missing if no RP on MPI root
 RP_maxMemory      = GETINT('RP_MaxMemory')            ! Max buffer (100MB)
 RP_SamplingOffset = GETINT('RP_SamplingOffset')       ! Sampling offset (iteration)
 IF(RP_onProc)THEN
@@ -264,6 +265,8 @@ ELSE
 END IF
 
 CALL CloseDataFile()
+GETTIME(EndT)
+CALL DisplayMessageAndTime(EndT-StartT, 'DONE', DisplayLine=.FALSE.)
 
 IF(RP_onProc)THEN
   ALLOCATE( L_xi_RP  (0:PP_N,nRP) &
@@ -300,9 +303,6 @@ IF(RP_onProc)THEN
 #endif
 END IF
 DEALLOCATE(xi_RP)
-
-GETTIME(EndT)
-SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE [',EndT-StartT,'s]'
 
 END SUBROUTINE ReadRPList
 
@@ -430,7 +430,7 @@ SUBROUTINE WriteRP(nVar,StrVarNames,OutputTime,resetCounters)
 USE MOD_PreProc
 USE MOD_Globals
 USE HDF5
-USE MOD_HDF5_Output       ,ONLY: WriteAttribute,WriteArray,MarkWriteSuccessfull
+USE MOD_HDF5_Output       ,ONLY: WriteAttribute,WriteArray,MarkWriteSuccessful
 USE MOD_IO_HDF5           ,ONLY: File_ID,OpenDataFile,CloseDataFile
 USE MOD_Mesh_Vars         ,ONLY: MeshFile
 USE MOD_Output_Vars       ,ONLY: ProjectName
@@ -539,9 +539,9 @@ CALL CloseDataFile()
 #if USE_MPI
 IF(myRPrank.EQ.0)THEN
 #endif /* USE_MPI */
-  CALL MarkWriteSuccessfull(Filestring)
+  CALL MarkWriteSuccessful(Filestring)
   GETTIME(EndT)
-  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' WRITE RECORDPOINT DATA TO HDF5 FILE DONE! [',EndT-StartT,'s]'
+  CALL DisplayMessageAndTime(EndT-StartT, 'WRITE RECORDPOINT DATA TO HDF5 FILE DONE!', DisplayLine=.FALSE., rank=0)
 #if USE_MPI
 END IF
 #endif /* USE_MPI */

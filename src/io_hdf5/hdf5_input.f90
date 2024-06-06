@@ -60,7 +60,7 @@ INTERFACE GetVarnames
 END INTERFACE
 
 PUBLIC :: Plist_File_ID,File_ID,HSize,nDims        ! Variables from MOD_IO_HDF5 that need to be public
-PUBLIC :: OpenDataFile,CloseDataFile ! Subroutines from MOD_IO_HDF5 that need to be public
+PUBLIC :: OpenDataFile,CloseDataFile               ! Subroutines from MOD_IO_HDF5 that need to be public
 PUBLIC :: ISVALIDHDF5FILE,ISVALIDMESHFILE,GetDataSize,GetAttributeSize,GetDataProps,GetNextFileName
 PUBLIC :: ReadArray,ReadAttribute
 PUBLIC :: GetArrayAndName

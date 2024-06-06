@@ -494,7 +494,7 @@ ELSE
 ENDIF
 
 ! total number of nodes on this processor
-nNodes=nElems*(NGeo+1)**3 ! total number of nodes on this processor
+nNodes = nElems*(NGeo+1)**3
 
 #if PP_dim == 2
 DO iElem=1,nElems
@@ -746,7 +746,7 @@ END IF
 
 EndT             = FLEXITIME()
 ReadMeshWallTime = EndT-StartT
-SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES') ' READ MESH FROM DATA FILE "'//TRIM(FileString)//'" ... DONE  [',ReadMeshWallTime,'s]'
+CALL DisplayMessageAndTime(ReadMeshWallTime,'READ MESH FROM DATA FILE "'//TRIM(FileString)//'" ... DONE',DisplayLine=.FALSE.)
 SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE ReadMesh
@@ -774,20 +774,16 @@ INTEGER           :: iProc
 #endif
 !===================================================================================================================================
 CALL GetDataSize(File_ID,'ElemInfo',nDims,HSize)
-IF(HSize(1).NE.6) THEN
-  CALL Abort(__STAMP__,&
-    'ERROR: Wrong size of ElemInfo, should be 6')
-END IF
+IF(HSize(1).NE.6) CALL Abort(__STAMP__,'ERROR: Wrong size of ElemInfo, should be 6')
+
 CHECKSAFEINT(HSize(2),4)
 nGlobalElems=INT(HSize(2),4)
 DEALLOCATE(HSize)
 #if USE_MPI
-IF(nGlobalElems.LT.nProcessors) THEN
-  CALL Abort(__STAMP__,&
+IF(nGlobalElems.LT.nProcessors) CALL Abort(__STAMP__,&
   'ERROR: Number of elements (1) is smaller then number of processors (2)!',nGlobalElems,REAL(nProcessors))
-END IF
 
-!simple partition: nGlobalelems/nprocs, do this on proc 0
+! Simple partition: nGlobalelems/nprocs, do this on proc 0
 SDEALLOCATE(offsetElemMPI)
 ALLOCATE(offsetElemMPI(0:nProcessors))
 offsetElemMPI=0
