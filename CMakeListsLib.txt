@@ -1,17 +1,4 @@
 # =========================================================================
-# Add the libraries
-# =========================================================================
-
-# Set directory to compile external libraries
-IF(LIBS_USE_MPI)
-  SET(LIBS_EXTERNAL_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/share/${CMAKE_Fortran_COMPILER_ID}-MPI)
-ELSE()
-  SET(LIBS_EXTERNAL_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/share/${CMAKE_Fortran_COMPILER_ID})
-ENDIF()
-MARK_AS_ADVANCED(FORCE LIBS_EXTERNAL_LIB_DIR)
-
-
-# =========================================================================
 # Set download locations depending on git origin
 # =========================================================================
 # Origin pointing to IAG
@@ -99,6 +86,17 @@ ELSE()
   ADD_DEFINITIONS(-DUSE_MPI=0)
 ENDIF()
 
+
+# =========================================================================
+# Add the libraries
+# =========================================================================
+# Set directory to compile external libraries
+IF(LIBS_USE_MPI)
+  SET(LIBS_EXTERNAL_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/share/${CMAKE_Fortran_COMPILER_ID}-MPI)
+ELSE()
+  SET(LIBS_EXTERNAL_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/share/${CMAKE_Fortran_COMPILER_ID})
+ENDIF()
+MARK_AS_ADVANCED(FORCE LIBS_EXTERNAL_LIB_DIR)
 
 # =========================================================================
 # HDF5 library
