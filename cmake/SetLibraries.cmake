@@ -103,11 +103,14 @@ MARK_AS_ADVANCED(FORCE LIBS_EXTERNAL_LIB_DIR)
 # =========================================================================
 # Try to find system HDF5 using CMake
 SET(LIBS_HDF5_CMAKE TRUE)
-FIND_PACKAGE(HDF5 NAMES hdf5 COMPONENTS C Fortran ${SEARCH_TYPE} QUIET PATH_SUFFIXES share/cmake)
-IF (NOT HDF5_FOUND)
+IF (NOT LIBS_BUILD_HDF5)
+  FIND_PACKAGE(HDF5 NAMES hdf5 COMPONENTS C Fortran ${SEARCH_TYPE} QUIET PATH_SUFFIXES share/cmake)
+
+  IF (NOT HDF5_FOUND)
   # Try to find the configure version
-  SET(LIBS_HDF5_CMAKE FALSE)
-  FIND_PACKAGE(HDF5 COMPONENTS C Fortran QUIET)
+    SET(LIBS_HDF5_CMAKE FALSE)
+    FIND_PACKAGE(HDF5 COMPONENTS C Fortran QUIET)
+  ENDIF()
 ENDIF()
 # Hide all the HDF5 libs paths
 MARK_AS_ADVANCED(FORCE HDF5_DIR)
@@ -267,13 +270,25 @@ ELSE()
 
     LIST(APPEND SELFBUILTEXTERNALS HDF5)
   ENDIF()
+  # Always set for self-build libraries
+  SET(LIBS_HDF5_CMAKE FALSE)
 
   # Set HDF5 paths
   SET(HDF5_C_INCLUDE_DIR                ${LIBS_HDF5_DIR}/include)
   SET(HDF5_DIFF_EXECUTABLE              ${LIBS_HDF5_DIR}/bin/h5diff)
   SET(HDF5_Fortran_INCLUDE_DIR          ${LIBS_HDF5_DIR}/include)
+  SET(HDF5_hdf5_LIBRARY_hdf5            ${LIBS_HDF5_DIR}/lib/libhdf5.so)
   SET(HDF5_hdf5_LIBRARY_RELEASE         ${LIBS_HDF5_DIR}/lib/libhdf5.a)
+  SET(HDF5_hdf5_fortran_LIBRARY_hdf5    ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.so)
   SET(HDF5_hdf5_fortran_LIBRARY_RELEASE ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.a)
+
+  MARK_AS_ADVANCED(FORCE HDF5_C_INCLUDE_DIR)
+  MARK_AS_ADVANCED(FORCE HDF5_DIFF_EXECUTABLE)
+  MARK_AS_ADVANCED(FORCE HDF5_Fortran_INCLUDE_DIR)
+  MARK_AS_ADVANCED(FORCE HDF5_hdf5_LIBRARY_hdf5)
+  MARK_AS_ADVANCED(FORCE HDF5_hdf5_LIBRARY_RELEASE)
+  MARK_AS_ADVANCED(FORCE HDF5_hdf5_fortran_LIBRARY_hdf5)
+  MARK_AS_ADVANCED(FORCE HDF5_hdf5_fortran_LIBRARY_RELEASE)
   # Unset leftover paths from old CMake runs
   UNSET(HDF5_LIBRARIES)
   UNSET(HDF5_INCLUDE_DIR_FORTRAN)
@@ -285,7 +300,7 @@ ELSE()
   MARK_AS_ADVANCED(FORCE HDF5_z_LIBRARY_RELEASE)
   # Add ZLIB to include paths for HDF5 data compression
   FIND_LIBRARY(HDF5_z_LIBRARY_RELEASE z)
-  LIST(APPEND HDF5_LIBRARIES ${HDF5_hdf5_fortran_LIBRARY_RELEASE} ${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_z_LIBRARY_RELEASE} -ldl)
+  LIST(APPEND HDF5_LIBRARIES ${HDF5_hdf5_LIBRARY_hdf5} ${HDF5_hdf5_fortran_LIBRARY_RELEASE} ${HDF5_hdf5_fortran_LIBRARY_hdf5} ${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_z_LIBRARY_RELEASE} -ldl)
 
   SET(HDF5_BUILD_STATUS "self-built")
 ENDIF()
@@ -317,7 +332,10 @@ ENDIF()
 # Math libary
 # =========================================================================
 # Try to find system LAPACK/OpenBLAS
-FIND_PACKAGE(LAPACK QUIET)
+IF (NOT LIBS_BUILD_MATH_LIB)
+  FIND_PACKAGE(LAPACK QUIET)
+ENDIF()
+
 IF (LAPACK_FOUND)
   MESSAGE (STATUS "[BLAS/Lapack] found in system libraries")
   SET(LIBS_BUILD_MATH_LIB OFF CACHE BOOL "Compile and build math library")
@@ -473,7 +491,9 @@ ENDIF()
 # OPENMP library
 # =========================================================================
 # Try to find system OpenMP
-FIND_PACKAGE(OpenMP QUIET)
+IF (NOT LIBS_USE_OPENMP)
+  FIND_PACKAGE(OpenMP QUIET)
+ENDIF()
 IF (OpenMP_FOUND)
   MESSAGE (STATUS "[OpenMP] found in system libraries")
   OPTION(LIBS_USE_OPENMP "Enable OpenMP" ON)
