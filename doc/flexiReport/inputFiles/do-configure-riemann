@@ -1,0 +1,14 @@
+#!/bin/sh
+
+cmake \
+-DCMAKE_CXX_FLAGS="-march=native" \
+-DCMAKE_C_FLAGS="-march=native" \
+-DCMAKE_FORTRAN_FLAGS="-march=native" \
+-DCMAKE_C_COMPILER=mpicc \
+-DCMAKE_CXX_COMPILER=mpicxx \
+-DCMAKE_Fortran_COMPILER=mpifort \
+-DFLEXI_FV=SWITCH \
+-DFLEXI_PARABOLIC:BOOL=OFF \
+\
+..
+

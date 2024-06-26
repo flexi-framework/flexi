@@ -1,0 +1,13 @@
+#!/bin/sh
+
+cmake \
+-DCMAKE_BUILD_TYPE=DEBUG \
+-DCMAKE_C_COMPILER=mpicc \
+-DCMAKE_CXX_COMPILER=mpicxx \
+-DCMAKE_Fortran_COMPILER=mpifort \
+-DCMAKE_Fortran_FLAGS="-DDEBUG -g -ffpe-trap=invalid,zero,overflow,underflow" \
+-DFLEXI_FV:BOOL=ON \
+-DFLEXI_PARABOLIC:BOOL=OFF \
+\
+..
+

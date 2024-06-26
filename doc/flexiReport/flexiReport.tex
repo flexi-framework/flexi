@@ -1,0 +1,131 @@
+\documentclass[review]{elsarticle}
+\DeclareGraphicsRule{.pdftex}{pdf}{*}{}
+\usepackage{graphicx,color}
+\usepackage{lineno,hyperref}
+\usepackage{multirow}
+\usepackage{verbatim}
+\usepackage{appendix}
+\usepackage{caption}
+\usepackage{subcaption} %  for subfigures environments
+\usepackage{tikz}
+\usepackage{enumerate}
+
+\pdfminorversion=7
+
+%\modulolinenumbers[5]
+
+\journal{Journal of Computational Physics}
+
+%%%%%%%%%%%%%%%%%%%%%%%
+%% Elsevier bibliography styles
+%%%%%%%%%%%%%%%%%%%%%%%
+%% To change the style, put a % in front of the second line of the current style and
+%% remove the % from the second line of the style you would like to use.
+%%%%%%%%%%%%%%%%%%%%%%%
+
+%% Numbered
+%\bibliographystyle{model1-num-names}
+
+%% Numbered without titles
+%\bibliographystyle{model1a-num-names}
+
+%% Harvard
+%\bibliographystyle{model2-names.bst}\biboptions{authoryear}
+
+%% Vancouver numbered
+%\usepackage{numcompress}\bibliographystyle{model3-num-names}
+
+%% Vancouver name/year
+%\usepackage{numcompress}\bibliographystyle{model4-names}\biboptions{authoryear}
+
+%% APA style
+%\bibliographystyle{model5-names}\biboptions{authoryear}
+
+%% AMA style
+%\usepackage{numcompress}\bibliographystyle{model6-num-names}
+
+%% `Elsevier LaTeX' style
+\bibliographystyle{elsarticle-num}
+%%%%%%%%%%%%%%%%%%%%%%%
+
+\graphicspath{./figures}
+
+\begin{document}
+
+\begin{frontmatter}
+
+\title{Testing Flexi\tnoteref{mytitlenote}\ on Classic Riemann Problems}
+
+\tnotetext[mytitlenote]{Flexi is Copyright (C) 2016, Prof.\ Claus-Dieter Munz and is released under the terms of the GNU General Public License v3.0. All files, scripts, and tools used to generate this report may be found in the \textbf{flexi/doc/flexiReport} directory within the NewFeatures branch of the Flexi github repository: \url{github.com/flexi-framework/flexi}. All references to a \textbf{directory} point to this location.}
+
+%% Group authors per affiliation:
+\author{R.\ W.\  Douglass\fnref{STRA}}
+
+\author{G.\ A.\ Hansen\fnref{STRA}}
+\address{STRA LLC, Los Alamos, NM \ USA}
+%\fntext[myfootnote]{}
+
+\fntext[STRA]{SciTech Research Associates, LLC, 1908 Deacon St, Los Alamos, New Mexico\  87544\  USA}
+
+\begin{abstract}
+Flexi\cite{flexigeneral} is a transient, multi-dimensional fluid dynamics simulation code framework using both the discontinuous Galerkin method and Finite Volume method for discretizing the equations of mass, momentum, and energy conservation. The results presented test Flexi's ability to simulate various challenging one- and two-dimensional Riemann problems with results compared to exact solutions whenever possible.  Although no attempt is made to optimize results through use of the many Flexi options, using the basic tutorial mesh and input files for the Sod problem was a good starting point.  All mesh and Flexi input decks are provided as well as detailed information regarding building the code, preparing the output for use in ParaView to display and extract the results, using \LaTeX and xfig, \textit{etc.} in the Appendices. Flexi performed very well on these problems, although there were some points needing further investigation found particularly in some of the two-dimensional calcuations.
+\end{abstract}
+
+\begin{keyword}
+discontinuous Galerkin \sep flexi  \sep hybred finite volume \sep Riemann test problems
+\end{keyword}
+
+\end{frontmatter}
+
+%\linenumbers
+\input{Intro}
+
+\section{One-Dimensional Results}\label{sec:1D}
+
+The first problems studied are one-dimensional Riemann problems and are based on a general shock tube geometry.
+
+\subsection{Exact Riemann Solutions}
+
+All one-dimensional results are compared to exact solutions provided by Toro~\cite{toro} (in python3 code publicly available at \url{https://github.com/tahandy/ToroExact.git}).  These solutions are for a single ratio of specific heats, $\gamma$, and the left and right domain boundaries are open for free in- or outflow only.\footnote{Note that slightly modified files for Toro's solver may be found in the \textbf{tools directory}; modified to allow conserved or primitive variables to be calculated and written to a specific output file name. Scripts to run the various Toro-based exact solutions are found in the \textbf{figures/plotInputFiles/exact/ directory}.}
+
+\subsection{Shock Tube Problems}\label{sec:sockTubes}
+
+Each of the shock tube problems was executed using Flexi compiled following the procedure described in \ref{Asec:compile} and using the configuration file listed in \ref{ssec:1Dconfig}.
+
+The first results presented are three shock tube problems whose geometry and initial conditions are illustrated in Figure\footnote{Refer to \ref{Asec:xfig} for a discussion of how to use \LaTeX commands with xfig drawings. The line-plots shown for the one-dimentional results were created using the Python3 scripts CVmultiXY.py and multXY.py and are located in the \textbf{tools/xyPlotting directory} of the repository.}\ref{fig:shockTube}.  The shock tube of domain $\mathcal{D} = [x |  x_L \leq x \leq x_R]$  is filled with a $\gamma$-law ideal gas and has a diaphragm at $x_D \  \varepsilon \ \mathcal{D}$ defining a left and right region.  Prior to bursting, the left and right sides have different states defined as $\mathcal{S} = [\rho, v_x, P, \gamma]$.  At $t = 0$, the diaphragm is instantly removed and the gas begins to move.  The three problems of interest each have shock and/or expansion waves propagating in the $\pm x$-direction.
+
+\begin{figure}[ht]
+ \begin{center}
+ %The file.pdftex_t file was generated by xfig when the drawing  was exported using
+ %``Combined PDF / LaTeX both''.  That export generates the file.pdf_t and file.pdf files.
+ %The file.pdftex_t file contains the /includegraphics command plus othder stuff.  It is
+ %editable.
+  \input{figures/shocktube.pdftex_t}
+  \caption{General illustration for one-dimensional shock tube initial conditions.}
+  \label{fig:shockTube}
+ \end{center}
+\end{figure}
+
+\input{sod}
+
+\input{einfeldt}
+
+\input{leblanc}
+
+\section{Two-Dimensional Results}\label{sec:2D}
+
+Two cases of two-dimensional Riemann problems were executed using Flexi compiled using the configuration file in \ref{ssec:2Dconfig}.
+
+\input{sedov}
+
+\input{hui}
+
+\section{Conclusions}
+
+As a general statement, Flexi has done an excellent job executing these one- and two-dimensional Riemann problems.  The dual discontinuous Galerkin and finite volume schemes work very well together to focus on discontinuities in the flow field.
+
+\input{appendix}
+
+\bibliography{flexiReferences}
+
+\end{document}
