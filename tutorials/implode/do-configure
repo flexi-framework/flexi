@@ -1,0 +1,18 @@
+#!/bin/sh
+
+cmake \
+-DCMAKE_BUILD_TYPE=RELEASE \
+-DCMAKE_Fortran_FLAGS="-DNDEBUG -O3 -march=native" \
+-DCMAKE_C_COMPILER=mpicc \
+-DCMAKE_C_FLAGS="-DNDEBUG -O3 -march=native" \
+-DCMAKE_CXX_COMPILER=mpicxx \
+-DCMAKE_Fortran_COMPILER=mpifort \
+-DFLEXI_FV=SWITCH \
+-DFLEXI_FV_RECONSTRUCTION=ON \
+-DFLEXI_PARABOLIC:BOOL=OFF \
+-DLIBS_USE_MPI:BOOL=ON \
+-DFLEXI_2D:BOOL=ON \
+\
+..
+
+#-DBLAS_LIBRARIES="/sierra/sntools/SDK/compilers/intel/composer_xe_2020.1.217/mkl/lib/intel64/libmkl_intel_lp64.so;/sierra/sntools/SDK/compilers/intel/composer_xe_2020.1.217/mkl/lib/intel64/libmkl_core.so;/sierra/sntools/SDK/compilers/intel/composer_xe_2020.1.217/mkl/lib/intel64/libmkl_sequential.so" \
