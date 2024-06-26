@@ -99,14 +99,14 @@ ALLOCATE(Ut(       PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 U=0.
 Ut=0.
 
-#ifdef PP_EntropyVars
+#if PP_EntropyVars==1
 ALLOCATE(V   (PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems))
 V=0.
 ALLOCATE(V_master(PP_nVar,0:PP_N,0:PP_N,1:nSides))
 ALLOCATE(V_slave( PP_nVar,0:PP_N,0:PP_N,1:nSides))
 V_master=0.
 V_slave=0.
-#endif /*ifdef PP_EntropyVars*/
+#endif /*if PP_EntropyVars==1*/
 
 ! Allocate the 2D solution vectors on the sides, one array for the data belonging to the proc (the master)
 ! and one for the sides which belong to another proc (slaves): side-based
@@ -308,7 +308,7 @@ USE MOD_EddyVisc_Vars       ,ONLY: ComputeEddyViscosity, muSGS, muSGS_master, mu
 USE MOD_ProlongToFace       ,ONLY: ProlongToFace
 USE MOD_TimeDisc_Vars       ,ONLY: CurrentStage
 #endif
-#ifdef PP_EntropyVars
+#if PP_EntropyVars==1
 USE MOD_DG_Vars             ,ONLY: V,V_slave,V_master
 USE MOD_EOS                 ,ONLY: ConsToEntropy
 #endif
@@ -352,7 +352,7 @@ IF(FilterType.GT.0) CALL Filter_Pointer(U,FilterMat)
 CALL ConsToPrim(PP_N,UPrim,U)
 
 ! Compute entropy variables
-#ifdef PP_EntropyVars
+#if PP_EntropyVars == 1
 Call ConsToEntropy(PP_N,V,U)
 #endif
 
@@ -383,16 +383,16 @@ CALL StartReceiveMPIData(FV_U_slave,DataSizeSide,1,nSides,MPIRequest_FV_U(:,SEND
 #endif
 
 #if (FV_ENABLED == 2) && (PP_NodeType==1)
-#ifndef PP_EntropyVars
+#if PP_EntropyVars == 0
 CALL ProlongToFaceCons(PP_N,U,U_master,U_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
 CALL ProlongToFaceCons(PP_N,U,FV_U_master,FV_U_slave,L_Minus,L_Plus,doMPISides=.TRUE.,pureFV=.TRUE.)
-#endif /*ifndef PP_EntropyVars*/
+#endif /*if PP_EntropyVars == 0*/
 #else /*FV_ENABLED*/
-#ifdef PP_EntropyVars
+#if PP_EntropyVars == 1
 CALL ProlongToFaceCons(PP_N,V,V_master,V_slave,U_master,U_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
 #else
 CALL ProlongToFaceCons(PP_N,U,U_master,U_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
-#endif /*ifdef PP_EntropyVars*/
+#endif /*if PP_EntropyVars == 1*/
 #endif /*FV_ENABLED*/
 
 CALL U_MortarCons(U_master,U_slave,doMPISides=.TRUE.)
@@ -421,16 +421,16 @@ CALL StartSendMPIData(   FV_multi_slave,DataSizeSidePrim,1,nSides,MPIRequest_FV_
 ! Step 3 for all remaining sides
 ! 3.1)
 #if (FV_ENABLED == 2) && (PP_NodeType==1)
-#ifndef PP_EntropyVars
+#if PP_EntropyVars == 0
 CALL ProlongToFaceCons(PP_N,U,U_master,U_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
 CALL ProlongToFaceCons(PP_N,U,FV_U_master,FV_U_slave,L_Minus,L_Plus,doMPISides=.FALSE.,pureFV=.TRUE.)
-#endif /*ifndef PP_EntropyVars*/
+#endif /*if PP_EntropyVars == 0*/
 #else /*FV_ENABLED*/
-#ifdef PP_EntropyVars
+#if PP_EntropyVars == 1
 CALL ProlongToFaceCons(PP_N,V,V_master,V_slave,U_master,U_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
 #else
 CALL ProlongToFaceCons(PP_N,U,U_master,U_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
-#endif /*ifdef PP_EntropyVars*/
+#endif /*if PP_EntropyVars == 1*/
 #endif
 
 CALL U_MortarCons(U_master,U_slave,doMPISides=.FALSE.)
@@ -742,7 +742,7 @@ SDEALLOCATE(U)
 SDEALLOCATE(Ut)
 SDEALLOCATE(U_master)
 SDEALLOCATE(U_slave)
-#ifdef PP_EntropyVars
+#if PP_EntropyVars == 1
 SDEALLOCATE(V)
 SDEALLOCATE(V_master)
 SDEALLOCATE(V_slave)
