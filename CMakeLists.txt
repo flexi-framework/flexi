@@ -143,10 +143,17 @@ OPTION(FLEXI_PERFORMANCE "Enable performance optimizations" OFF)
 # =========================================================================
 # Machine environment
 # =========================================================================
+
+# Languages are specified in CMakeListMachine.txt as Hawk requires them
+# after specifiying CMAKE_COMPILER
 INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/CMakeListsMachine.txt)
 
-# Hawk requires this after specifiying CMAKE_COMPILER
-PROJECT(Flexi)
+PROJECT(Flexi
+        VERSION      "22.03"
+        DESCRIPTION  "A high order discontinuous Galerkin framework for hyperbolic–parabolic conservation laws"
+        HOMEPAGE_URL "https://www.flexi-project.org")
+
+INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/CMakeListsCompiler.txt)
 
 # =========================================================================
 # Store the current commit information
