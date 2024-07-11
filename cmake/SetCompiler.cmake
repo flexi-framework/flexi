@@ -2,7 +2,6 @@
 # After settings specific compilers, enable named languages for cmake
 # =========================================================================
 ENABLE_LANGUAGE(Fortran C CXX)
-INCLUDE(GNUInstallDirs)
 MARK_AS_ADVANCED(FORCE C_PATH CXX_PATH Fortran_PATH)
 
 # =========================================================================

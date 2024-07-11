@@ -10,7 +10,6 @@ SITE_NAME(CMAKE_HOSTNAME)
 # CMake generator settings
 # =========================================================================
 SET(USED_CMAKE_GENERATOR "${CMAKE_GENERATOR}" CACHE STRING "Expose CMAKE_GENERATOR (cannot be changed here)" FORCE)
-MESSAGE(STATUS "Using cmake generator: ${CMAKE_GENERATOR}")
 IF("${CMAKE_GENERATOR}" MATCHES "Ninja")
   # CMake introduced the CMAKE_COLOR_DIAGNOSTICS flag with 3.24.0, https://gitlab.kitware.com/cmake/cmake/-/merge_requests/6990
   IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.24.0"))

@@ -332,11 +332,6 @@ ENDIF()
 
 # Use system LAPACK/MKL
 IF(NOT LIBS_BUILD_MATH_LIB)
-  # IF (LIBS_USE_MKL)
-  #   SET(BLA_VENDOR "Intel10_64lp") #search only for Intel BLAS (=MKL)
-  # ENDIF()
-
-  # Use Lapack/Blas for GNU
   # If library is specifically requested, it is required
   FIND_PACKAGE(LAPACK REQUIRED)
   IF (LAPACK_FOUND)
