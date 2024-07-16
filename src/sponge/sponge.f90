@@ -201,38 +201,40 @@ END SELECT
 ! Preparation of the baseflow on each Gauss Point
 SWRITE(UNIT_stdOut,'(A)') '  Initialize Sponge Base Flow...'
 ALLOCATE(SpBaseFlow(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+
 SELECT CASE(SpBaseflowType)
-CASE(SPONGEBASEFLOW_CONSTANT) ! constant baseflow from refstate
-  DO iElem=1,nElems
-    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      SpBaseFlow(:,i,j,k,iElem)=RefStateCons(:,spongeRefState)
-    END DO; END DO; END DO
-  END DO
-CASE(SPONGEBASEFLOW_EXACTFUNC) ! Exactfunction
-  DO iElem=1,nElems
-    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      !Save exactFunc state for later use
-      CALL ExactFunc(SpongeExactFunc,0.,Elem_xGP(:,i,j,k,iElem),SpBaseFlow(:,i,j,k,iElem))
-    END DO; END DO; END DO
-  END DO
-CASE(SPONGEBASEFLOW_FILE) ! Base Flow from .h5 File
-  CALL ReadBaseFlow(BaseFlowfile)
-!readin of the hdf5 base flow solution
-CASE(SPONGEBASEFLOW_PRUETT) ! Pruett: RefState for computation from scratch, Base flow file for restart
-  IF(DoRestart)THEN
-    CALL ReadBaseFlow(BaseFlowfile)
-  ELSE
-    IF (SpongeExactFunc.LT.0) THEN
-      SWRITE(UNIT_stdOut,'(A)') 'WARNING: No sponge exact func given! Use ini exact func instead.'
-      SpongeExactFunc = IniExactFunc
-    END IF
+  CASE(SPONGEBASEFLOW_CONSTANT)  ! Constant baseflow from refstate
+    DO iElem=1,nElems
+      DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+        SpBaseFlow(:,i,j,k,iElem) = RefStateCons(:,spongeRefState)
+      END DO; END DO; END DO
+    END DO
+  CASE(SPONGEBASEFLOW_EXACTFUNC) ! Exact function
     DO iElem=1,nElems
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         !Save exactFunc state for later use
         CALL ExactFunc(SpongeExactFunc,0.,Elem_xGP(:,i,j,k,iElem),SpBaseFlow(:,i,j,k,iElem))
       END DO; END DO; END DO
     END DO
-  END IF
+  CASE(SPONGEBASEFLOW_FILE)      ! Base Flow from .h5 File
+    CALL ReadBaseFlow(BaseFlowfile)
+  CASE(SPONGEBASEFLOW_PRUETT)    ! Pruett
+                                 ! > Fresh start: RefState
+                                 ! > Restart    : BaseFlow file
+    IF (DoRestart) THEN
+      CALL ReadBaseFlow(BaseFlowfile)
+    ELSE
+      IF (SpongeExactFunc.LT.0) THEN
+        SWRITE(UNIT_stdOut,'(A)') 'WARNING: No sponge exact func given! Use ini exact func instead.'
+        SpongeExactFunc = IniExactFunc
+      END IF
+      DO iElem=1,nElems
+        DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+          ! Save exactFunc state for later use
+          CALL ExactFunc(SpongeExactFunc,0.,Elem_xGP(:,i,j,k,iElem),SpBaseFlow(:,i,j,k,iElem))
+        END DO; END DO; END DO
+      END DO
+    END IF
 END SELECT
 
 SWRITE(UNIT_stdOut,'(A)')' INIT SPONGE DONE!'
@@ -315,18 +317,14 @@ DO iRamp=1,nSpongeRamps
   ! start Sponge Ramp at xStart
   xStart(:,iRamp)= GETREALARRAY('xStart',3,'(/0.,0.,0./)')
 #if PP_dim==2
-    IF(xStart(3,iRamp).NE.0) THEN
-      CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set xStart(3) = 0!')
-    END IF
+  IF (xStart(3,iRamp).NE.0)    CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set xStart(3) = 0!')
 #endif
   ! Readin of geometrical parameters for different sponge shapes
   SELECT CASE(SpongeShape(iRamp))
   CASE(SPONGESHAPE_RAMP) ! ramp aligned with a vector
     SpVec(:,iRamp)= GETREALARRAY('SpongeDir',3,'(/1.,0.,0./)')
 #if PP_dim==2
-    IF(SpVec(3,iRamp).NE.0) THEN
-      CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set SpVec(3) = 0!')
-    END IF
+      IF (SpVec(3,iRamp).NE.0) CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set SpVec(3) = 0!')
 #endif
 SpVec(:,iRamp)=SpVec(:,iRamp)/SQRT(DOT_PRODUCT(SpVec(:,iRamp),SpVec(:,iRamp))) ! Normalize SpVec
   CASE(SPONGESHAPE_CYLINDRICAL) ! circular sponge
@@ -354,6 +352,7 @@ DO iElem=1,nElems
       x_star(i,j,k) = (SQRT(SUM(r_vec*r_vec))-SpRadius(iRamp))/SpDistance(iRamp)
     END SELECT
   END DO; END DO; END DO
+
   IF(ANY(x_star.GT.0.)) THEN
     applySponge(iElem)=.TRUE.
      CYCLE
@@ -454,14 +453,15 @@ END SUBROUTINE CalcSpongeRamp
 !==================================================================================================================================
 SUBROUTINE ReadBaseFlow(FileName)
 ! MODULES
-USE MOD_PreProc
 USE MOD_Globals
-USE MOD_Sponge_Vars
-USE MOD_Mesh_Vars  ,       ONLY: offsetElem,nGlobalElems,nElems
-USE MOD_HDF5_input ,       ONLY: OpenDataFile,CloseDataFile,ReadArray,GetDataProps
+USE MOD_PreProc
 USE MOD_ChangeBasisByDim,  ONLY: ChangeBasisVolume
+USE MOD_HDF5_Input,        ONLY: OpenDataFile,CloseDataFile,ReadArray,GetDataProps,DatasetExists
 USE MOD_Interpolation,     ONLY: GetVandermonde
 USE MOD_Interpolation_Vars,ONLY: NodeType
+USE MOD_IO_HDF5,           ONLY: File_ID
+USE MOD_Mesh_Vars,         ONLY: offsetElem,nGlobalElems,nElems
+USE MOD_Sponge_Vars
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -469,13 +469,24 @@ USE MOD_Interpolation_Vars,ONLY: NodeType
 CHARACTER(LEN=255),INTENT(IN) :: FileName                 !< HDF5 filename
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+LOGICAL            :: WriteSuccessful
 INTEGER            :: iElem
 INTEGER            :: N_Base,nVar_Base,nElems_Base
 CHARACTER(LEN=255) :: NodeType_Base
 REAL,ALLOCATABLE   :: UTmp(:,:,:,:,:),Vdm_NBase_N(:,:)
+! Timers
+REAL               :: StartT,EndT
 !==================================================================================================================================
-SWRITE(UNIT_stdOut,'(A,A)')'  Read Sponge Base Flow from file "',TRIM(FileName)
+SWRITE(UNIT_stdOut,'(A,A)')' |> Reading sponge base flow from file "',TRIM(FileName)
+GETTIME(StartT)
+
 CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+
+! Check if restart file was written successfully
+CALL DatasetExists(File_ID,'TIME',WriteSuccessful,attrib=.TRUE.)
+IF (.NOT.WriteSuccessful) &
+  CALL Abort(__STAMP__,'BaseFlow file missing WriteSuccessful marker. Aborting...')
+
 CALL GetDataProps(nVar_Base,N_Base,nElems_Base,NodeType_Base)
 
 IF(nElems_Base.NE.nGlobalElems)THEN
@@ -500,7 +511,9 @@ ELSE
   DEALLOCATE(UTmp,Vdm_NBase_N)
 END IF
 CALL CloseDataFile()
-SWRITE(UNIT_stdOut,*)'DONE READING BASE FLOW!'
+
+GETTIME(EndT)
+CALL DisplayMessageAndTime(EndT-StartT, '|> Reading sponge base flow from file DONE!', DisplayLine=.TRUE.)
 
 END SUBROUTINE ReadBaseFlow
 
@@ -517,13 +530,13 @@ SUBROUTINE Sponge(Ut)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Sponge_Vars ,ONLY: SpongeMap,SpongeMat,SpBaseFlow,nSpongeElems
-USE MOD_DG_Vars     ,ONLY: U
-USE MOD_Mesh_Vars   ,ONLY: nElems
+USE MOD_Sponge_Vars,       ONLY: SpongeMap,SpongeMat,SpBaseFlow,nSpongeElems
+USE MOD_DG_Vars,           ONLY: U
+USE MOD_Mesh_Vars,         ONLY: nElems
 #if FV_ENABLED
-USE MOD_ChangeBasis ,ONLY: ChangeBasis3D
-USE MOD_FV_Vars     ,ONLY: FV_Vdm,FV_Elems
-USE MOD_Mesh_Vars   ,ONLY: sJ
+USE MOD_ChangeBasisByDim,  ONLY: ChangeBasisVolume
+USE MOD_FV_Vars,           ONLY: FV_Vdm,FV_Elems
+USE MOD_Mesh_Vars,         ONLY: sJ
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -548,8 +561,8 @@ DO iSpongeElem=1,nSpongeElems
       SpongeMatTmp(1,i,j,k) = sJ(i,j,k,iElem,0)*SpongeMat(i,j,k,iSpongeElem)
     END DO; END DO; END DO ! i,j,k
     ! Change Basis of SpongeMat and SpongeBaseFlow to FV grid
-    CALL ChangeBasis3D(1,PP_N,PP_N,FV_Vdm,SpongeMatTmp(:,:,:,:),SpongeMat_FV(:,:,:,:))
-    CALL ChangeBasis3D(PP_nVar,PP_N,PP_N,FV_Vdm,SpBaseFlow(:,:,:,:,iElem),SpBaseFlow_FV(:,:,:,:))
+    CALL ChangeBasisVolume(1      ,PP_N,PP_N,FV_Vdm,SpongeMatTmp(:,:,:,:)    ,SpongeMat_FV( :,:,:,:))
+    CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,SpBaseFlow(:,:,:,:,iElem),SpBaseFlow_FV(:,:,:,:))
     ! Calc and add source, take the FV Jacobian into account
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) - SpongeMat_Fv(1,i,j,k)/sJ(i,j,k,iElem,1) * &

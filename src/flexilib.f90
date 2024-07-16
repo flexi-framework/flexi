@@ -13,6 +13,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "commit.h"
 
 MODULE MOD_Flexi
 
@@ -155,10 +156,11 @@ IF (doPrintHelp.GT.0) THEN
   CALL MPI_COMM_FREE(MPI_COMM_FLEXI,iError)
   ! we also have to finalize MPI itself here
   CALL MPI_FINALIZE(iError)
-  IF(iError .NE. 0) STOP 'MPI finalize error'
+  IF(iError.NE.MPI_SUCCESS) STOP 'MPI finalize error'
 #endif
   STOP
 END IF
+
 CALL prms%read_options(ParameterFile)
 
 CALL InitIOHDF5()
@@ -190,6 +192,7 @@ SWRITE(UNIT_stdOut,'(A)') &
 SWRITE(UNIT_stdOut,'(A)') &
 " )______)             )_________________)  )_________________)  )_____)/´   )_____)  )_________________)          "
 SWRITE(UNIT_stdOut,'(A)')
+SWRITE(UNIT_stdOut,'(A)')" Flexi with commit "//TRIM(GIT_CURRENT_COMMIT)
 SWRITE(UNIT_stdOut,'(132("="))')
 ! Measure init duration
 StartTime=FLEXITIME()
@@ -228,7 +231,7 @@ CALL Restart()
 ! Measure init duration
 InitializationWallTime = FLEXITIME()-StartTime
 SWRITE(UNIT_stdOut,'(132("="))')
-SWRITE(UNIT_stdOut,'(A,F8.2,A)') ' INITIALIZATION DONE! [',InitializationWallTime,' sec ]'
+CALL DisplayMessageAndTime(InitializationWallTime,'INITIALIZATION DONE!',DisplayLine=.FALSE.)
 SWRITE(UNIT_stdOut,'(132("="))')
 
 ! Generate Unittest Data
@@ -240,7 +243,9 @@ IF (doGenerateUnittestReferenceData) THEN
   CALL FinalizeFlexi()
   CALL EXIT()
 END IF
+
 END SUBROUTINE InitFlexi
+
 
 !==================================================================================================================================
 !> Finalize the computation.
@@ -318,7 +323,7 @@ CALL FinalizeCommandlineArguments()
 CALL FinalizeMPI()
 #endif
 
-CALL DisplaySimulationTime(Time, StartTime, 'FINISHED')
+CALL DisplaySimulationTime(Time, StartTime, 'FINISHED!')
 END SUBROUTINE FinalizeFlexi
 
 END MODULE MOD_Flexi

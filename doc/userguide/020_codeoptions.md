@@ -73,10 +73,6 @@ The following options enable or disable specific features of **FLEXI**. If you w
     * **BR1**: First method of Bassi and Rebay [@BR1]
     * **BR2**: Second method of Bassi and Rebay [@BR2]
     
-* ``LIBS_USE_MKL``:  ON/OFF
-    
-    This flag defines, whether Intel's MKL (Math Kernel Library) should be used. This is only meaningful when **FLEXI** is compiled with Intel compiler.    
-    
 * ``LIBS_USE_MPI``: ON/OFF
 
     This flag defines, whether **FLEXI** is compiled with MPI (necessary for parallel execution).

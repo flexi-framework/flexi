@@ -194,8 +194,7 @@ END IF
 CALL CloseDataFile()
 
 GETTIME(EndT)
-SWRITE(UNIT_stdOut,'(A,F0.3,A)') ' CHECK RESTART FILE DONE! [',EndT-StartT,'s]'
-SWRITE(UNIT_stdOut,'(132("-"))')
+CALL DisplayMessageAndTime(EndT-StartT, 'CHECK RESTART FILE DONE!', DisplayLine=.TRUE.)
 
 END SUBROUTINE InitRestartFile
 
@@ -235,7 +234,7 @@ IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN) :: RestartFile_in !< state file to restart from
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-LOGICAL            :: ResetTime,validHDF5!,prmChanged,userblockFound
+LOGICAL            :: ResetTime,validHDF5,WriteSuccessful!,prmChanged,userblockFound
 REAL               :: StartT,EndT
 ! CHARACTER(LEN=255) :: ParameterFileOld
 !==================================================================================================================================
@@ -262,6 +261,11 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
   DoRestart = .TRUE.
   ! Read in parameters of restart solution
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+  ! Check if restart file was written successfully
+  CALL DatasetExists(File_ID,'TIME',WriteSuccessful,attrib=.TRUE.)
+  IF (.NOT.WriteSuccessful) &
+    CALL Abort(__STAMP__,'Restart file missing WriteSuccessful marker. Aborting...')
+
   ! Read in time from restart file
   CALL ReadAttribute(File_ID,'Time',1,RealScalar=RestartTime)
   ! Option to set the calculation time to 0 even tho performing a restart
@@ -316,8 +320,7 @@ FlushInitialState = GETLOGICAL('FlushInitialState')
 RestartWallTime   = FLEXITIME()
 RestartInitIsDone = .TRUE.
 GETTIME(EndT)
-SWRITE(UNIT_stdOut,'(A,F0.3,A)')' INIT RESTART DONE! [',EndT-StartT,'s]'
-SWRITE(UNIT_stdOut,'(132("-"))')
+CALL DisplayMessageAndTime(EndT-StartT, 'INIT RESTART DONE!', DisplayLine=.TRUE.)
 
 END SUBROUTINE InitRestart
 
@@ -356,7 +359,7 @@ USE MOD_Mesh_Vars,          ONLY: nElems,nGlobalElems
 USE MOD_Restart_Vars
 #if FV_ENABLED
 USE MOD_FV_Vars,            ONLY: FV_Elems
-#endif
+#endif /*FV_ENABLED*/
 #if FV_ENABLED == 1
 USE MOD_FV_Switching,       ONLY: FV_ProlongFVElemsToFace
 USE MOD_Indicator_Vars,     ONLY: IndValue
@@ -366,7 +369,7 @@ USE MOD_StringTools,        ONLY: STRICMP
 USE MOD_2D,                 ONLY: ExpandArrayTo3D
 #else
 USE MOD_2D,                 ONLY: to2D_rank5
-#endif
+#endif /*PP_dim*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -581,8 +584,7 @@ IF (DoRestart) THEN
   ! Delete all files that will be rewritten
   IF (doFlushFiles_loc) CALL FlushFiles(RestartTime)
   GETTIME(EndT)
-  SWRITE(UNIT_stdOut,'(A,F0.3,A)')' PERFORMING RESTART DONE! [',EndT-StartT,'s]'
-  SWRITE(UNIT_stdOut,'(132("-"))')
+  CALL DisplayMessageAndTime(EndT-StartT, 'PERFORMING RESTART DONE!', DisplayLine=.TRUE.)
 ELSE
   ! Delete all files since we are doing a fresh start
   IF (doFlushFiles_loc) CALL FlushFiles()

@@ -73,6 +73,7 @@ CONTAINS
 !==================================================================================================================================
 PPURE SUBROUTINE EvalFlux3D_Point(U,UPrim,f,g,h)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -125,11 +126,13 @@ h   = 0.
 #endif
 END SUBROUTINE EvalFlux3D_Point
 
+
 !==================================================================================================================================
 !> Wrapper routine to compute the advection part of the Navier-Stokes fluxes for a single volume cell
 !==================================================================================================================================
 PPURE SUBROUTINE EvalFlux3D_Volume(Nloc,U,UPrim,f,g,h)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -145,6 +148,7 @@ DO k=0,ZDIM(Nloc);  DO j=0,Nloc; DO i=0,Nloc
   CALL EvalFlux3D_Point(U(:,i,j,k),UPrim(:,i,j,k),f(:,i,j,k),g(:,i,j,k),h(:,i,j,k))
 END DO; END DO; END DO ! i,j,k
 END SUBROUTINE EvalFlux3D_Volume
+
 
 #if PARABOLIC
 !==================================================================================================================================
@@ -162,6 +166,7 @@ USE MOD_Viscosity
 #if EDDYVISCOSITY
 USE MOD_EddyVisc_Vars,ONLY: PrSGS
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -243,6 +248,7 @@ h    = 0.
 END ASSOCIATE
 END SUBROUTINE EvalDiffFlux3D_Point
 
+
 !==================================================================================================================================
 !> Wrapper routine to compute the diffusive part of the Navier-Stokes fluxes for a single volume cell
 !==================================================================================================================================
@@ -251,7 +257,8 @@ SUBROUTINE EvalDiffFlux3D_Volume(UPrim,gradUx,gradUy,gradUz,f,g,h,iElem)
 USE MOD_PreProc
 #if EDDYVISCOSITY
 USE MOD_EddyVisc_Vars,ONLY: muSGS
-#endif
+#endif /*EDDYVISCOSITY*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -268,7 +275,7 @@ DO k=0,PP_NZ;  DO j=0,PP_N; DO i=0,PP_N
                                                 f(:,i,j,k),     g(:,i,j,k),     h(:,i,j,k)  &
 #if EDDYVISCOSITY
                             ,muSGS(1,i,j,k,iElem)&
-#endif
+#endif /*EDDYVISCOSITY*/
                             )
 END DO; END DO; END DO ! i,j,k
 END SUBROUTINE EvalDiffFlux3D_Volume
@@ -316,9 +323,10 @@ END SUBROUTINE EvalDiffFlux3D_Volume_FV
 PPURE SUBROUTINE EvalDiffFlux3D_Surface(Nloc,UPrim,gradUx,gradUy,gradUz,f,g,h &
 #if EDDYVISCOSITY
                                  ,muSGS &
-#endif
+#endif /*EDDYVISCOSITY*/
                                  )
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -328,7 +336,7 @@ REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUx,gradUy,
 REAL,DIMENSION(PP_nVar       ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: f,g,h                !> Physical fluxes in x,y,z directions
 #if EDDYVISCOSITY
 REAL,DIMENSION(1             ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: muSGS                !< SGS viscosity
-#endif
+#endif /*EDDYVISCOSITY*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: i,j
@@ -338,11 +346,12 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
                                                f(:,i,j),     g(:,i,j),     h(:,i,j)  &
 #if EDDYVISCOSITY
                             ,muSGS(1,i,j) &
-#endif
+#endif /*EDDYVISCOSITY*/
                             )
 END DO; END DO ! i,j
 END SUBROUTINE EvalDiffFlux3D_Surface
 #endif /*PARABOLIC*/
+
 
 !==================================================================================================================================
 !> Computes 1D Euler flux using the conservative variables.
@@ -350,6 +359,7 @@ END SUBROUTINE EvalDiffFlux3D_Surface
 PPURE SUBROUTINE EvalEulerFlux1D(U,F)
 ! MODULES
 USE MOD_EOS_Vars ,ONLY:KappaM1
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -377,11 +387,13 @@ F(MOM3)=0.
 F(ENER)=(U(ENER)+UE(EXT_PRES))*UE(EXT_VEL1)  ! (rho*e+p)*u
 END SUBROUTINE EvalEulerFlux1D
 
+
 !==================================================================================================================================
 !> Computes 1D Euler flux using the conservative and primitive variables (for better performance)
 !==================================================================================================================================
 PPURE SUBROUTINE EvalEulerFlux1D_fast(U,F)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES

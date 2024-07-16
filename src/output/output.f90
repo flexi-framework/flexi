@@ -252,6 +252,7 @@ END SUBROUTINE PrintPercentage
 SUBROUTINE PrintStatusLine(t,dt,tStart,tEnd,iter,maxIter,doETA)
 ! MODULES                                                                                                                          !
 USE MOD_Globals
+USE MOD_Globals_Vars  ,ONLY: epsMach
 USE MOD_PreProc
 USE MOD_Output_Vars   ,ONLY: doPrintStatusLine
 USE MOD_Restart_Vars  ,ONLY: DoRestart,RestartTime
@@ -364,7 +365,9 @@ IF(MPIRoot)THEN
 #endif
   percent_time = (t-tStart) / (tEnd-tStart)
   percent_iter = REAL(iter) / REAL(maxIter)
-  percent      = MAX(percent_time,percent_iter)
+  percent      = ABS(MAX(percent_time,percent_iter))
+  ! ETA bar needs a tiny amount
+  percent      = MAX(percent,TINY(1.))
 
   ! Calculate ETA with percent of current run
   ASSOCIATE(tBegin => MERGE(RestartTime,tStart,DoRestart))
@@ -458,6 +461,7 @@ CALL DATE_AND_TIME(values=timeArray)
 
 IF (.NOT.MPIRoot) RETURN
 
+WRITE(UNIT_stdOut,*)
 WRITE(UNIT_stdOut,'(132("-"))')
 WRITE(UNIT_stdOut,'(A,I2.2,A1,I2.2,A1,I4.4,A1,I2.2,A1,I2.2,A1,I2.2)') &
   ' Sys date   :    ',timeArray(3),'.',timeArray(2),'.',timeArray(1),' ',timeArray(5),':',timeArray(6),':',timeArray(7)
@@ -665,8 +669,9 @@ END SUBROUTINE Visualize
 SUBROUTINE InitOutputToFile(Filename,ZoneName,nVar,VarNames,lastLine)
 ! MODULES
 USE MOD_Globals
-USE MOD_Restart_Vars, ONLY: RestartTime
 USE MOD_Output_Vars,  ONLY: ProjectName,ASCIIOutputFormat
+USE MOD_Restart_Vars, ONLY: RestartTime
+USE MOD_StringTools,  ONLY: INTTOSTR
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -684,6 +689,9 @@ INTEGER                        :: i,iMax          !< Counter for header lines
 REAL                           :: dummytime       !< Simulation time read from file
 LOGICAL                        :: file_exists     !< marker if file exists and is valid
 CHARACTER(LEN=255)             :: FileName_loc    !< FileName with data type extension
+CHARACTER(LEN=255)             :: tmpStr          !< FileName with data type extension (iterator)
+CHARACTER(LEN=4)               :: tmpExt          !< Data type extension
+INTEGER                        :: counter         !< Incrementing counter for file backups
 !==================================================================================================================================
 IF(.NOT.MPIRoot) RETURN
 
@@ -692,8 +700,10 @@ IF(PRESENT(lastLine)) lastLine=-HUGE(1.)
 ! Append data type extension to FileName
 IF (ASCIIOutputFormat.EQ.ASCIIOUTPUTFORMAT_CSV) THEN
   FileName_loc = TRIM(FileName)//'.csv'
+  tmpExt       = '.csv'
 ELSE
   FileName_loc = TRIM(FileName)//'.dat'
+  tmpExt       = '.dat'
 END IF
 
 ! Check for file
@@ -749,11 +759,48 @@ IF(file_exists)THEN
       BACKSPACE(ioUnit)
       READ(ioUnit,*,IOSTAT=stat) lastLine
     END IF
+
+    ! Check if there is more than one line left, i.e. lines that will be deleted
+    stat    = 0
     BACKSPACE(ioUnit)
-    ENDFILE(ioUnit) ! delete from here to end of file
-    WRITE(UNIT_stdOut,'(A,ES15.5)',ADVANCE='YES')' successfull. Resuming file at time ',Dummytime
+    DO WHILE (stat.EQ.0)
+      READ(ioUnit,*,IOSTAT=stat) Dummytime
+    END DO
+
+    ! Perform a backup of the old file, last line is counted double
+    IF (Dummytime.GT.RestartTime) THEN
+      counter = 1
+      ! Find the first free slot
+      DO WHILE(FILEEXISTS(TRIM(FileName)//'.'//TRIM(ADJUSTL(INTTOSTR(counter)))//TRIM(tmpExt)))
+        counter = counter + 1
+      END DO
+      tmpStr  = TRIM(FileName)//'.'//TRIM(ADJUSTL(INTTOSTR(counter)))//TRIM(tmpExt)
+      ! Move the file to the free slot
+      WRITE(Unit_StdOut,'(A,A,A,A)') ' |> Copying existing file ',TRIM(FileName_loc),' to ',TRIM(tmpStr)
+      CALL EXECUTE_COMMAND_LINE('cp '//TRIM(FileName_loc)//' '//TRIM(tmpStr), WAIT=.FALSE.)
+    END IF
+
+    ! Rewind back to the beginning of the file
+    REWIND(ioUnit)
+    ! Loop over header and try to read the first data line. Header size depends on output format.
+    iMax = MERGE(2,4,ASCIIOutputFormat.EQ.ASCIIOUTPUTFORMAT_CSV)
+    DO i = 1,iMax
+      READ(ioUnit,*,IOSTAT=stat)
+    END DO
+
+    ! Restore previous position
+    Dummytime = 0.
+    stat      = 0
+    DO WHILE (Dummytime.LT.RestartTime .AND. stat.EQ.0)
+      READ(ioUnit,*,IOSTAT=stat) Dummytime
+    END DO
+
+    ! Delete from here to end of file
+    BACKSPACE(ioUnit)
+    ENDFILE(ioUnit)
+    WRITE(UNIT_stdOut,'(A,ES15.5)',ADVANCE='YES')' Searching file for time stamp successfull. Resuming file at time ',Dummytime
   ELSE
-    WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' failed. Appending data to end of file.'
+    WRITE(UNIT_stdOut,'(A)'       ,ADVANCE='YES')' Searching file time for stamp failed. Appending data to end of file.'
   END IF
 END IF
 CLOSE(ioUnit)

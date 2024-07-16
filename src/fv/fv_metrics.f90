@@ -178,6 +178,7 @@ ALLOCATE(FV_Elems_master(1:nSides)) ! Moved from InitFV to here, since needed in
 
 END SUBROUTINE InitFV_Metrics
 
+
 !==================================================================================================================================
 !> Compute the remaining metric terms for FV subcells, that are not computed in metrics.f90.
 !> Normal, tangential vectors, SurfElems, ... for FV subcells.
@@ -207,12 +208,12 @@ USE MOD_Interpolation_Vars ,ONLY: NodeTypeCL,xGP,wGP,wBary
 #if VOLINT_VISC
 USE MOD_Mesh_Vars          ,ONLY: SideToElem,S2V
 #endif /* VOLINT_VISC */
-#endif
+#endif /*FV_RECONSTRUCT*/
 #if USE_MPI
 USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
 USE MOD_MPI_Vars           ,ONLY: nNbProcs
 USE MOD_Mesh_Vars          ,ONLY: firstMPISide_MINE
-#endif
+#endif /*USE_MPI*/
 USE MOD_2D
 USE MOD_FillMortar1        ,ONLY: U_Mortar1
 IMPLICIT NONE
@@ -317,8 +318,11 @@ REAL                                   :: FV_dX_3_xi_BC_eta_FV_zeta_LG_Path    (
 REAL                                   :: FV_dX_3_xi_BC_eta_FV_zeta_LG_Path_pq (3,0:PP_N  ,0:PP_N+1 ,0:PP_NZ  )
 #endif /*(PP_dim == 3)*/
 #endif /*VOLINT_VISC*/
+! Timer
+REAL                                   :: StartT,EndT
 !==================================================================================================================================
-SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') '  Build FV-Metrics ...'
+SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') ' Build FV Metrics ...'
+GETTIME(StartT)
 
 ! compute FV NormVec, TangVec,.. on boundary of DG-cells
 DO iSide=1,nSides
@@ -972,7 +976,8 @@ DO SideID=firstInnerSide,lastMPISide_MINE
 END DO
 #endif /* FV_RECONSTRUCT */
 
-SWRITE(UNIT_stdOut,'(A)')' Done !'
+GETTIME(EndT)
+CALL DisplayMessageAndTime(EndT-StartT,'DONE',DisplayLine=.FALSE.)
 
 END SUBROUTINE FV_CalcMetrics
 

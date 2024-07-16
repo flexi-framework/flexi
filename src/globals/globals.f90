@@ -560,6 +560,75 @@ IF(MPIRoot.AND.(Message.NE.'ABORTED')) WRITE(UNIT_stdOut,'(132("="))')
 END SUBROUTINE DisplaySimulationTime
 
 
+!===================================================================================================================================
+! Output message to UNIT_stdOut and an elapsed time is seconds as well as min/hour/day format
+!===================================================================================================================================
+SUBROUTINE DisplayMessageAndTime(ElapsedTimeIn, Message, DisplayLine, rank)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN) :: Message          !< Output message
+REAL,INTENT(IN)             :: ElapsedTimeIn    !< Time difference
+LOGICAL,INTENT(IN),OPTIONAL :: DisplayLine      !< Display 132*"-" (default is TRUE)
+INTEGER,INTENT(IN),OPTIONAL :: rank             !< if 0, some kind of root is assumed, every other processor return this routine
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL              :: ElapsedTime,mins,secs,hours,days
+LOGICAL           :: DisplayLineLoc,LocalRoot
+CHARACTER(LEN=60) :: hilf
+!===================================================================================================================================
+
+! Define who returns and who does the output (default is MPIRoot)
+LocalRoot = .FALSE. ! default
+IF(PRESENT(rank))THEN
+  IF(rank.EQ.0) LocalRoot = .TRUE.
+ELSE
+  IF(MPIRoot) LocalRoot = .TRUE.
+END IF ! PRESENT(rank)
+
+! Return with all procs except LocalRoot
+IF(.NOT.LocalRoot) RETURN
+
+! Check if 132*"-" is required
+IF(PRESENT(DisplayLine))THEN
+  DisplayLineLoc = DisplayLine
+ELSE
+  DisplayLineLoc = .TRUE.
+END IF ! PRESENT(DisplayLine)
+
+! Aux variable
+ElapsedTime=ElapsedTimeIn
+
+! Get secs, mins, hours and days
+secs = MOD(ElapsedTime,60.)
+ElapsedTime = ElapsedTime / 60.
+mins = MOD(ElapsedTime,60.)
+ElapsedTime = ElapsedTime / 60.
+hours = MOD(ElapsedTime,24.)
+ElapsedTime = ElapsedTime / 24.
+!days = MOD(ElapsedTime,365.) ! Use this if years are also to be displayed
+days = ElapsedTime
+
+! Output message
+IF(LocalRoot)THEN
+  WRITE(hilf,'(F16.2)')  ElapsedTimeIn
+  ! Only output the second if it is actually useful
+  IF (ElapsedTimeIn.GT.60) THEN
+    WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')  ' '//TRIM(Message)//' [ '//TRIM(ADJUSTL(hilf))//' sec ]'
+    WRITE(UNIT_stdOut,'(A3,I0,A1,I0.2,A1,I0.2,A1,I0.2,A2)') ' [ ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),' ]'
+  ELSE
+    WRITE(UNIT_stdOut,'(A)',ADVANCE='YES') ' '//TRIM(Message)//' [ '//TRIM(ADJUSTL(hilf))//' sec ]'
+  END IF
+  IF(DisplayLineLoc) WRITE(UNIT_StdOut,'(132("-"))')
+END IF ! LocalRoot)
+
+END SUBROUTINE DisplayMessageAndTime
+
+
 !==================================================================================================================================
 !> Calculates current time (own function because of a laterMPI implementation)
 !==================================================================================================================================
