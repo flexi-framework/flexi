@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -146,7 +146,6 @@ MPILocalRoot=.TRUE.
 END SUBROUTINE InitMPI
 
 
-
 #if USE_MPI
 !==================================================================================================================================
 !> Initialize derived mpi variables used for communication
@@ -155,9 +154,10 @@ SUBROUTINE InitMPIVars()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_Interpolation_Vars,      ONLY: InterpolationInitIsDone
 USE MOD_MPI_Vars
 USE MOD_ReadinTools,             ONLY: GETINT
-USE MOD_Interpolation_Vars,      ONLY: InterpolationInitIsDone
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -178,6 +178,12 @@ ALLOCATE(MPIRequest_FV_Elems(nNbProcs,2) )
 ALLOCATE(MPIRequest_FV_gradU(nNbProcs,2) )
 MPIRequest_FV_Elems = MPI_REQUEST_NULL
 MPIRequest_FV_gradU = MPI_REQUEST_NULL
+#if ((FV_ENABLED == 2) && (PP_NodeType == 1))
+ALLOCATE(MPIRequest_FV_U(nNbProcs,2)    )
+ALLOCATE(MPIRequest_FV_Flux(nNbProcs,2) )
+MPIRequest_FV_U     = MPI_REQUEST_NULL
+MPIRequest_FV_Flux  = MPI_REQUEST_NULL
+#endif
 #if FV_RECONSTRUCT
 ALLOCATE(MPIRequest_Rec_MS(nNbProcs,2))
 ALLOCATE(MPIRequest_Rec_SM(nNbProcs,2))
@@ -214,6 +220,14 @@ CALL MPI_COMM_RANK(MPI_COMM_NODE,myLocalRank,iError)
 CALL MPI_COMM_SIZE(MPI_COMM_NODE,nLocalProcs,iError)
 MPILocalRoot=(myLocalRank .EQ. 0)
 
+IF (nProcessors.EQ.nLocalProcs) THEN
+  SWRITE(UNIT_stdOUt,'(A,I0,A,I0,A)') ' | Starting gathered I/O communication with ',nLocalProcs,' procs in ',1,' group'
+ELSE
+  SWRITE(UNIT_stdOUt,'(A,I0,A,I0,A,I0,A)') ' | Starting gathered I/O communication with ',nLocalProcs,' procs each in ',&
+                                                        nProcessors/nLocalProcs,' groups for a total number of ',&
+                                                        nProcessors,' procs'
+END IF
+
 ! now split global communicator into small group leaders and the others
 MPI_COMM_LEADERS=MPI_COMM_NULL
 MPI_COMM_WORKERS=MPI_COMM_NULL
@@ -231,7 +245,6 @@ ELSE
   nLeaderProcs=nProcessors-nWorkerProcs
 END IF
 END SUBROUTINE InitMPIvars
-
 
 
 !==================================================================================================================================
@@ -439,6 +452,10 @@ SDEALLOCATE(MPIRequest_Flux)
 #if FV_ENABLED
 SDEALLOCATE(MPIRequest_FV_Elems)
 SDEALLOCATE(MPIRequest_FV_gradU)
+#if ((FV_ENABLED == 2) && (PP_NodeType == 1))
+SDEALLOCATE(MPIRequest_FV_U)
+SDEALLOCATE(MPIRequest_FV_Flux)
+#endif
 #if FV_RECONSTRUCT
 SDEALLOCATE(MPIRequest_Rec_MS)
 SDEALLOCATE(MPIRequest_Rec_SM)

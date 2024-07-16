@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -28,8 +28,8 @@
 MODULE MOD_Indicator
 ! MODULES
 IMPLICIT NONE
-
 PRIVATE
+!----------------------------------------------------------------------------------------------------------------------------------
 
 INTEGER,PARAMETER :: INDTYPE_DG             = 0
 INTEGER,PARAMETER :: INDTYPE_FV             = 1
@@ -125,19 +125,23 @@ USE MOD_Mesh_Vars           ,ONLY: nElems
 USE MOD_IO_HDF5             ,ONLY: AddToElemData,ElementOut
 USE MOD_Overintegration_Vars,ONLY: NUnder
 USE MOD_Filter_Vars         ,ONLY: NFilter
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER                                  :: nModes_In
+#if FV_ENABLED == 1
 INTEGER                                  :: iBC,nFVBoundaryType
+#endif
 !==================================================================================================================================
 IF(IndicatorInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,&
     "InitIndicator not ready to be called or already called.")
 END IF
 SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT INDICATORS...'
+SWRITE(UNIT_stdOut,'(A)') ' INIT INDICATOR...'
 
 ! Read in  parameters
 IndicatorType = GETINTFROMSTR('IndicatorType')
@@ -154,7 +158,7 @@ CASE(INDTYPE_JAMESON)
   CALL ABORT(__STAMP__, &
       "Jameson indicator only works with Navier-Stokes equations.")
 #endif /* EQNSYSNR != 2 */
-#if FV_ENABLED == 2
+#if FV_ENABLED >= 2
   CALL ABORT(__STAMP__, &
         "Jameson indicator only works with FV switching.")
 #endif /* FV_ENABLED == 2 */
@@ -167,9 +171,9 @@ CASE(INDTYPE_DUCROS)
   CALL ABORT(__STAMP__, &
       "Ducros indicator only works with Navier-Stokes equations.")
 #endif /* EQNSYSNR != 2 */
-#if FV_ENABLED == 2
+#if FV_ENABLED >= 2
   CALL ABORT(__STAMP__, &
-        "Jameson indicator only works with FV switching.")
+      "Ducros indicator only works with FV switching.")
 #endif /* FV_ENABLED == 2 */
 CASE(INDTYPE_DUCROSTIMESJST)
 #if !(PARABOLIC)
@@ -180,19 +184,21 @@ CASE(INDTYPE_DUCROSTIMESJST)
   CALL ABORT(__STAMP__, &
       "Ducros*JST indicator only works with Navier-Stokes equations.")
 #endif /* EQNSYSNR != 2 */
-#if FV_ENABLED == 2
+#if FV_ENABLED >= 2
   CALL ABORT(__STAMP__, &
-        "Jameson indicator only works with FV switching.")
+      "Ducros*JST indicator only works with FV switching.")
 #endif /* FV_ENABLED == 2 */
 CASE(INDTYPE_PERSSON)
   ! number of modes to be checked by Persson indicator
-  nModes = GETINT('nModes')
+  nModes_In = GETINT('nModes')
   ! For overintegration, the last PP_N-Nunder modes are empty. Add them to nModes, so we check non-empty ones
-  nModes = nModes+PP_N-MIN(NUnder,NFilter)
+  nModes_In = nModes_In+PP_N-MIN(NUnder,NFilter)
   ! Safety checks: At least one mode must be left and only values >0 make sense
-  nModes = MAX(1,MIN(PP_N-1,nModes))
-  SWRITE(UNIT_stdOut,'(A,I0)') ' | nModes = ', nModes
-#if FV_ENABLED == 2
+  nModes = MAX(1,MIN(PP_N-1,nModes_In))
+  IF (nModes.NE.nModes_In) THEN
+    SWRITE(UNIT_stdOut,'(A,I0)') 'WARNING: nModes set by user not within range [1,PP_N-1]. Was instead set to nModes=', nModes
+  END IF
+#if FV_ENABLED >= 2
   T_FV   = 0.5*10**(-1.8*(PP_N+1)**.25) ! Eq.(42) in: S. Hennemann et al., J.Comp.Phy., 2021
   sdT_FV = s_FV/T_FV
 #if EQNSYSNR != 2 /* NOT NAVIER-STOKES */
@@ -224,6 +230,7 @@ SWRITE(UNIT_stdOut,'(A)')' INIT INDICATOR DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitIndicator
 
+
 !==================================================================================================================================
 !> Perform calculation of the indicator.
 !==================================================================================================================================
@@ -238,12 +245,18 @@ USE MOD_Lifting_Vars     ,ONLY: gradUx,gradUy,gradUz
 #endif
 #if FV_ENABLED == 2
 USE MOD_FV_Blending      ,ONLY: FV_ExtendAlpha
+#if PP_NodeType == 1
+USE MOD_FV_Blending      ,ONLY: FV_CommAlpha
+#endif
+USE MOD_FV_Vars          ,ONLY: FV_alpha,FV_alpha_min,FV_alpha_max,FV_alpha_fix,FV_doExtendAlpha
+USE MOD_Indicator_Vars   ,ONLY: sdT_FV,T_FV
+#elif FV_ENABLED == 3
 USE MOD_FV_Vars          ,ONLY: FV_alpha,FV_alpha_min,FV_alpha_max,FV_alpha_fix
 USE MOD_Indicator_Vars   ,ONLY: sdT_FV,T_FV
 #else
 USE MOD_FV_Vars          ,ONLY: FV_Elems,FV_sVdm
+USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisVolume
 #endif /*FV_ENABLED==2*/
-USE MOD_ChangeBasisByDim ,ONLY:ChangeBasisVolume
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -253,15 +266,19 @@ REAL,INTENT(IN)           :: t                                             !< Si
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                   :: iElem
+#if FV_ENABLED == 1
 REAL,POINTER              :: U_P(:,:,:,:)
-#if !(FV_ENABLED == 2)
 REAL,TARGET               :: U_DG(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 #endif
 !==================================================================================================================================
 
 ! if time is before IndStartTime return high Indicator value (FV)
 IF (t.LT.IndStartTime) THEN
+#if FV_ENABLED == 1
   IndValue = HUGE(1.)
+#elif FV_ENABLED >= 2
+  FV_alpha = FV_alpha_max
+#endif /*FV_ENABLED*/
   RETURN
 END IF
 
@@ -276,10 +293,10 @@ CASE(INDTYPE_FV) ! indicator everywhere
 #if FV_ENABLED == 1
   IndValue = 100
 #else
-  FV_alpha = 1.
+  FV_alpha = FV_alpha_max
 #endif /*FV_ENABLED == 1*/
 CASE(INDTYPE_BLEND) ! fixed blending factor
-#if FV_ENABLED == 2
+#if FV_ENABLED >= 2
   FV_alpha = FV_alpha_fix
 #endif
 CASE(INDTYPE_PERSSON) ! Modal Persson indicator
@@ -291,6 +308,20 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
     FV_alpha(iElem) = MIN(FV_alpha(iElem),FV_alpha_max)
     ! Do not compute FV contribution for elements below threshold
     IF (FV_alpha(iElem) .LT. FV_alpha_min) FV_alpha(iElem) = 0.
+  END DO ! iElem
+#if PP_NodeType == 1
+  IF (.NOT.FV_doExtendAlpha) CALL FV_CommAlpha(FV_alpha)
+#endif
+#elif FV_ENABLED == 3
+  DO iElem=1,nElems
+    IndValue(iElem) = IndPerssonBlend(U(:,:,:,:,iElem))
+    IndValue(iElem) = 1. / (1. + EXP(-sdT_FV * (IndValue(iElem) - T_FV)))
+    ! Limit to alpha_max
+    FV_alpha(:,:,:,:,iElem) = MIN(IndValue(iElem),FV_alpha_max)
+  END DO ! iElem
+  ! Do not compute FV contribution for elements below threshold
+  DO iElem=1,nElems
+    IF (MAXVAL(FV_alpha(:,:,:,:,iElem)) .LT. FV_alpha_min) FV_alpha(:,:,:,:,iElem) = 0.
   END DO ! iElem
 #else
   DO iElem=1,nElems
@@ -304,8 +335,10 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
   END DO ! iElem
 #endif /*FV_ENABLED==2*/
 #if EQNSYSNR == 2 /* NAVIER-STOKES */
+#if FV_ENABLED
 CASE(INDTYPE_JAMESON)
   IndValue = JamesonIndicator(U)
+#endif
 #if PARABOLIC
 CASE(INDTYPE_DUCROS)
   IndValue = DucrosIndicator(gradUx,gradUy,gradUz)
@@ -319,7 +352,7 @@ CASE(INDTYPE_HALFHALF)  ! half/half
 #if FV_ENABLED == 1
       IndValue(iElem) = 100
 #else
-      FV_alpha(iElem) = 1.
+      FV_alpha(iElem) = FV_alpha_max
 #endif /*FV_ENABLED == 1*/
     ELSE
 #if FV_ENABLED == 1
@@ -341,7 +374,7 @@ CASE(INDTYPE_CHECKERBOARD) ! every second element (checkerboard like)
 #if FV_ENABLED == 1
       IndValue(iElem) = 100
 #else
-      FV_alpha(iElem) = 1.
+      FV_alpha(iElem) = FV_alpha_max
 #endif /*FV_ENABLED*/
     END IF
   END DO ! iElem = 1, nElems
@@ -445,16 +478,19 @@ IndValue=LOG10(IndValue)
 
 END FUNCTION IndPersson
 
+
 #if EQNSYSNR == 2 /* NAVIER-STOKES */
 #if PARABOLIC
 !==================================================================================================================================
 !> Indicator by Ducros.
 !==================================================================================================================================
 FUNCTION DucrosIndicator(gradUx, gradUy, gradUz) RESULT(IndValue)
+! MODULES
 USE MOD_PreProc
 USE MOD_Mesh_Vars          ,ONLY: nElems,sJ
 USE MOD_Analyze_Vars       ,ONLY: wGPVol
 USE MOD_FV_Vars            ,ONLY: FV_Elems
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -500,14 +536,16 @@ END DO ! iElem
 END FUNCTION DucrosIndicator
 #endif /* PARABOLIC */
 
+
 !==================================================================================================================================
 !> Indicator by Jameson.
 !==================================================================================================================================
 FUNCTION JamesonIndicator(U) RESULT(IndValue)
+! MODULES
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Indicator_Vars     ,ONLY: IndVar
-USE MOD_EOS_Vars           ,ONLY: KappaM1
+USE MOD_EOS_Vars           ,ONLY: sKappaM1,KappaM1,R
 USE MOD_Interpolation_Vars ,ONLY: L_Minus,L_Plus
 USE MOD_Mesh_Vars          ,ONLY: nElems,nSides
 USE MOD_Mesh_Vars          ,ONLY: firstMortarInnerSide,lastMortarInnerSide,firstMortarMPISide,lastMortarMPISide
@@ -523,8 +561,9 @@ USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExc
 #endif
 USE MOD_FillMortar1        ,ONLY: U_Mortar1,Flux_Mortar1
 USE MOD_FV_Vars            ,ONLY: FV_Elems,FV_Elems_master,FV_Elems_slave
-!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 REAL,INTENT(IN)           :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)              !< Solution
 REAL                      :: IndValue(1:nElems)                                  !< Value of the indicator (Return Value)
@@ -555,13 +594,24 @@ INTEGER                   :: DataSizeSide_loc
 SELECT CASE(IndVar)
 CASE(1:PP_nVar)
   UJameson(1,:,:,:,:) = U(IndVar,:,:,:,:)
-CASE(6)
+CASE(6) ! Pressure
   DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       UE(EXT_CONS)=U(:,i,j,k,iElem)
       UE(EXT_SRHO)=1./UE(EXT_DENS)
       UE(EXT_VELV)=VELOCITY_HE(UE)
       UJameson(1,i,j,k,iElem)=PRESSURE_HE(UE)
+    END DO; END DO; END DO! i,j,k=0,PP_N
+  END DO ! iElem
+CASE(7) ! Entropy
+  DO iElem=1,nElems
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+      UE(EXT_CONS) = U(:,i,j,k,iElem)
+      UE(EXT_SRHO) = 1./UE(EXT_DENS)
+      UE(EXT_VELV) = VELOCITY_HE(UE)
+      UE(EXT_PRES) = PRESSURE_HE(UE)
+      UE(EXT_TEMP) = TEMPERATURE_HE(UE)
+      UJameson(1,i,j,k,iElem) = ENTROPY_HE(UE)
     END DO; END DO; END DO! i,j,k=0,PP_N
   END DO ! iElem
 END SELECT
@@ -676,7 +726,8 @@ DO iElem=1,nElems
 END DO ! iElem
 END FUNCTION JamesonIndicator
 
-#if FV_ENABLED == 2
+
+#if FV_ENABLED >= 2
 !==================================================================================================================================
 !> Determine, if given a modal representation solution "U_Modal" is oscillating
 !> Indicator value is scaled to \f$\sigma=0 \ldots 1\f$
@@ -725,8 +776,7 @@ END DO
 IF (IndValue .LT. EPSILON(1.)) IndValue = EPSILON(IndValue)
 
 END FUNCTION IndPerssonBlend
-#endif /*FV_ENABLED==2*/
-
+#endif /* FV_ENABLED>=2 */
 #endif /* EQNSYSNR == 2 */
 
 
@@ -788,11 +838,14 @@ END SUBROUTINE IndFVBoundaries
 SUBROUTINE FinalizeIndicator()
 ! MODULES
 USE MOD_Indicator_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
-IndicatorInitIsDone=.FALSE.
 SDEALLOCATE(IndValue)
 SDEALLOCATE(FVBoundaryType)
+
+IndicatorInitIsDone=.FALSE.
+
 END SUBROUTINE FinalizeIndicator
 
 END MODULE MOD_Indicator

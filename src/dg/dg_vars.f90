@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -55,6 +55,14 @@ REAL,ALLOCATABLE                      :: DVolSurf(:,:)          !< Transpose of 
 ! DG solution (JU or U) vectors)
 REAL,ALLOCATABLE,TARGET               :: U(:,:,:,:,:)           !< Solution variable for each equation, node and element,
                                                                 !< size [1..NVar,0..N,0..N,0..N,nElems].
+#if PP_EntropyVars == 1
+REAL,ALLOCATABLE,TARGET               :: V   (:,:,:,:,:)        !< Entropy variables for each node and element,
+                                                                !< size \([1..PP_nVar,0..N,0..N,0..N,nElems]\).
+REAL,ALLOCATABLE                      :: V_master(:,:,:,:)      !< 2D Solution on face nodes for the master sides,
+                                                                !< size \([1..nVar,0..N,0..N,all\_master\_sides]\)
+
+REAL,ALLOCATABLE                      :: V_slave(:,:,:,:)       !< 2D Solution on face nodes for the slave sides,
+#endif
 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! DG time derivative or Residual U_t

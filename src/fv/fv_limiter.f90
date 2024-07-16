@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -27,6 +27,8 @@ INTEGER,PARAMETER :: FV_LIMITERTYPE_NULL      = 0
 INTEGER,PARAMETER :: FV_LIMITERTYPE_MINMOD    = 1
 INTEGER,PARAMETER :: FV_LIMITERTYPE_SWEBY     = 2
 INTEGER,PARAMETER :: FV_LIMITERTYPE_VANALBADA = 3
+INTEGER,PARAMETER :: FV_LIMITERTYPE_GMINMOD   = 4
+INTEGER,PARAMETER :: FV_LIMITERTYPE_OSPRE     = 5
 INTEGER,PARAMETER :: FV_LIMITERTYPE_CENTRAL   = 9
 
 INTERFACE DefineParametersFV_Limiter
@@ -73,6 +75,8 @@ CALL addStrListEntry('FV_LimiterType','none',     FV_LIMITERTYPE_NULL)
 CALL addStrListEntry('FV_LimiterType','minmod',   FV_LIMITERTYPE_MINMOD)
 CALL addStrListEntry('FV_LimiterType','sweby',    FV_LIMITERTYPE_SWEBY)
 CALL addStrListEntry('FV_LimiterType','vanalbada',FV_LIMITERTYPE_VANALBADA)
+CALL addStrListEntry('FV_LimiterType','gminmod'  ,FV_LIMITERTYPE_GMINMOD)
+CALL addStrListEntry('FV_LimiterType','ospre',    FV_LIMITERTYPE_OSPRE)
 CALL addStrListEntry('FV_LimiterType','central',  FV_LIMITERTYPE_CENTRAL)
 CALL prms%CreateRealOption('swebyb', "beta parameter for Sweby limiter")
 END SUBROUTINE DefineParametersFV_Limiter
@@ -104,6 +108,12 @@ CASE (FV_LIMITERTYPE_SWEBY) ! Sweby
 CASE (FV_LIMITERTYPE_VANALBADA) ! van Albada
   FV_Limiter => VanAlbada
   SWRITE(UNIT_stdOut,'(A)') '  Using "van Albada" limiter.'
+CASE (FV_LIMITERTYPE_GMINMOD) ! GMinMod
+  FV_Limiter => GMinMod
+  SWRITE(UNIT_stdOut,'(A)') '  Using "GMinmod" limiter.'
+CASE (FV_LIMITERTYPE_OSPRE) ! Ospre
+  FV_Limiter => Ospre
+  SWRITE(UNIT_stdOut,'(A)') '  Using "Ospre" limiter.'
 CASE (FV_LIMITERTYPE_CENTRAL) ! Central
   FV_Limiter => CentralLimiter
   SWRITE(UNIT_stdOut,'(A,F8.6)') '  Using "Central" limiter.'
@@ -190,6 +200,47 @@ REAL,INTENT(OUT) :: s(PP_nVarPrim)  !< limited slope
 s = (sL*sR*(sL+sR))/MAX(sL**2+sR**2,1e-13)
 s = MERGE(s,0., sL*sR .GT. 0.)
 END SUBROUTINE VanAlbada
+
+!==================================================================================================================================
+!> GMinmod slope limiter.
+!==================================================================================================================================
+PURE SUBROUTINE GMinMod(sL, sR,s)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+REAL,INTENT(IN)  :: sL(PP_nVarPrim) !< left slope
+REAL,INTENT(IN)  :: sR(PP_nVarPrim) !< right slope
+REAL,INTENT(OUT) :: s(PP_nVarPrim)  !< limited slope
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL,PARAMETER :: beta = 2.0d0
+REAL :: s1(PP_nVarPrim),s2(PP_nVarPrim)
+!==================================================================================================================================
+  s1 = sign(1.0d0, sR)
+  s2 = sign(1.0d0, sL)
+  s = 0.5d0*(s1*max(0.0d0, min(beta*sR*s1, sL*s1)) + &
+             s2*max(0.0d0, min(beta*sL*s2, sR*s2)))
+END SUBROUTINE GMinMod
+
+!==================================================================================================================================
+!> OSPRE slope limiter.
+!==================================================================================================================================
+PURE SUBROUTINE Ospre(sL, sR,s)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+REAL,INTENT(IN)  :: sL(PP_nVarPrim) !< left slope
+REAL,INTENT(IN)  :: sR(PP_nVarPrim) !< right slope
+REAL,INTENT(OUT) :: s(PP_nVarPrim)  !< limited slope
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL :: d(PP_nVarPrim)
+!==================================================================================================================================
+  d = sL**2 + sL*sR + sR**2
+  s = (d/(d**2 + 1.0d-28))*1.5d0*sL*sR*(sL + sR)
+END SUBROUTINE Ospre
 
 !==================================================================================================================================
 !> central limiter s = (sL + sR)/2  (ATTENTION: unstable and not TVD)

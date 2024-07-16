@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -23,7 +23,7 @@ PPURE SUBROUTINE ProlongToFace(&
 #endif
     Nloc,Uvol,Uface_master,Uface_slave,L_Minus,L_Plus,doMPISides &
 #if FV_ENABLED
-    ,pureDG &
+    ,pureDG,pureFV &
 #endif
 )
 ! MODULES
@@ -48,6 +48,7 @@ REAL,INTENT(IN)                 :: L_Minus(0:Nloc),L_Plus(0:Nloc)
 LOGICAL,INTENT(IN)              :: doMPISides  != .TRUE. only YOUR MPISides are filled, =.FALSE. BCSides +InnerSides +MPISides MINE
 #if FV_ENABLED
 LOGICAL,INTENT(IN),OPTIONAL     :: pureDG      != .TRUE. prolongates all elements as DG elements
+LOGICAL,INTENT(IN),OPTIONAL     :: pureFV      != .TRUE. prolongates all elements as FV elements
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -61,8 +62,10 @@ REAL                            :: Uface(TP_nVar,0:Nloc,0:ZDIM(Nloc))
 
 #if FV_ENABLED
 isFV(:) = 0
-IF (.NOT.PRESENT(pureDG)) THEN
+IF (.NOT.PRESENT(pureDG).AND..NOT.PRESENT(pureFV)) THEN
   isFV(:) = FV_Elems(:)
+ELSEIF (PRESENT(pureFV)) THEN
+  IF(pureFV) isFV(:) = 1
 ELSE
   IF(.NOT.pureDG) isFV(:) = FV_Elems(:)
 END IF
@@ -138,6 +141,65 @@ DO SideID=firstSideID,lastSideID
 END DO
 
 END SUBROUTINE ProlongToFace
+
+!==================================================================================================================================
+!> Prolongs the conservatives variables to the sides
+!> In the case of Gauss disc2, we project the entropy variables and then transform back to conservative variables
+!==================================================================================================================================
+PPURE SUBROUTINE ProlongToFaceEntropy(&
+#ifdef WITHnVar
+    TP_nVar,&
+#endif
+    Nloc,Vvol,Vface_master,Vface_slave,Uface_master,Uface_slave,L_Minus,L_Plus,doMPISides)
+! MODULES
+USE MOD_EOS,                ONLY: EntropyToCons
+USE MOD_Mesh_Vars,          ONLY: nElems
+USE MOD_Mesh_Vars,          ONLY: SideToElem
+USE MOD_Mesh_Vars,          ONLY: firstMPISide_YOUR, lastMPISide_MINE, nSides
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+#ifdef WITHnVar
+INTEGER,INTENT(IN)              :: TP_nVar
+#endif
+INTEGER,INTENT(IN)              :: Nloc
+REAL,INTENT(IN)                 :: Vvol(TP_nVar,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)
+REAL,INTENT(INOUT)              :: Vface_master(TP_nVar,0:Nloc,0:ZDIM(Nloc),1:nSides)
+REAL,INTENT(INOUT)              :: Vface_slave( TP_nVar,0:Nloc,0:ZDIM(Nloc),1:nSides)
+REAL,INTENT(INOUT)              :: Uface_master(TP_nVar,0:Nloc,0:ZDIM(Nloc),1:nSides)
+REAL,INTENT(INOUT)              :: Uface_slave( TP_nVar,0:Nloc,0:ZDIM(Nloc),1:nSides)
+REAL,INTENT(IN)                 :: L_Minus(0:Nloc),L_Plus(0:Nloc)
+LOGICAL,INTENT(IN)              :: doMPISides  != .TRUE. only YOUR MPISides are filled, =.FALSE. BCSides +InnerSides +MPISides MINE
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                         :: firstSideID,lastSideID
+INTEGER                         :: ElemID,nbElemID,SideID
+!==================================================================================================================================
+! Prolong the entropy variables
+CALL ProlongToFace(&
+#ifdef WITHnVar
+    TP_nVar,&
+#endif
+    Nloc,Vvol,Vface_master,Vface_slave,L_Minus,L_Plus,doMPISides=doMPISides)
+
+! Transform back to conservative variables
+IF(doMPISides)THEN
+  firstSideID = firstMPISide_YOUR
+   lastSideID = nSides
+ELSE
+  firstSideID = 1
+   lastSideID = lastMPISide_MINE
+END IF
+
+DO SideID=firstSideID,lastSideID
+  ElemID    = SideToElem(S2E_ELEM_ID,SideID)
+  IF(ElemID.GT.0)   CALL EntropyToCons(Nloc,Vface_master(:,:,:,SideID),Uface_master(:,:,:,SideID))
+
+  nbElemID  = SideToElem(S2E_NB_ELEM_ID,SideID)
+  IF(nbElemID.GT.0) CALL EntropyToCons(Nloc,Vface_slave(:,:,:,SideID) ,Uface_slave(:,:,:,SideID))
+END DO
+
+END SUBROUTINE ProlongToFaceEntropy
 
 
 !==================================================================================================================================

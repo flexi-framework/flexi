@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -28,27 +28,25 @@ PRIVATE
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 
-
 INTERFACE FillFlux
   MODULE PROCEDURE FillFlux
 END INTERFACE
 
-
 PUBLIC::FillFlux
 !==================================================================================================================================
 
-
-
 CONTAINS
-
-
 
 !==================================================================================================================================
 !> Computes the fluxes for inner sides, MPI sides where the local proc is "master"  and boundary conditions.
 !> The flux computation is performed separately for advection and diffusion fluxes in case
 !> parabolic terms are considered.
 !==================================================================================================================================
-SUBROUTINE FillFlux(t,Flux_master,Flux_slave,U_master,U_slave,UPrim_master,UPrim_slave,doMPISides)
+SUBROUTINE FillFlux(t,Flux_master,Flux_slave,U_master,U_slave,UPrim_master,UPrim_slave,doMPISides &
+#if FV_ENABLED
+    ,pureFV &
+#endif
+)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
 USE MOD_PreProc
@@ -70,7 +68,7 @@ USE MOD_EddyVisc_Vars,   ONLY: muSGS_master,muSGS_slave
 #endif
 #if FV_ENABLED
 USE MOD_FV
-USE MOD_FV_Vars
+USE MOD_FV_Vars,         ONLY: FV_Elems_master,FV_Elems_slave,FV_Elems_Sum,FV_sVdm
 #endif
 USE MOD_EOS,             ONLY: PrimToCons
 ! IMPLICIT VARIABLE HANDLING
@@ -85,6 +83,9 @@ REAL,INTENT(INOUT) :: U_master(    PP_nVar,0:PP_N, 0:PP_NZ,1:nSides)      !< sol
 REAL,INTENT(INOUT) :: U_slave(     PP_nVar,0:PP_N, 0:PP_NZ,1:nSides)      !< solution on slave sides
 REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N, 0:PP_NZ, 1:nSides) !< primitive solution on master sides
 REAL,INTENT(IN)    :: UPrim_slave( PP_nVarPrim,0:PP_N, 0:PP_NZ, 1:nSides) !< primitive solution on slave sides
+#if FV_ENABLED
+LOGICAL,INTENT(IN),OPTIONAL :: pureFV      != .TRUE. prolongates all elements as FV elements
+#endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: SideID,p,q,firstSideID_wo_BC,firstSideID ,lastSideID,FVEM
@@ -107,9 +108,19 @@ ELSE
    lastSideID = lastInnerSide
 END IF
 
-DO SideID=firstSideID,lastSideID
-  FV_Elems_Max(SideID) = MAX(FV_Elems_master(SideID),FV_Elems_slave(SideID))
-END DO
+#if FV_ENABLED
+FV_Elems_Max = 0.
+IF(PRESENT(pureFV))THEN
+  IF(pureFV) FV_Elems_Max(firstSideID:lastSideID) = 1.
+ELSE
+  DO SideID=1,nBCSides
+    FV_Elems_Max(SideID) = FV_Elems_master(SideID)
+  END DO
+  DO SideID=firstSideID_wo_BC,lastSideID
+    FV_Elems_Max(SideID) = MAX(FV_Elems_master(SideID),FV_Elems_slave(SideID))
+  END DO
+END IF
+#endif
 
 ! =============================
 ! Workflow:
@@ -145,7 +156,7 @@ DO SideID=firstSideID_wo_BC,lastSideID
 #endif
   )
   ! 1.3) add up viscous flux
-  Flux_master(:,:,:,SideID) = Flux_master(:,:,:,SideID) + FluxV_loc
+  Flux_master(:,:,:,SideID) = Flux_master(:,:,:,SideID) + FluxV_loc(:,:,:)
 #endif /*PARABOLIC*/
 END DO ! SideID
 
@@ -153,7 +164,9 @@ END DO ! SideID
 ! 2. Compute the fluxes at the boundary conditions: 1..nBCSides
 IF(.NOT.doMPISides)THEN
   DO SideID=1,nBCSides
-    FVEM = FV_Elems_master(SideID)
+#if FV_ENABLED
+    FVEM = FV_Elems_Max(SideID)
+#endif
     CALL GetBoundaryFlux(SideID,t,PP_N,&
        Flux_master(  :,:,:,     SideID),&
        UPrim_master( :,:,:,     SideID),&
@@ -181,7 +194,7 @@ END DO ! SideID
 ! 4. copy flux from master side to slave side
 Flux_slave(:,:,:,firstSideID:lastSideID) = Flux_master(:,:,:,firstSideID:lastSideID)
 
-#if FV_ENABLED
+#if FV_ENABLED == 1
 ! 5. convert flux on FV points to DG points for all DG faces at mixed interfaces
 ! only inner sides can be mixed (BC do not require a change basis)
 DO SideID=firstSideID_wo_BC,lastSideID

@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -258,8 +258,10 @@ USE MOD_Implicit          ,ONLY: Newton
 USE MOD_Implicit_Vars     ,ONLY: LinSolverRHS,adaptepsNewton,epsNewton,nDOFVarProc,nGMRESIterdt,NewtonConverged,nInnerGMRES
 USE MOD_Mathtools         ,ONLY: GlobalVectorDotProduct
 USE MOD_Mesh_Vars         ,ONLY: nElems
+#if USE_PRECOND
 USE MOD_Precond           ,ONLY: BuildPrecond
 USE MOD_Precond_Vars      ,ONLY: PrecondIter
+#endif /*USE_PRECOND*/
 USE MOD_Predictor         ,ONLY: Predictor,PredictorStoreValues
 USE MOD_TimeDisc_Vars     ,ONLY: dt,nRKStages,RKA_implicit,RKc_implicit,iter,CFLScale,CFLScale_Readin
 USE MOD_TimeDisc_Vars     ,ONLY: RKb_implicit,RKb_embedded,safety,ESDIRK_gamma
@@ -286,7 +288,9 @@ REAL    :: delta_embedded(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)          ! d
                                                                              ! full order scheme and embedded scheme
 !===================================================================================================================================
 !CALL DGTimeDerivative_weakForm(t)! has to be called before preconditioner to fill U_master/slave ! already called in timedisc
+#if USE_PRECOND
 IF ((iter==0).OR.(MOD(iter,PrecondIter)==0)) CALL BuildPrecond(t,ESDIRK_gamma,dt)
+#endif /*USE_PRECOND*/
 tStage                   = t
 Un                       = U
 Ut_implicit(:,:,:,:,:,1) = Ut
@@ -320,7 +324,7 @@ IF (adaptepsNewton.AND.NewtonConverged) THEN
   CALL GlobalVectorDotProduct(delta_embedded,delta_embedded,nDOFVarProc,epsNewton)
   epsNewton = (MIN(dt*SQRT(epsNewton)/safety,1E-3))
 #if DEBUG
-  SWRITE(*,*) 'epsNewton = ',epsNewton
+  SWRITE(UNIT_stdOut,'(A,ES16.7)') 'epsNewton = ',epsNewton
 #endif
 END IF
 
@@ -351,7 +355,7 @@ ELSE
     CALL Abort(__STAMP__, &
     'Newton not converged with GMRES Iterations of last Newton step and CFL reduction',nInnerGMRES,CFLScale(0)/CFLScale_Readin(0))
   END IF
-  SWRITE(*,*) 'Attention: Timestep failed, repeating with dt/2!'
+  SWRITE(UNIT_stdOut,'(A)') 'Attention: Timestep failed, repeating with dt/2!'
 END IF
 
 nGMRESIterdt = 0

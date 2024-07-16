@@ -63,9 +63,9 @@ def get_userblock(filename,userblock) :
                         print('Error: Could not extract compressed data.')
                         exit(1)
                     # Write the compressed data
-                    fc = open(filenametar, 'wb')
-                    fc.write(userblock_compressed)
-                    fc.close()
+                    fcw = open(filenametar, 'wb')
+                    fcw.write(userblock_compressed)
+                    fcw.close()
 
                     # Extract the compressed data
                     try :
