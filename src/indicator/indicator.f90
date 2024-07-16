@@ -132,9 +132,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                  :: nModes_In
-#if FV_ENABLED == 1
 INTEGER                                  :: iBC,nFVBoundaryType
-#endif
 !==================================================================================================================================
 IF(IndicatorInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,&
@@ -306,12 +304,16 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
     FV_alpha(iElem)  = 1. / (1. + EXP(-sdT_FV * (IndValue(iElem) - T_FV)))
     ! Limit to alpha_max
     FV_alpha(iElem) = MIN(FV_alpha(iElem),FV_alpha_max)
+  END DO ! iElem
+  CALL FV_ExtendAlpha(FV_alpha)
     ! Do not compute FV contribution for elements below threshold
+  DO iElem=1,nElems
     IF (FV_alpha(iElem) .LT. FV_alpha_min) FV_alpha(iElem) = 0.
   END DO ! iElem
 #if PP_NodeType == 1
   IF (.NOT.FV_doExtendAlpha) CALL FV_CommAlpha(FV_alpha)
 #endif
+
 #elif FV_ENABLED == 3
   DO iElem=1,nElems
     IndValue(iElem) = IndPerssonBlend(U(:,:,:,:,iElem))
@@ -351,14 +353,18 @@ CASE(INDTYPE_HALFHALF)  ! half/half
     IF (Elem_xGP(1,0,0,0,iElem).GT.0.0) THEN
 #if FV_ENABLED == 1
       IndValue(iElem) = 100
-#else
+#elif FV_ENABLED == 2
       FV_alpha(iElem) = FV_alpha_max
-#endif /*FV_ENABLED == 1*/
+#elif FV_ENABLED == 3
+      FV_alpha(:,:,:,:,iElem) = FV_alpha_max
+#endif /*FV_ENABLED*/
     ELSE
 #if FV_ENABLED == 1
       IndValue(iElem) = -100
-#else
+#elif FV_ENABLED == 2
       FV_alpha(iElem) = 0.
+#elif FV_ENABLED == 3
+      FV_alpha(:,:,:,:,iElem) = 0.
 #endif /*FV_ENABLED*/
     END IF
   END DO ! iElem
@@ -367,14 +373,18 @@ CASE(INDTYPE_CHECKERBOARD) ! every second element (checkerboard like)
     IF (MOD(iElem+offsetElem,2).EQ.0) THEN
 #if FV_ENABLED == 1
       IndValue(iElem) = -100
-#else
+#elif FV_ENABLED == 2
       FV_alpha(iElem) = 0.
+#elif FV_ENABLED == 3
+      FV_alpha(:,:,:,:,iElem) = 0.
 #endif /*FV_ENABLED*/
     ELSE
 #if FV_ENABLED == 1
       IndValue(iElem) = 100
-#else
+#elif FV_ENABLED == 2
       FV_alpha(iElem) = FV_alpha_max
+#elif FV_ENABLED == 3
+      FV_alpha(:,:,:,:,iElem) = FV_alpha_max
 #endif /*FV_ENABLED*/
     END IF
   END DO ! iElem = 1, nElems
@@ -385,12 +395,6 @@ END SELECT
 
 ! obtain indicator value for elements that contain domain boundaries
 CALL IndFVBoundaries()
-
-
-#if FV_ENABLED == 2
-! extend blending elements (resulting alpha can be lower than min threashold)
-CALL FV_ExtendAlpha(FV_alpha)
-#endif /*FV_ENABLED == 2*/
 
 END SUBROUTINE CalcIndicator
 
@@ -793,7 +797,7 @@ USE MOD_PreProc
 #if FV_ENABLED == 1
 USE MOD_Indicator_Vars,  ONLY: IndValue
 #else
-USE MOD_FV_Vars,         ONLY: FV_alpha
+USE MOD_FV_Vars,         ONLY: FV_alpha,FV_alpha_max
 #endif
 USE MOD_Indicator_Vars,  ONLY: FVBoundaries,FVBoundaryType
 USE MOD_Equation_Vars,   ONLY: nBCByType,BCSideID
@@ -820,8 +824,10 @@ IF (FVBoundaries) THEN
         ElemID = SideToElem(S2E_ELEM_ID,SideID)
 #if FV_ENABLED == 1
         IndValue(ElemID) = 100.E3
-#else
-        FV_alpha(ElemID) = 1.
+#elif FV_ENABLED == 2
+        FV_alpha(ElemID) = FV_alpha_max
+#elif FV_ENABLED == 3
+        FV_alpha(:,:,:,:,ElemID) = FV_alpha_max
 #endif
       END DO !iSide
     ENDIF

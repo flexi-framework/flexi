@@ -102,7 +102,7 @@ CALL prms%CreateLogicalOption('FV_toDGinRK'          ,"Allow switching of FV ele
 CALL prms%CreateRealOption(   'FV_alpha_min'          ,"Lower bound for alpha (all elements below threshold are treated as pure DG)"&
                                                       ,'0.01')
 CALL prms%CreateRealOption(   'FV_alpha_max'          ,"Maximum value for alpha",'0.5' )
-CALL prms%CreateRealOption(   'FV_alpha_fix'          , "Specify a fixed Blending factor for IndicatorType blend.", '0.0')
+CALL prms%CreateRealOption(   'FV_alpha_fix'          ,"Specify a fixed Blending factor for IndicatorType blend.", '0.0')
 CALL prms%CreateRealOption(   'FV_alpha_ExtScale'     ,"Scaling factor for elpha if extended into neighboring elements",'0.5' )
 CALL prms%CreateIntOption(    'FV_nExtendAlpha'       ,"Number of times alpha should be passed to neighbor elements per timestep",&
                                                        '1' )
