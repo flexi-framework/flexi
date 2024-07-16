@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -48,6 +48,7 @@ INTEGER             :: NState                    !< Polynomial degree of old sta
 INTEGER             :: NNew                      !< Polynomial degree of new state (=NState, if not specified otherwise)
 INTEGER             :: NInter                    !< Polynomial degree for interpolation on new mesh (=NState, if not specified otherwise)
 CHARACTER(LEN=255)  :: NodeTypeState             !< NodeType of the old state (Gauss/Gauss-Lobatto)
+CHARACTER(LEN=255)  :: NodeTypeOut               !< NodeType of the output state (Gauss/Gauss-Lobatto)
 LOGICAL             :: useCurvedsOld             !< Should the old mesh use a curved mesh representation?
 LOGICAL             :: useCurvedsNew             !< Should the new mesh use a curved mesh representation?
 REAL,ALLOCATABLE    :: RefState(:)               !< Optional reference state used for points that can not be fond

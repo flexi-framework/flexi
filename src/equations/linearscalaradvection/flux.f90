@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -32,19 +32,22 @@ INTERFACE EvalFlux3D
 END INTERFACE
 
 #if PARABOLIC
-INTERFACE EvalDiffFlux2D
-  MODULE PROCEDURE EvalDiffFlux2D_overwrite
-  MODULE PROCEDURE EvalDiffFlux2D
-END INTERFACE
 INTERFACE EvalDiffFlux3D
+  MODULE PROCEDURE EvalDiffFlux2D_overwrite
+  MODULE PROCEDURE EvalDiffFlux2D_Side
+  MODULE PROCEDURE EvalDiffFlux2D_Point
   MODULE PROCEDURE EvalDiffFlux3D
   MODULE PROCEDURE EvalDiffFlux3D_overwrite
+#if FV_ENABLED
+  MODULE PROCEDURE EvalDiffFlux3D_Volume_FV
+#endif /*FV_ENABLED*/
 END INTERFACE
-PUBLIC::EvalDiffFlux2D
-PUBLIC::EvalDiffFlux3D
 #endif
 
 PUBLIC::EvalFlux3D
+#if PARABOLIC
+PUBLIC::EvalDiffFlux3D
+#endif
 !==================================================================================================================================
 
 CONTAINS
@@ -80,7 +83,37 @@ END SUBROUTINE EvalFlux3D
 !> Compute diffusive fluxes with diffusion coefficient DiffC using the conservative variables for a single side with a
 !> variable polynomial degree.
 !==================================================================================================================================
-SUBROUTINE EvalDiffFlux2D(Nloc,f,g,h,U_Face,gradUx_Face,gradUy_Face,gradUz_Face)
+SUBROUTINE EvalDiffFlux2D_Point(f,g,h,U_Face,gradUx_Face,gradUy_Face,gradUz_Face)
+! MODULES
+USE MOD_PreProc
+USE MOD_Equation_Vars,ONLY:DiffC
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,DIMENSION(PP_nVarPrim   ),INTENT(IN)  :: U_Face        !< Solution
+REAL,DIMENSION(PP_nVarLifting),INTENT(IN)  :: gradUx_Face   !< Gradient in x-direction
+REAL,DIMENSION(PP_nVarLifting),INTENT(IN)  :: gradUy_Face   !< Gradient in y-direction
+REAL,DIMENSION(PP_nVarLifting),INTENT(IN)  :: gradUz_Face   !< Gradient in z-direction
+REAL,DIMENSION(PP_nVar       ),INTENT(OUT) :: f             !< Cartesian fluxes (iVar,i,j)
+REAL,DIMENSION(PP_nVar       ),INTENT(OUT) :: g             !< Cartesian fluxes (iVar,i,j)
+REAL,DIMENSION(PP_nVar       ),INTENT(OUT) :: h             !< Cartesian fluxes (iVar,i,j)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+f = -DiffC*gradUx_Face
+g = -DiffC*gradUy_Face
+#if PP_dim==3
+h = -DiffC*gradUz_Face
+#else
+h = 0.
+#endif
+END SUBROUTINE EvalDiffFlux2D_Point
+
+!==================================================================================================================================
+!> Compute diffusive fluxes with diffusion coefficient DiffC using the conservative variables for a single side with a
+!> variable polynomial degree.
+!==================================================================================================================================
+SUBROUTINE EvalDiffFlux2D_Side(Nloc,f,g,h,U_Face,gradUx_Face,gradUy_Face,gradUz_Face)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Equation_Vars,ONLY:DiffC
@@ -105,7 +138,7 @@ h = -DiffC*gradUz_Face
 #else
 h = 0.
 #endif
-END SUBROUTINE EvalDiffFlux2D
+END SUBROUTINE EvalDiffFlux2D_Side
 
 !==================================================================================================================================
 !> Compute diffusive fluxes with diffusion coefficient DiffC using the conservative variables for a single side, input will
@@ -191,6 +224,40 @@ gradUz = -DiffC*gradUz(:,:,:,:)
 gradUz = 0.
 #endif
 END SUBROUTINE EvalDiffFlux3D_overwrite
+
+#if FV_ENABLED
+!==================================================================================================================================
+!> Wrapper routine to compute the diffusive part of the Navier-Stokes fluxes for a single volume cell
+!==================================================================================================================================
+SUBROUTINE EvalDiffFlux3D_Volume_FV(UPrim,gradUx,gradUy,gradUz,f,g,h,iElem,PP_N_xi,PP_N_eta,PP_N_zeta)
+! MODULES
+USE MOD_PreProc
+USE MOD_Equation_Vars,ONLY:DiffC
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+REAL,DIMENSION(PP_nVar,0:PP_N_xi,0:PP_N_eta,0:PP_N_zeta),INTENT(IN)  :: UPrim                !< Solution vector
+!> Gradients in x,y,z directions
+REAL,DIMENSION(PP_nVar,0:PP_N_xi,0:PP_N_eta,0:PP_N_zeta),INTENT(IN)  :: gradUx,gradUy,gradUz
+!> Physical fluxes in x,y,z directions
+REAL,DIMENSION(PP_nVar,0:PP_N_xi,0:PP_N_eta,0:PP_N_zeta),INTENT(OUT) :: f,g,h
+INTEGER,INTENT(IN)                                                   :: iElem                !< element index in global array
+INTEGER,INTENT(IN)                                                   :: PP_N_xi
+INTEGER,INTENT(IN)                                                   :: PP_N_eta
+INTEGER,INTENT(IN)                                                   :: PP_N_zeta
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+f = -DiffC*gradUx(:,:,:,:)
+g = -DiffC*gradUy(:,:,:,:)
+#if PP_dim==3
+h = -DiffC*gradUz(:,:,:,:)
+#else
+h = 0.
+#endif
+END SUBROUTINE EvalDiffFlux3D_Volume_FV
+#endif /*FV_ENABLED*/
+
 #endif /*PARABOLIC*/
 
 END MODULE MOD_Flux

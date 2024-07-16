@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -60,6 +60,7 @@ CONTAINS
 SUBROUTINE DefineParametersRestart()
 ! MODULES
 USE MOD_ReadInTools ,ONLY: prms
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Restart")
@@ -68,6 +69,8 @@ CALL prms%CreateLogicalOption('ResetTime', "Override solution time to t=0 on res
 CALL prms%CreateIntOption(    'NFVRestartSuper', "Polynomial degree for equidistant supersampling of FV subcells when restarting&
                                                   &on a different polynomial degree. Default 2*MAX(N,NRestart).")
 #endif
+CALL prms%CreateLogicalOption('FlushInitialState',"Check whether (during restart) the statefile from which the restart is performed&
+                                                  &should be deleted.", '.FALSE.')
 END SUBROUTINE DefineParametersRestart
 
 
@@ -93,6 +96,7 @@ USE MOD_Restart_Vars
 USE MOD_StringTools        ,ONLY: INTTOSTR
 USE MOD_ReadInTools        ,ONLY: GETINT
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -103,6 +107,7 @@ LOGICAL            :: validHDF5
 LOGICAl            :: RestartMean,VarNamesExist
 INTEGER            :: iVar
 CHARACTER(LEN=255),ALLOCATABLE  :: VarNames_tmp(:)
+REAL                            :: StartT,EndT
 !==================================================================================================================================
 RestartFile = RestartFile_in
 
@@ -112,6 +117,8 @@ IF (LEN_TRIM(RestartFile).LE.0) RETURN
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' CHECK RESTART FILE...'
 SWRITE(UNIT_stdOut,'(A,A,A)')' | Checking restart from file "',TRIM(RestartFile),'":'
+GETTIME(StartT)
+
 ! Check if restart file is a valid state. This routine requires the file to be closed.
 validHDF5 = ISVALIDHDF5FILE(RestartFile)
 IF(.NOT.validHDF5) &
@@ -185,7 +192,8 @@ END IF
 
 CALL CloseDataFile()
 
-SWRITE(UNIT_stdOut,'(A)') ' CHECK RESTART FILE DONE'
+GETTIME(EndT)
+SWRITE(UNIT_stdOut,'(A,F0.3,A)') ' CHECK RESTART FILE DONE! [',EndT-StartT,'s]'
 SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitRestartFile
@@ -209,33 +217,36 @@ SUBROUTINE InitRestart(RestartFile_in)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_HDF5_Input,         ONLY: ISVALIDHDF5FILE,GetVarNames,DatasetExists
+USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadAttribute,File_ID
+USE MOD_Interpolation_Vars, ONLY: InterpolationInitIsDone,NodeType
+USE MOD_Mesh_Vars,          ONLY: nGlobalElems,NGeo
+USE MOD_ReadInTools,        ONLY: GETLOGICAL,GETREAL!,ExtractParameterFile,CompareParameterFile
 USE MOD_Restart_Vars
 #if FV_ENABLED
-USE MOD_StringTools,        ONLY: INTTOSTR
 USE MOD_ReadInTools,        ONLY: GETINT
-#endif
-USE MOD_HDF5_Input,         ONLY: ISVALIDHDF5FILE,GetVarNames,DatasetExists
-USE MOD_Interpolation_Vars, ONLY: InterpolationInitIsDone,NodeType
-USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadAttribute,File_ID
-USE MOD_ReadInTools,        ONLY: GETLOGICAL,GETREAL
-USE MOD_Mesh_Vars,          ONLY: nGlobalElems,NGeo
+USE MOD_StringTools,        ONLY: INTTOSTR
+#endif /*FV_ENABLED*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN) :: RestartFile_in !< state file to restart from
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-LOGICAL            :: ResetTime,validHDF5
+LOGICAL            :: ResetTime,validHDF5!,prmChanged,userblockFound
+REAL               :: StartT,EndT
+! CHARACTER(LEN=255) :: ParameterFileOld
 !==================================================================================================================================
-IF((.NOT.InterpolationInitIsDone).OR.RestartInitIsDone)THEN
+IF(.NOT.InterpolationInitIsDone .OR. RestartInitIsDone) &
   CALL CollectiveStop(__STAMP__,'InitRestart not ready to be called or already called.')
-END IF
 
 ! If not done previously, check the restart file
 IF (RestartMode.EQ.-1) CALL InitRestartFile(RestartFile_in)
 
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT RESTART...'
+GETTIME(StartT)
 
 ! Check if we want to perform a restart
 IF (LEN_TRIM(RestartFile).GT.0) THEN
@@ -254,8 +265,27 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
   CALL ReadAttribute(File_ID,'Time',1,RealScalar=RestartTime)
   ! Option to set the calculation time to 0 even tho performing a restart
   ResetTime = GETLOGICAL('ResetTime')
-  IF(ResetTime) RestartTime=0.
+  IF (postiMode) ResetTime = .FALSE.
+  IF (ResetTime) RestartTime = 0.
   CALL CloseDataFile()
+
+  ! ! Ensure this is not the same run starting over with ResetTime=T
+  ! IF (ResetTime) THEN
+  !   IF (.NOT.GETLOGICAL('ResetTimeOverride')) THEN
+  !     ! Extract the old parameter file
+  !     IF (MPIRoot) THEN
+  !       ParameterFileOld = ".flexi.old.ini"
+  !       CALL ExtractParameterFile(RestartFile,ParameterFileOld,userblockFound)
+  !
+  !       ! Compare it against the current file
+  !       IF (userblockFound) THEN
+  !         CALL CompareParameterFile(ParameterFile,ParameterFileOld,prmChanged)
+  !         IF (.NOT.prmChanged) &
+  !           CALL Abort(__STAMP__,'Running simulation with ResetTime=T, same parameter file and ResetTimeOverride=F!')
+  !       END IF ! userblockFound
+  !     END IF ! MPIRoot
+  !   END IF ! .NOT.ResetTimeOverride
+  ! END IF ! ResetTime
 
   ! Check if number of elements match
   IF (nElems_Restart.NE.nGlobalElems) THEN
@@ -279,8 +309,13 @@ ELSE
   InterpolateSolution=.FALSE.
 END IF
 
+! Check whether (during restart) the statefile from which the restart is performed should be deleted
+FlushInitialState = GETLOGICAL('FlushInitialState')
+
+RestartWallTime   = FLEXITIME()
 RestartInitIsDone = .TRUE.
-SWRITE(UNIT_stdOut,'(A)')' INIT RESTART DONE!'
+GETTIME(EndT)
+SWRITE(UNIT_stdOut,'(A,F0.3,A)')' INIT RESTART DONE! [',EndT-StartT,'s]'
 SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitRestart
@@ -331,6 +366,7 @@ USE MOD_2D,                 ONLY: ExpandArrayTo3D
 #else
 USE MOD_2D,                 ONLY: to2D_rank5
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -352,13 +388,18 @@ INTEGER             :: nVal(15)
 REAL,ALLOCATABLE    :: ElemData(:,:),tmp(:)
 CHARACTER(LEN=255),ALLOCATABLE :: VarNamesElemData(:)
 #endif /*FV_ENABLED==1*/
+! Timers
+REAL                            :: StartT,EndT
 !==================================================================================================================================
 
-doFlushFiles_loc = MERGE(doFlushFiles,.TRUE.,PRESENT(doFlushFiles))
+IF (PRESENT(doFlushFiles)) THEN; doFlushFiles_loc = doFlushFiles
+ELSE                           ; doFlushFiles_loc = .TRUE.
+END IF
 
 IF (DoRestart) THEN
   SWRITE(UNIT_stdOut,'(132("-"))')
   SWRITE(UNIT_stdOut,'(A)') ' PERFORMING RESTART...'
+  GETTIME(StartT)
 
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 #if FV_ENABLED == 1
@@ -403,6 +444,7 @@ IF (DoRestart) THEN
   HSize_proc(5) = nElems
   ! Allocate array to hold the restart data
   ALLOCATE(U_local(nVar_Restart,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
+  DEALLOCATE(HSize)
   ! Mean files only have a dummy DG_Solution, we have to pick the "Mean" array in this case
   IF (RestartMode.GT.1) THEN
     CALL ReadArray('Mean'       ,5,HSize_proc,OffsetElem,5,RealArray=U_local)
@@ -442,10 +484,7 @@ IF (DoRestart) THEN
 
   ! Write truncated array back to U_local
   IF (ALLOCATED(U_localNVar)) THEN
-    DEALLOCATE(U_local)
-    ALLOCATE(U_local(PP_nVar,0:HSize_proc(2)-1,0:HSize_proc(3)-1,0:HSize_proc(4)-1,nElems))
-    U_local = U_localNVar
-    DEALLOCATE(U_localNVar)
+    CALL MOVE_ALLOC(U_localNVar,U_local)
   END IF
 
   ! Read in state
@@ -486,17 +525,15 @@ IF (DoRestart) THEN
       ALLOCATE(U_local2(PP_nVar,0:N_Restart,0:N_Restart,0:N_Restart,nElems))
       CALL ExpandArrayTo3D(5,HSize_proc,4,N_Restart,U_local,U_local2)
       ! Reallocate 'U_local' to 3D and mv data from U_local2 to U_local
-      DEALLOCATE(U_local)
-      ALLOCATE(U_local(PP_nVar,0:N_Restart,0:N_Restart,0:N_Restart,nElems))
-      U_local = U_local2
-      DEALLOCATE(U_local2)
+      CALL MOVE_ALLOC(U_local2,U_local)
     END IF
 #else
     IF (HSize_proc(4).NE.1) THEN
       ! FLEXI compiled 2D, but data is 3D => reduce third space dimension
       CALL to2D_rank5((/1,0,0,0,1/),(/PP_nVar,N_Restart,N_Restart,N_Restart,nElems/),4,U_local)
     END IF
-#endif
+#endif /*PP_dim == 3*/
+
     ! Transform solution to refspace and project solution to N
     ! For conservativity deg of detJac should be identical to EFFECTIVE polynomial deg of solution
     ! (e.g. beware when filtering the jacobian )
@@ -528,11 +565,10 @@ IF (DoRestart) THEN
 #endif
         END IF
       END DO
-    END IF
+    END IF ! N_Restart.GT.PP_N
 
     DEALLOCATE(U_local)
-  END IF
-  DEALLOCATE(HSize)
+  END IF ! InterpolateSolution
   CALL CloseDataFile()
 
   IF (RestartMode.GT.1) THEN
@@ -543,6 +579,9 @@ IF (DoRestart) THEN
 
   ! Delete all files that will be rewritten
   IF (doFlushFiles_loc) CALL FlushFiles(RestartTime)
+  GETTIME(EndT)
+  SWRITE(UNIT_stdOut,'(A,F0.3,A)')' PERFORMING RESTART DONE! [',EndT-StartT,'s]'
+  SWRITE(UNIT_stdOut,'(132("-"))')
 ELSE
   ! Delete all files since we are doing a fresh start
   IF (doFlushFiles_loc) CALL FlushFiles()
@@ -562,6 +601,7 @@ END SUBROUTINE Restart
 SUBROUTINE SupersampleFVCell(UOld,UNew,NOld,NNew,NSuper)
 ! MODULES
 USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -610,6 +650,7 @@ END SUBROUTINE SupersampleFVCell
 SUBROUTINE FinalizeRestart()
 ! MODULES
 USE MOD_Restart_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 RestartMode       = -1

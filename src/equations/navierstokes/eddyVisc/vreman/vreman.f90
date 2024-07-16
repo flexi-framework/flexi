@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -93,12 +93,12 @@ SWRITE(UNIT_stdOut,'(A)')' INIT VREMAN DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitVreman
 
+
 !===================================================================================================================================
 !> Compute Vreman Eddy-Visosity
 !===================================================================================================================================
 PPURE SUBROUTINE Vreman_Point(gradUx,gradUy,gradUz,dens,CSdeltaS2,muSGS)
 ! MODULES
-USE MOD_EddyVisc_Vars,     ONLY:CS
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -136,6 +136,7 @@ ELSE
 END IF
 END SUBROUTINE Vreman_Point
 
+
 !===================================================================================================================================
 !> Compute Vreman Eddy-Visosity for the volume
 !===================================================================================================================================
@@ -161,6 +162,7 @@ DO iElem = 1,nElems
 END DO
 END SUBROUTINE Vreman_Volume
 
+
 !===============================================================================================================================
 !> Deallocate arrays and finalize variables used by Vreman SGS model
 !===============================================================================================================================
@@ -173,7 +175,9 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===============================================================================================================================
+SDEALLOCATE(CSdeltaS2)
 VremanInitIsDone = .FALSE.
+
 END SUBROUTINE FinalizeVreman
 
 END MODULE MOD_Vreman

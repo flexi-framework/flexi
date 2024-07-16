@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -222,6 +222,7 @@ END DO
 
 ! Read FV position and weights or fill with dummy
 #if FV_ENABLED
+CALL OpenDataFile(InputFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 ALLOCATE(FV_X(0:PP_N))
 ALLOCATE(FV_w(0:PP_N))
 CALL DatasetExists(File_ID,'FV_X',FV_exists,attrib=.TRUE.)
@@ -232,6 +233,7 @@ ELSE
   FV_X = 0.
   FV_w = 0.
 END IF
+CALL CloseDataFile()
 #endif
 
 ! Start the averaging

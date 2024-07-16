@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -30,7 +30,7 @@ REAL                 :: tWriteData                        !< actual time at whic
 ! precomputed variables
 #if FV_ENABLED == 1
 INTEGER(KIND=8)      :: totalFV_nElems=0                  !< total number of FV elements in domain
-#elif FV_ENABLED == 2
+#elif FV_ENABLED == 2 || FV_ENABLED == 3
 REAL                 :: FV_totalAlpha=0.                  !< average of blending coefficient in domain
 #endif
 #if PP_LIMITER
@@ -68,6 +68,10 @@ INTEGER              :: AnalyzeExactFunc                  !< Exact function used
 INTEGER              :: AnalyzeRefState                   !< State used for analyze routines
 REAL,ALLOCATABLE     :: wGPVolAnalyze(:,:,:)              !< product of GL integration weights used for analyze routines
 REAL,ALLOCATABLE     :: Vdm_GaussN_NAnalyze(:,:)          !< Vandermonde for interpolating the solution to analyze points
+
+#if FV_ENABLED
+REAL,ALLOCATABLE     :: FV_Vdm_NAnalyze(:,:)              !< Vandermonde for interpolating the solution to analyze points
+#endif
 
 CHARACTER(LEN=255)   :: Filename_ErrNorm                  !< filename into which error norms are written
 

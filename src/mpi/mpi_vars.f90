@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -28,6 +28,10 @@ INTEGER,ALLOCATABLE :: MPIRequest_Flux(:,:)     !< communication handle for the 
 #if FV_ENABLED
 INTEGER,ALLOCATABLE :: MPIRequest_FV_Elems(:,:) !< communication handle for the FV_Elems array
 INTEGER,ALLOCATABLE :: MPIRequest_FV_gradU(:,:) !< communication handle for the slopes of the FV reconstruction
+#if ((FV_ENABLED == 2) && (PP_NodeType == 1))
+INTEGER,ALLOCATABLE :: MPIRequest_FV_U(:,:)     !< communication handle for the surface solution (pureFV)
+INTEGER,ALLOCATABLE :: MPIRequest_FV_Flux(:,:)  !< communication handle for the surface flux     (pureFV)
+#endif
 #if FV_RECONSTRUCT
 INTEGER,ALLOCATABLE :: MPIRequest_Rec_SM(:,:)   !< communication handle for extended primitive solution for preconditioner
 INTEGER,ALLOCATABLE :: MPIRequest_Rec_MS(:,:)   !< communication handle for extended primitive solution for preconditioner

@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -47,7 +47,7 @@ PUBLIC::InitJac_Ex,Jac_Ex,FinalizeJac_Ex
 CONTAINS
 
 !===================================================================================================================================
-!> Inititializes the variables required for the analytical block-Jacobi preconditioner 
+!> Inititializes the variables required for the analytical block-Jacobi preconditioner
 !===================================================================================================================================
 SUBROUTINE InitJac_Ex()
 ! MODULES
@@ -71,7 +71,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER :: i,j
 #if PARABOLIC
 INTEGER :: iLocSide
@@ -86,7 +86,7 @@ DO j=0,PP_N
     LL_minus(i,j) = L_Hatminus(i)*L_minus(j)
     LL_plus(i,j)  = L_Hatplus(i) *L_plus(j)
   END DO
-END DO 
+END DO
 
 #if PARABOLIC
 ALLOCATE(L_mp(0:PP_N,6))
@@ -94,7 +94,7 @@ ALLOCATE(L_mp(0:PP_N,6))
 DO iLocSide=1,6
 #else
 DO iLocSide=2,5
-#endif 
+#endif
   SELECT CASE(iLocSide)
   CASE(XI_MINUS,ETA_MINUS,ZETA_MINUS)
     DO i=0,PP_N
@@ -133,9 +133,9 @@ END SUBROUTINE InitJac_Ex
 
 !===================================================================================================================================
 !> Main routine to compute the analytical Jacobi. Calls the corresponding volume and surface routines and applies the Jacobian of
-!> the mapping at the end. 
+!> the mapping at the end.
 !>
-!> The Jacobian stores the derivative of the DG operator at each point of an element w.r.t. each DOF in that element 
+!> The Jacobian stores the derivative of the DG operator at each point of an element w.r.t. each DOF in that element
 !> => size[PP_nVar*(N+1)^dim,PP_nVar*(N+1)^dim]. So we need to map the volume indizes to one-dimensional indizes for storage.
 !> The map is as follows: ind = iVar+(PP_nVar*i)+(PP_nVar*(N+1)*j)+(PP_nVar*(N+1)**2*k) for DOF(iVar,i,j,k).
 !===================================================================================================================================
@@ -164,12 +164,12 @@ IMPLICIT NONE
 ! INPUT VARIABLES
 REAL,INTENT(IN)    :: t                                         !< current simulation time
 INTEGER,INTENT(IN) :: iElem                                     !< index of current element
-LOGICAL,INTENT(IN) :: dovol, dosurf                             !< logicals indicating to do derivative of volume/surface-integral 
+LOGICAL,INTENT(IN) :: dovol, dosurf                             !< logicals indicating to do derivative of volume/surface-integral
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT) :: BJ(1:nDOFVarElem,1:nDOFVarElem)             !< block-Jacobian of current element
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER            :: FVEM
 !===================================================================================================================================
 #if FV_ENABLED
@@ -181,7 +181,7 @@ FVEM = 0
 IF (.NOT.(HyperbolicPrecond)) THEN
   IF(FVEM.EQ.0) CALL FillJacLiftingFlux(t,iElem)
 END IF
-#endif /*PARABOLIC*/
+#endif /*PARABOLIC */
 IF(doVol)THEN
   IF(FVEM.EQ.0)THEN
     CALL DGVolIntJac(BJ,iElem) !without sJ!      !d(F^a+F^v)/dU partial
@@ -200,10 +200,10 @@ IF(doVol)THEN
 #endif
     END IF
   END IF
-#endif /*PARABOLIC*/
+#endif /*PARABOLIC */
 END IF!doVol
 IF(doSurf) THEN
-  CALL JacSurfInt(t,BJ,iElem) 
+  CALL JacSurfInt(t,BJ,iElem)
 END IF
 CALL Apply_sJ(BJ,iElem)
 
@@ -230,7 +230,7 @@ INTEGER,INTENT(IN) :: iElem
 ! OUTPUT VARIABLES
 REAL,INTENT(INOUT) :: BJ(nDOFVarElem,nDOFVarElem)
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER :: r,s,i,j,k
 INTEGER :: FVEM
 !===================================================================================================================================
@@ -266,7 +266,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 !===================================================================================================================================
 SDEALLOCATE(LL_minus)
 SDEALLOCATE(LL_plus)
@@ -276,7 +276,7 @@ SDEALLOCATE(R_Minus)
 SDEALLOCATE(R_Plus)
 SDEALLOCATE(JacLiftingFlux)
 #endif /*PARABOLIC*/
-#if FV_ENABLED && FV_RECONSTRUCT
+#if FV_RECONSTRUCT
 SDEALLOCATE(UPrim_extended)
 SDEALLOCATE(FV_sdx_XI_extended)
 SDEALLOCATE(FV_sdx_ETA_extended)

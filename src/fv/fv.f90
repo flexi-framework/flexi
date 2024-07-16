@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -40,6 +40,14 @@ INTERFACE FV_DGtoFV
   MODULE PROCEDURE FV_DGtoFV
 END INTERFACE
 
+INTERFACE FV_PrimToCons
+  MODULE PROCEDURE FV_PrimToCons
+END INTERFACE
+
+INTERFACE FV_ConsToPrim
+  MODULE PROCEDURE FV_ConsToPrim
+END INTERFACE
+
 INTERFACE FinalizeFV
   MODULE PROCEDURE FinalizeFV
 END INTERFACE
@@ -47,6 +55,8 @@ END INTERFACE
 PUBLIC::DefineParametersFV
 PUBLIC::InitFV
 PUBLIC::FV_DGtoFV
+PUBLIC::FV_PrimToCons
+PUBLIC::FV_ConsToPrim
 PUBLIC::FinalizeFV
 !==================================================================================================================================
 
@@ -118,7 +128,10 @@ USE MOD_FV_Basis
 USE MOD_Filter_Vars         ,ONLY: NFilter
 USE MOD_Indicator_Vars      ,ONLY: nModes,IndicatorType
 USE MOD_Overintegration_Vars,ONLY: NUnder
-#endif
+#endif /*FV_ENABLED == 1*/
+#if FV_ENABLED == 3
+USE MOD_IO_HDF5             ,ONLY: AddToFieldData,FieldOut
+#endif /*FV_ENABLED == 3*/
 USE MOD_IO_HDF5             ,ONLY: AddToElemData,ElementOut
 USE MOD_Mesh_Vars           ,ONLY: nElems,nSides
 USE MOD_ReadInTools
@@ -131,6 +144,8 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER            :: i
+INTEGER            :: nModes_In
 !==================================================================================================================================
 IF(.NOT.FVInitBasisIsDone)THEN
    CALL CollectiveStop(__STAMP__,&
@@ -152,11 +167,17 @@ FV_IndUpperThreshold = GETREAL('FV_IndUpperThreshold')
 FV_toDG_indicator = GETLOGICAL('FV_toDG_indicator')
 IF (FV_toDG_indicator) THEN
   FV_toDG_limit = GETREAL('FV_toDG_limit')
-  ! If the main indicator is not already the persson indicator, then we need to read in the parameters
+  ! If the main indicator is not already the Persson indicator, then we need to read in the parameters
   IF (IndicatorType .NE. 2) THEN
-    nModes = GETINT('nModes')
-    nModes = MAX(1,MIN(PP_N-1,nModes+PP_N-MIN(NUnder,NFilter)))
-    SWRITE(UNIT_stdOut,'(A,I0)') ' | nModes = ', nModes
+    ! number of modes to be checked by Persson indicator
+    nModes_In = GETINT('nModes')
+    ! For overintegration, the last PP_N-Nunder modes are empty. Add them to nModes, so we check non-empty ones
+    nModes_In = nModes_In+PP_N-MIN(NUnder,NFilter)
+    ! Safety checks: At least one mode must be left and only values >0 make sense
+    nModes = MAX(1,MIN(PP_N-1,nModes_In))
+    IF (nModes.NE.nModes_In) THEN
+      SWRITE(UNIT_stdOut,'(A,I0)') 'WARNING: nModes set by user not within range [1,PP_N-1]. Was instead set to nModes=', nModes
+    END IF
   END IF
 END IF
 
@@ -183,7 +204,50 @@ ENDIF
 ALLOCATE(FV_alpha(1:nElems))
 ALLOCATE(FV_alpha_master(nSides))
 ALLOCATE(FV_alpha_slave( nSides))
+FV_alpha = 0.
 CALL AddToElemData(ElementOut,'FV_alpha',FV_alpha)
+
+#if PP_NodeType == 1
+ALLOCATE(FV_U_master(PP_nVar,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(FV_U_slave( PP_nVar,0:PP_N,0:PP_NZ,1:nSides))
+FV_U_master=0.
+FV_U_slave=0.
+
+! Repeat the U, U_Minus, U_Plus structure for the primitive quantities
+ALLOCATE(FV_UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(FV_UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides))
+FV_UPrim_master=0.
+FV_UPrim_slave=0.
+
+! Allocate two fluxes per side (necessary for coupling of FV and DG)
+ALLOCATE(FV_Flux_master(PP_nVar,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(FV_Flux_slave (PP_nVar,0:PP_N,0:PP_NZ,1:nSides))
+FV_Flux_master=0.
+FV_Flux_slave=0.
+#endif
+
+#elif FV_ENABLED == 3
+! Initialize parameters for FV Blending
+FV_alpha_min = GETREAL('FV_alpha_min')
+FV_alpha_max = GETREAL('FV_alpha_max')
+
+FV_dim = 1 !3
+ALLOCATE(FV_int(FV_dim))
+FV_int(:) = 1.
+!DO i = 1,3
+!  FV_int(i) = MERGE(i,1,FV_dim.EQ.3)
+!END DO
+ALLOCATE(FV_alpha(FV_dim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
+ALLOCATE(FV_alpha_master(nSides))
+ALLOCATE(FV_alpha_slave( nSides))
+
+ALLOCATE(Ut_xi(  PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
+ALLOCATE(Ut_eta( PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
+#if PP_dim == 3
+ALLOCATE(Ut_zeta(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
+#endif /*PP_dim == 3*/
+FV_alpha = 0.
+CALL AddToFieldData(FieldOut,(/FV_dim,PP_N+1,PP_N+1,PP_NZ+1,nElems/),'FV_alpha',(/'FV_alpha'/),RealArray=FV_alpha)
 #endif /*FV_ENABLED*/
 
 #if FV_RECONSTRUCT
@@ -251,17 +315,47 @@ gradUxi=0.
 gradUeta=0.
 gradUzeta=0.
 #if PARABOLIC
-! Same as gradUxi/eta/zeta, but instead of a TVD-limiter the mean value of the slopes to the
-! adjacent points is used. These slopes are used to calculate the physical gradients in
-! x-/y-/z-direction, which are required for the parabolic/viscous flux.
+! The gradients for the parabolic fluxes are calculated based on a simplified method of Green's theorem.
+! In each DG element, on each FV subcell face the gradients in x-/y-/z-directions are calculated on the
+! xi-/eta-/zeta-faces of the subcell. The gradient in (physical) x-direction for the eta face is stored
+! in the gradUx_eta array, ...
+ALLOCATE(gradUx_xi (PP_nVarLifting,0:PP_N-1,0:PP_N  ,0:PP_NZ  ,nElems))
+ALLOCATE(gradUx_eta(PP_nVarLifting,0:PP_N  ,0:PP_N-1,0:PP_NZ  ,nElems))
+ALLOCATE(gradUy_xi (PP_nVarLifting,0:PP_N-1,0:PP_N  ,0:PP_NZ  ,nElems))
+ALLOCATE(gradUy_eta(PP_nVarLifting,0:PP_N  ,0:PP_N-1,0:PP_NZ  ,nElems))
+ALLOCATE(gradUz_xi (PP_nVarLifting,0:PP_N-1,0:PP_N  ,0:PP_NZ  ,nElems))
+ALLOCATE(gradUz_eta(PP_nVarLifting,0:PP_N  ,0:PP_N-1,0:PP_NZ  ,nElems))
+gradUx_xi = 0.
+gradUx_eta= 0.
+gradUy_xi = 0.
+gradUy_eta= 0.
+gradUz_xi = 0.
+gradUz_eta= 0.
+#if (PP_dim==3)
+ALLOCATE(gradUx_zeta(PP_nVarLifting,0:PP_N  ,0:PP_N  ,0:PP_NZ-1,nElems))
+ALLOCATE(gradUy_zeta(PP_nVarLifting,0:PP_N  ,0:PP_N  ,0:PP_NZ-1,nElems))
+ALLOCATE(gradUz_zeta(PP_nVarLifting,0:PP_N  ,0:PP_N  ,0:PP_NZ-1,nElems))
+gradUx_zeta= 0.
+gradUy_zeta= 0.
+gradUz_zeta= 0.
+#endif
+! Additionally, central gradients are calculated in each DG element in a similar manner to the
+! reconstruction slopes.
+! These gradients are prolongated to the DG element faces and used for the parabolic flux
 ! Therefore the array size is adjusted to the number of lifting variables instead of the primitives.
-! The gradients in x-/y-/z-direction are stored in the gradUx/y/z arrays of the lifting.
+! calculation across DG element faces. This reduces the communication effort required by
+! Green's method. The gradients in x-/y-/z-direction are stored in the gradUx/y/z arrays of the lifting.
 ALLOCATE(gradUxi_central  (PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 ALLOCATE(gradUeta_central (PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 ALLOCATE(gradUzeta_central(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 gradUxi_central  =0.
 gradUeta_central =0.
 gradUzeta_central=0.
+
+ALLOCATE(FV_surf_gradU_master(PP_nVarLifting,3,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(FV_surf_gradU_slave (PP_nVarLifting,3,0:PP_N,0:PP_NZ,1:nSides))
+FV_surf_gradU_master=0.
+FV_surf_gradU_slave =0.
 #endif /* PARABOLIC */
 #endif /* FV_RECONSTRUCT */
 
@@ -341,6 +435,78 @@ END DO
 END SUBROUTINE FV_DGtoFV
 
 !==================================================================================================================================
+!> Prim to cons for FV
+!==================================================================================================================================
+PPURE SUBROUTINE FV_PrimToCons(nVarPrim,nVar,UPrim_master,UPrim_slave,U_master,U_slave)
+! MODULES
+USE MOD_PreProc
+USE MOD_FV_Vars          ,ONLY: FV_Elems_Sum
+USE MOD_Mesh_Vars        ,ONLY: firstInnerSide,lastMPISide_MINE,nSides
+USE MOD_EOS              ,ONLY: PrimToCons
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: nVarPrim                                       !< number of solution variables
+INTEGER,INTENT(IN) :: nVar                                           !< number of solution variables
+REAL,INTENT(IN)    :: UPrim_master(nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Solution on master side
+REAL,INTENT(IN)    :: UPrim_slave (nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Solution on slave side
+REAL,INTENT(INOUT) :: U_master    (nVar    ,0:PP_N,0:PP_NZ,1:nSides) !< Solution on master side
+REAL,INTENT(INOUT) :: U_slave     (nVar    ,0:PP_N,0:PP_NZ,1:nSides) !< Solution on slave side
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: firstSideID,lastSideID,SideID
+!==================================================================================================================================
+firstSideID = firstInnerSide
+lastSideID  = lastMPISide_MINE
+
+DO SideID=firstSideID,lastSideID
+  IF (FV_Elems_Sum(SideID).EQ.2) THEN
+    CALL PrimToCons(PP_N,UPrim_master(:,:,:,SideID),U_master(:,:,:,SideID))
+  ELSE IF (FV_Elems_Sum(SideID).EQ.1) THEN
+    CALL PrimToCons(PP_N,UPrim_slave(:,:,:,SideID), U_slave(:,:,:,SideID))
+  END IF
+END DO
+
+END SUBROUTINE FV_PrimToCons
+
+!==================================================================================================================================
+!> Cons to prim for FV
+!==================================================================================================================================
+PPURE SUBROUTINE FV_ConsToPrim(nVarPrim,nVar,UPrim_master,UPrim_slave,U_master,U_slave)
+! MODULES
+USE MOD_PreProc
+USE MOD_FV_Vars          ,ONLY: FV_Elems_Sum
+USE MOD_Mesh_Vars        ,ONLY: firstInnerSide,lastMPISide_MINE,nSides
+USE MOD_EOS              ,ONLY: ConsToPrim
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: nVarPrim                                       !< number of solution variables
+INTEGER,INTENT(IN) :: nVar                                           !< number of solution variables
+REAL,INTENT(INOUT) :: UPrim_master(nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Solution on master side
+REAL,INTENT(INOUT) :: UPrim_slave (nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Solution on slave side
+REAL,INTENT(IN)    :: U_master    (nVar    ,0:PP_N,0:PP_NZ,1:nSides) !< Solution on master side
+REAL,INTENT(IN)    :: U_slave     (nVar    ,0:PP_N,0:PP_NZ,1:nSides) !< Solution on slave side
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: firstSideID,lastSideID,SideID
+!==================================================================================================================================
+firstSideID = firstInnerSide
+lastSideID  = lastMPISide_MINE
+
+DO SideID=firstSideID,lastSideID
+  IF (FV_Elems_Sum(SideID).EQ.2) THEN
+    CALL ConsToPrim(PP_N,UPrim_master(:,:,:,SideID),U_master(:,:,:,SideID))
+  ELSE IF (FV_Elems_Sum(SideID).EQ.1) THEN
+    CALL ConsToPrim(PP_N,UPrim_slave(:,:,:,SideID), U_slave(:,:,:,SideID))
+  END IF
+END DO
+
+END SUBROUTINE FV_ConsToPrim
+
+!==================================================================================================================================
 !> Finalizes global variables of the module.
 !> Deallocate allocatable arrays, nullify pointers, set *InitIsDone = .FALSE.
 !==================================================================================================================================
@@ -367,13 +533,43 @@ SDEALLOCATE(gradUzeta)
 SDEALLOCATE(gradUxi_central)
 SDEALLOCATE(gradUeta_central)
 SDEALLOCATE(gradUzeta_central)
+SDEALLOCATE(gradUx_xi  )
+SDEALLOCATE(gradUx_eta )
+SDEALLOCATE(gradUy_xi  )
+SDEALLOCATE(gradUy_eta )
+SDEALLOCATE(gradUz_xi  )
+SDEALLOCATE(gradUz_eta )
+#if (PP_dim==3)
+SDEALLOCATE(gradUx_zeta)
+SDEALLOCATE(gradUy_zeta)
+SDEALLOCATE(gradUz_zeta)
+#endif
+SDEALLOCATE(FV_surf_gradU_master)
+SDEALLOCATE(FV_surf_gradU_slave)
 #endif
 #endif
 #if FV_ENABLED == 2
 SDEALLOCATE(FV_alpha)
 SDEALLOCATE(FV_alpha_slave )
 SDEALLOCATE(FV_alpha_master)
+#if PP_NodeType == 1
+SDEALLOCATE(FV_U_slave )
+SDEALLOCATE(FV_U_master)
+SDEALLOCATE(FV_UPrim_slave )
+SDEALLOCATE(FV_UPrim_master)
+SDEALLOCATE(FV_Flux_slave )
+SDEALLOCATE(FV_Flux_master)
 #endif
+#elif FV_ENABLED == 3
+SDEALLOCATE(FV_alpha)
+SDEALLOCATE(FV_alpha_slave )
+SDEALLOCATE(FV_alpha_master)
+SDEALLOCATE(Ut_xi)
+SDEALLOCATE(Ut_eta)
+#if PP_dim == 3
+SDEALLOCATE(Ut_zeta)
+#endif /*PP_dim == 3*/
+#endif /*FV_ENABLED == 2*/
 
 FVInitIsDone=.FALSE.
 END SUBROUTINE FinalizeFV

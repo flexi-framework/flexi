@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -541,6 +541,15 @@ DO iVar=nVarDep+1,nVarAll
           END DO
           UVisu_DG(:,:,:,:,iVarVisu) = UVisu_DG(:,:,:,:,iVarVisu) / nElems_IJK(3)
           UVisu_FV(:,:,:,:,iVarVisu) = UVisu_FV(:,:,:,:,iVarVisu) / nElems_IJK(3)
+#if USE_MPI
+          IF(MPIRoot)THEN
+            CALL MPI_REDUCE(MPI_IN_PLACE,UVisu_DG(:,:,:,:,iVarVisu),nElemsAvg2D_DG*(NVisu+1)**2,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+            CALL MPI_REDUCE(MPI_IN_PLACE,UVisu_FV(:,:,:,:,iVarVisu),nElemsAvg2D_FV*(NVisu+1)**2,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+          ELSE
+            CALL MPI_REDUCE(UVisu_DG(:,:,:,:,iVarVisu)    ,0       ,nElemsAvg2D_DG*(NVisu+1)**2,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+            CALL MPI_REDUCE(UVisu_FV(:,:,:,:,iVarVisu)    ,0       ,nElemsAvg2D_FV*(NVisu+1)**2,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+          END IF
+#endif /*USE_MPI*/
         ELSE
           ! Simply write the elementwise data to all visu points
           DO iElem_DG=1,nElems_DG

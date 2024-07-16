@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -107,7 +107,7 @@ USE MOD_Mappings,           ONLY:buildMappings
 USE MOD_Prepare_Mesh,       ONLY:exchangeFlip
 #endif
 #if FV_ENABLED
-USE MOD_FV_Metrics,         ONLY:InitFV_Metrics
+USE MOD_FV_Metrics,         ONLY:InitFV_Metrics,FV_CalcMetrics
 #endif
 USE MOD_IO_HDF5,            ONLY:AddToElemData,ElementOut
 #if (PP_dim == 2)
@@ -352,6 +352,7 @@ IF (meshMode.GT.1) THEN
   ALLOCATE(      TangVec2(3,0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
   ALLOCATE(      SurfElem(  0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
   ALLOCATE(     Ja_Face(3,3,0:PP_N,0:PP_NZ,          1:nSides)) ! temp
+  ALLOCATE(    Ja_slave(3,3,0:PP_N,0:PP_NZ,          1:nSides)) ! temp
 
 #if FV_ENABLED
   ! NOTE: initialize with 1 and not with 0
@@ -372,7 +373,8 @@ IF (meshMode.GT.1) THEN
   SWRITE(UNIT_stdOut,'(A)') "NOW CALLING calcMetrics..."
   CALL CalcMetrics()     ! DG metrics
 #if FV_ENABLED
-  CALL InitFV_Metrics()  ! FV metrics
+  CALL InitFV_Metrics()  ! Init FV metrics
+  CALL FV_CalcMetrics()  ! FV metrics
 #endif
   ! debugmesh: param specifies format to output, 0: no output, 1: tecplot ascii, 2: tecplot binary, 3: paraview binary
   CALL WriteDebugMesh(GETINT('debugmesh'))
@@ -394,7 +396,7 @@ IF (meshMode.GT.0) THEN
 END IF
 
 SDEALLOCATE(dXCL_N)
-SDEALLOCATE(Ja_Face)
+!SDEALLOCATE(Ja_Face)
 SDEALLOCATE(TreeCoords)
 SDEALLOCATE(xiMinMax)
 SDEALLOCATE(ElemToTree)
@@ -455,6 +457,9 @@ SDEALLOCATE(NormVec)
 SDEALLOCATE(TangVec1)
 SDEALLOCATE(TangVec2)
 SDEALLOCATE(SurfElem)
+
+SDEALLOCATE(Ja_Face)
+SDEALLOCATE(Ja_slave)
 
 ! ijk sorted mesh
 SDEALLOCATE(Elem_IJK)

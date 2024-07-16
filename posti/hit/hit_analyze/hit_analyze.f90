@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -311,7 +311,7 @@ USE MOD_HIT_Analyze_Vars, ONLY: nVar_HDF5,N_HDF5,nElems_HDF5
 USE MOD_HIT_Analyze_Vars, ONLY: Time_HDF5,NodeType_HDF5,ProjectName_HDF5
 USE MOD_ReadInTools,      ONLY: ExtractParameterFile
 USE MOD_Output_Vars,      ONLY: UserBlockTmpFile,userblock_total_len
-USE MOD_Output,           ONLY: insert_userblock
+USE MOD_Output,           ONLY: print_userblock
 USE MOD_Mesh_Vars,        ONLY: MeshFile
 USE MOD_StringTools,      ONLY: STRICMP,GetFileExtension
 USE ISO_C_BINDING,        ONLY: C_NULL_CHAR
@@ -355,7 +355,7 @@ CALL ReadAttribute(File_ID,'MeshFile',1,StrScalar=MeshFile)
 ! Extract parameter file from userblock (if found)
 CALL ExtractParameterFile(StateFile,TRIM(prmfile),userblockFound)
 ! prepare userblock file
-CALL insert_userblock(TRIM(UserBlockTmpFile)//C_NULL_CHAR,TRIM(prmfile)//C_NULL_CHAR)
+CALL print_userblock(TRIM(UserBlockTmpFile)//C_NULL_CHAR,TRIM(prmfile)//C_NULL_CHAR)
 INQUIRE(FILE=TRIM(UserBlockTmpFile),SIZE=userblock_total_len)
 
 ! Close the data file

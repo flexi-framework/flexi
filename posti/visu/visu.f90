@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -64,7 +64,7 @@ USE MOD_HDF5_Input     ,ONLY: DatasetExists,HSize,nDims,ReadArray
 USE MOD_StringTools    ,ONLY: STRICMP
 USE MOD_Restart        ,ONLY: InitRestartFile
 USE MOD_Restart_Vars   ,ONLY: RestartMode
-USE MOD_Visu_Vars      ,ONLY: FileType,VarNamesHDF5,nBCNamesAll,nVarIni,nVar_State
+USE MOD_Visu_Vars      ,ONLY: FileType,VarNamesHDF5,nBCNamesAll,nVarIni,nVar_State,IJK_exists
 ! IMPLICIT VARIABLE HANDLINGs
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -86,9 +86,24 @@ INTEGER                                             :: Offset=0 ! Every process 
 
 IF (ISVALIDMESHFILE(statefile)) THEN      ! MESH
   SDEALLOCATE(varnames_loc)
-  ALLOCATE(varnames_loc(2))
+
+  ! IJK-sorted mesh
+  CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+  CALL DatasetExists(File_ID,'Elem_IJK',IJK_exists)
+  IF (IJK_exists) THEN
+    ALLOCATE(varnames_loc(5))
+  ELSE
+    ALLOCATE(varnames_loc(2))
+  END IF
+
   varnames_loc(1) = 'ScaledJacobian'
   varnames_loc(2) = 'ScaledJacobianElem'
+  IF (IJK_exists) THEN
+    varnames_loc(3) = 'Elem_I'
+    varnames_loc(4) = 'Elem_J'
+    varnames_loc(5) = 'Elem_K'
+  END IF
+
   FileType='Mesh'
 
 ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
@@ -749,6 +764,7 @@ END SUBROUTINE visu
 SUBROUTINE FinalizeVisu()
 ! MODULES
 USE MOD_Globals
+USE MOD_Globals_Vars         ,ONLY: StartTime
 USE MOD_Commandline_Arguments,ONLY: FinalizeCommandlineArguments
 USE MOD_DG                   ,ONLY: FinalizeDG
 USE MOD_DG_Vars

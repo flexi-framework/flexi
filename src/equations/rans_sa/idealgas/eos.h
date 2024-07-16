@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -56,6 +56,7 @@
 #define TOTALENTHALPY_H(U,p,sRho)      ((U(ENER)+p)*sRho)
 #define ENTROPY_H(U,T)                 (R*(sKappaM1*LOG(T)-LOG(U(DENS))))
 #define TEMPERATURE_H(U)               ((U(ENER)-0.5*DOT_PRODUCT(U(MOMV),U(MOMV))/U(DENS))/(U(DENS)*cv))
+#define ENTROPY_HE(UE)                 R*(sKappaM1*LOG(UE(EXT_TEMP)) - LOG(UE(EXT_DENS)))
 
 ! extended (NOTE: compute from cons. When computing derived (neither prim or cons) variables
 ! assume that both prim and cons vars are filled
