@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -29,13 +30,17 @@ INTEGER                :: IndVar                      !< variable on which indic
 INTEGER                :: nModes                      !< number of modes to check for Persson modal indicator
 REAL,ALLOCATABLE       :: IndValue(:)                 !< indicator output
 REAL                   :: IndStartTime                !< specify starting time of indicator evaluation
-LOGICAL                :: FVBoundaries = .FALSE.      !< specify if fv element is set at boundaries
+LOGICAL                :: FVBoundaries = .FALSE.      !< specify if FV element is set at boundaries
 INTEGER,ALLOCATABLE    :: FVBoundaryType(:)           !< select at which kind of BCs FV elements should be used
-#if FV_ENABLED == 2
+#if FV_ENABLED == 2 || FV_ENABLED == 3
 REAL                   :: T_FV                        !< Threshold for FV blending as function of PP_N
 REAL,PARAMETER         :: s_FV = 9.21024              !< "Sharpness factor" for FV blending function according to
                                                       !< Eq.(45) in: S. Hennemann et al., J.Comp.Phy., 2021
 REAL                   :: sdT_FV                      !< Precomputed variable for FV blending
+#endif
+#if FV_ENABLED == 3
+REAL                   :: SobelFilterMatrix(1:2,1:3,1:3)
+REAL,ALLOCATABLE       :: VdmGaussEqui(:,:)
 #endif
 !==================================================================================================================================
 END MODULE MOD_Indicator_Vars

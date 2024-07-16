@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -55,7 +56,7 @@ END INTERFACE
 INTERFACE WriteParallelVTK
   MODULE PROCEDURE WriteParallelVTK
 END INTERFACE
-#endif
+#endif /*USE_MPI*/
 
 PUBLIC::WriteDataToVTK
 PUBLIC::WriteVTKMultiBlockDataSet
@@ -71,6 +72,7 @@ PUBLIC::CARRAY
 CONTAINS
 
 SUBROUTINE CreateConnectivity(NVisu,nElems,nodeids,dim,DGFV,HighOrder)
+! MODULES
 USE ISO_C_BINDING
 USE MOD_Globals
 ! IMPLICIT VARIABLE HANDLING
@@ -369,7 +371,7 @@ SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO') " WRITE ",dim,"D DATA TO VTX XML BIN
 CALL MPI_GATHER(nElems,1,MPI_INTEGER,nElems_glob,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
 #else
 nElems_glob(0) = nElems
-#endif
+#endif /*USE_MPI*/
 IF(.NOT.PostiParallel_loc)THEN
   nTotalElems = SUM(nElems_glob)
 ELSE
@@ -463,7 +465,7 @@ IF(.NOT.PostiParallel_loc)THEN
     ALLOCATE(buf(   0:NVisu,0:NVisu_j,0:NVisu_k,nElemsMax))
   END IF
 END IF
-#endif
+#endif /*USE_MPI*/
 
 ! Write binary raw data into append section
 ! Solution data
@@ -513,7 +515,7 @@ IF(.NOT.PostiParallel_loc)THEN
     ALLOCATE(buf2(3,0:NVisu,0:NVisu_j,0:NVisu_k,nElemsMax))
   END IF
 END IF
-#endif
+#endif /*USE_MPI*/
 
 ! Coordinates
 IF(.NOT.PostiParallel_loc)THEN
@@ -545,7 +547,7 @@ END IF
 IF(MPIRoot.AND..NOT.PostiParallel_loc)THEN
   SDEALLOCATE(buf2)
 END IF
-#endif
+#endif /*USE_MPI*/
 
 ! Connectivity and footer
 IF((.NOT.PostiParallel_loc.AND.MPIRoot).OR.PostiParallel_loc)THEN

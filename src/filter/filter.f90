@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -33,11 +34,6 @@ END INTERFACE
 PROCEDURE(FilterInt),POINTER :: Filter_pointer     !< Point to the filter routine to be used
 
 !----------------------------------------------------------------------------------------------------------------------------------
-
-INTEGER,PARAMETER      :: FILTERTYPE_NONE   = 0
-INTEGER,PARAMETER      :: FILTERTYPE_CUTOFF = 1
-INTEGER,PARAMETER      :: FILTERTYPE_MODAL  = 2
-INTEGER,PARAMETER      :: FILTERTYPE_LAF    = 3
 
 INTERFACE InitFilter
   MODULE PROCEDURE InitFilter
@@ -111,6 +107,7 @@ USE MOD_Mesh_Vars         ,ONLY:nElems,sJ
 #if PP_LIMITER
 USE MOD_PPLimiter         ,ONLY: InitPPLimiter
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -126,8 +123,16 @@ IF(FilterInitIsDone.OR.(.NOT.InterpolationInitIsDone))THEN
    CALL CollectiveStop(__STAMP__,'InitFilter not ready to be called or already called.')
    RETURN
 END IF
+
+! Filter always disabled in postiMode
+IF (postiMode) THEN
+  FilterType = FILTERTYPE_NONE
+  RETURN
+END IF
+
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT FILTER...'
+
 
 FilterType = GETINTFROMSTR('FilterType')
 
@@ -181,9 +186,9 @@ IF(FilterType.GT.0) THEN
         END DO ! j
       END DO ! k
       IntegrationWeight(:,:,:,iElem,0) = IntegrationWeight(:,:,:,iElem,0) / Vol
-    END DO !iElem
+    END DO ! iElem
 
-  ! Compute normalization for LAF
+    ! Compute normalization for LAF
     normMod=((REAL(NFilter)+1)**(-2./3.)-2.**(-2./3.))/(REAL(PP_N+1)**(-2./3.)-REAL(NFilter+1)**(-2./3.))
     lim=1E-8
     eRatio=0.
@@ -198,11 +203,11 @@ IF(FilterType.GT.0) THEN
   END SELECT
 
   !INFO
-  SWRITE(*,'(A)',ADVANCE='NO')'FILTER DIAGONAL: '
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')'FILTER DIAGONAL: '
   DO iDeg=0,PP_N-1
-    SWRITE(*,'(F7.3)',ADVANCE='NO')FilterMat(iDeg,iDeg)
+    SWRITE(UNIT_stdOut,'(F7.3)',ADVANCE='NO')FilterMat(iDeg,iDeg)
   END DO
-  SWRITE(*,'(F7.3)')FilterMat(PP_N,PP_N)
+  SWRITE(UNIT_stdOut,'(F7.3)')FilterMat(PP_N,PP_N)
 
   ! Assemble filter matrix in nodal space
   FilterMat=MATMUL(MATMUL(Vdm_Leg,FilterMat),sVdm_Leg)
@@ -228,6 +233,7 @@ SUBROUTINE HestFilter()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Filter_Vars,ONLY:HestFilterParam,FilterMat
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -272,6 +278,7 @@ USE MOD_Mesh_Vars,         ONLY: nElems
 #if FV_ENABLED
 USE MOD_FV_Vars,           ONLY: FV_Elems
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -458,6 +465,7 @@ SUBROUTINE Filter_Selective(NVar,FilterMat,U_in,filter_ind)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -518,6 +526,7 @@ ELSE
 END IF
 END SUBROUTINE Filter_Selective
 
+
 !==================================================================================================================================
 !> Deallocate filter arrays
 !==================================================================================================================================
@@ -527,6 +536,7 @@ USE MOD_Filter_Vars
 #if PP_LIMITER
 USE MOD_PPLimiter,    ONLY: FinalizePPLimiter
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 SDEALLOCATE(FilterMat)

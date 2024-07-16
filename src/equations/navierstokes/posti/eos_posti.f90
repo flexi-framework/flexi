@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -347,7 +348,8 @@ SELECT CASE(DepName_low)
   CASE("totaltemperature")
     UCalc(:,iVarCalc) = UCalc(:,iTemp)+UCalc(:,iVelM)**2/(2*cp)
   CASE("totalpressure")
-    UCalc(:,iVarCalc) = UCalc(:,iPres)+0.5*UCalc(:,iDens)*UCalc(:,iVelM)**2
+!    UCalc(:,iVarCalc) = UCalc(:,iPres)+0.5*UCalc(:,iDens)*UCalc(:,iVelM)**2
+    UCalc(:,iVarCalc) = UCalc(:,iPres)*(1+KappaM1*0.5*(UCalc(:,iVelM)/UCalc(:,iVelS))**2)**(Kappa/KappaM1)
   CASE("pressuretimederiv")
      CALL FillPressureTimeDeriv(nElems_loc,mapCalcMeshToGlobalMesh,Nloc,UCalc(:,iVarCalc))
 #if PARABOLIC

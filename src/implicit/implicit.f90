@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -58,6 +59,7 @@ CONTAINS
 SUBROUTINE DefineParametersImplicit()
 ! MODULES
 USE MOD_ReadInTools ,ONLY: prms
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Implicit")
@@ -81,6 +83,7 @@ CALL prms%CreateIntOption(    'PredictorOrder', "Order of predictor to be used (
 
 END SUBROUTINE DefineParametersImplicit
 
+
 !===================================================================================================================================
 !> Initialize implicit time integration. Mainly read in parameters for the Newton and GMRES solvers and call preconditioner init.
 !===================================================================================================================================
@@ -88,29 +91,38 @@ SUBROUTINE InitImplicit()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_DG_Vars,           ONLY: nDOFElem
+USE MOD_Filter_Vars,       ONLY: FilterType
 USE MOD_Implicit_Vars
-USE MOD_Mesh_Vars,         ONLY:MeshInitIsDone,nElems,nGlobalElems
-USE MOD_Interpolation_Vars,ONLY:InterpolationInitIsDone
-USE MOD_ReadInTools,       ONLY:GETINT,GETREAL,GETLOGICAL
-USE MOD_DG_Vars,           ONLY:nDOFElem
-USE MOD_TimeDisc_Vars,     ONLY:TimeDiscType,RKb_embedded
-USE MOD_Precond,           ONLY:InitPrecond
+USE MOD_Interpolation_Vars,ONLY: InterpolationInitIsDone
+USE MOD_Mesh_Vars,         ONLY: MeshInitIsDone,nElems,nGlobalElems
+USE MOD_ReadInTools,       ONLY: GETINT,GETREAL,GETLOGICAL
+USE MOD_TimeDisc_Vars,     ONLY: TimeDiscType,RKb_embedded
+#if USE_PRECOND
+USE MOD_Precond,           ONLY: InitPrecond
+#endif /*USE_PRECOND*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
-IF((.NOT.InterpolationInitIsDone).OR.(.NOT.MeshInitIsDone).OR.ImplicitInitIsDone)THEN
+IF (.NOT.InterpolationInitIsDone .OR. .NOT.MeshInitIsDone .OR.ImplicitInitIsDone) &
    CALL Abort(__STAMP__,'InitImplicit not ready to be called or already called.')
-END IF
+
 IF(TimeDiscType.EQ.'ESDIRK') THEN
   SWRITE(UNIT_stdOut,'(132("-"))')
   SWRITE(UNIT_stdOut,'(A)') ' INIT Implicit...'
+
+  SELECT CASE(FilterType)
+    CASE(FILTERTYPE_NONE,FILTERTYPE_CUTOFF)
+      ! Do nothing
+    CASE DEFAULT
+      CALL Abort(__STAMP__,'Only no or spectral cutoff filtering support with implicit time stepping!')
+  END SELECT
 
   nDOFVar1D     = PP_nVar*(PP_N+1)
   nDOFVarElem   = PP_nVar*nDOFElem
@@ -190,13 +202,16 @@ IF(TimeDiscType.EQ.'ESDIRK') THEN
   nGMRESRestartGlobal = 0
 
   ! Preconditioner
+#if USE_PRECOND
   CALL InitPrecond()
+#endif /*USE_PRECOND*/
 
   ImplicitInitIsDone=.TRUE.
   SWRITE(UNIT_stdOut,'(A)')' INIT Implicit DONE!'
   SWRITE(UNIT_stdOut,'(132("-"))')
 END IF
 END SUBROUTINE InitImplicit
+
 
 !===================================================================================================================================
 !> Solves the non-linear system with Newton
@@ -348,6 +363,7 @@ END IF
 
 END SUBROUTINE Newton
 
+
 !===================================================================================================================================
 !> Matrix free Linear Krylov subspace solver
 !> A * y = b
@@ -365,8 +381,10 @@ USE MOD_Globals
 USE MOD_Mathtools     ,ONLY:GlobalVectorDotProduct
 USE MOD_Implicit_Vars ,ONLY:nKDim,nRestarts,nGMRESIterGlobal,nGMRESRestartGlobal,nInnerGMRES,nGMRESIterdt
 USE MOD_Implicit_Vars ,ONLY:nDOFVarProc
+#if USE_PRECOND
 USE MOD_Precond       ,ONLY:ApplyPrecond
 USE MOD_Precond_Vars  ,ONLY:PrecondType
+#endif /* USE_PRECOND */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -407,11 +425,15 @@ DO WHILE (Restart<nRestarts)
   DO m=1,nKDim
     nInnerGMRES=nInnerGMRES+1
     ! Preconditioner
+#if USE_PRECOND
     IF(PrecondType.NE.0) THEN
       CALL ApplyPrecond(V(:,m),Z(:,m))
     ELSE
+#endif /* USE_PRECOND */
       Z(:,m)=V(:,m)
+#if USE_PRECOND
     END IF
+#endif /* USE_PRECOND */
     ! matrix vector
     CALL MatrixVector(t,Alpha,Z(:,m),W)
     ! modified Gram-Schmidt
@@ -535,7 +557,9 @@ SUBROUTINE FinalizeImplicit()
 ! MODULES
 USE MOD_Implicit_Vars
 USE MOD_Predictor,     ONLY:FinalizePredictor
+#if USE_PRECOND
 USE MOD_Precond,       ONLY:FinalizePrecond
+#endif /* USE_PRECOND */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -549,7 +573,9 @@ SDEALLOCATE(LinSolverRHS)
 SDEALLOCATE(R_Xk)
 SDEALLOCATE(Xk)
 CALL FinalizePredictor()
+#if USE_PRECOND
 CALL FinalizePrecond()
+#endif /* USE_PRECOND */
 ImplicitInitIsDone = .FALSE.
 END SUBROUTINE FinalizeImplicit
 

@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -28,8 +29,9 @@ END INTERFACE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-REAL             :: t=0.                               !< current physical time
-REAL             :: dt                                 !< current timestep
+REAL              ::time_start                         !< start time of the timedisc
+REAL             :: t  = 0.                            !< current physical time
+REAL             :: dt = 0.                            !< current timestep
 REAL             :: dt_old                             !< last timestep
 REAL             :: dt_dynmin                          !< minimal allowed timestep
 REAL             :: dt_kill                            !< Kill timestep for FLEXI
@@ -80,6 +82,7 @@ REAL,ALLOCATABLE :: UPrev (:,:,:,:,:)
 
 ! NOTE: using simple arrays to store coefs, if using classes or types performance seems to degrade
 CHARACTER(LEN=50)   :: TimeDiscName  !< name of specific time discretization scheme
+CHARACTER(LEN=255)  :: TimeDiscMethod!< general name of time  discretization scheme
 CHARACTER(LEN=50)   :: TimeDiscType  !< general type of time discretization scheme
 INTEGER             :: nRKStages     !< number of stages of Runge-Kutta method
 

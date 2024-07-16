@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -62,7 +63,6 @@ INTERFACE ReadIJKSorting
   MODULE PROCEDURE ReadIJKSorting
 END INTERFACE
 
-
 PUBLIC::ReadMesh
 PUBLIC::BuildPartition
 PUBLIC::ReadIJKSorting
@@ -103,7 +103,7 @@ IF(nUserBCs.GT.0)THEN
     BoundaryName(iBC)   = GETSTR('BoundaryName')
     BoundaryType(iBC,:) = GETINTARRAY('BoundaryType',2) !(/Type,State/)
   END DO
-END IF ! nUserBCs>0
+END IF ! nUserBCs.GT.0
 
 ! Read boundary names from data file
 CALL GetDataSize(File_ID,'BCNames',nDims,HSize)
@@ -140,7 +140,7 @@ IF(nUserBCs .GT. 0)THEN
   END DO
 END IF
 DO iUserBC=1,nUserBCs
-  IF (.NOT.UserBCFound(iUserBC)) CALL ABORT(__STAMP__,&
+  IF (.NOT.UserBCFound(iUserBC)) CALL Abort(__STAMP__,&
     'Boundary condition specified in parameter file has not been found: '//TRIM(BoundaryName(iUserBC)))
 END DO
 DEALLOCATE(UserBCFound)
@@ -202,6 +202,7 @@ END SUBROUTINE ReadBCs
 SUBROUTINE ReadMesh(FileString)
 ! MODULES
 USE MOD_Globals
+USE MOD_Globals_Vars,       ONLY:ReadMeshWallTime
 USE MOD_Mesh_Vars,          ONLY:tElem,tSide
 USE MOD_Mesh_Vars,          ONLY:NGeo,NGeoTree
 USE MOD_Mesh_Vars,          ONLY:NodeCoords,TreeCoords
@@ -257,11 +258,7 @@ END IF
 
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES') ' READ MESH FROM DATA FILE "'//TRIM(FileString)//'" ...'
 SWRITE(UNIT_stdOut,'(132("-"))')
-#if USE_MPI
-StartT=MPI_WTIME()
-#else
-CALL CPU_TIME(StartT)
-#endif
+GETTIME(StartT)
 
 ! Open mesh file
 CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
@@ -341,7 +338,7 @@ DO iElem=FirstElemInd,LastElemInd
 
     ! If nbElemID <0, this marks a mortar master side.
     ! The number (-1,-2,-3) is the Type of mortar
-    IF(nbElemID.LT.0)THEN ! mortar Sides attached!
+    IF(nbElemID.LT.0)THEN ! mortar sides attached!
       aSide%MortarType=ABS(nbElemID)
       SELECT CASE(aSide%MortarType)
       CASE(1)
@@ -349,6 +346,7 @@ DO iElem=FirstElemInd,LastElemInd
       CASE(2,3)
         aSide%nMortars=2
       END SELECT
+
       ALLOCATE(aSide%MortarSide(aSide%nMortars))
       DO iMortar=1,aSide%nMortars
         aSide%MortarSide(iMortar)%sp=>GETNEWSIDE()
@@ -356,23 +354,31 @@ DO iElem=FirstElemInd,LastElemInd
     ELSE
       aSide%nMortars=0
     END IF
-    IF(SideInfo(SIDE_Type,iSide).LT.0) aSide%MortarType=-1 !marks side as belonging to a mortar
 
-    IF(aSide%MortarType.LE.0)THEN ! side is not a big Mortar side
+    ! mark side as belonging to a mortar
+    IF(SideInfo(SIDE_Type,iSide).LT.0) aSide%MortarType = -1
+
+    ! side is not a big Mortar side
+    IF(aSide%MortarType.LE.0)THEN
       aSide%Elem=>aElem
       oriented=(Sideinfo(SIDE_ID,iSide).GT.0)
       aSide%Ind=ABS(SideInfo(SIDE_ID,iSide))
-      IF(oriented)THEN !oriented side
+      ! oriented side
+      IF(oriented) THEN
         aSide%flip=0
-      ELSE !not oriented
+      ! not oriented side
+      ELSE
         aSide%flip=MOD(Sideinfo(SIDE_Flip,iSide),10)
-        IF((aSide%flip.LT.0).OR.(aSide%flip.GT.4)) STOP 'NodeID doesnt belong to side'
+        IF((aSide%flip.LT.0).OR.(aSide%flip.GT.4)) CALL Abort(__STAMP__,'NodeID doesnt belong to side')
       END IF
-    ELSE ! side is a big Mortar side
-      DO iMortar=1,aSide%nMortars ! iterate over virtual small Mortar sides
+
+    ! side is a big mortar side
+    ELSE
+      ! iterate over virtual small mortar sides
+      DO iMortar = 1,aSide%nMortars
         iSide=iSide+1
         aSide%mortarSide(iMortar)%sp%Elem=>aElem ! set element pointer to actual element
-        IF(SideInfo(SIDE_ID,iSide).LT.0) STOP 'Problem in Mortar readin,should be flip=0'
+        IF(SideInfo(SIDE_ID,iSide).LT.0) CALL Abort(__STAMP__,'Problem in Mortar readin,should be flip=0')
         aSide%mortarSide(iMortar)%sp%flip=0
         aSide%mortarSide(iMortar)%sp%Ind =ABS(SideInfo(SIDE_ID,iSide))
       END DO !iMortar
@@ -410,7 +416,7 @@ DO iElem=FirstElemInd,LastElemInd
       nbElemID      = SideInfo(SIDE_nbElemID,iSide)
       aSide%BCindex = SideInfo(SIDE_BCID,iSide)
 
-      ! BC sides don't need a connection, except for periodic (BC_TYPE=1) and "dummy" inner BCs (BC_TYPE=100).
+      ! BC sides don't need a connection, except for internal (BC_TYPE=0), periodic (BC_TYPE=1) and "dummy" inner BCs (BC_TYPE=100).
       ! For all other BC sides: reset the flip and mortars settings, do not build a connection.
       IF(aSide%BCindex.NE.0)THEN ! BC
         IF((BoundaryType(aSide%BCindex,BC_TYPE).NE.1).AND.&
@@ -421,7 +427,6 @@ DO iElem=FirstElemInd,LastElemInd
           CYCLE
         END IF
       END IF
-
 
       IF(aSide%mortarType.GT.0) CYCLE        ! no connection for mortar master
       IF(ASSOCIATED(aSide%connection)) CYCLE ! already connected
@@ -488,7 +493,9 @@ ELSE
   DEALLOCATE(NodeCoordsTmp)
   NGeo=1 ! linear mesh; set polynomial degree of geometry to 1
 ENDIF
-nNodes=nElems*(NGeo+1)**3 ! total number of nodes on this processor
+
+! total number of nodes on this processor
+nNodes = nElems*(NGeo+1)**3
 
 #if PP_dim == 2
 DO iElem=1,nElems
@@ -550,6 +557,7 @@ IF(isMortarMesh)THEN
   TreeCoords=-1.
   CALL ReadArray('TreeCoords',2,(/3,(NGeoTree+1)**3*nTrees/),&
                  (NGeoTree+1)**3*offsetTree,2,RealArray=TreeCoords)
+! no mortar mesh
 ELSE
   nTrees=0
 END IF
@@ -583,7 +591,8 @@ DO iElem=FirstElemInd,LastElemInd
     ! LOOP over mortars, if no mortar, then LOOP is executed once
     nMortars=aSide%nMortars
     DO iMortar=0,nMortars
-      IF(iMortar.GT.0) aSide=>aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp ! point to small virtual side
+      ! point to small virtual side
+      IF(iMortar.GT.0) aSide => aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp
       aSide%tmp=0
     END DO !iMortar
   END DO !iLocSide
@@ -602,30 +611,46 @@ DO iElem=FirstElemInd,LastElemInd
     ! LOOP over mortars, if no mortar, then LOOP is executed once
     nMortars=aSide%nMortars
     DO iMortar=0,nMortars
-      IF(iMortar.GT.0) aSide=>aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp ! point to small virtual side
+      ! point to small virtual side
+      IF(iMortar.GT.0) aSide => aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp
 
-      IF(aSide%tmp.EQ.0)THEN ! if side not counted so far
+      ! if side not counted so far
+      IF(aSide%tmp.EQ.0)THEN
         nSides=nSides+1
         aSide%tmp=-1 ! mark side as counted
-        IF(ASSOCIATED(aSide%connection)) aSide%connection%tmp=-1 ! mark connected side as counted
-        IF(aSide%BCindex.NE.0)THEN !side is BC or periodic side
+        IF(ASSOCIATED(aSide%connection))THEN
+          ! sanity check that the boundary index is zero
+          ! IF(aSide%BCindex.NE.0) CALL Abort(__STAMP__,'Error with BCIndex on connected side')
+          aSide%connection%tmp = -1  ! mark connected side as counted
+        END IF
+
+        ! side is BC or periodic side.
+        IF(aSide%BCindex.NE.0)THEN
           nAnalyzeSides=nAnalyzeSides+1
           IF(ASSOCIATED(aSide%connection))THEN
-            IF(BoundaryType(aSide%BCindex,BC_TYPE).EQ.1)THEN ! periodic side
-              nPeriodicSides=nPeriodicSides+1
+            SELECT CASE(BoundaryType(aSide%BCindex,BC_TYPE))
+              ! internal side
+              CASE(0)
+                ! do nothing
+
+              ! periodic side
+              CASE(1)
+                nPeriodicSides=nPeriodicSides+1
 #if USE_MPI
-              IF(aSide%NbProc.NE.-1) nMPIPeriodics=nMPIPeriodics+1
+                IF(aSide%NbProc.NE.-1) nMPIPeriodics=nMPIPeriodics+1
 #endif
-            END IF
+              CASE DEFAULT
+                CALL Abort(__STAMP__,'Error with BoundaryType on connected side')
+            END SELECT
+          ! BC side
           ELSE
-            IF(aSide%MortarType.EQ.0)THEN !really a BC side
-              nBCSides=nBCSides+1
-            END IF
-          END IF
+            IF(aSide%MortarType.EQ.0)     nBCSides      = nBCSides+1
+          END IF ! ASSOCIATED(aSide%connection)
         END IF
         IF(aSide%MortarType.GT.0) nMortarSides=nMortarSides+1
 #if USE_MPI
-        IF(aSide%NbProc.NE.-1) THEN ! count total number of MPI sides and number of MPI sides for each neighboring processor
+        ! count total number of MPI sides and number of MPI sides for each neighboring processor
+        IF(aSide%NbProc.NE.-1) THEN
           nMPISides=nMPISides+1
           MPISideCount(aSide%NbProc)=MPISideCount(aSide%NbProc)+1
         END IF
@@ -634,7 +659,9 @@ DO iElem=FirstElemInd,LastElemInd
     END DO !iMortar
   END DO !iLocSide
 END DO !iElem
-nInnerSides=nSides-nBCSides-nMPISides-nMortarSides !periodic side count to inner side!!!
+
+! Periodic sides count as inner sides!
+nInnerSides = nSides-nBCSides-nMPISides-nMortarSides
 
 LOGWRITE(*,*)'-------------------------------------------------------'
 LOGWRITE(*,'(A22,I8)')'nSides:',      nSides
@@ -656,7 +683,9 @@ DO iProc=0,nProcessors-1
   IF(iProc.EQ.myRank) CYCLE
   IF(MPISideCount(iProc).GT.0) nNBProcs=nNbProcs+1
 END DO
-IF(nNbProcs.EQ.0)THEN ! compiled with MPI, but execute on a single processor !
+
+! compiled with MPI, but execute on a single processor
+IF(nNbProcs.EQ.0)THEN
   ALLOCATE(NbProc(1),nMPISides_Proc(1))
   nNbProcs=1
   NbProc=0
@@ -700,24 +729,25 @@ IF(MPIRoot) ReduceData=ReduceData_glob
 #endif /*USE_MPI*/
 
 IF(MPIRoot)THEN
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nElems | ',ReduceData(1) !nElems
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nNodes | ',ReduceData(3) !nNodes
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides        | ',ReduceData(2)-ReduceData(7)/2
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides,    BC | ',ReduceData(6) !nBCSides
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides,   MPI | ',ReduceData(7)/2 !nMPISides
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides, Inner | ',ReduceData(4) !nInnerSides
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides,Mortar | ',ReduceData(9) !nMortarSides
+  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nElems               | ',ReduceData(1) !nElems
+  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nNodes               | ',ReduceData(3) !nNodes
+  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides               | ',ReduceData(2)-ReduceData(7)/2
+  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides,    BC        | ',ReduceData(6) !nBCSides
+  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides,   MPI        | ',ReduceData(7)/2 !nMPISides
+  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides, Inner        | ',ReduceData(4) !nInnerSides
+  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides,Mortar        | ',ReduceData(9) !nMortarSides
   WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nPeriodicSides,Total | ',ReduceData(5)-ReduceData(10)/2
   WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nPeriodicSides,Inner | ',ReduceData(5)-ReduceData(10)
   WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nPeriodicSides,  MPI | ',ReduceData(10)/2 !nPeriodicSides
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nAnalyzeSides | ',ReduceData(8) !nAnalyzeSides
-  WRITE(UNIT_stdOut,'(A,A34,L1)')' |','useCurveds | ',useCurveds
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','Ngeo | ',Ngeo
+  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nAnalyzeSides        | ',ReduceData(8) !nAnalyzeSides
+  WRITE(UNIT_stdOut,'(A,A34,L1)')' |','useCurveds           | ',useCurveds
+  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','Ngeo                 | ',Ngeo
   WRITE(UNIT_stdOut,'(132("."))')
 END IF
 
 EndT             = FLEXITIME()
-SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES') ' READ MESH FROM DATA FILE "'//TRIM(FileString)//'" ... DONE  [',EndT-StartT,'s]'
+ReadMeshWallTime = EndT-StartT
+CALL DisplayMessageAndTime(ReadMeshWallTime,'READ MESH FROM DATA FILE "'//TRIM(FileString)//'" ... DONE',DisplayLine=.FALSE.)
 SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE ReadMesh
@@ -745,20 +775,16 @@ INTEGER           :: iProc
 #endif
 !===================================================================================================================================
 CALL GetDataSize(File_ID,'ElemInfo',nDims,HSize)
-IF(HSize(1).NE.6) THEN
-  CALL Abort(__STAMP__,&
-    'ERROR: Wrong size of ElemInfo, should be 6')
-END IF
+IF(HSize(1).NE.6) CALL Abort(__STAMP__,'ERROR: Wrong size of ElemInfo, should be 6')
+
 CHECKSAFEINT(HSize(2),4)
 nGlobalElems=INT(HSize(2),4)
 DEALLOCATE(HSize)
 #if USE_MPI
-IF(nGlobalElems.LT.nProcessors) THEN
-  CALL Abort(__STAMP__,&
+IF(nGlobalElems.LT.nProcessors) CALL Abort(__STAMP__,&
   'ERROR: Number of elements (1) is smaller then number of processors (2)!',nGlobalElems,REAL(nProcessors))
-END IF
 
-!simple partition: nGlobalelems/nprocs, do this on proc 0
+! Simple partition: nGlobalelems/nprocs, do this on proc 0
 SDEALLOCATE(offsetElemMPI)
 ALLOCATE(offsetElemMPI(0:nProcessors))
 offsetElemMPI=0
@@ -768,7 +794,8 @@ DO iProc=0,nProcessors-1
   offsetElemMPI(iProc)=nElems*iProc+MIN(iProc,iElem)
 END DO
 offsetElemMPI(nProcessors)=nGlobalElems
-!local nElems and offset
+
+! Local nElems and offset
 nElems=offsetElemMPI(myRank+1)-offsetElemMPI(myRank)
 offsetElem=offsetElemMPI(myRank)
 LOGWRITE(*,*)'offset,nElems',offsetElem,nElems
@@ -797,27 +824,27 @@ INTEGER, INTENT(IN)                :: ElemID     !< (IN)  NodeID to search for
 INTEGER                            :: ELEMIPROC  !< (OUT) processor id
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                            :: i,maxSteps,low,up,mid
+INTEGER                            :: i,maxSteps,low,high,mid
 !==================================================================================================================================
 ELEMIPROC=0
 maxSteps=INT(LOG(REAL(nProcessors))*1.4426950408889634556)+1    !1/LOG(2.)=1.4426950408889634556
 low=0
-up=nProcessors-1
-IF((ElemID.GT.offsetElemMPI(low)).AND.(ElemID.LE.offsetElemMPI(low+1)))THEN
+high      = nProcessors-1
+IF(    ElemID.GT.offsetElemMPI(low)  .AND. ElemID.LE.offsetElemMPI(low +1))THEN
   ELEMIPROC=low
-ELSEIF((ElemID.GT.offsetElemMPI(up)).AND.(ElemID.LE.offsetElemMPI(up+1)))THEN
-  ELEMIPROC=up
+ELSEIF(ElemID.GT.offsetElemMPI(high) .AND. ElemID.LE.offsetElemMPI(high+1))THEN
+  ELEMIPROC = high
 ELSE
   !bisection
   DO i=1,maxSteps
-    mid=(up-low)/2+low
-    IF((ElemID.GT.offsetElemMPI(mid)).AND.(ElemID.LE.offsetElemMPI(mid+1)))THEN
-      ELEMIPROC=mid                     !index found!
+    mid = (high-low)/2+low
+    IF(    ElemID.GT.offsetElemMPI(mid) .AND. ElemID.LE.offsetElemMPI(mid+1))THEN
+      ELEMIPROC = mid                            ! index found
       EXIT
     ELSEIF(ElemID .GT. offsetElemMPI(mid+1))THEN ! seek in upper half
       low=mid+1
-    ELSE
-      up=mid
+    ELSE                                         ! seek in lower half
+      high = mid
     END IF
   END DO
 END IF
@@ -829,11 +856,11 @@ END FUNCTION ELEMIPROC
 !> for meshes thar are i,j,k sorted.
 !===================================================================================================================================
 SUBROUTINE ReadIJKSorting()
-! MODULES                                                                                                                          !
+! MODULES
 USE MOD_Mesh_Vars,       ONLY: nElems_IJK,Elem_IJK,offsetElem,nElems,MeshFile
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------!
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

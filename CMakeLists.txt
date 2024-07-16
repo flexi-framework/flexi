@@ -1,6 +1,16 @@
 # =========================================================================
-# Flexi CMake configuration
+# Flexi information
 # =========================================================================
+SET(PROJECT_NAME "Flexi")
+SET(PROJECT_DESC "A high order discontinuous Galerkin framework for hyperbolic–parabolic conservation laws")
+SET(PROJECT_VER  "22.03")
+SET(PROJECT_URL  "https://www.flexi-project.org")
+
+# =========================================================================
+# CMake configuration
+# =========================================================================
+MESSAGE(STATUS "This is ${PROJECT_NAME} (v${PROJECT_VER})")
+MESSAGE(STATUS "Generating with [cmake] (v${CMAKE_VERSION})")
 # NOTE: use minimum CMake version required
 CMAKE_MINIMUM_REQUIRED(VERSION 3.6.3)
 # Policies (see https://cmake.org/cmake/help/v3.13/manual/cmake-policies.7.html)
@@ -17,48 +27,16 @@ IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.13.0"))
 ENDIF()
 
 # =========================================================================
-# Git configuration
+# Load CMake modules
 # =========================================================================
-# Check where the code originates
-EXECUTE_PROCESS(COMMAND git ls-remote --get-url OUTPUT_VARIABLE GIT_ORIGIN)
-
-# Setup git hooks
-SET(PRECOMMIT_FILE ".githooks/pre-commit")
-
-# Perform checks only if origin points to IAG, other origins can't commit
-IF("${GIT_ORIGIN}" MATCHES ".iag.uni-stuttgart.de")
-  # Check if the pre-commit hooks exits
-  IF (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git/hooks/pre-commit)
-    # Create otherwise
-    EXECUTE_PROCESS(COMMAND mkdir -p ${CMAKE_CURRENT_SOURCE_DIR}/.git/hooks)
-    EXECUTE_PROCESS(COMMAND ln -s ${CMAKE_CURRENT_SOURCE_DIR}/${PRECOMMIT_FILE} ${CMAKE_CURRENT_SOURCE_DIR}/.git/hooks/pre-commit)
-  ELSE()
-    # Check if the hook is the correct symlink and warn otherwise
-    EXECUTE_PROCESS(COMMAND readlink ${CMAKE_CURRENT_SOURCE_DIR}/.git/hooks/pre-commit OUTPUT_VARIABLE PRECOMMIT_LINK OUTPUT_STRIP_TRAILING_WHITESPACE)
-    IF (NOT ${PRECOMMIT_LINK} MATCHES "${CMAKE_CURRENT_SOURCE_DIR}/${PRECOMMIT_FILE}")
-      MESSAGE (WARNING "Custom git pre-commit hook detected. Please ensure to call ${PRECOMMIT_FILE} manually.")
-    ENDIF()
-  ENDIF()
-
-  # Check if the hook actually gets loaded
-  EXECUTE_PROCESS(COMMAND git config --get core.hooksPath OUTPUT_VARIABLE HOOKSPATH OUTPUT_STRIP_TRAILING_WHITESPACE)
-  IF (DEFINED HOOKSPATH  AND NOT "${HOOKSPATH}" STREQUAL "" AND NOT "${HOOKSPATH}" STREQUAL ".git/hooks")
-    # STRING(ASCII 27 ESCAPE)
-    # MESSAGE (STATUS "${ESCAPE}[34mCustom hooks path detected. Please ensure to call ${PRECOMMIT_FILE} manually.${ESCAPE}[0m")
-    MESSAGE (WARNING "Custom git hooks path detected. Please ensure to call ${PRECOMMIT_FILE} manually.")
-  ENDIF()
-ENDIF()
-
-# =========================================================================
-# Project definition
-# =========================================================================
-# PROJECT(Flexi Fortran C CXX)
-
-# Folder for custom CMake source files
+# Directory for custom CMake source files
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
-INCLUDE(ExternalProject)
+INCLUDE(CheckOrigin)
+
+# Load CMake internal extensions
 INCLUDE(CMakeDependentOption)
+INCLUDE(ExternalProject)
 
 # =========================================================================
 # Performance mode
@@ -66,52 +44,35 @@ INCLUDE(CMakeDependentOption)
 OPTION(FLEXI_PERFORMANCE "Enable performance optimizations" OFF)
 
 # =========================================================================
-# Check gold support
-# =========================================================================
-EXECUTE_PROCESS(COMMAND ld.gold --version COMMAND grep "^GNU gold" COMMAND sed "s/^.* //g" OUTPUT_VARIABLE GNU_GOLD_VERSION)
-IF (DEFINED GNU_GOLD_VERSION  AND NOT "${GNU_GOLD_VERSION}" STREQUAL "")
-  STRING(STRIP "${GNU_GOLD_VERSION}" GNU_GOLD_VERSION)
-  MESSAGE(STATUS "Setting linker to [gold] (v${GNU_GOLD_VERSION})")
-  # Shift responsibility of driving the final stages of compilation from collect2 to gold via the linker plugin
-  # More information at: https://gcc.gnu.org/wiki/LinkTimeOptimization
-  IF(CMAKE_VERSION VERSION_GREATER_EQUAL 3.13)
-    ADD_LINK_OPTIONS("-fuse-ld=gold")
-    # Make it abundantly clear we want to use gold
-    FIND_PROGRAM(CMAKE_GOLD_LINKER NAMES ${_CMAKE_TOOLCHAIN_PREFIX}ld.gold${_CMAKE_TOOLCHAIN_SUFFIX} HINTS ${_CMAKE_TOOLCHAIN_LOCATION})
-    SET (CMAKE_LINKER "${CMAKE_GOLD_LINKER}" CACHE FILEPATH "" FORCE)
-    MARK_AS_ADVANCED(FORCE CMAKE_GOLD_LINKER)
-  ELSE()
-    SET (CMAKE_EXE_LINKER_FLAGS    "${CMAKE_EXE_LINKER_FLAGS}    -fuse-ld=gold")
-    SET (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fuse-ld=gold")
-    # This currently breaks ar (binutils archiver)
-    # SET (CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} -fuse-ld=gold")
-    SET (CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -fuse-ld=gold")
-    # Make it abundantly clear we want to use gold
-    FIND_PROGRAM(CMAKE_GOLD_LINKER NAMES ${_CMAKE_TOOLCHAIN_PREFIX}ld.gold${_CMAKE_TOOLCHAIN_SUFFIX} HINTS ${_CMAKE_TOOLCHAIN_LOCATION})
-    SET (CMAKE_LINKER "${CMAKE_GOLD_LINKER}" CACHE FILEPATH "" FORCE)
-    MARK_AS_ADVANCED(FORCE CMAKE_GOLD_LINKER)
-  ENDIF()
-ENDIF()
-
-# =========================================================================
 # Machine environment
 # =========================================================================
-INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/CMakeListsMachine.txt)
 
-# Hawk requires this after specifiying CMAKE_COMPILER
-PROJECT(Flexi)
+INCLUDE(SetLinker)
+# Languages are specified in CMakeListMachine.txt as Hawk requires them
+# after specifiying CMAKE_COMPILER
+INCLUDE(SetMachine)
+
+PROJECT(Flexi
+        VERSION      ${PROJECT_VER}
+        DESCRIPTION  ${PROJECT_DESC}
+        HOMEPAGE_URL ${PROJECT_URL})
+
+INCLUDE(SetCompiler)
+# Load CMake internal extensions
+# > must be loaded after target architecture is known
+INCLUDE(GNUInstallDirs)
 
 # =========================================================================
 # Store the current commit information
 # =========================================================================
-EXECUTE_PROCESS(COMMAND git rev-parse HEAD OUTPUT_VARIABLE GIT_COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE RESULT_VARIABLE ERR_NO_GIT)
+EXECUTE_PROCESS(COMMAND git rev-parse HEAD OUTPUT_VARIABLE GIT_COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} RESULT_VARIABLE ERR_NO_GIT)
 IF(${ERR_NO_GIT})
   MESSAGE("No git information found. Continue without git.")
 ELSE()
   SET(commit ${CMAKE_CURRENT_SOURCE_DIR}/src/commit.h)
   MESSAGE(STATUS "Current git commit ${GIT_COMMIT} will be written to ${commit}")
   FILE(WRITE ${commit} "! Define the current commit hash. The default must remain empty, i.e., ''. Do not commit the changed file!\n#define GIT_CURRENT_COMMIT  ''\n")
-  EXECUTE_PROCESS(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/setCommitHash.sh ${commit})
+  EXECUTE_PROCESS(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/setCommitHash.sh ${commit} WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 ENDIF()
 # Make sure that the script is executed even though cmake is not explicitly executed after the commit is changed in git
 ADD_CUSTOM_TARGET(UpdateGitCommitHash COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/setCommitHash.sh ${commit})
@@ -147,62 +108,7 @@ ENDIF()
 # =========================================================================
 # Build type
 # =========================================================================
-# make sure that the default is a RELEASE
-IF (NOT CMAKE_BUILD_TYPE)
-  SET (CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: Debug, Release, Profile, Sanitize (only GNU))." FORCE)
-   IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
-     SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release Profile Sanitize)
-   ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
-     SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release Profile)
-   ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Cray")
-     SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release Profile)
-   ENDIF()
-ENDIF (NOT CMAKE_BUILD_TYPE)
-
-STRING(TOLOWER ${CMAKE_BUILD_TYPE} BUILD_TYPE_LC)
-IF (BUILD_TYPE_LC MATCHES "debug" OR BUILD_TYPE_LC MATCHES "sanitize")
-  ADD_DEFINITIONS("-DDEBUG")
-ELSE()
-  IF (HASIPO)
-    # enable IPO globally (IPO branding: Intel => IPO, GNU => LTO, PGI => IPA)
-    IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
-      # Check the GCC wrapper for the complete toolchain
-      FIND_PROGRAM(CMAKE_GCC_AR     NAMES ${_CMAKE_TOOLCHAIN_PREFIX}gcc-ar${_CMAKE_TOOLCHAIN_SUFFIX} HINTS ${_CMAKE_TOOLCHAIN_LOCATION})
-      FIND_PROGRAM(CMAKE_GCC_NM     NAMES ${_CMAKE_TOOLCHAIN_PREFIX}gcc-nm                           HINTS ${_CMAKE_TOOLCHAIN_LOCATION})
-      FIND_PROGRAM(CMAKE_GCC_RANLIB NAMES ${_CMAKE_TOOLCHAIN_PREFIX}gcc-ranlib                       HINTS ${_CMAKE_TOOLCHAIN_LOCATION})
-      MARK_AS_ADVANCED(FORCE CMAKE_GCC_AR)
-      MARK_AS_ADVANCED(FORCE CMAKE_GCC_NM)
-      MARK_AS_ADVANCED(FORCE CMAKE_GCC_RANLIB)
-      # Do not use the standard CMake LTO option for GNU (-flto -fno-fat-lto-objects), as it does not allow speed-up during linking
-      IF( CMAKE_GCC_AR AND CMAKE_GCC_NM AND CMAKE_GCC_RANLIB )
-        MESSAGE(STATUS "Found GCC binutils wrappers for LTO. Enabling LTO linker plugin.")
-        # Do not use the standard CMake LTO option for GNU (-flto -fno-fat-lto-objects), as it does not allow speed-up during linking
-        SET(CMAKE_INTERPROCEDURAL_OPTIMIZATION FALSE)
-        # Static libraries require either fat LTO objects (increases compilation time) or the use of linker plugins (per default enabled); the jobserver option reduces linking time
-        # More information at: https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html#Optimize-Options
-        IF (CMAKE_Fortran_COMPILER_VERSION VERSION_GREATER_EQUAL 10.0)
-          # GCC10 introduced the -flto=auto option, https://gcc.gnu.org/legacy-ml/gcc-patches/2019-07/msg01488.html
-          SET(CMAKE_Fortran_FLAGS  "${CMAKE_Fortran_FLAGS} -flto=auto -fuse-linker-plugin")
-        ELSE()
-          # Otherwise we must rely on hardcoded GCC jobserver. If it is not available, we will get warnings in the console but it still works, albeit in serial mode
-          SET(CMAKE_Fortran_FLAGS  "${CMAKE_Fortran_FLAGS} -flto=jobserver -fuse-linker-plugin")
-        ENDIF()
-        # Use the GCC wrapper for the complete toolchain to provide the path to the linker plugin (this might be the problem with using the CMAKE IPO)
-        SET(CMAKE_AR     "${CMAKE_GCC_AR}"     CACHE FILEPATH "" FORCE)
-        SET(CMAKE_NM     "${CMAKE_GCC_NM}"     CACHE FILEPATH "" FORCE)
-        SET(CMAKE_RANLIB "${CMAKE_GCC_RANLIB}" CACHE FILEPATH "" FORCE)
-        MARK_AS_ADVANCED(FORCE CMAKE_AR)
-        MARK_AS_ADVANCED(FORCE CMAKE_NM)
-        MARK_AS_ADVANCED(FORCE CMAKE_RANLIB)
-      ELSE()
-        MESSAGE(WARNING "GCC indicates LTO support, but binutils wrappers could not be found. Disabling LTO linker plugin." )
-        SET(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)  # enable IPO globally
-      ENDIF()
-    ELSE()
-      SET(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)  # enable IPO globally
-    ENDIF()
-  ENDIF()
-ENDIF()
+INCLUDE(SetBuildType)
 
 # =========================================================================
 # Location of binary and filenames
@@ -239,8 +145,8 @@ ENDFUNCTION()
 # A function to get all user defined variables with a specified prefix
 SET(configuration ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/configuration.cmake)
 FILE(WRITE ${configuration} "")
-GETLISTOFVARSSTARTINGWITH("CMAKE_BUILD_TYPE" flexiVars2)
-GETLISTOFVARSSTARTINGWITH("FLEXI_" flexiVars1)
+GETLISTOFVARSSTARTINGWITH("CMAKE_BUILD_TYPE" flexiVars1)
+GETLISTOFVARSSTARTINGWITH("FLEXI_" flexiVars2)
 GETLISTOFVARSSTARTINGWITH("LIBS_"  flexiVars3)
 GETLISTOFVARSSTARTINGWITH("POSTI_" flexiVars4)
 FOREACH (_var IN LISTS flexiVars1 flexiVars2 flexiVars3 flexiVars4)
@@ -262,7 +168,7 @@ ENDFOREACH()
 # =========================================================================
 # ADD LIBRARIES
 # =========================================================================
-INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/CMakeListsLib.txt)
+INCLUDE(SetLibraries)
 
 # =========================================================================
 # FLEXI

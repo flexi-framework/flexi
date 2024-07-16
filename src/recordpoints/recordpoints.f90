@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -115,6 +116,7 @@ ELSE
   nVar_loc = PP_nVar
 END IF
 
+! Read parameters on all procs, otherwise output is missing if no RP on MPI root
 RP_maxMemory      = GETINT('RP_MaxMemory')            ! Max buffer (100MB)
 RP_SamplingOffset = GETINT('RP_SamplingOffset')       ! Sampling offset (iteration)
 IF(RP_onProc)THEN
@@ -198,13 +200,16 @@ INTEGER                       :: nGlobalElems_RPList
 INTEGER                       :: iElem,iRP,iRP_glob
 INTEGER                       :: OffsetRPArray(2,nElems)
 REAL,ALLOCATABLE              :: xi_RP(:,:)
+! Timers
+REAL                          :: StartT,EndT
 !==================================================================================================================================
 
 IF(MPIRoot)THEN
-  IF(.NOT.FILEEXISTS(FileString))  CALL ABORT(__STAMP__, &
-          'RPList from data file "'//TRIM(FileString)//'" does not exist')
+  IF (.NOT.FILEEXISTS(FileString)) &
+    CALL Abort(__STAMP__,'RPList from data file "'//TRIM(FileString)//'" does not exist')
 END IF
 
+  GETTIME(StartT)
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')' Read recordpoint definitions from data file "'//TRIM(FileString)//'" ...'
 
 ! Open data file
@@ -223,8 +228,9 @@ CALL GetDataSize(File_ID,'OffsetRP',nDims,HSize)
 CHECKSAFEINT(HSize(2),4)
 nGlobalElems_RPList=INT(HSize(2),4) !global number of elements
 DEALLOCATE(HSize)
-IF(nGlobalElems_RPList.NE.nGlobalElems) CALL ABORT(__STAMP__, &
-          'nGlobalElems from RPList differs from nGlobalElems from Mesh File!')
+
+IF (nGlobalElems_RPList.NE.nGlobalElems) &
+  CALL CollectiveStop(__STAMP__,'nGlobalElems from RPList differs from nGlobalElems from Mesh File!')
 
 CALL ReadArray('OffsetRP',2,(/2,nElems/),OffsetElem,2,IntArray=OffsetRPArray)
 
@@ -260,6 +266,8 @@ ELSE
 END IF
 
 CALL CloseDataFile()
+GETTIME(EndT)
+CALL DisplayMessageAndTime(EndT-StartT, 'DONE', DisplayLine=.FALSE.)
 
 IF(RP_onProc)THEN
   ALLOCATE( L_xi_RP  (0:PP_N,nRP) &
@@ -296,8 +304,6 @@ IF(RP_onProc)THEN
 #endif
 END IF
 DEALLOCATE(xi_RP)
-
-SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' DONE.'
 
 END SUBROUTINE ReadRPList
 
@@ -425,7 +431,7 @@ SUBROUTINE WriteRP(nVar,StrVarNames,OutputTime,resetCounters)
 USE MOD_PreProc
 USE MOD_Globals
 USE HDF5
-USE MOD_HDF5_Output       ,ONLY: WriteAttribute,WriteArray,MarkWriteSuccessfull
+USE MOD_HDF5_Output       ,ONLY: WriteAttribute,WriteArray,MarkWriteSuccessful
 USE MOD_IO_HDF5           ,ONLY: File_ID,OpenDataFile,CloseDataFile
 USE MOD_Mesh_Vars         ,ONLY: MeshFile
 USE MOD_Output_Vars       ,ONLY: ProjectName
@@ -534,9 +540,9 @@ CALL CloseDataFile()
 #if USE_MPI
 IF(myRPrank.EQ.0)THEN
 #endif /* USE_MPI */
-  CALL MarkWriteSuccessfull(Filestring)
+  CALL MarkWriteSuccessful(Filestring)
   GETTIME(EndT)
-  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE  [',EndT-StartT,'s]'
+  CALL DisplayMessageAndTime(EndT-StartT, 'WRITE RECORDPOINT DATA TO HDF5 FILE DONE!', DisplayLine=.FALSE., rank=0)
 #if USE_MPI
 END IF
 #endif /* USE_MPI */

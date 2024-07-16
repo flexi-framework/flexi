@@ -1,0 +1,118 @@
+cff-version: 1.2.0
+message: "If you find FLEXI helpful, please cite as follows:"
+
+title: FLEXI
+authors:
+  - family-names: Altmann
+    given-names: Christoph
+  - family-names: Atak
+    given-names: Muhammed
+  - family-names: Appel
+    given-names: Daniel
+  - family-names: Beck
+    given-names: Andrea
+  - family-names: Blind
+    given-names: Marcel
+  - family-names: Bolemann
+    given-names: Thomas
+  - family-names: Copplestone
+    given-names: Stephen
+  - family-names: Dürrwächter
+    given-names: Jakob
+  - family-names: Fechter
+    given-names: Stefan
+  - family-names: Flad
+    given-names: David
+  - family-names: Föll
+    given-names: Fabian
+  - family-names: Frank
+    given-names: Hannes
+  - family-names: Gao
+    given-names: Min
+  - family-names: Gassner
+    given-names: Gregor
+  - family-names: Hindenlang
+    given-names: Florian
+  - family-names: Hitz
+    given-names: Timon
+  - family-names: Hoffmann
+    given-names: Malte
+  - family-names: Jöns
+    given-names: Steven
+  - family-names: Jens
+    given-names: Keim
+  - family-names: Keller
+    given-names: Serena
+  - family-names: Kempf
+    given-names: Daniel
+  - family-names: Kopper
+    given-names: Patrick
+  - family-names: Krais
+    given-names: Nico
+  - family-names: Kuhn
+    given-names: Thomas
+  - family-names: Kurz
+    given-names: Marius
+  - family-names: Mossier
+    given-names: Pascal
+  - family-names: Müller
+    given-names: Christoph
+  - family-names: Munz
+    given-names: Claus-Dieter
+  - family-names: Neudorfer
+    given-names: Jonathan
+  - family-names: Núñez-de la Rosa
+    given-names: Jonatan
+  - family-names: Ortwein
+    given-names: Philip
+  - family-names: Schwarz
+    given-names: Anna
+  - family-names: Sonntag
+    given-names: Matthias
+  - family-names: Staudenmaier
+    given-names: Marc
+  - family-names: Zeifang
+    given-names: Jonas
+
+abstract: A high order discontinuous Galerkin framework for hyperbolic–parabolic conservation laws 
+keywords:
+  - Discontinuous Galerkin
+  - High-Performance Computing
+  - Computational Fluid Dynamics
+license: GPL-3.0
+repository: https://github.com/flexi-framework/flexi
+
+preferred-citation:
+  type: article
+  title: "FLEXI: A high order discontinuous Galerkin framework for hyperbolic--parabolic conservation laws"
+  authors:
+    - family-names: Krais
+      given-names: Nico
+    - family-names: Beck
+      given-names: Andrea
+    - family-names: Bolemann
+      given-names: Thomas
+    - family-names: Frank
+      given-names: Hannes
+    - family-names: Flad
+      given-names: David
+    - family-names: Gassner
+      given-names: Gregor
+    - family-names: Hindenlang
+      given-names: Florian
+    - family-names: Hoffmann
+      given-names: Malte
+    - family-names: Kuhn
+      given-names: Thomas
+    - family-names: Sonntag
+      given-names: Matthias
+    - family-names: Munz
+      given-names: Claus-Dieter
+  year: 2021
+  month: 01
+  journal: Computers \& Mathematics with Applications
+  volume: 81
+  pages: 186-219
+  doi: 10.1016/j.camwa.2020.05.004
+  url: https://doi.org/10.1016/j.camwa.2020.05.004
+  notes: "Code available at: https://github.com/flexi-framework/flexi"

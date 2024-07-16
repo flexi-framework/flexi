@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -944,7 +945,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Implicit_Vars         ,ONLY: nDOFVarElem
 USE MOD_FV_Vars               ,ONLY: FV_w_inv
-#if PARABOLIC
+#if PARABOLIC && FV_RECONSTRUCT
 USE MOD_Jac_Ex_Reconstruction ,ONLY: JacFVGradients_Vol,JacFVGradients_nb
 USE MOD_Jacobian              ,ONLY: dPrimTempdCons
 USE MOD_Precond_Vars          ,ONLY: NoFillIn
@@ -1289,7 +1290,7 @@ END DO
 #endif
 ! ETA-direction-------------------------------------------------------------------------------------------------------------------
 
-#if PARABOLIC
+#if PARABOLIC && FV_RECONSTRUCT
 IF (.NOT.HyperbolicPrecond) THEN
   ! Compute the following derivatives (depending on the FV gradient reconstruction):
   !  * dependency of the volume gradients w.r.t. the volume DOFs dQVol_dUvol
@@ -1602,7 +1603,7 @@ IF (.NOT.HyperbolicPrecond) THEN
   END DO !p
 #endif
 END IF !HyperbolicPrecond
-#endif /*PARABOLIC*/
+#endif /*PARABOLIC && FV_RECONSTRUCT*/
 END SUBROUTINE Assemble_JacSurfInt_FV
 
 #if PARABOLIC

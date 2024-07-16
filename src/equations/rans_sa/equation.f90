@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -53,6 +54,7 @@ SUBROUTINE DefineParametersEquation()
 ! MODULES
 USE MOD_ReadInTools,ONLY: prms,addStrListEntry
 USE MOD_Riemann    ,ONLY: DefineParametersRiemann
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Equation")
@@ -101,6 +103,7 @@ USE MOD_MPI_Vars
 USE MOD_MPI
 #endif
 USE MOD_IO_HDF5          ,ONLY:AddToFieldData,FieldOut
+! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -297,6 +300,7 @@ SUBROUTINE GetPrimitiveStateSurface(U_master,U_slave,UPrim_master,UPrim_slave)
 USE MOD_Preproc
 USE MOD_EOS,      ONLY: ConsToPrim
 USE MOD_Mesh_Vars,ONLY: firstInnerSide,firstMPISide_YOUR,lastMPISide_YOUR,nSides
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -348,6 +352,7 @@ SUBROUTINE GetConservativeStateSurface(UPrim_master,UPrim_slave,U_master,U_slave
 USE MOD_Preproc
 USE MOD_EOS,      ONLY: PrimToCons
 USE MOD_Mesh_Vars,ONLY: firstInnerSide,firstMPISide_YOUR,lastMPISide_YOUR,nSides
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -389,6 +394,7 @@ USE MOD_TestCase        ,ONLY: FinalizeTestcase
 USE MOD_Riemann         ,ONLY: FinalizeRiemann
 USE MOD_CalcTimeStep    ,ONLY: FinalizeCalctimestep
 USE MOD_GetBoundaryFlux, ONLY: FinalizeBC
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL FinalizeTestcase()

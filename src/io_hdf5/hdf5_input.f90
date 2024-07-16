@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -60,7 +61,7 @@ INTERFACE GetVarnames
 END INTERFACE
 
 PUBLIC :: Plist_File_ID,File_ID,HSize,nDims        ! Variables from MOD_IO_HDF5 that need to be public
-PUBLIC :: OpenDataFile,CloseDataFile ! Subroutines from MOD_IO_HDF5 that need to be public
+PUBLIC :: OpenDataFile,CloseDataFile               ! Subroutines from MOD_IO_HDF5 that need to be public
 PUBLIC :: ISVALIDHDF5FILE,ISVALIDMESHFILE,GetDataSize,GetAttributeSize,GetDataProps,GetNextFileName
 PUBLIC :: ReadArray,ReadAttribute
 PUBLIC :: GetArrayAndName
@@ -218,6 +219,7 @@ ELSE
   ! Close FORTRAN predefined datatypes
   CALL H5CLOSE_F(iError)
 END IF
+
 END FUNCTION ISVALIDMESHFILE
 
 
@@ -503,7 +505,9 @@ CHARACTER(LEN=255),DIMENSION(PRODUCT(nVal)),OPTIONAL,INTENT(OUT),TARGET :: StrAr
 INTEGER(HID_T)                 :: DSet_ID,Type_ID,MemSpace,FileSpace,PList_ID
 INTEGER(HSIZE_T)               :: Offset(Rank),Dimsf(Rank)
 TYPE(C_PTR)                    :: buf
+#if USE_MPI
 INTEGER(HID_T)                 :: driver
+#endif /*USE_MPI*/
 !==================================================================================================================================
 #if USE_MPI
 ! HDF5 with MPI can only read max. (32 bit signed integer / size of single element) elements (2GB per MPI rank)

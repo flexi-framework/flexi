@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -12,6 +13,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "commit.h"
 
 MODULE MOD_Flexi
 
@@ -37,31 +39,37 @@ CONTAINS
 SUBROUTINE InitFlexi(nArgs_In,Args_In,mpi_comm_loc)
 ! MODULES
 USE MOD_Globals
-USE MOD_PreProc
+USE MOD_Globals_Vars,      ONLY:InitializationWallTime,StartTime
 USE MOD_Commandline_Arguments
-USE MOD_Restart,           ONLY:DefineParametersRestart,InitRestart,Restart
-USE MOD_Interpolation,     ONLY:DefineParametersInterpolation,InitInterpolation
-USE MOD_Mesh,              ONLY:DefineParametersMesh,InitMesh
-USE MOD_Eos,               ONLY:DefineParametersEos
-USE MOD_Exactfunc,         ONLY:DefineParametersExactFunc
-USE MOD_Mortar,            ONLY:InitMortar
-USE MOD_Equation,          ONLY:DefineParametersEquation,InitEquation
-USE MOD_TestCase,          ONLY:DefineParametersTestcase
+USE MOD_PreProc
+USE MOD_Analyze,           ONLY:DefineParametersAnalyze,InitAnalyze
 USE MOD_DG,                ONLY:InitDG
+USE MOD_Eos,               ONLY:DefineParametersEos
+USE MOD_Equation,          ONLY:DefineParametersEquation,InitEquation
+USE MOD_Exactfunc,         ONLY:DefineParametersExactFunc
+USE MOD_Filter,            ONLY:DefineParametersFilter,InitFilter
+USE MOD_Implicit,          ONLY:DefineParametersImplicit,InitImplicit
+USE MOD_Interpolation,     ONLY:DefineParametersInterpolation,InitInterpolation
+USE MOD_IO_HDF5,           ONLY:DefineParametersIO_HDF5,InitIOHDF5
+USE MOD_Mesh,              ONLY:DefineParametersMesh,InitMesh
+USE MOD_Mortar,            ONLY:InitMortar
+USE MOD_MPI,               ONLY:DefineParametersMPI,InitMPI
+USE MOD_Output,            ONLY:DefineParametersOutput,InitOutput
+USE MOD_Overintegration,   ONLY:DefineParametersOverintegration,InitOverintegration
+#if USE_PRECOND
+USE MOD_Precond,           ONLY:DefineParametersPrecond
+#endif /*USE_PRECOND*/
+USE MOD_ReadInTools,       ONLY:prms,IgnoredParameters,PrintDefaultParameterFile,ExtractParameterFile
+USE MOD_RecordPoints,      ONLY:DefineParametersRecordPoints,InitRecordPoints
+USE MOD_Restart,           ONLY:DefineParametersRestart,InitRestart,Restart
+USE MOD_StringTools,       ONLY:STRICMP, GetFileExtension
+USE MOD_TestCase,          ONLY:DefineParametersTestcase
+USE MOD_TimeDisc,          ONLY:TimeDisc
+USE MOD_TimeDisc_Functions,ONLY:DefineParametersTimedisc,InitTimeDisc
+USE MOD_Unittest,          ONLY:GenerateUnittestReferenceData
 #if PARABOLIC
 USE MOD_Lifting,           ONLY:DefineParametersLifting,InitLifting
 #endif /*PARABOLIC*/
-USE MOD_Filter,            ONLY:DefineParametersFilter,InitFilter
-USE MOD_Overintegration,   ONLY:DefineParametersOverintegration,InitOverintegration
-USE MOD_IO_HDF5,           ONLY:DefineParametersIO_HDF5,InitIOHDF5
-USE MOD_Output,            ONLY:DefineParametersOutput,InitOutput
-USE MOD_Analyze,           ONLY:DefineParametersAnalyze,InitAnalyze
-USE MOD_RecordPoints,      ONLY:DefineParametersRecordPoints,InitRecordPoints
-USE MOD_TimeDisc,          ONLY:TimeDisc
-USE MOD_TimeDisc_Functions,ONLY:DefineParametersTimedisc,InitTimeDisc
-USE MOD_Implicit,          ONLY:DefineParametersImplicit,InitImplicit
-USE MOD_Precond,           ONLY:DefineParametersPrecond
-USE MOD_MPI,               ONLY:DefineParametersMPI,InitMPI
 #if USE_MPI
 USE MOD_MPI,               ONLY:InitMPIvars
 #endif /*USE_MPI*/
@@ -70,10 +78,8 @@ USE MOD_Sponge,            ONLY:DefineParametersSponge,InitSponge
 USE MOD_FV,                ONLY:DefineParametersFV,InitFV
 USE MOD_FV_Basis,          ONLY:InitFV_Basis
 USE MOD_Indicator,         ONLY:DefineParametersIndicator,InitIndicator
-#endif
-USE MOD_ReadInTools,       ONLY:prms,IgnoredParameters,PrintDefaultParameterFile,ExtractParameterFile
-USE MOD_StringTools,       ONLY:STRICMP, GetFileExtension
-USE MOD_Unittest,          ONLY:GenerateUnittestReferenceData
+#endif /*FV_ENABLED*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -82,7 +88,6 @@ CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: Args_In(*)
 INTEGER,INTENT(IN),OPTIONAL   :: mpi_comm_loc
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                    :: Time                              !< Used to measure simulation time
 LOGICAL                 :: userblockFound
 CHARACTER(LEN=255)      :: RestartFile_loc = ''
 !==================================================================================================================================
@@ -136,7 +141,9 @@ CALL DefineParametersLifting ()
 CALL DefineParametersSponge()
 CALL DefineParametersTimedisc()
 CALL DefineParametersImplicit()
+#if USE_PRECOND
 CALL DefineParametersPrecond()
+#endif /*USE_PRECOND*/
 CALL DefineParametersAnalyze()
 CALL DefineParametersRecordPoints()
 
@@ -149,10 +156,11 @@ IF (doPrintHelp.GT.0) THEN
   CALL MPI_COMM_FREE(MPI_COMM_FLEXI,iError)
   ! we also have to finalize MPI itself here
   CALL MPI_FINALIZE(iError)
-  IF(iError .NE. 0) STOP 'MPI finalize error'
+  IF(iError.NE.MPI_SUCCESS) STOP 'MPI finalize error'
 #endif
   STOP
 END IF
+
 CALL prms%read_options(ParameterFile)
 
 CALL InitIOHDF5()
@@ -184,6 +192,7 @@ SWRITE(UNIT_stdOut,'(A)') &
 SWRITE(UNIT_stdOut,'(A)') &
 " )______)             )_________________)  )_________________)  )_____)/´   )_____)  )_________________)          "
 SWRITE(UNIT_stdOut,'(A)')
+SWRITE(UNIT_stdOut,'(A)')" Flexi with commit "//TRIM(GIT_CURRENT_COMMIT)
 SWRITE(UNIT_stdOut,'(132("="))')
 ! Measure init duration
 StartTime=FLEXITIME()
@@ -220,9 +229,9 @@ CALL IgnoredParameters()
 CALL Restart()
 
 ! Measure init duration
-Time=FLEXITIME()
+InitializationWallTime = FLEXITIME()-StartTime
 SWRITE(UNIT_stdOut,'(132("="))')
-SWRITE(UNIT_stdOut,'(A,F8.2,A)') ' INITIALIZATION DONE! [',Time-StartTime,' sec ]'
+CALL DisplayMessageAndTime(InitializationWallTime,'INITIALIZATION DONE!',DisplayLine=.FALSE.)
 SWRITE(UNIT_stdOut,'(132("="))')
 
 ! Generate Unittest Data
@@ -234,7 +243,9 @@ IF (doGenerateUnittestReferenceData) THEN
   CALL FinalizeFlexi()
   CALL EXIT()
 END IF
+
 END SUBROUTINE InitFlexi
+
 
 !==================================================================================================================================
 !> Finalize the computation.
@@ -242,6 +253,7 @@ END SUBROUTINE InitFlexi
 SUBROUTINE FinalizeFlexi()
 ! MODULES
 USE MOD_Globals
+USE MOD_Globals_Vars,      ONLY:StartTime
 USE MOD_Analyze,           ONLY:FinalizeAnalyze
 USE MOD_Commandline_Arguments,ONLY:FinalizeCommandlineArguments
 USE MOD_DG,                ONLY:FinalizeDG
@@ -270,6 +282,7 @@ USE MOD_FV,                ONLY:FinalizeFV
 USE MOD_FV_Basis,          ONLY:FinalizeFV_Basis
 USE MOD_Indicator,         ONLY:FinalizeIndicator
 #endif /*FV_ENABLED*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -309,9 +322,8 @@ CALL FinalizeCommandlineArguments()
 ! For flexilib MPI init/finalize is controlled by main program
 CALL FinalizeMPI()
 #endif
-SWRITE(UNIT_stdOut,'(132("="))')
-SWRITE(UNIT_stdOut,'(A,F8.2,A)') ' FLEXI FINISHED! [',Time-StartTime,' sec ]'
-SWRITE(UNIT_stdOut,'(132("="))')
+
+CALL DisplaySimulationTime(Time, StartTime, 'FINISHED!')
 END SUBROUTINE FinalizeFlexi
 
 END MODULE MOD_Flexi

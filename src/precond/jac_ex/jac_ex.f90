@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -181,7 +182,7 @@ FVEM = 0
 IF (.NOT.(HyperbolicPrecond)) THEN
   IF(FVEM.EQ.0) CALL FillJacLiftingFlux(t,iElem)
 END IF
-#endif /*PARABOLIC*/
+#endif /*PARABOLIC */
 IF(doVol)THEN
   IF(FVEM.EQ.0)THEN
     CALL DGVolIntJac(BJ,iElem) !without sJ!      !d(F^a+F^v)/dU partial
@@ -200,7 +201,7 @@ IF(doVol)THEN
 #endif
     END IF
   END IF
-#endif /*PARABOLIC*/
+#endif /*PARABOLIC */
 END IF!doVol
 IF(doSurf) THEN
   CALL JacSurfInt(t,BJ,iElem)
@@ -276,7 +277,7 @@ SDEALLOCATE(R_Minus)
 SDEALLOCATE(R_Plus)
 SDEALLOCATE(JacLiftingFlux)
 #endif /*PARABOLIC*/
-#if FV_ENABLED && FV_RECONSTRUCT
+#if FV_RECONSTRUCT
 SDEALLOCATE(UPrim_extended)
 SDEALLOCATE(FV_sdx_XI_extended)
 SDEALLOCATE(FV_sdx_ETA_extended)

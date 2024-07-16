@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -107,7 +108,7 @@ USE MOD_Mappings,           ONLY:buildMappings
 USE MOD_Prepare_Mesh,       ONLY:exchangeFlip
 #endif
 #if FV_ENABLED
-USE MOD_FV_Metrics,         ONLY:InitFV_Metrics
+USE MOD_FV_Metrics,         ONLY:InitFV_Metrics,FV_CalcMetrics
 #endif
 USE MOD_IO_HDF5,            ONLY:AddToElemData,ElementOut
 #if (PP_dim == 2)
@@ -132,14 +133,15 @@ INTEGER           :: firstSlaveSide      ! lower side ID of array U_slave/gradUx
 INTEGER           :: lastSlaveSide       ! upper side ID of array U_slave/gradUx_slave...
 INTEGER           :: iSide,LocSideID,SideID
 INTEGER           :: NGeoOverride
+! Timer
+REAL              :: StartT,EndT,WallTime
 !==================================================================================================================================
-IF((.NOT.InterpolationInitIsDone).OR.MeshInitIsDone) THEN
-  CALL CollectiveStop(__STAMP__,&
-    'InitMesh not ready to be called or already called.')
-END IF
+IF (.NOT.InterpolationInitIsDone .OR. MeshInitIsDone) &
+  CALL CollectiveStop(__STAMP__,'InitMesh not ready to be called or already called.')
 
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A,I1,A)') ' INIT MESH IN MODE ',meshMode,'...'
+GETTIME(StartT)
 
 ! prepare pointer structure (get nElems, etc.)
 IF (PRESENT(MeshFile_IN)) THEN
@@ -352,6 +354,7 @@ IF (meshMode.GT.1) THEN
   ALLOCATE(      TangVec2(3,0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
   ALLOCATE(      SurfElem(  0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
   ALLOCATE(     Ja_Face(3,3,0:PP_N,0:PP_NZ,          1:nSides)) ! temp
+  ALLOCATE(    Ja_slave(3,3,0:PP_N,0:PP_NZ,          1:nSides)) ! temp
 
 #if FV_ENABLED
   ! NOTE: initialize with 1 and not with 0
@@ -372,7 +375,8 @@ IF (meshMode.GT.1) THEN
   SWRITE(UNIT_stdOut,'(A)') "NOW CALLING calcMetrics..."
   CALL CalcMetrics()     ! DG metrics
 #if FV_ENABLED
-  CALL InitFV_Metrics()  ! FV metrics
+  CALL InitFV_Metrics()  ! Init FV metrics
+  CALL FV_CalcMetrics()  ! FV metrics
 #endif
   ! debugmesh: param specifies format to output, 0: no output, 1: tecplot ascii, 2: tecplot binary, 3: paraview binary
   CALL WriteDebugMesh(GETINT('debugmesh'))
@@ -394,17 +398,22 @@ IF (meshMode.GT.0) THEN
 END IF
 
 SDEALLOCATE(dXCL_N)
-SDEALLOCATE(Ja_Face)
+!SDEALLOCATE(Ja_Face)
 SDEALLOCATE(TreeCoords)
 SDEALLOCATE(xiMinMax)
 SDEALLOCATE(ElemToTree)
 IF ((.NOT.postiMode).AND.(ALLOCATED(scaledJac))) DEALLOCATE(scaledJac)
 
+! Write debug information
 CALL AddToElemData(ElementOut,'myRank',IntScalar=myRank)
 
 MeshInitIsDone=.TRUE.
-SWRITE(UNIT_stdOut,'(A)')' INIT MESH DONE!'
+
+GETTIME(EndT)
+WallTime = EndT-StartT
+CALL DisplayMessageAndTime(WallTime,'INIT MESH DONE!',DisplayLine=.FALSE.)
 SWRITE(UNIT_stdOut,'(132("-"))')
+
 END SUBROUTINE InitMesh
 
 !============================================================================================================================
@@ -455,6 +464,9 @@ SDEALLOCATE(NormVec)
 SDEALLOCATE(TangVec1)
 SDEALLOCATE(TangVec2)
 SDEALLOCATE(SurfElem)
+
+SDEALLOCATE(Ja_Face)
+SDEALLOCATE(Ja_slave)
 
 ! ijk sorted mesh
 SDEALLOCATE(Elem_IJK)

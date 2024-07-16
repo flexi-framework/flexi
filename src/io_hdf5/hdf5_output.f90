@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -19,6 +20,7 @@
 MODULE MOD_HDF5_Output
 ! MODULES
 USE MOD_IO_HDF5
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -51,8 +53,8 @@ INTERFACE WriteAttribute
   MODULE PROCEDURE WriteAttribute
 END INTERFACE
 
-INTERFACE MarkWriteSuccessfull
-  MODULE PROCEDURE MarkWriteSuccessfull
+INTERFACE MarkWriteSuccessful
+  MODULE PROCEDURE MarkWriteSuccessful
 END INTERFACE
 
 INTERFACE WriteAdditionalElemData
@@ -72,7 +74,7 @@ INTERFACE GenerateFileSkeleton
 END INTERFACE
 
 PUBLIC :: WriteState,FlushFiles,WriteHeader,WriteTimeAverage,WriteBaseflow,GenerateFileSkeleton
-PUBLIC :: WriteArray,WriteAttribute,GatheredWriteArray,WriteAdditionalElemData,MarkWriteSuccessfull
+PUBLIC :: WriteArray,WriteAttribute,GatheredWriteArray,WriteAdditionalElemData,MarkWriteSuccessful
 !==================================================================================================================================
 
 CONTAINS
@@ -198,9 +200,9 @@ CALL WriteAdditionalElemData(FileName,ElementOut)
 CALL WriteAdditionalFieldData(FileName,FieldOut)
 
 IF(MPIRoot)THEN
-  CALL MarkWriteSuccessfull(FileName)
+  CALL MarkWriteSuccessful(FileName)
   GETTIME(EndT)
-  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',EndT-StartT,'s]'
+  CALL DisplayMessageAndTime(EndT-StartT,'DONE!',DisplayLine=.FALSE.)
 END IF
 
 #if USE_MPI
@@ -241,10 +243,17 @@ CHARACTER(LEN=255),ALLOCATABLE :: UStr(:)
 INTEGER,           ALLOCATABLE :: UInt(:)
 INTEGER                        :: i,nValGather(rank),nDOFLocal
 INTEGER,DIMENSION(nLocalProcs) :: nDOFPerNode,offsetNode
+LOGICAL,DIMENSION(rank)        :: mask              ! Sanity check array, masking the rank
 !==================================================================================================================================
 ! HDF5 with MPI can only write max. (32 bit signed integer / size of single element) elements (2GB per MPI rank)
 IF (PRODUCT(REAL(nVal)).GT.nLimit) CALL Abort(__STAMP__, & ! Casting to avoid overflow
  'Dataset "'//TRIM(DataSetName)//'" exceeds HDF5 chunksize limit of 2GB per rank! Increase number of ranks or compile without MPI!')
+
+! Sanity check input. Slicing with 0 only allowed for rank, i.e., nVal(!rank) != 0
+mask       = .TRUE.
+mask(rank) = .FALSE.
+IF (PRODUCT(nVal,mask).EQ.0 .OR. PRODUCT(nValGlobal,mask).EQ.0) CALL Abort(__STAMP__, & ! Slicing only allow in rank dimension
+ 'Dataset "'//TRIM(DataSetName)//'" has zero entries on dimension!=rank! This is not supported by HDF5!')
 
 IF(gatheredWrite)THEN
   IF(ANY(offset(1:rank-1).NE.0)) &
@@ -375,7 +384,7 @@ DO WHILE(ASSOCIATED(e))
 END DO
 
 IF(MPIRoot)THEN
-  CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+  CALL OpenDataFile(TRIM(FileName),create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
   CALL WriteAttribute(File_ID,'VarNamesAdd',nVar,StrArray=VarNames)
   CALL CloseDataFile()
 END IF
@@ -528,10 +537,10 @@ SUBROUTINE WriteBaseflow(MeshFileName,OutputTime,FutureTime)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_Output_Vars  ,ONLY: ProjectName
-USE MOD_Mesh_Vars    ,ONLY: offsetElem,nGlobalElems,nElems
-USE MOD_Sponge_Vars  ,ONLY: SpBaseFlow
 USE MOD_Equation_Vars,ONLY: StrVarNames
+USE MOD_Mesh_Vars    ,ONLY: offsetElem,nGlobalElems,nElems
+USE MOD_Output_Vars  ,ONLY: ProjectName,WriteStateFiles
+USE MOD_Sponge_Vars  ,ONLY: SpBaseFlow
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -549,6 +558,9 @@ INTEGER                        :: NZ_loc
 INTEGER                        :: iElem,i,j,iVar
 #endif
 !==================================================================================================================================
+
+IF (.NOT.WriteStateFiles) RETURN
+
 IF(MPIRoot)THEN
   WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE BASE FLOW TO HDF5 FILE...'
   GETTIME(StartT)
@@ -593,9 +605,9 @@ CALL GatheredWriteArray(FileName,create=.FALSE.,&
 IF(.NOT.output2D) DEALLOCATE(UOut)
 #endif
 IF(MPIRoot)THEN
-  CALL MarkWriteSuccessfull(FileName)
+  CALL MarkWriteSuccessful(FileName)
   GETTIME(EndT)
-  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',EndT-StartT,'s]'
+  CALL DisplayMessageAndTime(EndT-StartT,'DONE!',DisplayLine=.FALSE.)
 END IF
 
 END SUBROUTINE WriteBaseflow
@@ -726,11 +738,11 @@ DO i=1,2
 #endif
 END DO
 
-IF(MPIRoot) CALL MarkWriteSuccessfull(FileName)
+IF(MPIRoot) CALL MarkWriteSuccessful(FileName)
 
 IF(MPIRoot)THEN
   GETTIME(EndT)
-  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',EndT-StartT,'s]'
+  CALL DisplayMessageAndTime(EndT-StartT,'DONE!',DisplayLine=.FALSE.)
 END IF
 END SUBROUTINE WriteTimeAverage
 
@@ -851,7 +863,7 @@ END SUBROUTINE GenerateFileSkeleton
 !> Add time attribute, after all relevant data has been written to a file,
 !> to indicate the writing process has been finished successfully
 !==================================================================================================================================
-SUBROUTINE MarkWriteSuccessfull(FileName)
+SUBROUTINE MarkWriteSuccessful(FileName)
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -866,7 +878,7 @@ CALL OpenDataFile(TRIM(FileName),create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
 CALL DATE_AND_TIME(VALUES=time)
 CALL WriteAttribute(File_ID,'TIME',8,IntArray=time)
 CALL CloseDataFile()
-END SUBROUTINE MarkWriteSuccessfull
+END SUBROUTINE MarkWriteSuccessful
 
 
 !==================================================================================================================================
@@ -875,8 +887,10 @@ END SUBROUTINE MarkWriteSuccessfull
 SUBROUTINE FlushFiles(FlushTime_In)
 ! MODULES
 USE MOD_Globals
-USE MOD_Output_Vars ,ONLY: ProjectName
-USE MOD_HDF5_Input  ,ONLY: GetNextFileName
+USE MOD_Output_Vars      ,ONLY: ProjectName,WriteStateFiles
+USE MOD_HDF5_Input       ,ONLY: GetNextFileName
+USE MOD_Restart_Vars     ,ONLY: DoRestart,FlushInitialState
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -884,21 +898,32 @@ REAL,INTENT(IN),OPTIONAL :: FlushTime_In     !< Time to start flush
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                  :: stat,ioUnit
+REAL                     :: StartT,EndT
 REAL                     :: FlushTime
-CHARACTER(LEN=255)       :: FileName,InputFile,NextFile
+CHARACTER(LEN=255)       :: InputFile,NextFile
 !==================================================================================================================================
-IF(.NOT.MPIRoot) RETURN
+! Only MPI root does the flushing and only if DoWriteStateToHDF5 is true
+IF((.NOT.MPIRoot).OR.(.NOT.WriteStateFiles)) RETURN
+GETTIME(StartT)
 
-SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' DELETING OLD HDF5 FILES...'
+SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' DELETING OLD HDF5 FILES...'
 IF (.NOT.PRESENT(FlushTime_In)) THEN
   FlushTime=0.0
 ELSE
   FlushTime=FlushTime_In
 END IF
-FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_State',FlushTime))//'.h5'
 
 ! Delete state files
-InputFile=TRIM(FileName)
+NextFile=TRIM(TIMESTAMP(TRIM(ProjectName)//'_State',FlushTime))//'.h5'
+
+! If the original restart file is not to be deleted, skip this file and go to the next one
+IF (DoRestart.AND.(.NOT.FlushInitialState)) THEN
+  ! Set next file name
+  CALL GetNextFileName(Inputfile,NextFile,.TRUE.)
+END IF ! .NOT.FlushInitialState
+
+DO
+  InputFile=TRIM(NextFile)
 ! Read calculation time from file
 CALL GetNextFileName(Inputfile,NextFile,.TRUE.)
 ! Delete File - only root
@@ -910,23 +935,11 @@ OPEN ( NEWUNIT= ioUnit,         &
        ACCESS = 'SEQUENTIAL',   &
        IOSTAT = stat          )
 IF(stat .EQ. 0) CLOSE ( ioUnit,STATUS = 'DELETE' )
-DO
-  InputFile=TRIM(NextFile)
-  ! Read calculation time from file
-  CALL GetNextFileName(Inputfile,NextFile,.TRUE.)
-  ! Delete File - only root
-  stat=0
-  OPEN ( NEWUNIT= ioUnit,         &
-         FILE   = InputFile,      &
-         STATUS = 'OLD',          &
-         ACTION = 'WRITE',        &
-         ACCESS = 'SEQUENTIAL',   &
-         IOSTAT = stat          )
-  IF(stat .EQ. 0) CLOSE ( ioUnit,STATUS = 'DELETE' )
   IF(iError.NE.0) EXIT  ! iError is set in GetNextFileName !
 END DO
 
-WRITE(UNIT_stdOut,'(a)',ADVANCE='YES')'DONE'
+GETTIME(EndT)
+CALL DisplayMessageAndTime(EndT-StartT,'DELETING OLD HDF5 FILES DONE!',DisplayLine=.FALSE.)
 
 END SUBROUTINE FlushFiles
 
@@ -985,13 +998,20 @@ INTEGER           ,INTENT(IN),OPTIONAL,TARGET :: IntArray(PRODUCT(nVal))  !< num
 CHARACTER(LEN=255),INTENT(IN),OPTIONAL,TARGET :: StrArray(PRODUCT(nVal))  !< number of array entries (length 255)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER(SIZE_T),PARAMETER      :: SizeSet=255
 INTEGER(HID_T)                 :: PList_ID,DSet_ID,MemSpace,FileSpace,Type_ID,dsetparams
 INTEGER(HSIZE_T)               :: Dimsf(Rank),OffsetHDF(Rank),nValMax(Rank)
-INTEGER(SIZE_T)                :: SizeSet=255
 LOGICAL                        :: chunky,exists
 TYPE(C_PTR)                    :: buf
+LOGICAL,DIMENSION(rank)        :: mask            ! Sanity check array, masking the rank
 !==================================================================================================================================
 LOGWRITE(*,'(A,I1.1,A,A,A)')' WRITE ',Rank,'D ARRAY "',TRIM(DataSetName),'" TO HDF5 FILE...'
+
+! Sanity check input. Slicing with 0 only allowed for rank, i.e., nVal(!rank) != 0
+mask       = .TRUE.
+mask(rank) = .FALSE.
+IF (PRODUCT(nVal,mask).EQ.0 .OR. PRODUCT(nValGlobal,mask).EQ.0) CALL Abort(__STAMP__, & ! Slicing only allow in rank dimension
+ 'Dataset "'//TRIM(DataSetName)//'" has zero entries on dimension!=rank! This is not supported by HDF5!')
 
 ! specify chunk size if desired
 nValMax=nValGlobal
@@ -1004,9 +1024,7 @@ IF(PRESENT(chunkSize))THEN
 END IF
 ! make array extendable in case you want to append something
 IF(PRESENT(resizeDim))THEN
-  IF(.NOT.PRESENT(chunkSize))&
-    CALL Abort(__STAMP__,&
-               'Chunk size has to be specified when using resizable arrays.')
+  IF(.NOT.PRESENT(chunkSize)) CALL Abort(__STAMP__,'Chunk size has to be specified when using resizable arrays.')
   nValMax = MERGE(H5S_UNLIMITED_F,nValMax,resizeDim)
 END IF
 
@@ -1030,9 +1048,7 @@ IF (.NOT. exists) THEN
 ELSE
   CALL H5DOPEN_F(File_ID, TRIM(DatasetName),DSet_ID, iError)
 END IF
-IF(chunky)THEN
-  CALL H5DSET_EXTENT_F(DSet_ID,Dimsf,iError) ! if resizable then dataset may need to be extended
-END IF
+IF (chunky) CALL H5DSET_EXTENT_F(DSet_ID,Dimsf,iError) ! if resizable then dataset may need to be extended
 
 ! Dataset empty, return before allocating memory space
 IF (PRODUCT(nVal).EQ.0) RETURN

@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -36,6 +37,7 @@
 #endif
 
 #define SIZEOF_F(x) (STORAGE_SIZE(x)/8)
+#define NO_OP(x)    ASSOCIATE( x => x ); END ASSOCIATE
 
 #ifdef GNU
 #define CHECKSAFEINT(x,k)  IF(x>HUGE(INT( 1,KIND=k)).OR.x<-HUGE(INT( 1,KIND=k))) CALL Abort(__STAMP__,'Integer conversion failed: out of range!')
@@ -135,7 +137,7 @@
 
 ! Compute viscous contributions in volume integral
 ! NOT if FV-Blending or if non-parabolic
-#if (FV_ENABLED==2) || !PARABOLIC
+#if (FV_ENABLED>=2) || !PARABOLIC
 #define VOLINT_VISC 0
 #else
 #define VOLINT_VISC 1
@@ -144,8 +146,15 @@
 #define KILL(x) SWRITE(*,*) __FILE__,__LINE__,x; stop
 
 ! overintegration
-#define CUTOFF 1
-#define CUTOFFCONS 2
+#define OVERINTEGRATIONTYPE_NONE       0
+#define OVERINTEGRATIONTYPE_CUTOFF     1
+#define OVERINTEGRATIONTYPE_CONSCUTOFF 2
+
+! filter
+#define FILTERTYPE_NONE   0
+#define FILTERTYPE_CUTOFF 1
+#define FILTERTYPE_MODAL  2
+#define FILTERTYPE_LAF    3
 
 ! PURE debug switch
 #if DEBUG

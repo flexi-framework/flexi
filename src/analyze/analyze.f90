@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -69,7 +70,7 @@ CALL prms%CreateIntOption(    'AnalyzeRefState' ,"Define state used for analyze 
                                                  "Default: Same as IniRefState")
 CALL prms%CreateLogicalOption('doMeasureFlops',  "Set true to measure flop count, if compiled with PAPI.",&
                                                  '.TRUE.')
-CALL prms%CreateRealOption(   'PIDkill',         'Kill FLEXI if PID gets below this value (optional)',&
+CALL prms%CreateRealOption(   'PIDkill',         'Kill FLEXI if PID gets above this value (optional)',&
                                                  '-1.0')
 CALL prms%CreateIntOption(    'NCalcPID'         ,'Compute PID after every Nth timestep.',&
                                                   '1')
@@ -180,15 +181,12 @@ DO iSide=1,nSides
   END DO; END DO
 END DO
 #if USE_MPI
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,Vol ,1   ,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,Surf,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
 ! Communicate whether any processor has a surface at the respective boundary
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,hasAnalyzeSides,nBCs,MPI_LOGICAL,MPI_LOR,MPI_COMM_FLEXI,iError)
 #endif /*USE_MPI*/
-
 ! Prevent division by 0 if a BC has no sides associated with it (e.g. periodic)
-#if USE_MPI
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,Vol ,1   ,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,Surf,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
-#endif /*USE_MPI*/
 DO iSurf=1,nBCs
   IF (.NOT.hasAnalyzeSides(iSurf)) Surf(iSurf) = HUGE(1.)
 END DO
@@ -240,6 +238,11 @@ USE MOD_Analyze_Vars,       ONLY: wGPVolAnalyze,Vdm_GaussN_NAnalyze
 USE MOD_Basis,              ONLY: InitializeVandermonde
 USE MOD_Interpolation,      ONLY: GetNodesAndWeights
 USE MOD_Interpolation_Vars, ONLY: NodeTypeGL
+#if FV_ENABLED == 1
+USE MOD_Analyze_Vars,       ONLY: FV_Vdm_NAnalyze
+USE MOD_FV_Basis,           ONLY: FV_Build_X_w_BdryX
+USE MOD_FV_Vars,            ONLY: FV_CellType
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -250,10 +253,14 @@ REAL,INTENT(IN)                  :: wBary(0:N_in)         !< barycentric weights
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                             :: XiAnalyze(0:Nloc)
-REAL                             :: wAnalyze( 0:Nloc)  ! GL integration weights used for the analyze
+REAL                             :: wAnalyze (0:Nloc)
 INTEGER                          :: i,j
 #if PP_dim == 3
 INTEGER                          :: k
+#endif
+#if FV_ENABLED == 1
+REAL                             :: dummy1(0:Nloc),dummy2(0:Nloc)
+REAL                             :: FV_BdryX(0:Nloc+1)
 #endif
 !==================================================================================================================================
 ALLOCATE(wGPVolAnalyze(0:Nloc,0:Nloc,0:ZDIM(Nloc)),Vdm_GaussN_NAnalyze(0:Nloc,0:N_in))
@@ -270,6 +277,12 @@ DO j=0,Nloc; DO i=0,Nloc
 END DO; END DO
 #endif
 
+#if FV_ENABLED == 1
+CALL FV_Build_X_w_BdryX(Nloc, dummy1, dummy2, FV_BdryX, FV_CellType)
+ALLOCATE(FV_Vdm_NAnalyze(0:Nloc,0:N_in))
+CALL InitializeVandermonde(N_in,Nloc,wBary,xGP,FV_BdryX,FV_Vdm_NAnalyze)
+#endif
+
 END SUBROUTINE InitAnalyzeBasis
 
 
@@ -281,6 +294,7 @@ END SUBROUTINE InitAnalyzeBasis
 SUBROUTINE Analyze(Time,iter)
 ! MODULES
 USE MOD_Globals
+USE MOD_Globals_Vars,       ONLY: StartTime
 USE MOD_PreProc
 USE MOD_Analyze_Vars
 USE MOD_AnalyzeEquation,    ONLY: AnalyzeEquation
@@ -288,7 +302,8 @@ USE MOD_Benchmarking,       ONLY: Benchmarking
 USE MOD_Mesh_Vars,          ONLY: nGlobalElems
 USE MOD_Output,             ONLY: OutputToFile,PrintStatusLine
 USE MOD_Output_Vars,        ONLY: ProjectName
-USE MOD_TimeDisc_Vars,      ONLY: dt,tStart,tEnd
+USE MOD_TimeDisc_Vars,      ONLY: dt,tStart,tEnd,maxIter
+USE MOD_Restart_Vars,       ONLY: RestartTime
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -298,12 +313,13 @@ INTEGER(KIND=8),INTENT(IN)      :: iter                   !< current iteration
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=40)               :: formatStr
+CHARACTER(LEN=255)              :: hilf
 REAL                            :: CalcTime,RunTime
 REAL                            :: L_Inf_Error(PP_nVar),L_2_Error(PP_nVar)
 !==================================================================================================================================
 ! Graphical output
-CalcTime=FLEXITIME()
-RunTime=CalcTime-StartTime
+CalcTime = FLEXITIME()
+RunTime  = CalcTime-StartTime
 SWRITE(UNIT_stdOut,'(A14,ES16.7)')' Sim time   : ',Time
 
 ! Calculate error norms
@@ -325,13 +341,13 @@ CALL AnalyzeEquation(Time)
 CALL AnalyzePerformance()
 CALL Benchmarking()
 
-IF(Time.GT.0.) THEN
+IF(Time.GT.RestartTime) THEN
   SWRITE(UNIT_stdOut,'(132("-"))')
-  CALL PrintStatusLine(time,dt,tStart,tEnd,doETA=.TRUE.)
-  SWRITE(UNIT_stdOut,'(132("."))')
-  SWRITE(UNIT_stdOut,'(A,A,A,F8.2,A)') ' FLEXI RUNNING ',TRIM(ProjectName),'... [',RunTime,' sec ]'
-  SWRITE(UNIT_stdOut,'(132("-"))')
-  SWRITE(UNIT_stdOut,*)
+  CALL PrintStatusLine(time,dt,tStart,tEnd,iter,maxIter,doETA=.TRUE.)
+  WRITE(hilf,'(A,A,A)') 'RUNNING ',TRIM(ProjectName),'...'
+  CALL DisplaySimulationTime(CalcTime, StartTime, hilf)
+  ! SWRITE(UNIT_stdOut,'(132("-"))')
+  ! SWRITE(UNIT_stdOut,*)
 END IF
 END SUBROUTINE Analyze
 
@@ -368,8 +384,8 @@ END IF
 PIDTimeEnd = FLEXITIME()
 PID        = (PIDTimeEnd-PIDTimeStart)*REAL(nProcessors)/(REAL(nGlobalElems)*REAL((PP_N+1)**PP_dim))/nRKStages
 
-! Abort if PID is too low
-IF (PID.LT.PID_kill) &
+! Abort if PID is too high
+IF (PID.GT.PID_kill) &
   CALL CollectiveStop(__STAMP__,'Aborting due to low performance, PID',RealInfo=PID)
 
 PIDTimeStart = PIDTimeStart
@@ -486,6 +502,9 @@ SUBROUTINE FinalizeAnalyze()
 ! MODULES
 USE MOD_AnalyzeEquation,    ONLY: FinalizeAnalyzeEquation
 USE MOD_Analyze_Vars,       ONLY: AnalyzeInitIsDone,wGPSurf,wGPVol,Surf,wGPVolAnalyze,Vdm_GaussN_NAnalyze,ElemVol
+#if FV_ENABLED == 1
+USE MOD_Analyze_Vars,       ONLY: FV_Vdm_NAnalyze
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -497,6 +516,9 @@ SDEALLOCATE(Surf)
 SDEALLOCATE(wGPVol)
 SDEALLOCATE(wGPSurf)
 SDEALLOCATE(ElemVol)
+#if FV_ENABLED == 1
+SDEALLOCATE(FV_Vdm_NAnalyze)
+#endif
 AnalyzeInitIsDone = .FALSE.
 
 END SUBROUTINE FinalizeAnalyze
