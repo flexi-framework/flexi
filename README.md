@@ -36,11 +36,11 @@ FLEXI is a scientific project. If you use FLEXI for publications or
 presentations in science, please support the project by citing it.
 As general reference, please cite
 ```
-Krais, N., Beck, A., Bolemann, T., Frank, H., Flad, D., Gassner, G., Hindenlang, F., Hoffmann, M., Kuhn, T., Sonntag, M., Munz, C.-D.
+Krais, N., Beck, A., Bolemann, T., Frank, H., Flad, D., Gassner, G., Hindenlang, F., Hoffmann, M., Kuhn, T., Sonntag, M., & Munz, C.-D. (2021).
 FLEXI: A high order discontinuous Galerkin framework for hyperbolic–parabolic conservation laws,
-Computers & Mathematics with Applications, 81, (2021) 186-219
+Computers & Mathematics with Applications, 81, 186-219.
 ```
-or use the following Bibtex files
+or use the following Bibtex entry
 
     @article{flexi,
       title = {{FLEXI}: {A} high order discontinuous {G}alerkin framework for hyperbolic-parabolic conservation laws},
