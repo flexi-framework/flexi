@@ -69,6 +69,7 @@ REAL,ALLOCATABLE       :: FV_alpha_master(:)     !< Prolongated blending coeffic
 REAL,ALLOCATABLE       :: FV_alpha_slave( :)     !< Prolongated blending coefficient on slave  sides
 REAL                   :: FV_alpha_min           !< Minimal blending coefficient (all elems below are treated as pure DG)
 REAL                   :: FV_alpha_max           !< Maximal blending coefficient
+REAL                   :: FV_alpha_fix           !< fixed blending parameter
 REAL                   :: FV_alpha_extScale      !< Amount alpha is scaled when extended into neighbouring elements.
 LOGICAL                :: FV_doExtendAlpha       !< Flag whether alpha should be extended into neighbouring elements
 INTEGER                :: FV_nExtendAlpha        !< Number of times alpha should be passed towards neighboring elements per timestep
@@ -94,6 +95,7 @@ REAL,ALLOCATABLE       :: FV_alpha_master(:)     !< Prolongated blending coeffic
 REAL,ALLOCATABLE       :: FV_alpha_slave( :)     !< Prolongated blending coefficient on slave  sides
 REAL                   :: FV_alpha_min           !< Minimal blending coefficient (all elems below are treated as pure DG)
 REAL                   :: FV_alpha_max           !< Maximal blending coefficient
+REAL                   :: FV_alpha_fix           !< fixed blending parameter
 REAL,ALLOCATABLE       :: Ut_xi(  :,:,:,:,:)
 REAL,ALLOCATABLE       :: Ut_eta( :,:,:,:,:)
 #if PP_dim == 3

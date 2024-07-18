@@ -188,8 +188,10 @@ DO iElem=1,nElems
 #endif /* PARABOLIC*/
   END DO; END DO; END DO ! i,j,k
 
-#if FV_ENABLED >= 2
+#if FV_ENABLED == 2
   dtElem(iElem)=MERGE(CFLScale(0),CFLScale(1),FV_alpha(iElem).LE.FV_alpha_min)*2./SUM(Max_Lambda)
+#elif FV_ENABLED == 3
+  dtElem(iElem)=MERGE(CFLScale(0),CFLScale(1),ALL(FV_alpha(:,:,:,:,iElem).LE.FV_alpha_min))*2./SUM(Max_Lambda)
 #else
   dtElem(iElem)=CFLScale(FVE)*2./SUM(Max_Lambda)
 #endif
