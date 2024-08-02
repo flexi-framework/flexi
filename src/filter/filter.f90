@@ -270,7 +270,7 @@ END SUBROUTINE HestFilter
 !> defined by (N_out+1) interpolation point  positions xi_Out(0:N_Out)
 !>  xi is defined in the 1DrefElem xi=[-1,1]
 !==================================================================================================================================
-SUBROUTINE Filter(U_in,FilterMat)
+PPURE SUBROUTINE Filter(U_in,FilterMat)
 ! MODULES
 USE MOD_PreProc
 USE MOD_ChangeBasisByDim,  ONLY: ChangeBasisVolume
@@ -480,7 +480,7 @@ REAL,DIMENSION(NVar,0:PP_N,0:PP_N,0:PP_N) :: U_Xi,U_Eta
 !==================================================================================================================================
 ! Perform filtering
 #if FV_ENABLED
-stop
+CALL Abort(__STAMP__,'Selective filtering not supported with FV enabled!')
 #endif
 IF(filter_ind(1)) THEN
   U_Xi = 0.

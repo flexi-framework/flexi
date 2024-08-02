@@ -43,8 +43,9 @@ USE MOD_Globals_Vars,      ONLY:InitializationWallTime,StartTime
 USE MOD_Commandline_Arguments
 USE MOD_PreProc
 USE MOD_Analyze,           ONLY:DefineParametersAnalyze,InitAnalyze
+USE MOD_Baseflow,          ONLY:DefineParametersBaseflow,InitBaseflow
 USE MOD_DG,                ONLY:InitDG
-USE MOD_Eos,               ONLY:DefineParametersEos
+USE MOD_EOS,               ONLY:DefineParametersEos
 USE MOD_Equation,          ONLY:DefineParametersEquation,InitEquation
 USE MOD_Exactfunc,         ONLY:DefineParametersExactFunc
 USE MOD_Filter,            ONLY:DefineParametersFilter,InitFilter
@@ -138,6 +139,7 @@ CALL DefineParametersFV()
 #if PARABOLIC
 CALL DefineParametersLifting ()
 #endif /*PARABOLIC*/
+CALL DefineParametersBaseflow()
 CALL DefineParametersSponge()
 CALL DefineParametersTimedisc()
 CALL DefineParametersImplicit()
@@ -212,6 +214,7 @@ CALL InitOverintegration()
 CALL InitMPIvars()
 #endif
 CALL InitEquation()
+CALL InitBaseflow()
 CALL InitDG()
 #if FV_ENABLED
 CALL InitIndicator()
@@ -255,6 +258,7 @@ SUBROUTINE FinalizeFlexi()
 USE MOD_Globals
 USE MOD_Globals_Vars,      ONLY:StartTime
 USE MOD_Analyze,           ONLY:FinalizeAnalyze
+USE MOD_Baseflow,          ONLY:FinalizeBaseflow
 USE MOD_Commandline_Arguments,ONLY:FinalizeCommandlineArguments
 USE MOD_DG,                ONLY:FinalizeDG
 USE MOD_Equation,          ONLY:FinalizeEquation
@@ -308,6 +312,7 @@ CALL FinalizeRestart()
 CALL FinalizeMesh()
 CALL FinalizeMortar()
 CALL FinalizeSponge()
+CALL FinalizeBaseflow()
 CALL FinalizeOverintegration()
 CALL FinalizeFilter()
 #if FV_ENABLED
