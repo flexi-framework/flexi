@@ -1,5 +1,6 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -38,7 +39,7 @@ PUBLIC :: BaseflowFilter
 CONTAINS
 
 !==================================================================================================================================
-!> Perform init of baseflow selective filter routine
+!> Perform initialization of baseflow selective filter routine
 !==================================================================================================================================
 SUBROUTINE InitBaseflowFilter()
 ! MODULES
@@ -56,7 +57,12 @@ INTEGER            :: i,j
 !==================================================================================================================================
 !Setup a FilterMatrix if necessary
 SelectiveFilter(:) = GETINTARRAY('SelectiveFilter',3)
-DO i=1,3
+
+#if PP_dim==2
+SWRITE(UNIT_stdOut,'(A)') "Ignoring third dimension of SelectiveFilter vector as simulation is twodimensional!"
+#endif
+
+DO i=1,PP_dim
   IF (SelectiveFilter(i) .EQ. -999) THEN
     SelectiveFilter(i) = PP_N
   END IF
@@ -64,10 +70,11 @@ DO i=1,3
     doSelectiveFilter(i)=.TRUE.
   END IF
 END DO
+
 IF (ANY(doSelectiveFilter)) THEN
-  ALLOCATE(SelectiveFilterMatrix(3,0:PP_N,0:PP_N))
+  ALLOCATE(SelectiveFilterMatrix(PP_dim,0:PP_N,0:PP_N))
   SelectiveFilterMatrix=0.
-  DO i=1,3
+  DO i=1,PP_dim
     DO j=0,SelectiveFilter(i)
       SelectiveFilterMatrix(i,j,j)=1.
     END DO
@@ -85,10 +92,6 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Mesh_Vars,          ONLY: nElems
 USE MOD_Baseflow_Vars,      ONLY: doSelectiveFilter,SelectiveFilterMatrix,BaseflowFiltered
-#if EQNSYSNR == 2 /* NAVIER-STOKES */
-USE MOD_Baseflow_Vars,      ONLY: doBaseFlowRMS
-#endif /* NAVIER-STOKES */
-USE MOD_ReadInTools,        ONLY: GETINTARRAY
 USE MOD_Filter,             ONLY: Filter_Selective
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -98,24 +101,11 @@ IMPLICIT NONE
 INTEGER            :: i,iElem
 !==================================================================================================================================
 IF(ANY(doSelectiveFilter)) THEN
-#if EQNSYSNR == 2 /* NAVIER-STOKES */
-  ! Compute Baseflow of RMS values
-  IF(doBaseFlowRMS) THEN
-    DO i=1,3
-      DO iElem=1,nElems
-        CALL Filter_Selective(PP_nVar+PP_nVarRMS,SelectiveFilterMatrix(i,:,:),BaseFlowFiltered(:,:,:,:,iElem),doSelectiveFilter)
-      END DO ! iElem
-    END DO
-  ELSE
-#endif /* NAVIER-STOKES */
-    DO i=1,3
+    DO i=1,PP_dim
       DO iElem=1,nElems
         CALL Filter_Selective(PP_nVar,SelectiveFilterMatrix(i,:,:),BaseFlowFiltered(:,:,:,:,iElem),doSelectiveFilter)
       END DO ! iElem
-    END DO
-#if EQNSYSNR == 2 /* NAVIER-STOKES */
-  END IF
-#endif /* NAVIER-STOKES */
+    END DO ! PP_dim
 END IF
 END SUBROUTINE BaseflowFilter
 

@@ -753,7 +753,7 @@ DO iSide=1,nBCSides
     ! Non-dimensional wall distance is calculated using  y+ = y * frictionVel / kinematicVisc
     ! where frictionVel = sqrt(WallFriction/rho)
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
-      fricVel=SQRT(WallFrictionMag(p,q,iSideVisu))
+      fricVel=SQRT(WallFrictionMag(p,q,iSideVisu)/Density(p,q,iSideVisu))
       temp = Temperature(p,q,iSideVisu)
       mu   = VISCOSITY_TEMPERATURE(temp)
       wallDistance(p,q,iSideVisu) = yloc(dir)*fricVel*Density(p,q,iSideVisu)/mu

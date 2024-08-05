@@ -543,10 +543,6 @@ USE MOD_Equation_Vars,ONLY: StrVarNames
 USE MOD_Mesh_Vars    ,ONLY: offsetElem,nGlobalElems,nElems
 USE MOD_Output_Vars  ,ONLY: WriteStateFiles
 USE MOD_Sponge_Vars  ,ONLY: SpBaseFlow
-#if EQNSYSNR == 2 /* NAVIER-STOKES */
-USE MOD_Equation_Vars,ONLY: StrVarNamesFluc
-USE MOD_BaseFlow_Vars,ONLY: doBaseFlowRMS,BaseFlowRMS
-#endif /* NAVIER-STOKES */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -623,23 +619,6 @@ CALL WriteAdditionalElemData(FileName,ElementOutBaseflow)
 DEALLOCATE(ElementOutBaseflow)
 SDEALLOCATE(timeFilter)
 
-#if EQNSYSNR == 2 && PP_dim == 3 /* NAVIER-STOKES */
-IF (doBaseFlowRMS) THEN
-  IF(MPIRoot) CALL GenerateFileSkeleton(TRIM(FileName),'Baseflow',6,PP_N,StrVarNamesFluc, &
-                           MeshFileName,OutputTime,FutureTime,create=.FALSE.,Dataset='Fluc')
-
-#if USE_MPI
-  CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
-#endif
-  ! Write Reynoldsstresses
-  CALL GatheredWriteArray(FileName,create=.FALSE.,&
-                        DataSetName='Fluc', rank=5,&
-                        nValGlobal=(/PP_nVarRMS,PP_N+1,PP_N+1,NZ_loc+1,nGlobalElems/),&
-                        nVal=      (/PP_nVarRMS,PP_N+1,PP_N+1,NZ_loc+1,nElems      /),&
-                        offset=    (/0         ,0     ,0     ,0       ,offsetElem  /),&
-                        collective=.TRUE., RealArray=BaseFlowRMS)
-END IF
-#endif /* EQNSYSNR == 2 && PP_dim == 3 */
 IF(MPIRoot)THEN
   CALL MarkWriteSuccessful(FileName)
   GETTIME(EndT)
