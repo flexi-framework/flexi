@@ -20,7 +20,6 @@
 #define PRIM 1:PP_nVarPrim      /* all prim variables */
 
 #define PP_2Var PP_nVar+PP_nVarPrim
-#define PP_nVarRMS 6
 
 ! conservative variables
 #define DENS  1             /* density */
