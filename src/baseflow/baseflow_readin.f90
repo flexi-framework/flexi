@@ -19,7 +19,7 @@
 !> Subroutines needed for the general base flow based on a moving time average of the instationary flow field, also known as Pruett
 !> damping. See "The temporally filtered Navier–Stokes equations: Properties of the residual stress" for details.
 !==================================================================================================================================
-MODULE MOD_Baseflow_Readin
+MODULE MOD_BaseFlow_Readin
 ! MODULES
 IMPLICIT NONE
 PRIVATE
@@ -43,7 +43,7 @@ SUBROUTINE ReadBaseFlow(FileName)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_Baseflow_Vars
+USE MOD_BaseFlow_Vars
 USE MOD_ApplyJacobianCons  ,ONLY: ApplyJacobianCons
 USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume
 USE MOD_Equation_Vars      ,ONLY: StrVarNames
@@ -244,4 +244,4 @@ SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE ReadBaseFlow
 
-END MODULE MOD_Baseflow_Readin
+END MODULE MOD_BaseFlow_Readin

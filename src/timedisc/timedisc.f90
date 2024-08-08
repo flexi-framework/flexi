@@ -42,8 +42,8 @@ USE MOD_Analyze             ,ONLY: Analyze
 USE MOD_Analyze_Vars        ,ONLY: analyze_dt,tWriteData,WriteData_dt
 USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
 USE MOD_ApplyJacobianCons   ,ONLY: ApplyJacobianCons
-USE MOD_Baseflow            ,ONLY: UpdateBaseflow
-USE MOD_Baseflow_Vars       ,ONLY: doBaseflow
+USE MOD_BaseFlow            ,ONLY: UpdateBaseFlow
+USE MOD_BaseFlow_Vars       ,ONLY: doBaseFlow
 USE MOD_DG                  ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars             ,ONLY: U
 USE MOD_Equation_Vars       ,ONLY: StrVarNames
@@ -130,7 +130,7 @@ END SELECT
 CALL CalcIndicator(U,t)
 #endif
 ! initial update of baseflow
-IF (doBaseflow) CALL UpdateBaseflow(0.)
+IF (doBaseFlow) CALL UpdateBaseFlow(0.)
 
 ! Do first RK stage of first timestep to fill gradients
 CALL DGTimeDerivative_weakForm(t)
@@ -189,7 +189,7 @@ CALL CPU_TIME(time_start)
 
 ! Run computation
 DO
-  IF (doBaseflow)       CALL UpdateBaseflow(dt)
+  IF (doBaseFlow)       CALL UpdateBaseFlow(dt)
   ! Update time step
   CALL UpdateTimeStep()
 

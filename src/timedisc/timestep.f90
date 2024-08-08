@@ -98,8 +98,8 @@ USE MOD_DG            ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars       ,ONLY: U,Ut,nTotalU
 USE MOD_TimeDisc_Vars ,ONLY: dt,Ut_tmp,RKA,RKb,RKc,nRKStages,CurrentStage
 #if FV_ENABLED
-USE MOD_Baseflow_Vars    ,ONLY: BaseFlowFiltered
-USE MOD_Indicator        ,ONLY: CalcIndicator,doIndicatorBaseflow
+USE MOD_BaseFlow_Vars    ,ONLY: BaseFlowFiltered
+USE MOD_Indicator        ,ONLY: CalcIndicator,doIndicatorBaseFlow
 #endif /*FV_ENABLED*/
 #if FV_ENABLED == 1
 USE MOD_FV_Switching  ,ONLY: FV_Switch
@@ -144,7 +144,7 @@ DO iStage = 1,nRKStages
 #if FV_ENABLED
   ! Time needs to be evaluated at the next step because time integration was already performed
   ASSOCIATE(tFV => MERGE(t+dt,t,iStage.EQ.nRKStages))
-  IF(doIndicatorBaseflow) THEN
+  IF(doIndicatorBaseFlow) THEN
     CALL CalcIndicator(BaseFlowFiltered,tFV)
   ELSE
     CALL CalcIndicator(U,tFV)
@@ -177,8 +177,8 @@ USE MOD_DG               ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars          ,ONLY: U,Ut,nTotalU
 USE MOD_TimeDisc_Vars    ,ONLY: dt,UPrev,S2,RKdelta,RKg1,RKg2,RKg3,RKb,RKc,nRKStages,CurrentStage
 #if FV_ENABLED
-USE MOD_Baseflow_Vars    ,ONLY: BaseFlowFiltered
-USE MOD_Indicator        ,ONLY: CalcIndicator,doIndicatorBaseflow
+USE MOD_BaseFlow_Vars    ,ONLY: BaseFlowFiltered
+USE MOD_Indicator        ,ONLY: CalcIndicator,doIndicatorBaseFlow
 #endif /*FV_ENABLED*/
 #if FV_ENABLED == 1
 USE MOD_FV_Switching      ,ONLY: FV_Switch
@@ -229,7 +229,7 @@ DO iStage = 1,nRKStages
 #if FV_ENABLED
   ! Time needs to be evaluated at the next step because time integration was already performed
   ASSOCIATE(tFV => MERGE(t+dt,t,iStage.EQ.nRKStages))
-  IF(doIndicatorBaseflow) THEN
+  IF(doIndicatorBaseFlow) THEN
     CALL CalcIndicator(BaseFlowFiltered,tFV)
   ELSE
     CALL CalcIndicator(U,tFV)

@@ -961,7 +961,7 @@ CALL GetDataProps(nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5)
 
 IF(nElems_HDF5.NE.nGlobalElems)THEN
   CALL Abort(__STAMP__,&
-             'Baseflow file does not match solution. Elements',nElems_HDF5)
+             'BaseFlow file does not match solution. Elements',nElems_HDF5)
 END IF
 
 #if (PP_dim==2)

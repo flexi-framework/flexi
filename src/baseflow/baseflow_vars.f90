@@ -15,7 +15,7 @@
 !==================================================================================================================================
 !> Contains global variables used by the baseflow.
 !==================================================================================================================================
-MODULE MOD_Baseflow_Vars
+MODULE MOD_BaseFlow_Vars
 ! MODULES
 IMPLICIT NONE
 PUBLIC
@@ -23,15 +23,15 @@ SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-LOGICAL                 :: doBaseflow       = .FALSE.      !< Switch on to compute baseflow of conservative mean solution
-LOGICAL                 :: InitBaseflowDone = .FALSE.      !< Logical indicating if initbaseflow() has been called
+LOGICAL                 :: doBaseFlow       = .FALSE.      !< Switch on to compute baseflow of conservative mean solution
+LOGICAL                 :: InitBaseFlowDone = .FALSE.      !< Logical indicating if initbaseflow() has been called
 CHARACTER(LEN=255)      :: BaseFlowFile                    !< Filename of baseflow file
 REAL                    :: BaseFlowTime                    !< Time stamp of baseflow file
 
 REAL,ALLOCATABLE,TARGET :: BaseFlow(:,:,:,:,:)             !< Local baseflow depending on local filter width
 REAL,ALLOCATABLE,TARGET :: BaseFlowFiltered(:,:,:,:,:)     !< Local baseflow depending on local filter width and Filter
 
-REAL,ALLOCATABLE        :: TimeFilterWidthBaseflow(:)      !< Array that contains the element local temporal filter width
+REAL,ALLOCATABLE        :: TimeFilterWidthBaseFlow(:)      !< Array that contains the element local temporal filter width
 REAL,ALLOCATABLE        :: fac(:)                          !< Array that contains the element local exponential time filter factor
 
 ! Selective filter of baseflow
@@ -39,4 +39,4 @@ LOGICAL,DIMENSION(3)    :: doSelectiveFilter=.FALSE.       !< Logical for Filter
 INTEGER,DIMENSION(3)    :: SelectiveFilter                 !< Polynomial degree of selective filter in each direction
 REAL,ALLOCATABLE        :: SelectiveFilterMatrix(:,:,:)    !< Filter Matrix of the selective Filter
 !==================================================================================================================================
-END MODULE MOD_Baseflow_Vars
+END MODULE MOD_BaseFlow_Vars

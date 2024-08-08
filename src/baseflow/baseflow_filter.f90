@@ -19,21 +19,21 @@
 !> Subroutines needed for the general base flow based on a moving time average of the instationary flow field, also known as Pruett
 !> damping. See "The temporally filtered Navier–Stokes equations: Properties of the residual stress" for details.
 !==================================================================================================================================
-MODULE MOD_Baseflow_Filter
+MODULE MOD_BaseFlow_Filter
 ! MODULES
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE InitBaseflowFilter
-  MODULE PROCEDURE InitBaseflowFilter
+INTERFACE InitBaseFlowFilter
+  MODULE PROCEDURE InitBaseFlowFilter
 END INTERFACE
 
-INTERFACE BaseflowFilter
-  MODULE PROCEDURE BaseflowFilter
+INTERFACE BaseFlowFilter
+  MODULE PROCEDURE BaseFlowFilter
 END INTERFACE
 
-PUBLIC :: InitBaseflowFilter
-PUBLIC :: BaseflowFilter
+PUBLIC :: InitBaseFlowFilter
+PUBLIC :: BaseFlowFilter
 !==================================================================================================================================
 
 CONTAINS
@@ -41,11 +41,11 @@ CONTAINS
 !==================================================================================================================================
 !> Perform initialization of baseflow selective filter routine
 !==================================================================================================================================
-SUBROUTINE InitBaseflowFilter()
+SUBROUTINE InitBaseFlowFilter()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Baseflow_Vars,      ONLY: doSelectiveFilter,SelectiveFilter,SelectiveFilterMatrix
+USE MOD_BaseFlow_Vars,      ONLY: doSelectiveFilter,SelectiveFilter,SelectiveFilterMatrix
 USE MOD_ReadInTools,        ONLY: GETINTARRAY
 USE MOD_Interpolation_Vars, ONLY: Vdm_Leg,sVdm_Leg
 IMPLICIT NONE
@@ -81,17 +81,17 @@ IF (ANY(doSelectiveFilter)) THEN
     SelectiveFilterMatrix(i,:,:) = MATMUL(MATMUL(Vdm_Leg,SelectiveFilterMatrix(i,:,:)),sVdm_Leg)
   END DO
 END IF
-END SUBROUTINE InitBaseflowFilter
+END SUBROUTINE InitBaseFlowFilter
 
 !==================================================================================================================================
 !> Perform selective filter of baseflow
 !==================================================================================================================================
-SUBROUTINE BaseflowFilter()
+SUBROUTINE BaseFlowFilter()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Mesh_Vars,          ONLY: nElems
-USE MOD_Baseflow_Vars,      ONLY: doSelectiveFilter,SelectiveFilterMatrix,BaseflowFiltered
+USE MOD_BaseFlow_Vars,      ONLY: doSelectiveFilter,SelectiveFilterMatrix,BaseFlowFiltered
 USE MOD_Filter,             ONLY: Filter_Selective
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -107,6 +107,6 @@ IF(ANY(doSelectiveFilter)) THEN
       END DO ! iElem
     END DO ! PP_dim
 END IF
-END SUBROUTINE BaseflowFilter
+END SUBROUTINE BaseFlowFilter
 
-END MODULE MOD_Baseflow_Filter
+END MODULE MOD_BaseFlow_Filter

@@ -129,7 +129,8 @@ SUBROUTINE InitSponge
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Baseflow_Vars     ,ONLY: Baseflow,doBaseflow
+USE MOD_BaseFlow          ,ONLY: InitBaseFlow
+USE MOD_BaseFlow_Vars     ,ONLY: BaseFlow,doBaseFlow
 USE MOD_Equation_Vars     ,ONLY: RefStateCons
 USE MOD_Exactfunc         ,ONLY: ExactFunc
 USE MOD_Mesh_Vars         ,ONLY: Elem_xGP,nElems
@@ -160,36 +161,41 @@ IF(nProcessors.GT.1) CALL SYSTEM('mkdir -p visu')
 #endif
 
 SpongeViz      = GETLOGICAL('SpongeViz')
-! Readin of Baseflow parameters
+! Readin of BaseFlow parameters
 SpBaseFlowType = GETINTFROMSTR('SpongeBaseFlow')
 
-SELECT CASE(SpBaseflowType)
+SELECT CASE(SpBaseFlowType)
   CASE(SPONGEBASEFLOW_CONSTANT)  ! Constant baseflow from refstate
     spongeRefState  = GETINT('SpongeRefState')
   CASE(SPONGEBASEFLOW_EXACTFUNC) ! Exact function
     spongeExactFunc = GETINT('SpongeExactFunc')
   CASE(SPONGEBASEFLOW_FILE)      ! Base Flow from .h5 File
     IF (DoRestart) THEN
-      SpBaseflowFile  = GETSTR('SpongeBaseFlowFile')
-      IF (TRIM(SpBaseflowFile).EQ.'none') THEN
+      SpBaseFlowFile  = GETSTR('SpongeBaseFlowFile')
+      IF (TRIM(SpBaseFlowFile).EQ.'none') THEN
         ! If no base flow file has been specified, assume a standard name for the base flow file
-        SpBaseflowFile = TRIM(TIMESTAMP(TRIM(ProjectName)//'_BaseFlow',RestartTime))//'.h5'
+        SpBaseFlowFile = TRIM(TIMESTAMP(TRIM(ProjectName)//'_BaseFlow',RestartTime))//'.h5'
         ! Check if this file exists
-        validBaseFlowFile = FILEEXISTS(SpBaseflowFile)
+        validBaseFlowFile = FILEEXISTS(SpBaseFlowFile)
         IF (.NOT.validBaseFlowFile) THEN
           ! If the assumed base flow file does not exist, use the restart state to initialize the sponge base flow
-          SpBaseflowFile = RestartFile
+          SpBaseFlowFile = RestartFile
           SWRITE(UNIT_stdOut,'(A)') 'WARNING: No baseflow file found! Using the restart state to initialize sponge base flow.'
         END IF
       ELSE
         ! check if baseflow exists
-        validBaseFlowFile = FILEEXISTS(SpBaseflowFile)
-        IF (.NOT.validBaseFlowFile) CALL CollectiveStop(__STAMP__,'ERROR: Sponge base flow file '//TRIM(SpBaseflowFile)//' does not exist.')
+        validBaseFlowFile = FILEEXISTS(SpBaseFlowFile)
+        IF (.NOT.validBaseFlowFile) CALL CollectiveStop(__STAMP__,'ERROR: Sponge base flow file '//TRIM(SpBaseFlowFile)//' does not exist.')
       END IF
     END IF
   CASE(SPONGEBASEFLOW_PRUETT)    ! Pruett sponge
-    ! no readin but check if BaseFlow is enabled
-    IF (.NOT.doBaseflow) CALL CollectiveStop(__STAMP__,"Pruett sponge only supported with BaseFlow enabled!")
+    IF (.NOT.doBaseFlow) THEN
+      CALL PrintWarning('Trying to use Pruett Sponge without enabling BaseFlow!\n'//&
+                        'To avoid crash, BaseFlow functionality is now enabled and reinitialized!') 
+      ! Enable BaseFlow and initialize
+      doBaseFlow = .TRUE.
+      CALL InitBaseFlow()
+    END IF
   CASE DEFAULT
     CALL CollectiveStop(__STAMP__,"Undefined SpongeBaseFlow!")
 END SELECT
@@ -200,7 +206,7 @@ CALL CalcSpongeRamp()
 SWRITE(UNIT_stdOut,'(A)') '  Initialize Sponge Base Flow...'
 ALLOCATE(SpBaseFlow(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 
-SELECT CASE(SpBaseflowType)
+SELECT CASE(SpBaseFlowType)
   CASE(SPONGEBASEFLOW_CONSTANT)  ! Constant baseflow from refstate
     DO iElem=1,nElems
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
@@ -219,7 +225,7 @@ SELECT CASE(SpBaseflowType)
     SpBaseFlow_p(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) => SpBaseFlow
 
   CASE(SPONGEBASEFLOW_FILE)      ! Base Flow from .h5 File
-    CALL ReadBaseFlowSp(SpBaseflowFile)
+    CALL ReadBaseFlowSp(SpBaseFlowFile)
     SpBaseFlow_p(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) => SpBaseFlow
     ! readin of the hdf5 base flow solution
 
@@ -250,7 +256,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Areas             ,ONLY:InitArea,PointInPoly
 USE MOD_Areas_Vars
-USE MOD_Baseflow_Vars     ,ONLY:TimeFilterWidthBaseflow
+USE MOD_BaseFlow_Vars     ,ONLY:TimeFilterWidthBaseFlow
 USE MOD_ChangeBasisByDim  ,ONLY:ChangeBasisVolume
 USE MOD_Interpolation_Vars,ONLY:NodeTypeCL,NodeType
 USE MOD_Interpolation     ,ONLY:GetVandermonde
@@ -349,7 +355,7 @@ DO iRamp=1,nSpongeRamps
     IF (SpBaseFlowType.EQ.SPONGEBASEFLOW_PRUETT) THEN
       ! Warning: This is defined per element. Gets overwritten for overlapping sponges!!!
       tempFilterWidthSp(iElem)       = PruettTimeFilterWidth(iRamp)
-      TimeFilterWidthBaseflow(iElem) = PruettTimeFilterWidth(iRamp)
+      TimeFilterWidthBaseFlow(iElem) = PruettTimeFilterWidth(iRamp)
     END IF
     dampingFac(iRamp,iElem) = damping(iRamp)
     CYCLE
@@ -576,7 +582,7 @@ CALL GetDataProps(nVar_Base,N_Base,nElems_Base,NodeType_Base)
 
 IF(nElems_Base.NE.nGlobalElems)THEN
   CALL Abort(__STAMP__,&
-             'Baseflow file does not match solution. Elements,nVar',nElems_Base,REAL(nVar_Base))
+             'BaseFlow file does not match solution. Elements,nVar',nElems_Base,REAL(nVar_Base))
 END IF
 
 ! Read in state

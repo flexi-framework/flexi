@@ -78,7 +78,7 @@ USE MOD_FV_Limiter  ,ONLY: DefineParametersFV_Limiter
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection('FV')
-CALL prms%CreateLogicalOption('doIndicatorBaseflow'  ,"Switch on to evaluate the indicator on the baseflow", '.FALSE.')
+CALL prms%CreateLogicalOption('doIndicatorBaseFlow'  ,"Switch on to evaluate the indicator on the baseflow", '.FALSE.')
 ! FV Switching
 CALL prms%CreateLogicalOption('FV_SwitchConservative',"Perform FV/DG switch in reference element"                                 &
                                                      ,'.TRUE.')
@@ -127,7 +127,7 @@ USE MOD_PreProc
 USE MOD_Basis               ,ONLY: InitializeVandermonde
 USE MOD_FV_Vars
 USE MOD_FV_Basis
-USE MOD_Indicator           ,ONLY: doIndicatorBaseflow
+USE MOD_Indicator           ,ONLY: doIndicatorBaseFlow
 #if FV_ENABLED == 1
 USE MOD_Filter_Vars         ,ONLY: NFilter
 USE MOD_Indicator_Vars      ,ONLY: nModes,IndicatorType
@@ -158,7 +158,7 @@ SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT FV...'
 
 ! The indicator value is used to decide where FV sub-cells are needed
-doIndicatorBaseflow = GETLOGICAL('doIndicatorBaseflow')
+doIndicatorBaseFlow = GETLOGICAL('doIndicatorBaseFlow')
 
 ! Read flag, which allows to perform the switching from FV to DG in the reference element
 switchConservative = GETLOGICAL("FV_SwitchConservative")

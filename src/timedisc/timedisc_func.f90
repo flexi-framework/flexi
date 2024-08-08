@@ -243,7 +243,7 @@ SUBROUTINE UpdateTimeStep()
 ! MODULES
 USE MOD_Globals
 USE MOD_Analyze_Vars        ,ONLY: tWriteData
-USE MOD_Baseflow_Vars       ,ONLY: doBaseflow
+USE MOD_BaseFlow_Vars       ,ONLY: doBaseFlow
 USE MOD_HDF5_Output         ,ONLY: WriteState,WriteBaseFlow
 USE MOD_Mesh_Vars           ,ONLY: MeshFile
 USE MOD_Output_Vars         ,ONLY: ProjectName
@@ -278,7 +278,7 @@ nCalcTimeStep = MIN(FLOOR(ABS(LOG10(ABS(dt_minOld/dt-1.)**2.*100.+EPSILON(0.))))
 dt_minOld     = dt
 IF (errType.NE.0) THEN
   CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData,isErrorFile=.TRUE.)
-  IF (doBaseflow) CALL WriteBaseFlow(ProjectName=TRIM(ProjectName),MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData)
+  IF (doBaseFlow) CALL WriteBaseFlow(ProjectName=TRIM(ProjectName),MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData)
   CALL Abort(__STAMP__,&
 #if EQNSYSNR == 3
   'Error: (1) density, (2) convective / (3) viscous timestep / muTilde (4) is NaN. Type/time:',errType,t)
@@ -306,7 +306,7 @@ USE MOD_PreProc
 USE MOD_Analyze             ,ONLY: Analyze
 USE MOD_Analyze_Vars        ,ONLY: analyze_dt,WriteData_dt,tWriteData,nWriteData,PID
 USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
-USE MOD_Baseflow_Vars       ,ONLY: doBaseflow
+USE MOD_BaseFlow_Vars       ,ONLY: doBaseFlow
 USE MOD_DG                  ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars             ,ONLY: U
 USE MOD_Equation_Vars       ,ONLY: StrVarNames
@@ -386,7 +386,7 @@ IF(doAnalyze)THEN
     ! Write various derived data
     IF(doCalcTimeAverage) CALL CalcTimeAverage(.TRUE.,dt,t)
     IF(RP_onProc)         CALL WriteRP(PP_nVar,StrVarNames,t,.TRUE.)
-    IF(doBaseflow)        CALL WriteBaseFlow(TRIM(ProjectName),TRIM(MeshFile),t,tWriteData)
+    IF(doBaseFlow)        CALL WriteBaseFlow(TRIM(ProjectName),TRIM(MeshFile),t,tWriteData)
     ! Write state file
     ! NOTE: this should be last in the series, so we know all previous data
     ! has been written correctly when the state file is present
@@ -452,7 +452,7 @@ FUNCTION EvalTimeStep(errType) RESULT(dt_Min)
 ! MODULES
 USE MOD_Globals
 USE MOD_Analyze_Vars        ,ONLY: tWriteData
-USE MOD_Baseflow_Vars       ,ONLY: doBaseflow
+USE MOD_BaseFlow_Vars       ,ONLY: doBaseFlow
 USE MOD_CalcTimeStep        ,ONLY: CalcTimeStep
 USE MOD_HDF5_Output         ,ONLY: WriteState,WriteBaseFlow
 USE MOD_Mesh_Vars           ,ONLY: MeshFile
@@ -475,7 +475,7 @@ IF (dt_Min.LT.dt_dynmin) THEN
 END IF
 IF (dt_Min.LT.dt_kill) THEN
   CALL WriteState(                                                 MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData,isErrorFile=.TRUE.)
-  IF (doBaseflow) CALL WriteBaseFlow(ProjectName=TRIM(ProjectName),MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData)
+  IF (doBaseFlow) CALL WriteBaseFlow(ProjectName=TRIM(ProjectName),MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData)
   CALL Abort(__STAMP__,'TimeDisc ERROR - Critical Kill timestep reached! Time: ',RealInfo=t)
 END IF
 END FUNCTION EvalTimeStep

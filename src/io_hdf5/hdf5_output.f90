@@ -34,8 +34,8 @@ INTERFACE WriteTimeAverage
   MODULE PROCEDURE WriteTimeAverage
 END INTERFACE
 
-INTERFACE WriteBaseflow
-  MODULE PROCEDURE WriteBaseflow
+INTERFACE WriteBaseFlow
+  MODULE PROCEDURE WriteBaseFlow
 END INTERFACE
 
 INTERFACE FlushFiles
@@ -74,7 +74,7 @@ INTERFACE GenerateFileSkeleton
   MODULE PROCEDURE GenerateFileSkeleton
 END INTERFACE
 
-PUBLIC :: WriteState,FlushFiles,WriteHeader,WriteTimeAverage,WriteBaseflow,GenerateFileSkeleton
+PUBLIC :: WriteState,FlushFiles,WriteHeader,WriteTimeAverage,WriteBaseFlow,GenerateFileSkeleton
 PUBLIC :: WriteArray,WriteAttribute,GatheredWriteArray,WriteAdditionalElemData,MarkWriteSuccessful
 !==================================================================================================================================
 
@@ -534,11 +534,11 @@ END SUBROUTINE WriteAdditionalFieldData
 !==================================================================================================================================
 !> Subroutine to write the baseflow to HDF5 format
 !==================================================================================================================================
-SUBROUTINE WriteBaseflow(ProjectName,MeshFileName,OutputTime,FutureTime)
+SUBROUTINE WriteBaseFlow(ProjectName,MeshFileName,OutputTime,FutureTime)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_BaseFlow_Vars,ONLY: TimeFilterWidthBaseflow
+USE MOD_BaseFlow_Vars,ONLY: TimeFilterWidthBaseFlow
 USE MOD_Equation_Vars,ONLY: StrVarNames
 USE MOD_Mesh_Vars    ,ONLY: offsetElem,nGlobalElems,nElems
 USE MOD_Output_Vars  ,ONLY: WriteStateFiles
@@ -558,7 +558,7 @@ REAL                           :: StartT,EndT
 REAL,POINTER                   :: UOut(:,:,:,:,:)
 REAL,ALLOCATABLE               :: timeFilter(:)
 INTEGER                        :: NZ_loc
-TYPE(tElementOut),POINTER      :: ElementOutBaseflow
+TYPE(tElementOut),POINTER      :: ElementOutBaseFlow
 #if PP_dim == 2
 INTEGER                        :: iElem,i,j,iVar
 #endif
@@ -611,12 +611,12 @@ IF(.NOT.output2D) DEALLOCATE(UOut)
 #endif
 
 ! Write element local temporal filter width
-NULLIFY(ElementOutBaseflow)
+NULLIFY(ElementOutBaseFlow)
 ALLOCATE(timeFilter(nElems))
-timeFilter = 1./TimeFilterWidthBaseflow
-CALL AddToElemData(ElementOutBaseflow,'TimeFilterWidth',RealArray=timeFilter)
-CALL WriteAdditionalElemData(FileName,ElementOutBaseflow)
-DEALLOCATE(ElementOutBaseflow)
+timeFilter = 1./TimeFilterWidthBaseFlow
+CALL AddToElemData(ElementOutBaseFlow,'TimeFilterWidth',RealArray=timeFilter)
+CALL WriteAdditionalElemData(FileName,ElementOutBaseFlow)
+DEALLOCATE(ElementOutBaseFlow)
 SDEALLOCATE(timeFilter)
 
 IF(MPIRoot)THEN
@@ -625,7 +625,7 @@ IF(MPIRoot)THEN
   CALL DisplayMessageAndTime(EndT-StartT,'DONE!',DisplayLine=.FALSE.)
 END IF
 
-END SUBROUTINE WriteBaseflow
+END SUBROUTINE WriteBaseFlow
 
 
 !==================================================================================================================================
