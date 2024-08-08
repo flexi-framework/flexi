@@ -13,6 +13,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "eos.h"
 
 !==================================================================================================================================
 !> Module providing IO routines for parallel output in HDF5 format: solution, time averaged files, baseflow, record points,...
@@ -33,8 +34,8 @@ INTERFACE WriteTimeAverage
   MODULE PROCEDURE WriteTimeAverage
 END INTERFACE
 
-INTERFACE WriteBaseflow
-  MODULE PROCEDURE WriteBaseflow
+INTERFACE WriteBaseFlow
+  MODULE PROCEDURE WriteBaseFlow
 END INTERFACE
 
 INTERFACE FlushFiles
@@ -73,7 +74,7 @@ INTERFACE GenerateFileSkeleton
   MODULE PROCEDURE GenerateFileSkeleton
 END INTERFACE
 
-PUBLIC :: WriteState,FlushFiles,WriteHeader,WriteTimeAverage,WriteBaseflow,GenerateFileSkeleton
+PUBLIC :: WriteState,FlushFiles,WriteHeader,WriteTimeAverage,WriteBaseFlow,GenerateFileSkeleton
 PUBLIC :: WriteArray,WriteAttribute,GatheredWriteArray,WriteAdditionalElemData,MarkWriteSuccessful
 !==================================================================================================================================
 
@@ -533,18 +534,20 @@ END SUBROUTINE WriteAdditionalFieldData
 !==================================================================================================================================
 !> Subroutine to write the baseflow to HDF5 format
 !==================================================================================================================================
-SUBROUTINE WriteBaseflow(MeshFileName,OutputTime,FutureTime)
+SUBROUTINE WriteBaseFlow(ProjectName,MeshFileName,OutputTime,FutureTime)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
+USE MOD_BaseFlow_Vars,ONLY: TimeFilterWidthBaseFlow
 USE MOD_Equation_Vars,ONLY: StrVarNames
 USE MOD_Mesh_Vars    ,ONLY: offsetElem,nGlobalElems,nElems
-USE MOD_Output_Vars  ,ONLY: ProjectName,WriteStateFiles
+USE MOD_Output_Vars  ,ONLY: WriteStateFiles
 USE MOD_Sponge_Vars  ,ONLY: SpBaseFlow
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN)    :: ProjectName        !< Name of project
 CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName       !< Name of mesh file
 REAL,INTENT(IN)                :: OutputTime         !< Time of output
 REAL,INTENT(IN)                :: FutureTime         !< hint, when next file will be written
@@ -553,7 +556,9 @@ REAL,INTENT(IN)                :: FutureTime         !< hint, when next file wil
 CHARACTER(LEN=255)             :: FileName
 REAL                           :: StartT,EndT
 REAL,POINTER                   :: UOut(:,:,:,:,:)
+REAL,ALLOCATABLE               :: timeFilter(:)
 INTEGER                        :: NZ_loc
+TYPE(tElementOut),POINTER      :: ElementOutBaseFlow
 #if PP_dim == 2
 INTEGER                        :: iElem,i,j,iVar
 #endif
@@ -604,13 +609,23 @@ CALL GatheredWriteArray(FileName,create=.FALSE.,&
 #if PP_dim == 2
 IF(.NOT.output2D) DEALLOCATE(UOut)
 #endif
+
+! Write element local temporal filter width
+NULLIFY(ElementOutBaseFlow)
+ALLOCATE(timeFilter(nElems))
+timeFilter = 1./TimeFilterWidthBaseFlow
+CALL AddToElemData(ElementOutBaseFlow,'TimeFilterWidth',RealArray=timeFilter)
+CALL WriteAdditionalElemData(FileName,ElementOutBaseFlow)
+DEALLOCATE(ElementOutBaseFlow)
+SDEALLOCATE(timeFilter)
+
 IF(MPIRoot)THEN
   CALL MarkWriteSuccessful(FileName)
   GETTIME(EndT)
   CALL DisplayMessageAndTime(EndT-StartT,'DONE!',DisplayLine=.FALSE.)
 END IF
 
-END SUBROUTINE WriteBaseflow
+END SUBROUTINE WriteBaseFlow
 
 
 !==================================================================================================================================

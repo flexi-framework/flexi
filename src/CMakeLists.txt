@@ -60,7 +60,7 @@ ENDIF()
 # =========================================================================
 OPTION(FLEXI_SPLIT_DG "Use split DG formulation" OFF)
 CMAKE_DEPENDENT_OPTION(FLEXI_PROLONG_ENTROPY "Prolong on entropy variables" ON
-	                     "FLEXI_SPLIT_DG; FLEXI_EQNSYSNAME STREQUAL navierstokes; FLEXI_NODETYPE STREQUAL GAUSS" ON)
+                       "FLEXI_SPLIT_DG; FLEXI_EQNSYSNAME STREQUAL navierstokes; FLEXI_NODETYPE STREQUAL GAUSS" ON)
 IF(FLEXI_SPLIT_DG)
   ADD_DEFINITIONS(-DSPLIT_DG)
   IF((FLEXI_EQNSYSNAME STREQUAL "navierstokes") AND (FLEXI_NODETYPE STREQUAL "GAUSS"))
@@ -329,6 +329,7 @@ FILE(GLOB_RECURSE flexiF90 ./src/interpolation/*.f90
                            ./src/recordpoints/*.f90
                            ./src/restart/*.f90
                            ./src/output/*.f90
+                           ./src/baseflow/*.f90
                            ./src/sponge/*.f90
                            ./src/filter/*.f90
                            ./src/io_hdf5/*.f90

@@ -24,18 +24,21 @@ SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-LOGICAL                        :: doSponge      !< Turn on to employ sponge regions for reducing reflections at boundaries
-INTEGER                        :: nSpongeRamps  !< number of sponge ramps
-TYPE(tArea),ALLOCATABLE,TARGET :: Sponges(:)    !< array containing all sponge ramps
-LOGICAL                        :: SpongeViz     !< Turn on to write a visualization file of the sponge region and strength
-LOGICAL                        :: CalcPruettDamping=.FALSE. !< true if temporally varying, solution adaptive Pruett baseflow is used
-INTEGER                        :: nSpongeElems  !< number of elements for which sponge is applied
-INTEGER,ALLOCATABLE            :: spongeMap(:)  !< mapping from Elem -> spongElem
-REAL,ALLOCATABLE,TARGET        :: SpBaseFlow(:,:,:,:,:) !< precompute global reference state for whole field
-INTEGER                        :: SpBaseFlowType        !< Specifies the type of baseflow
-REAL,ALLOCATABLE               :: damping(:)    !< Strenght of damping per face
-REAL,ALLOCATABLE               :: SpongeMat(:,:,:,:) !< precomputed sponge functions per DOF and sponge elem
-REAL,ALLOCATABLE               :: tempFilterWidthSp(:)       !< Filter width of each sponge region
-REAL,ALLOCATABLE               :: SpongeDistance(:)     !< Array containing the distance of the ramping of the sponge
+LOGICAL                        :: doSponge                  !< Turn on to employ sponge regions for reducing reflections at boundaries
+INTEGER                        :: nSpongeRamps              !< number of sponge ramps
+TYPE(tArea),ALLOCATABLE,TARGET :: Sponges(:)                !< array containing all sponge ramps
+LOGICAL                        :: SpongeViz                 !< Turn on to write a visualization file of the sponge region and strength
+LOGICAL                        :: WriteSponge               !< Turn on to write the sponge region and strength to the state file
+INTEGER                        :: nSpongeElems              !< number of elements for which sponge is applied
+INTEGER,ALLOCATABLE            :: spongeMap(:)              !< mapping from Elem -> spongElem
+REAL,ALLOCATABLE,TARGET        :: SpBaseFlow(:,:,:,:,:)     !< precompute global reference state for whole field
+REAL,POINTER                   :: SpBaseFlow_p(:,:,:,:,:)   !< Ponter to SpBaseFlow
+INTEGER                        :: SpBaseFlowType            !< Specifies the type of baseflow
+REAL,ALLOCATABLE               :: damping(:)                !< Strength of damping per face
+REAL,ALLOCATABLE               :: SpongeMat(:,:,:,:)        !< precomputed sponge functions per DOF and sponge elem
+REAL,ALLOCATABLE               :: SpongeMat_Out(:,:,:,:,:)  !< precomputed sponge functions per DOF and sponge elem
+REAL,ALLOCATABLE               :: tempFilterWidthSp(:)      !< Filter width of each sponge region
+REAL,ALLOCATABLE               :: SpongeDistance(:)         !< Array containing the distance of the ramping of the sponge
+CHARACTER(LEN=255)             :: SpBaseFlowFile            !< File contiaining the sponge baseflow
 !==================================================================================================================================
 END MODULE MOD_Sponge_Vars
