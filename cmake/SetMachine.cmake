@@ -26,8 +26,13 @@ MESSAGE(STATUS "Generating for [${CMAKE_GENERATOR}] build system")
 # CMAKE_Fortran_COMPILER_ID that is used below
 # > This block must be called before ENABLE_LANGUAGE
 # =========================================================================
+# Detect if CPE is used
+IF (DEFINED ENV{PE_ENV})
+  SET(CMAKE_C_COMPILER       cc)
+  SET(CMAKE_CXX_COMPILER     CC)
+  SET(CMAKE_Fortran_COMPILER ftn) 
 # HLRS HAWK
-IF (CMAKE_FQDN_HOST MATCHES "hawk\.hww\.hlrs\.de$")
+ELSEIF (CMAKE_FQDN_HOST MATCHES "hawk\.hww\.hlrs\.de$")
   SET(CMAKE_C_COMPILER       mpicc)
   SET(CMAKE_CXX_COMPILER     mpicxx)
   SET(CMAKE_Fortran_COMPILER mpif90) # mpif08 wrapper seems to have issue
