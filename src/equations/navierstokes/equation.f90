@@ -208,10 +208,10 @@ USE MOD_Mesh_Vars,ONLY: firstInnerSide,firstMPISide_YOUR,lastMPISide_YOUR,nSides
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)  :: U_master(    CONS,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on master sides
-REAL,INTENT(IN)  :: U_slave(     CONS,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on slave sides
-REAL,INTENT(OUT) :: UPrim_master(PRIM,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on master sides
-REAL,INTENT(OUT) :: UPrim_slave( PRIM,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on slave sides
+REAL,INTENT(IN)    :: U_master(    CONS,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on master sides
+REAL,INTENT(IN)    :: U_slave(     CONS,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on slave sides
+REAL,INTENT(INOUT) :: UPrim_master(PRIM,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on master sides
+REAL,INTENT(INOUT) :: UPrim_slave( PRIM,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on slave sides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER          :: i,j,iSide
@@ -262,8 +262,8 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN)    :: UPrim_master(PRIM,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on master sides
 REAL,INTENT(IN)    :: UPrim_slave( PRIM,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on slave sides
-REAL,INTENT(OUT)   :: U_master(    CONS,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on master sides
-REAL,INTENT(OUT)   :: U_slave(     CONS,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on slave sides
+REAL,INTENT(INOUT) :: U_master(    CONS,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on master sides
+REAL,INTENT(INOUT) :: U_slave(     CONS,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on slave sides
 INTEGER,INTENT(IN) :: mask_master( 1:nSides)                     !< mask: only convert solution if mask(SideID) == mask_ref
 INTEGER,INTENT(IN) :: mask_slave ( 1:nSides)                     !< mask: only convert solution if mask(SideID) == mask_ref
 INTEGER,INTENT(IN) :: mask_ref                                   !< reference value for mask comparison

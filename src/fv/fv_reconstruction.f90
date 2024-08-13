@@ -82,9 +82,9 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 ! real_in, real_out, real_out, log_in
 REAL,INTENT(IN)    :: UPrim          (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< primitive volume solution
-REAL,INTENT(OUT)   :: FV_multi_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)        !< DG: solution at first inner layer,
+REAL,INTENT(INOUT) :: FV_multi_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)        !< DG: solution at first inner layer,
                                                                                   !< FV: slope between first and second layer
-REAL,INTENT(OUT)   :: FV_multi_slave (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)        !< DG: solution at first inner layer,
+REAL,INTENT(INOUT) :: FV_multi_slave (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)        !< DG: solution at first inner layer,
                                                                                   !< FV: slope between first and second layer
 LOGICAL,INTENT(IN) :: doMPIsides                                       !< =.TRUE. only MPI sides are filled, =.FALSE. inner sides
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -246,7 +246,7 @@ REAL,INTENT(IN)    :: FV_multi_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< DG
 REAL,INTENT(IN)    :: FV_multi_slave (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< DG solution at the first inner node next to the
                                                                            !< interface of the slave element
 LOGICAL,INTENT(IN) :: doMPIsides                                           !< =.TRUE. only MPI sides are filled, =.FALSE. inner sides
-REAL,INTENT(OUT)   :: FV_surf_gradU  (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< slope over the interface
+REAL,INTENT(INOUT) :: FV_surf_gradU  (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< slope over the interface
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: firstSideID,lastSideID,SideID,p,q
