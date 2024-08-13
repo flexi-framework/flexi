@@ -53,6 +53,11 @@ IF(LIBS_USE_MPI)
   IF(MPI_C_LIBRARY_VERSION_STRING MATCHES ".*CRAY MPICH.*" AND MPI_C_VERSION_MAJOR VERSION_EQUAL "3")
     SET(LIBS_MPI_NAME "Cray MPICH")
     STRING(REGEX MATCH "([0-9]+)\\.([0-9]+)" MPI_C_LIBRARY_VERSION ${MPI_C_LIBRARY_VERSION_STRING})
+    #Cray MPICH in combination with GNU has problems with calling the same MPI routine 
+    #with different arguments in the same compilation unit
+    IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
+      SET(CMAKE_Fortran_FLAGS  "${CMAKE_Fortran_FLAGS} -fallow-argument-mismatch")
+    ENDIF()
   ELSEIF(MPI_C_LIBRARY_VERSION_STRING MATCHES ".*MPICH.*" AND MPI_C_VERSION_MAJOR VERSION_GREATER_EQUAL "3")
     SET(LIBS_MPI_NAME "MPICH")
     STRING(REGEX MATCH "([0-9]+)\\.([0-9]+)" MPI_C_LIBRARY_VERSION ${MPI_C_LIBRARY_VERSION_STRING})

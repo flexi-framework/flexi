@@ -100,11 +100,7 @@ IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
   # set Flags (disable lto type warnings due to false positives with MATMUL, which is a known bug)
   IF (NOT DEFINED C_FLAGS_INITIALIZED )
     SET (C_FLAGS_INITIALIZED "yes" CACHE INTERNAL "Flag if compiler flags are already initialized" )
-    SET (CMAKE_Fortran_FLAGS              "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -fdefault-double-8 -fbackslash -ffree-line-length-0 -finit-real=snan -finit-integer=snan -Wno-lto-type-mismatch -lstdc++ -DGNU")
-    # LUMI has an issue with argument types in MPI(CH) calls
-    IF(CMAKE_FQDN_HOST MATCHES "\.can$")
-      SET (CMAKE_Fortran_FLAGS            "${CMAKE_Fortran_FLAGS} -fallow-argument-mismatch")
-    ENDIF()
+    SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -fdefault-double-8 -fbackslash -ffree-line-length-0 -finit-real=snan -finit-integer=snan -Wno-lto-type-mismatch -lstdc++ -DGNU")
   ENDIF()
   # initialize all variables as signalling NaNs to force the user to correctly initialize these data types
   SET (CMAKE_Fortran_FLAGS_RELEASE        "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
