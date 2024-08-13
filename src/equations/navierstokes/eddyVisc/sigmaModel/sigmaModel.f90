@@ -34,9 +34,9 @@ INTERFACE SigmaModel
    MODULE PROCEDURE SigmaModel_Volume
 END INTERFACE
 
-INTERFACE FinalizeSigmaModel
-   MODULE PROCEDURE FinalizeSigmaModel
-END INTERFACE
+!INTERFACE FinalizeSigmaModel
+!   MODULE PROCEDURE FinalizeSigmaModel
+!END INTERFACE
 
 PUBLIC::InitSigmaModel,SigmaModel_Volume,FinalizeSigmaModel
 !===================================================================================================================================

@@ -38,9 +38,9 @@ INTERFACE Smagorinsky
    MODULE PROCEDURE Smagorinsky_Volume
 END INTERFACE
 
-INTERFACE FinalizeSmagorinsky
-   MODULE PROCEDURE FinalizeSmagorinsky
-END INTERFACE
+!INTERFACE FinalizeSmagorinsky
+!   MODULE PROCEDURE FinalizeSmagorinsky
+!END INTERFACE
 
 PUBLIC::InitSmagorinsky, Smagorinsky_Volume, FinalizeSmagorinsky
 !===================================================================================================================================

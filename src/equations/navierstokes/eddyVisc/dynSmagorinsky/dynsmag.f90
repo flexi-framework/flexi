@@ -34,9 +34,9 @@ INTERFACE DynSmagorinsky
    MODULE PROCEDURE DynSmagorinsky_Volume
 END INTERFACE
 
-INTERFACE FinalizeDynSmagorinsky
-   MODULE PROCEDURE FinalizeDynSmagorinsky
-END INTERFACE
+!INTERFACE FinalizeDynSmagorinsky
+!   MODULE PROCEDURE FinalizeDynSmagorinsky
+!END INTERFACE
 
 PUBLIC::InitDynSmagorinsky, DynSmagorinsky_Volume, FinalizeDynSmagorinsky
 !===================================================================================================================================
