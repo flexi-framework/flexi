@@ -30,9 +30,10 @@ USE MOD_PreProc
 USE MOD_Commandline_Arguments
 USE MOD_ISO_VARYING_STRING
 USE MOD_MPI                   ,ONLY: InitMPI
-USE MOD_Output_Vars           ,ONLY: ProjectName
+USE MOD_Output_Vars           ,ONLY: ProjectName,doPrintStatusLine
 USE MOD_StringTools           ,ONLY: STRICMP,GetFileExtension
-USE MOD_Visu
+USE MOD_Visu                  ,ONLY: visu,FinalizeVisu
+USE MOD_Visu_HDF5_Output      ,ONLY: visu_WriteHDF5
 USE MOD_Visu_Vars
 USE MOD_VTK                   ,ONLY: WriteDataToVTK,WriteVTKMultiBlockDataSet
 #if USE_MPI
@@ -58,7 +59,9 @@ CHARACTER(LEN=255)             :: FileString_FV
 CHARACTER(LEN=255)             :: FileString_SurfFV
 CHARACTER(LEN=255)             :: FileString_multiblock
 #endif
-#if !USE_MPI
+#if USE_MPI
+LOGICAL                        :: InitMPI_loc=.FALSE.
+#else
 INTEGER                        :: MPI_COMM_WORLD = 0
 #endif
 CHARACTER(LEN=255),ALLOCATABLE :: VarNames_loc(:)
@@ -106,11 +109,6 @@ ELSE
         'ERROR - Invalid syntax. Please use: posti [posti-prm-file [flexi-prm-file]] statefile [statefiles]')
 END IF
 
-! create visu dir, where all vtu files are placed
-#if USE_MPI
-IF(nProcessors.GT.1 .AND. MPIRoot) CALL SYSTEM('mkdir -p visu')
-#endif
-
 DO iArg=1+skipArgs,nArgs
   statefile = TRIM(Args(iArg))
 
@@ -124,6 +122,9 @@ DO iArg=1+skipArgs,nArgs
                                                     REPEAT(' ',(tmpLength+1)-MAX(CEILING(percent*(tmpLength+1)/100.),0))
   SWRITE(UNIT_stdOut,'(A3,F6.2,A3)' ,ADVANCE='YES') '| [',percent,'%] '
   SWRITE(UNIT_stdOut,'(132("-"))')
+
+  ! Enable progress indicator
+  doPrintStatusLine = .TRUE.
 
   CALL visu(MPI_COMM_WORLD, prmfile, postifile, statefile)
 
@@ -152,59 +153,127 @@ DO iArg=1+skipArgs,nArgs
     END IF
   END DO
 
-  IF (Avg2D) THEN
-    CALL WriteDataToVTK(nVarVisu,NVisu,nElemsAvg2D_DG,VarNames_loc,CoordsVisu_DG,UVisu_DG,FileString_DG,&
-        dim=2,DGFV=0,nValAtLastDimension=.TRUE.,PostiParallel=.TRUE.,HighOrder=HighOrder)
+  SELECT CASE(OutputFormat)
+    CASE(OUTPUTFORMAT_PARAVIEW)
+      IF (Avg2D) THEN
+        CALL WriteDataToVTK(nVarVisu,NVisu,nElemsAvg2D_DG,VarNames_loc,CoordsVisu_DG,UVisu_DG,FileString_DG,&
+            dim=2,DGFV=0,nValAtLastDimension=.TRUE.,PostiParallel=.TRUE.,HighOrder=HighOrder,OutputDirectory=OutputDirectory)
 
 #if FV_ENABLED
-    CALL WriteDataToVTK(nVarVisu,NVisu_FV,nElemsAvg2D_FV,VarNames_loc,CoordsVisu_FV,UVisu_FV,FileString_FV,&
-        dim=2,DGFV=1,nValAtLastDimension=.TRUE.,PostiParallel=.TRUE.,HighOrder=HighOrder)
+        CALL WriteDataToVTK(nVarVisu,NVisu_FV,nElemsAvg2D_FV,VarNames_loc,CoordsVisu_FV,UVisu_FV,FileString_FV,&
+            dim=2,DGFV=1,nValAtLastDimension=.TRUE.,PostiParallel=.TRUE.,HighOrder=HighOrder,OutputDirectory=OutputDirectory)
 
-    IF (MPIRoot) THEN
-      ! write multiblock file
-      FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
-      CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV)
-    ENDIF
-#endif
-  ELSE
-    CALL WriteDataToVTK(nVarVisu,NVisu,nElems_DG,VarNames_loc,CoordsVisu_DG,UVisu_DG,FileString_DG,&
-        dim=PP_dim,DGFV=0,nValAtLastDimension=.TRUE.,PostiParallel=.TRUE.,HighOrder=HighOrder)
-
-#if FV_ENABLED
-    IF (.NOT.MeshFileMode) THEN
-      CALL WriteDataToVTK(nVarVisu,NVisu_FV,nElems_FV,VarNames_loc,CoordsVisu_FV,UVisu_FV,FileString_FV,&
-          dim=PP_dim,DGFV=1,nValAtLastDimension=.TRUE.,PostiParallel=.TRUE.,HighOrder=HighOrder)
-
-      IF (MPIRoot) THEN
-        ! write multiblock file
-        FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
-        CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV)
-      ENDIF
-    END IF
+        IF (MPIRoot) THEN
+          ! write multiblock file
+          FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
+          CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV,OutputDirectory=OutputDirectory)
+        ENDIF
 #endif
 
-    IF (doSurfVisu) THEN
-      ! Surface data
+      ! .NOT.Avg2D
+      ELSE
+        CALL WriteDataToVTK(nVarVisu,NVisu,nElems_DG,VarNames_loc,CoordsVisu_DG,UVisu_DG,FileString_DG,&
+            dim=PP_dim,DGFV=0,nValAtLastDimension=.TRUE.,PostiParallel=.TRUE.,HighOrder=HighOrder,OutputDirectory=OutputDirectory)
+
 #if FV_ENABLED
-      FileString_SurfDG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfDG',OutputTime))
+        IF (.NOT.MeshFileMode) THEN
+          CALL WriteDataToVTK(nVarVisu,NVisu_FV,nElems_FV,VarNames_loc,CoordsVisu_FV,UVisu_FV,FileString_FV,&
+              dim=PP_dim,DGFV=1,nValAtLastDimension=.TRUE.,PostiParallel=.TRUE.,HighOrder=HighOrder,OutputDirectory=OutputDirectory)
+
+          IF (MPIRoot) THEN
+            ! write multiblock file
+            FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
+            CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV,OutputDirectory=OutputDirectory)
+          ENDIF
+        END IF
+#endif
+
+        IF (doSurfVisu) THEN
+          ! Surface data
+#if FV_ENABLED
+          FileString_SurfDG = TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfDG',OutputTime))
 #else
-      FileString_SurfDG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Surf',OutputTime))
+          FileString_SurfDG = TRIM(TIMESTAMP(TRIM(ProjectName)//'_Surf',OutputTime))
 #endif
-      CALL WriteDataToVTK(nVarSurfVisuAll,NVisu,nBCSidesVisu_DG,VarNamesSurf_loc,CoordsSurfVisu_DG,USurfVisu_DG,&
-        FileString_SurfDG,dim=PP_dim-1,DGFV=0,nValAtLastDimension=.TRUE.,HighOrder=HighOrder)
-#if FV_ENABLED
-      FileString_SurfFV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfFV',OutputTime))
-      CALL WriteDataToVTK(nVarSurfVisuAll,NVisu_FV,nBCSidesVisu_FV,VarNamesSurf_loc,CoordsSurfVisu_FV,USurfVisu_FV,&
-          FileString_SurfFV,dim=PP_dim-1,DGFV=1,nValAtLastDimension=.TRUE.,HighOrder=HighOrder)
 
-      IF (MPIRoot) THEN
-        ! write multiblock file
-        FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfSolution',OutputTime))
-        CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_SurfDG,FileString_SurfFV)
-      ENDIF
+          CALL WriteDataToVTK(nVarSurfVisuAll,NVisu,nBCSidesVisu_DG,VarNamesSurf_loc,CoordsSurfVisu_DG,USurfVisu_DG,&
+              FileString_SurfDG,dim=PP_dim-1,DGFV=0,nValAtLastDimension=.TRUE.,HighOrder=HighOrder,OutputDirectory=OutputDirectory)
+#if FV_ENABLED
+          FileString_SurfFV = TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfFV',OutputTime))
+
+          CALL WriteDataToVTK(nVarSurfVisuAll,NVisu_FV,nBCSidesVisu_FV,VarNamesSurf_loc,CoordsSurfVisu_FV,USurfVisu_FV,&
+              FileString_SurfFV,dim=PP_dim-1,DGFV=1,nValAtLastDimension=.TRUE.,HighOrder=HighOrder,OutputDirectory=OutputDirectory)
+
+          IF (MPIRoot) THEN
+            ! write multiblock file
+            FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfSolution',OutputTime))
+            CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_SurfDG,FileString_SurfFV,OutputDirectory=OutputDirectory)
+          ENDIF
 #endif
-    END IF
-  END IF
+        END IF ! doSurfVisu
+      END IF ! Avg2D
+
+    CASE(OUTPUTFORMAT_HDF5)
+#if USE_MPI
+      ! Initialize communicator
+      IF (MPI_COMM_NODE.EQ.MPI_COMM_NULL) THEN
+        ! Create the worker MPI Comms
+        CALL MPI_COMM_DUP(MPI_COMM_FLEXI,MPI_COMM_NODE,iError)
+        CALL MPI_COMM_RANK(MPI_COMM_NODE,myLocalRank,iError)
+        CALL MPI_COMM_SIZE(MPI_COMM_NODE,nLocalProcs,iError)
+        MPILocalRoot=(myLocalRank .EQ. 0)
+
+        ! Split global communicator into small group leaders and the others
+        MPI_COMM_LEADERS = MPI_COMM_NULL
+        MPI_COMM_WORKERS = MPI_COMM_NULL
+        myLeaderRank     = -1
+        myWorkerRank     = -1
+        IF(myLocalRank.EQ.0)THEN
+          CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,0,0,MPI_COMM_LEADERS,iError)
+          CALL MPI_COMM_RANK( MPI_COMM_LEADERS,myLeaderRank,iError)
+          CALL MPI_COMM_SIZE( MPI_COMM_LEADERS,nLeaderProcs,iError)
+          nWorkerProcs = nProcessors-nLeaderProcs
+        ELSE
+          CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,1,0,MPI_COMM_WORKERS,iError)
+          CALL MPI_COMM_RANK( MPI_COMM_WORKERS,myWorkerRank,iError)
+          CALL MPI_COMM_SIZE( MPI_COMM_WORKERS,nWorkerProcs,iError)
+          nLeaderProcs = nProcessors-nWorkerProcs
+        END IF
+      END IF
+
+#endif /*USE_MPI*/
+      FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.h5'
+      CALL visu_WriteHDF5(nVarVisu     = nVarVisu      &
+                         ,NVisu        = NVisu         &
+                         ,nElems_loc   = nElems_DG     &
+                         ,FileString   = FileString_DG &
+                         ,MeshFileName = MeshFile      &
+                         ,VarNames_loc = VarNames_loc  &
+                         ,Coords_DG    = CoordsVisu_DG &
+                         ,dim          = 3             &
+                         ,UVisu_DG     = UVisu_DG      )
+      IF (doSurfVisu) THEN
+        FileString_SurfDG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.h5'
+        CALL visu_WriteHDF5( nVarVisu     = nVarSurfVisuAll              &
+                           , NVisu        = NVisu                        &
+                           , nElems_loc   = nBCSidesVisu_DG              &
+                           , FileString   = FileString_SurfDG            &
+                           , MeshFileName = MeshFile                     &
+                           , VarNames_loc = VarNamesSurf_loc             &
+                           , Coords_DG2D  = CoordsSurfVisu_DG(:,:,:,0,:) &
+                           , dim          = 2                            &
+                           , UVisu_DG2D   = USurfVisu_DG(:,:,0,:,:))
+      END IF
+
+#if USE_MPI
+      IF (InitMPI_loc) THEN
+        ! Free MPI communicators
+        IF(MPI_COMM_NODE   .NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(MPI_COMM_NODE   ,iError)
+        IF(MPI_COMM_WORKERS.NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(MPI_COMM_WORKERS,iError)
+        IF(MPI_COMM_LEADERS.NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(MPI_COMM_LEADERS,iError)
+      END IF
+#endif /*USE_MPI*/
+  END SELECT ! OutputFormat
 
   DEALLOCATE(VarNames_loc)
   DEALLOCATE(VarNamesSurf_loc)
@@ -215,6 +284,6 @@ CALL FinalizeVisu()
 ! For flexilib MPI init/finalize is controlled by main program
 CALL FinalizeMPI()
 CALL MPI_FINALIZE(iError)
-IF(iError .NE. 0) STOP 'MPI finalize error'
+IF (iError.NE.MPI_SUCCESS) STOP 'MPI finalize error'
 #endif
 END PROGRAM

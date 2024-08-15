@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
@@ -26,8 +26,6 @@ PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
 
 INTERFACE ReadState
   MODULE PROCEDURE ReadState
@@ -63,7 +61,7 @@ CHARACTER(LEN=255),INTENT(IN)    :: statefile    !< HDF5 state file
 LOGICAL                          :: userblockFound
 !===================================================================================================================================
 userblockFound = .TRUE. ! Set to true to later test for existing parameters either form userblock or from seperate file
-IF (LEN_TRIM(prmfile).EQ.0) THEN ! No seperate parameter file has been given
+IF (LEN_TRIM(prmfile).EQ.0) THEN ! No separate parameter file has been given
   ! Try to extract parameter file
   prmfile = ".flexi.ini"
   CALL ExtractParameterFile(statefile,prmfile,userblockFound)
@@ -79,7 +77,7 @@ IF (withDGOperator) THEN
 ELSE
   ! If no parameters have been specified, use PP_N to later initialize the interpolation routines.
   IF (.NOT.userblockFound) THEN
-    CALL ReadStateWithoutGradients(prmfile,statefile,PP_N)
+    CALL ReadStateWithoutGradients(prmfile,statefile,NIN=PP_N)
   ELSE
     CALL ReadStateWithoutGradients(prmfile,statefile)
   END IF
@@ -95,33 +93,38 @@ SUBROUTINE ReadStateAndGradients(prmfile,statefile)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Visu_Vars
-USE MOD_MPI           ,ONLY: DefineParametersMPI
+USE MOD_Avg2D_Vars          ,ONLY: doAvg2D
+USE MOD_Baseflow            ,ONLY: DefineParametersBaseflow,InitBaseflow,FinalizeBaseflow
+USE MOD_DG                  ,ONLY: InitDG,DGTimeDerivative_weakForm,FinalizeDG
+USE MOD_EOS                 ,ONLY: DefineParametersEos
+USE MOD_Equation            ,ONLY: DefineParametersEquation,InitEquation,FinalizeEquation
+USE MOD_Exactfunc           ,ONLY: DefineParametersExactFunc
+USE MOD_Filter              ,ONLY: DefineParametersFilter,InitFilter,FinalizeFilter
+USE MOD_Interpolation       ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
+USE MOD_IO_HDF5             ,ONLY: DefineParametersIO_HDF5,InitIOHDF5
+USE MOD_Mesh                ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
+USE MOD_Mesh_Vars           ,ONLY: nElems
+USE MOD_Mortar              ,ONLY: InitMortar,FinalizeMortar
+USE MOD_MPI                 ,ONLY: DefineParametersMPI
+USE MOD_Overintegration     ,ONLY: DefineParametersOverintegration,InitOverintegration,FinalizeOverintegration
+USE MOD_ReadInTools         ,ONLY: prms
+USE MOD_ReadInTools         ,ONLY: FinalizeParameters
+USE MOD_Restart             ,ONLY: DefineParametersRestart,InitRestart,Restart,FinalizeRestart
+USE MOD_Restart_Vars        ,ONLY: RestartTime
+USE MOD_Visu_Vars           ,ONLY: mapDGElemsToAllElems,changedMeshFile,changedWithDGOperator
+USE MOD_Visu_Vars           ,ONLY: MeshFile,nElems_DG
 #if USE_MPI
-USE MOD_MPI           ,ONLY: InitMPIvars,FinalizeMPI
-#endif
-USE MOD_IO_HDF5       ,ONLY: DefineParametersIO_HDF5,InitIOHDF5
-USE MOD_Interpolation ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
-USE MOD_Restart       ,ONLY: DefineParametersRestart,InitRestart,Restart,FinalizeRestart
-USE MOD_Mesh          ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
+USE MOD_MPI                 ,ONLY: InitMPIvars,FinalizeMPI
+#endif /*USE_MPI*/
 #if FV_ENABLED
-USE MOD_Indicator     ,ONLY: DefineParametersIndicator,InitIndicator,FinalizeIndicator
-USE MOD_FV            ,ONLY: DefineParametersFV,InitFV,FinalizeFV
-USE MOD_FV_Basis      ,ONLY: InitFV_Basis,FinalizeFV_Basis
-#endif
-USE MOD_DG            ,ONLY: InitDG,DGTimeDerivative_weakForm,FinalizeDG
-USE MOD_Mortar        ,ONLY: InitMortar,FinalizeMortar
-USE MOD_EOS           ,ONLY: DefineParametersEos
-USE MOD_Equation      ,ONLY: DefineParametersEquation,InitEquation,FinalizeEquation
-USE MOD_Exactfunc     ,ONLY: DefineParametersExactFunc
+USE MOD_FV                  ,ONLY: DefineParametersFV,InitFV,FinalizeFV
+USE MOD_FV_Basis            ,ONLY: InitFV_Basis,FinalizeFV_Basis
+USE MOD_Indicator           ,ONLY: DefineParametersIndicator,InitIndicator,FinalizeIndicator
+#endif /*FV_ENABLED*/
 #if PARABOLIC
-USE MOD_Lifting       ,ONLY: DefineParametersLifting,InitLifting,FinalizeLifting
-#endif
-USE MOD_Filter,         ONLY:DefineParametersFilter,InitFilter,FinalizeFilter
-USE MOD_Overintegration,ONLY:DefineParametersOverintegration,InitOverintegration,FinalizeOverintegration
-USE MOD_ReadInTools   ,ONLY: prms
-USE MOD_ReadInTools   ,ONLY: FinalizeParameters
-USE MOD_Restart_Vars  ,ONLY: RestartTime
+USE MOD_Lifting             ,ONLY: DefineParametersLifting,InitLifting,FinalizeLifting
+#endif /*PARABOLIC*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -129,6 +132,7 @@ CHARACTER(LEN=255),INTENT(IN):: prmfile       !< FLEXI parameter file, used if D
 CHARACTER(LEN=255),INTENT(IN):: statefile     !< HDF5 state file
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER                    :: iElem
 !===================================================================================================================================
 CALL FinalizeInterpolation()
 #if FV_ENABLED
@@ -150,6 +154,7 @@ CALL FinalizeFilter()
 #if PARABOLIC
 CALL FinalizeLifting()
 #endif
+CALL FinalizeBaseflow()
 
 ! read options from parameter file
 CALL FinalizeParameters()
@@ -170,6 +175,7 @@ CALL DefineParametersExactFunc()
 #if PARABOLIC
 CALL DefineParametersLifting()
 #endif
+CALL DefineParametersBaseflow()
 CALL prms%read_options(prmfile)
 
 ! Initialization of I/O routines
@@ -197,6 +203,8 @@ IF (changedMeshFile.OR.changedWithDGOperator) THEN
 END IF
 #endif
 CALL InitEquation()
+CALL InitBaseflow()
+doAvg2D = .FALSE.
 
 CALL InitDG()
 #if FV_ENABLED
@@ -213,6 +221,14 @@ SWRITE(UNIT_stdOut,'(A)')             "DONE"
 
 CALL FinalizeParameters()
 
+!! TODO: doesnt account for FV!!
+nElems_DG=nElems
+SDEALLOCATE(mapDGElemsToAllElems)
+ALLOCATE(mapDGElemsToAllElems(1:nElems))
+DO iElem=1,nElems
+  mapDGElemsToAllElems(iElem) = iElem
+END DO
+
 END SUBROUTINE ReadStateAndGradients
 
 
@@ -225,8 +241,8 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_DG_Vars             ,ONLY: U
 USE MOD_EOS                 ,ONLY: DefineParametersEos,InitEOS,PrimToCons
-USE MOD_Interpolation       ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
 USE MOD_HDF5_Input          ,ONLY: OpenDataFile,ReadAttribute,ReadArray,CloseDataFile
+USE MOD_Interpolation       ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
 USE MOD_IO_HDF5             ,ONLY: DefineParametersIO_HDF5,InitIOHDF5
 USE MOD_Mesh                ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Mesh_Vars           ,ONLY: nElems,offsetElem
@@ -234,7 +250,8 @@ USE MOD_MPI                 ,ONLY: DefineParametersMPI
 USE MOD_ReadInTools         ,ONLY: prms
 USE MOD_ReadInTools         ,ONLY: FinalizeParameters
 USE MOD_Restart_Vars        ,ONLY: RestartTime
-USE MOD_Visu_Vars
+USE MOD_Visu_Vars           ,ONLY: changedMeshFile,doSurfVisu,hasFV_Elems
+USE MOD_Visu_Vars           ,ONLY: MeshFile,meshMode_old,nVar_State
 #if EQNSYSNR!=1
 USE MOD_HDF5_Input          ,ONLY: GetDataSize
 USE MOD_IO_HDF5             ,ONLY: File_ID,nDims,HSize
@@ -242,12 +259,13 @@ USE MOD_Mesh_Vars           ,ONLY: nElems,nGlobalElems,offsetElem
 USE MOD_Restart_Vars        ,ONLY: RestartMode,RestartCons,RestartPrim,nVar_Restart,RestartTime
 #endif /* EQNSYSNR!=1 */
 #if USE_MPI
-USE MOD_MPI,                 ONLY: FinalizeMPI
+USE MOD_MPI                 ,ONLY: FinalizeMPI
 #endif
 #if FV_ENABLED
 USE MOD_FV_Basis            ,ONLY: InitFV_Basis,FinalizeFV_Basis,DefineParametersFV_Basis
 USE MOD_Mortar              ,ONLY: InitMortar,FinalizeMortar
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -258,6 +276,7 @@ INTEGER,INTENT(IN),OPTIONAL  :: Nin           !< Polynomial degree used in InitI
 ! LOCAL VARIABLES
 INTEGER           :: meshMode_loc
 LOGICAL           :: changedMeshMode
+REAL              :: StartT,EndT
 #if EQNSYSNR!=1
 INTEGER           :: HSize_proc(5),iVar
 REAL,ALLOCATABLE  :: U_local(:,:,:,:,:),U_local2(:,:,:,:,:)
@@ -331,13 +350,23 @@ meshMode_old = meshMode_loc
 SDEALLOCATE(U)
 ALLOCATE(U(1:nVar_State,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 
-SWRITE(UNIT_stdOut,'(A,A,A)') ' READING FIELD FROM DATA FILE "',TRIM(statefile),'"...'
+IF(MPIRoot)THEN
+  WRITE(UNIT_stdOut,'(A,A,A)',ADVANCE='NO')' READING FIELD FROM DATA FILE "',TRIM(statefile),'"...'
+  GETTIME(StartT)
+END IF
+
 CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+
 #if EQNSYSNR!=1
 SELECT CASE(RestartMode)
   ! State file or no CheckRestartFile performed
   CASE(-1,1)
 #endif /* EQNSYSNR!=1 */
+    ! Sanity check
+    CALL GetDataSize(File_ID,'DG_Solution',nDims,HSize)
+    IF ((HSize(2).NE.PP_N+1).OR.(HSize(3).NE.PP_N+1).OR.(HSize(4).NE.PP_NZ+1).OR.(HSize(5).NE.nGlobalElems)) &
+      CALL Abort(__STAMP__,'Dimensions of restart file do not match! Check mesh file and 2D/3D mode!')
+
     CALL ReadAttribute(File_ID,'Time',1,RealScalar=RestartTime)
     CALL ReadArray('DG_Solution',5,(/nVar_State,PP_N+1,PP_N+1,PP_NZ+1,nElems/),offsetElem,5,RealArray=U)
 #if EQNSYSNR!=1
@@ -345,18 +374,24 @@ SELECT CASE(RestartMode)
   CASE(2,3)
     ! PV_PLUGIN with no variable selected will pass nVar_State=1
     IF (nVar_State.EQ.1) THEN
+      ! Sanity check
+      CALL GetDataSize(File_ID,'DG_Solution',nDims,HSize)
+      IF ((HSize(2).NE.PP_N+1).OR.(HSize(3).NE.PP_N+1).OR.(HSize(4).NE.PP_NZ+1).OR.(HSize(5).NE.nGlobalElems)) &
+        CALL Abort(__STAMP__,'Dimensions of restart file do not match! Check mesh file and 2D/3D mode!')
+
       CALL ReadArray('DG_Solution',5,(/nVar_State,PP_N+1,PP_N+1,PP_NZ+1,nElems/),offsetElem,5,RealArray=U)
     ELSE
+      ! Sanity check
       CALL GetDataSize(File_ID,'Mean',nDims,HSize)
-
-      ! Sanity check, number of elements
-      IF ((HSize(2).NE.PP_N+1).OR.(HSize(3).NE.PP_N+1).OR.(HSize(5).NE.nGlobalElems)) &
-        CALL Abort(__STAMP__,"Dimensions of restart file do not match!")
+      IF ((HSize(2).NE.PP_N+1).OR.(HSize(3).NE.PP_N+1).OR.(HSize(4).NE.PP_NZ+1).OR.(HSize(5).NE.nGlobalElems)) &
+        CALL Abort(__STAMP__,'Dimensions of restart file do not match! Check mesh file and 2D/3D mode!')
 
       HSize_proc    = INT(HSize)
       HSize_proc(5) = nElems
       ! Allocate array to hold the restart data
       ALLOCATE(U_local(nVar_Restart,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
+      DEALLOCATE(HSize)
+
       CALL ReadArray('Mean',5,HSize_proc,OffsetElem,5,RealArray=U_local)
 
       ! Conservative Variables, time-averaged
@@ -379,8 +414,12 @@ SELECT CASE(RestartMode)
     END IF
 END SELECT
 #endif /* EQNSYSNR!=1 */
-
 CALL CloseDataFile()
+
+IF(MPIRoot)THEN
+  GETTIME(EndT)
+  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',EndT-StartT,'s]'
+END IF
 
 CALL FinalizeParameters()
 END SUBROUTINE ReadStateWithoutGradients

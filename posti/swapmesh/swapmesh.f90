@@ -438,6 +438,7 @@ ELSE
   UOld = U_local
 END IF
 #endif
+DEALLOCATE(HSize)
 
 ! Read the current time
 CALL ReadAttribute(File_ID,'Time',1,RealScalar=Time_State)
@@ -466,18 +467,21 @@ CALL CloseDataFile()
 SDEALLOCATE(VarNames_TimeAvg)
 SDEALLOCATE(VarNames_ElemData)
 SDEALLOCATE(UMean)
+!SDEALLOCATE(UFluc)
 DEALLOCATE(U_local)
+
 END SUBROUTINE ReadOldStateFile
+
 
 !===================================================================================================================================
 !> Write the new state file by calling the WriteState routine from FLEXI. All necessary variables must have been set correctly!
 !===================================================================================================================================
 SUBROUTINE WriteNewStateFile()
-! MODULES                                                                                                                          !
+! MODULES
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_IO_HDF5            
-USE MOD_HDF5_Output        
+USE MOD_HDF5_Output,        ONLY: WriteState
 USE MOD_Output_Vars,        ONLY: ProjectName
 USE MOD_Swapmesh_Vars,      ONLY: Time_State,MeshFileNew,NodeTypeOut,NodeTypeState
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -500,7 +504,9 @@ IF (NodeTypeOut.NE.NodeTypeState) THEN
   CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/NodeTypeOut/))
   CALL CloseDataFile()
 END IF
+
 END SUBROUTINE WriteNewStateFile
+
 
 !===================================================================================================================================
 !> Finalize swapmesh variables

@@ -26,6 +26,8 @@ SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 INTEGER,ALLOCATABLE :: MPIRequest_U(:,:)        !< communication handle for the surface solution
 INTEGER,ALLOCATABLE :: MPIRequest_Flux(:,:)     !< communication handle for the surface flux
+INTEGER,ALLOCATABLE :: MPIRequest_Avg2dSend(:)  !< communication handle for averaging in 2D
+INTEGER,ALLOCATABLE :: MPIRequest_Avg2DRecv(:)  !< communication handle for averaging in 2D
 #if FV_ENABLED
 INTEGER,ALLOCATABLE :: MPIRequest_FV_Elems(:,:) !< communication handle for the FV_Elems array
 INTEGER,ALLOCATABLE :: MPIRequest_FV_gradU(:,:) !< communication handle for the slopes of the FV reconstruction

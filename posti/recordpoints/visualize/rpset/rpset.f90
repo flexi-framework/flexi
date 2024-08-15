@@ -514,7 +514,8 @@ DO iLine=1,nLines
                                +NORM2(xF_RP(:,aLine%IDlist(iPoint)) - xF_RP(:,aLine%IDlist(iPoint-1)))
     END DO !iPoint
   ELSE
-    WRITE(UNIT_stdOut,'(A,A,A)')' The type of Line "',LineType,'" is not known!'; STOP
+    WRITE(UNIT_stdOut,'(A,A,A)')' The type of Line "',LineType,'" is not known!'
+    STOP
   END IF
 END DO !iLine
 END SUBROUTINE CalcLine_LocalCoords

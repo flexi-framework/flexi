@@ -46,7 +46,7 @@ SUBROUTINE WriteDataToHDF5(nSamples,nRP,nVal,VarNames,Time,Value,FileString)
 USE MOD_Globals
 USE HDF5
 USE MOD_IO_HDF5
-USE MOD_HDF5_Output
+USE MOD_HDF5_Output        ,ONLY: WriteAttribute,WriteArray
 USE MOD_ParametersVisu     ,ONLY: ProjectName
 USE MOD_ParametersVisu     ,ONLY: Line_LocalCoords,Plane_LocalCoords
 USE MOD_ParametersVisu     ,ONLY: OutputPlanes,OutputLines,OutputPoints
@@ -223,7 +223,7 @@ SUBROUTINE WriteBLPropsToHDF5(FileString)
 USE MOD_Globals
 USE HDF5
 USE MOD_IO_HDF5
-USE MOD_HDF5_Output
+USE MOD_HDF5_Output        ,ONLY: WriteAttribute,WriteArray
 USE MOD_EquationRP_Vars    ,ONLY: nBLProps,VarNames_BLProps
 USE MOD_ParametersVisu     ,ONLY: ProjectName
 USE MOD_RPSetVisuVisu_Vars ,ONLY: GroupNames

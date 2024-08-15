@@ -148,7 +148,7 @@ CALL FinalizeIOHDF5
 #if USE_MPI
 CALL FinalizeMPI()
 CALL MPI_FINALIZE(iError)
-IF(iError .NE. 0) STOP 'MPI finalize error'
+IF (iError.NE.MPI_SUCCESS) STOP 'MPI finalize error'
 #endif
 
 SWRITE(UNIT_stdOut,'(132("="))')

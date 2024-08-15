@@ -65,7 +65,7 @@ PUBLIC::WriteDataToVTK_array
 PUBLIC::WriteVarnamesToVTK_array
 #if USE_MPI
 PUBLIC::WriteParallelVTK
-#endif
+#endif /*USE_MPI*/
 PUBLIC::CARRAY
 !===================================================================================================================================
 
@@ -273,7 +273,8 @@ END SUBROUTINE CreateConnectivity
 !===================================================================================================================================
 !> Subroutine to write 2D or 3D point data to VTK format
 !===================================================================================================================================
-SUBROUTINE WriteDataToVTK(nVal,NVisu,nElems,VarNames,Coord,Value,FileString,dim,DGFV,nValAtLastDimension,HighOrder,PostiParallel)
+SUBROUTINE WriteDataToVTK(nVal,NVisu,nElems,VarNames,Coord,Value,FileString,dim,DGFV,nValAtLastDimension,HighOrder,PostiParallel,&
+                          OutputDirectory)
 ! MODULES
 USE MOD_Globals
 USE MOD_Restart_Vars   ,ONLY: RestartTime
@@ -293,6 +294,7 @@ INTEGER,OPTIONAL,INTENT(IN) :: DGFV                 !< flag indicating DG = 0 or
 LOGICAL,OPTIONAL,INTENT(IN) :: nValAtLastDimension  !< if TRUE, nVal is stored in the last index of value
 LOGICAL,OPTIONAL,INTENT(IN) :: HighOrder            !< if TRUE, posti uses high-order element representation
 LOGICAL,OPTIONAL,INTENT(IN) :: PostiParallel        !< if TRUE, posti runs parallel
+CHARACTER(LEN=*),OPTIONAL,INTENT(IN)  :: OutputDirectory      !< Custom output directory
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                     :: iVal,ivtk
@@ -348,6 +350,31 @@ ELSE
   PostiParallel_loc = .FALSE.
   FileString_loc=TRIM(FileString)//'.vtu'
 END IF
+
+! Prepend output directory
+IF (PRESENT(OutputDirectory)) THEN
+  IF (TRIM(OutputDirectory).NE.'') THEN
+    FileString_loc=TRIM(OutputDirectory)//'/'//TRIM(FileString_loc)
+    ! create visu dir, where all vtu files are placed
+    IF (PostiParallel_loc) THEN
+      IF (MPIRoot) CALL SYSTEM('mkdir -p '//TRIM(OutputDirectory)//'/visu')
+    END IF
+  ELSE
+    ! create visu dir, where all vtu files are placed
+    IF (PostiParallel_loc) THEN
+      IF (MPIRoot) CALL SYSTEM('mkdir -p visu')
+    END IF
+  END IF ! TRIM(OutputDirectory).NE.''
+ELSE
+  ! create visu dir, where all vtu files are placed
+  IF (PostiParallel_loc) THEN
+    IF (MPIRoot) CALL SYSTEM('mkdir -p visu')
+  END IF
+END IF ! PRESENT(OutputDirectory)
+
+#if USE_MPI
+IF (PostiParallel_loc) CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
+#endif /*USE_MPI*/
 
 IF (dim.EQ.3) THEN
   NVisu_k = NVisu
@@ -592,7 +619,11 @@ ENDIF
 
 #if USE_MPI
 IF(PostiParallel_loc.AND.MPIRoot)THEN
-  CALL WriteParallelVTK(FileString,nVal,VarNames)
+  IF(PRESENT(OutputDirectory))THEN
+    CALL WriteParallelVTK(FileString,nVal,VarNames,OutputDirectory)
+  ELSE
+    CALL WriteParallelVTK(FileString,nVal,VarNames)
+  END IF
 ENDIF
 #endif
 
@@ -603,7 +634,7 @@ END SUBROUTINE WriteDataToVTK
 !===================================================================================================================================
 !> Links DG and FV VTK files together
 !===================================================================================================================================
-SUBROUTINE WriteVTKMultiBlockDataSet(FileString,FileString_DG,FileString_FV)
+SUBROUTINE WriteVTKMultiBlockDataSet(FileString,FileString_DG,FileString_FV,OutputDirectory)
 ! MODULES
 USE MOD_Globals
 IMPLICIT NONE
@@ -612,6 +643,7 @@ IMPLICIT NONE
 CHARACTER(LEN=*),INTENT(IN) :: FileString     !< Output file name
 CHARACTER(LEN=*),INTENT(IN) :: FileString_DG  !< Filename of DG VTU file
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: FileString_FV    !< Filename of FV VTU file
+CHARACTER(LEN=*),OPTIONAL,INTENT(IN) :: OutputDirectory  !< Custom output directory
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: ivtk
@@ -621,7 +653,15 @@ CHARACTER(LEN=1)   :: lf
 IF (MPIRoot) THEN
   IF(nProcessors.GT.1)THEN
     ! write '.vtu">'//multiblock file
-    OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString)//'.pvd',STATUS='REPLACE',ACCESS='STREAM')
+    IF (PRESENT(OutputDirectory)) THEN
+      IF (TRIM(OutputDirectory).NE.'') THEN
+        OPEN(NEWUNIT=ivtk,FILE=TRIM(OutputDirectory)//'/'//TRIM(FileString)//'.pvd',STATUS='REPLACE',ACCESS='STREAM')
+      ELSE
+        OPEN(NEWUNIT=ivtk,FILE=                            TRIM(FileString)//'.pvd',STATUS='REPLACE',ACCESS='STREAM')
+      END IF
+    ELSE
+      OPEN(NEWUNIT=ivtk,FILE=                            TRIM(FileString)//'.pvd',STATUS='REPLACE',ACCESS='STREAM')
+    END IF
     ! Line feed character
     lf = char(10)
     Buffer='<VTKFile type="Collection" version="1.0" byte_order="LittleEndian" header_type="UInt64">'//lf
@@ -653,7 +693,7 @@ END SUBROUTINE WriteVTKMultiBlockDataSet
 !===================================================================================================================================
 !> Writes PVTU files
 !===================================================================================================================================
-SUBROUTINE WriteParallelVTK(FileString,nVal,VarNames)
+SUBROUTINE WriteParallelVTK(FileString,nVal,VarNames,OutputDirectory)
 ! MODULES
 USE MOD_Globals
 USE MOD_Restart_Vars   ,ONLY: RestartTime
@@ -664,6 +704,7 @@ IMPLICIT NONE
 CHARACTER(LEN=*),INTENT(IN) :: FileString     !< Output file name
 INTEGER,INTENT(IN)          :: nVal                 !< Number of nodal output variables
 CHARACTER(LEN=*),INTENT(IN) :: VarNames(nVal)       !< Names of all variables that will be written out
+CHARACTER(LEN=*),OPTIONAL,INTENT(IN) :: OutputDirectory  !< Custom output directory
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: ivtk, iVal, iProc
@@ -673,7 +714,15 @@ CHARACTER(LEN=35)  :: StrProc,TempStr1
 !===================================================================================================================================
 IF (MPIRoot) THEN
   ! write multiblock file
-  OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString)//'.pvtu',STATUS='REPLACE',ACCESS='STREAM')
+  IF (PRESENT(OutputDirectory)) THEN
+    IF (TRIM(OutputDirectory).NE.'') THEN
+      OPEN(NEWUNIT=ivtk,FILE=TRIM(OutputDirectory)//'/'//TRIM(FileString)//'.pvtu',STATUS='REPLACE',ACCESS='STREAM')
+    ELSE
+      OPEN(NEWUNIT=ivtk,FILE=                            TRIM(FileString)//'.pvtu',STATUS='REPLACE',ACCESS='STREAM')
+    END IF
+  ELSE
+    OPEN(NEWUNIT=ivtk,FILE=                            TRIM(FileString)//'.pvtu',STATUS='REPLACE',ACCESS='STREAM')
+  END IF
   ! Line feed character
   lf = char(10)
   Buffer='<VTKFile type="PUnstructuredGrid" version="1.0" byte_order="LittleEndian" header_type="UInt64">'//lf
