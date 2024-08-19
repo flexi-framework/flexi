@@ -40,8 +40,8 @@ CONTAINS
 !> Is used for postprocessing
 !==================================================================================================================================
 SUBROUTINE visu_WriteHDF5(nVarVisu,NVisu,nElems_loc,FileString,MeshFileName,VarNames_loc  &
-                         ,Coords_DG,Coords_DG2D,Coords_DG1D,dim                           &
-                         ,UVisu_DG ,UVisu_DG2D ,UVisu_DG1D )
+                         ,Coords_DG,Coords_DG2D            ,dim                           & ! ,Coords_DG1D
+                         ,UVisu_DG ,UVisu_DG2D             )                                ! ,UVisu_DG1D
 ! MODULES
 USE MOD_Globals               !,ONLY: ABORT,TIMESTAMP,MPIROOT,MPI_COMM_FLEXI,UNIT_stdOut
 USE MOD_PreProc
@@ -64,10 +64,10 @@ CHARACTER(LEN=*),INTENT(IN)    :: VarNames_loc(nVarVisu)
 INTEGER,INTENT(IN)             :: dim
 REAL,INTENT(IN),TARGET,OPTIONAL:: Coords_DG  (1:3,0:nVisu,0:nVisu,0:MERGE(nVisu,0,dim.GT.2),1:nElems)
 REAL,INTENT(IN),TARGET,OPTIONAL:: Coords_DG2D(1:3,0:nVisu,0:ZDIM(NVisu),1:nElems_loc)
-REAL,INTENT(IN),TARGET,OPTIONAL:: Coords_DG1D(1:3)
+! REAL,INTENT(IN),TARGET,OPTIONAL:: Coords_DG1D(1:3)
 REAL,INTENT(IN),TARGET,OPTIONAL:: UVisu_DG   (0:nVisu,0:nVisu,0:MERGE(nVisu,0,dim.GT.2),1:nElems,1:nVarVisu)
 REAL,INTENT(IN),TARGET,OPTIONAL:: UVisu_DG2D (0:NVisu,0:ZDIM(NVisu),1:nElems_loc,1:nVarVisu)
-REAL,INTENT(IN),TARGET,OPTIONAL:: UVisu_DG1D (1:nVarVisu)
+! REAL,INTENT(IN),TARGET,OPTIONAL:: UVisu_DG1D (1:nVarVisu)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)             :: FileName!,FileType

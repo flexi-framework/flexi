@@ -263,7 +263,8 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   ! build mappings of BC sides for surface visualization
   CALL Build_mapBCSides()
 
-  IF (changedStateFile.OR.changedWithDGOperator.OR.changedPrmFile.OR.changedDGonly) THEN
+  ! ===== calc solution =====
+  IF (changedStateFile.OR.changedWithDGOperator.OR.changedVarNames.OR.changedDGonly.OR.changedNCalc) THEN
     CALL CalcQuantities_DG()
 #if FV_ENABLED
     CALL CalcQuantities_FV()
@@ -271,7 +272,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   END IF
   IF (doSurfVisu) THEN
     ! calc surface solution
-  IF (changedStateFile.OR.changedWithDGOperator.OR.changedPrmFile.OR.changedDGonly) THEN
+    IF (changedStateFile.OR.changedWithDGOperator.OR.changedVarNames.OR.changedDGonly.OR.changedNCalc.OR.changedBCnames) THEN
       CALL CalcSurfQuantities_DG()
 #if FV_ENABLED
       CALL CalcSurfQuantities_FV()
@@ -280,7 +281,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   END IF
 
   ! ===== convert solution to visu grid =====
-  IF (changedStateFile.OR.changedWithDGOperator.OR.changedPrmFile.OR.changedDGonly.OR.changedAvg2D) THEN
+  IF (changedStateFile.OR.changedWithDGOperator.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedNCalc.OR.changedAvg2D) THEN
     ! ===== Avg2d =====
     IF (Avg2d) THEN
       SDEALLOCATE(UVisu_DG)
@@ -317,7 +318,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
 
   IF (doSurfVisu) THEN
     ! convert Surface DG solution to visu grid
-    IF (changedStateFile.OR.changedWithDGOperator.OR.changedPrmFile.OR.changedDGonly) THEN
+    IF (changedStateFile.OR.changedWithDGOperator.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedNCalc.OR.changedBCnames) THEN
       CALL ConvertToSurfVisu_DG()
 #if FV_ENABLED
       CALL ConvertToSurfVisu_FV()
@@ -326,7 +327,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   END IF ! doSurfVisu
 
   ! convert generic data to visu grid
-  IF (changedStateFile.OR.changedWithDGOperator.OR.changedPrmFile.OR.changedDGonly.OR.changedAvg2D) THEN
+  IF (changedStateFile.OR.changedWithDGOperator.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames.OR.changedAvg2D) THEN
     CALL ConvertToVisu_GenericData(statefile)
   END IF
 
@@ -345,11 +346,11 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   ! Convert coordinates to visu grid
   IF (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly.OR.changedAvg2D)                                                                                         &
     CALL BuildVisuCoords()
-  IF (doSurfVisu) THEN
+
+  IF (doSurfVisu .AND. &
     ! Convert surface coordinates to visu grid
-    IF (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly.OR.changedBCnames) &
+    (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly.OR.changedBCnames)) &
       CALL BuildSurfVisuCoords()
-  END IF
 END IF
 
 MeshFile_old          = MeshFile

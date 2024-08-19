@@ -47,7 +47,7 @@ USE MOD_PreProc                         ! all PP_*** variables
 USE MOD_Flux         ,ONLY: EvalFlux3D  ! 3D fluxes
 USE MOD_FV_Vars
 #if VOLINT_VISC
-USE MOD_Lifting_Vars ,ONLY: gradUx,gradUy,gradUz
+! USE MOD_Lifting_Vars ,ONLY: gradUx,gradUy,gradUz
 USE MOD_Flux         ,ONLY: EvalDiffFlux3D
 #endif
 USE MOD_Riemann      ,ONLY: Riemann
@@ -77,7 +77,7 @@ REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ-1) :: f_zeta,g_zeta,h_zeta
 REAL                                            :: UPrim_zeta(PP_nVarPrim,0:PP_N  ,0:PP_N  ,0:PP_NZ-1)
 #endif /*PP_dim == 3*/
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ)          :: Fvisc_FV
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: f,g,h      !< viscous volume fluxes at GP
+! REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: f,g,h      !< viscous volume fluxes at GP
 #endif
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ)        :: F_FV
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: Ut_FV

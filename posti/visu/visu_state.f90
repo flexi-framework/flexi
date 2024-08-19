@@ -82,6 +82,7 @@ ELSE
     CALL ReadStateWithoutGradients(prmfile,statefile)
   END IF
 END IF
+
 END SUBROUTINE ReadState
 
 
@@ -103,7 +104,6 @@ USE MOD_Filter              ,ONLY: DefineParametersFilter,InitFilter,FinalizeFil
 USE MOD_Interpolation       ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
 USE MOD_IO_HDF5             ,ONLY: DefineParametersIO_HDF5,InitIOHDF5
 USE MOD_Mesh                ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
-USE MOD_Mesh_Vars           ,ONLY: nElems
 USE MOD_Mortar              ,ONLY: InitMortar,FinalizeMortar
 USE MOD_MPI                 ,ONLY: DefineParametersMPI
 USE MOD_Overintegration     ,ONLY: DefineParametersOverintegration,InitOverintegration,FinalizeOverintegration
@@ -111,8 +111,8 @@ USE MOD_ReadInTools         ,ONLY: prms
 USE MOD_ReadInTools         ,ONLY: FinalizeParameters
 USE MOD_Restart             ,ONLY: DefineParametersRestart,InitRestart,Restart,FinalizeRestart
 USE MOD_Restart_Vars        ,ONLY: RestartTime
-USE MOD_Visu_Vars           ,ONLY: mapDGElemsToAllElems,changedMeshFile,changedWithDGOperator
-USE MOD_Visu_Vars           ,ONLY: MeshFile,nElems_DG
+USE MOD_Visu_Vars           ,ONLY: changedMeshFile,changedWithDGOperator
+USE MOD_Visu_Vars           ,ONLY: MeshFile
 #if USE_MPI
 USE MOD_MPI                 ,ONLY: InitMPIvars,FinalizeMPI
 #endif /*USE_MPI*/
@@ -132,7 +132,6 @@ CHARACTER(LEN=255),INTENT(IN):: prmfile       !< FLEXI parameter file, used if D
 CHARACTER(LEN=255),INTENT(IN):: statefile     !< HDF5 state file
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                    :: iElem
 !===================================================================================================================================
 CALL FinalizeInterpolation()
 #if FV_ENABLED
@@ -188,8 +187,6 @@ CALL InitFV_Basis()
 CALL InitMortar()
 CALL InitRestart(statefile)
 
-! TODO: what todo with vars that are set in InitOutput, that normally is executed here.
-
 IF (changedMeshFile.OR.changedWithDGOperator) THEN
   CALL FinalizeMesh()
   CALL InitMesh(meshMode=2,MeshFile_IN=MeshFile)
@@ -220,14 +217,6 @@ CALL DGTimeDerivative_weakForm(RestartTime)
 SWRITE(UNIT_stdOut,'(A)')             "DONE"
 
 CALL FinalizeParameters()
-
-!! TODO: doesnt account for FV!!
-nElems_DG=nElems
-SDEALLOCATE(mapDGElemsToAllElems)
-ALLOCATE(mapDGElemsToAllElems(1:nElems))
-DO iElem=1,nElems
-  mapDGElemsToAllElems(iElem) = iElem
-END DO
 
 END SUBROUTINE ReadStateAndGradients
 

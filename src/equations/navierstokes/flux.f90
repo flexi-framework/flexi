@@ -278,6 +278,10 @@ DO k=0,PP_NZ;  DO j=0,PP_N; DO i=0,PP_N
 #endif /*EDDYVISCOSITY*/
                             )
 END DO; END DO; END DO ! i,j,k
+
+#if !EDDYVISCOSITY
+NO_OP(iElem)
+#endif /*!EDDYVISCOSITY*/
 END SUBROUTINE EvalDiffFlux3D_Volume
 
 #if FV_ENABLED
@@ -314,6 +318,10 @@ DO k=0,PP_N_zeta;  DO j=0,PP_N_eta; DO i=0,PP_N_xi
 #endif
                             )
 END DO; END DO; END DO ! i,j,k
+
+#if !EDDYVISCOSITY
+NO_OP(iElem)
+#endif /*!EDDYVISCOSITY*/
 END SUBROUTINE EvalDiffFlux3D_Volume_FV
 #endif /*FV_ENABLED*/
 

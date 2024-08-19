@@ -489,6 +489,7 @@ IF (Avg2D) THEN
 END IF
 
 changedWithDGOperator = (withDGOperator.NEQV.withDGOperator_old)
+
 END SUBROUTINE visu_InitFile
 
 END MODULE MOD_Visu_Init
