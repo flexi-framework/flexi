@@ -538,11 +538,11 @@ SUBROUTINE WriteBaseFlow(ProjectName,MeshFileName,OutputTime,FutureTime)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_BaseFlow_Vars,ONLY: TimeFilterWidthBaseFlow
+USE MOD_BaseFlow_Vars,ONLY: BaseFlow,TimeFilterWidthBaseFlow
 USE MOD_Equation_Vars,ONLY: StrVarNames
 USE MOD_Mesh_Vars    ,ONLY: offsetElem,nGlobalElems,nElems
 USE MOD_Output_Vars  ,ONLY: WriteStateFiles
-USE MOD_Sponge_Vars  ,ONLY: SpBaseFlow
+USE MOD_Sponge_Vars  ,ONLY: SpRefState
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -576,22 +576,22 @@ FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_BaseFlow',OutputTime))//'.h5'
 IF(MPIRoot) CALL GenerateFileSkeleton(TRIM(FileName),'BaseFlow',PP_nVar,PP_N,StrVarNames,MeshFileName,OutputTime,FutureTime)
 
 #if PP_dim == 3
-  UOut => SpBaseFlow
-  NZ_loc=PP_N
+  UOut  => BaseFlow
+  NZ_loc = PP_N
 #else
 IF (.NOT.output2D) THEN
   ALLOCATE(UOut(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems))
   DO iElem=1,nElems
     DO j=0,PP_N; DO i=0,PP_N
       DO iVar=1,PP_nVar
-        UOut(iVar,i,j,:,iElem)=SpBaseFlow(iVar,i,j,0,iElem)
+        UOut(iVar,i,j,:,iElem) = BaseFlow(iVar,i,j,0,iElem)
       END DO ! iVar=1,PP_nVar
     END DO; END DO
   END DO
-  NZ_loc=PP_N
+  NZ_loc = PP_N
 ELSE
-  UOut => SpBaseFlow
-  NZ_loc=0
+  UOut  => BaseFlow
+  NZ_loc = 0
 END IF
 #endif
 

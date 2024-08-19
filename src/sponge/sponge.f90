@@ -109,9 +109,10 @@ CALL addStrListEntry(                'SpongeBaseFlow'       ,'file',         SPO
 CALL addStrListEntry(                'SpongeBaseFlow'       ,'pruett',       SPONGEBASEFLOW_PRUETT)
 CALL prms%CreateIntOption(           'SpongeRefState'       ,"Index of refstate in ini-file (SpongeBaseFlow=constant)")
 CALL prms%CreateIntOption(           'SpongeExactFunc'      ,"Index of exactfunction (SpongeBaseFlow=exactfunction)")
-CALL prms%CreateStringOption(        'SpongeBaseFlowFile'   ,"FLEXI solution (e.g. TimeAvg) file from which baseflow is read.")
+CALL prms%CreateStringOption(        'SpongeRefFile'        ,"FLEXI solution (e.g. TimeAvg) file from which sponge is read.")
 CALL prms%CreateRealOption(          'tempFilterWidthSponge',"Temporal filter width used to advance Pruett baseflow in time.)")
 END SUBROUTINE DefineParametersSponge
+
 
 !==================================================================================================================================
 !> \brief Initialize sponge region (get parameters, allocate arrays).
@@ -166,27 +167,27 @@ SELECT CASE(SpBaseFlowType)
     spongeExactFunc = GETINT('SpongeExactFunc')
   CASE(SPONGEBASEFLOW_FILE)      ! Base Flow from .h5 File
     IF (DoRestart) THEN
-      SpBaseFlowFile  = GETSTR('SpongeBaseFlowFile')
-      IF (TRIM(SpBaseFlowFile).EQ.'none') THEN
+      SpRefFile  = GETSTR('SpongeRefFile')
+      IF (TRIM(SpRefFile).EQ.'none') THEN
         ! If no base flow file has been specified, assume a standard name for the base flow file
-        SpBaseFlowFile = TRIM(TIMESTAMP(TRIM(ProjectName)//'_BaseFlow',RestartTime))//'.h5'
+        SpRefFile = TRIM(TIMESTAMP(TRIM(ProjectName)//'_BaseFlow',RestartTime))//'.h5'
         ! Check if this file exists
-        validBaseFlowFile = FILEEXISTS(SpBaseFlowFile)
+        validBaseFlowFile = FILEEXISTS(SpRefFile)
         IF (.NOT.validBaseFlowFile) THEN
           ! If the assumed base flow file does not exist, use the restart state to initialize the sponge base flow
-          SpBaseFlowFile = RestartFile
+          SpRefFile = RestartFile
           SWRITE(UNIT_stdOut,'(A)') 'WARNING: No baseflow file found! Using the restart state to initialize sponge base flow.'
         END IF
       ELSE
         ! check if baseflow exists
-        validBaseFlowFile = FILEEXISTS(SpBaseFlowFile)
-        IF (.NOT.validBaseFlowFile) CALL CollectiveStop(__STAMP__,'ERROR: Sponge base flow file '//TRIM(SpBaseFlowFile)//' does not exist.')
+        validBaseFlowFile = FILEEXISTS(SpRefFile)
+        IF (.NOT.validBaseFlowFile) CALL CollectiveStop(__STAMP__,'ERROR: Sponge base flow file '//TRIM(SpRefFile)//' does not exist.')
       END IF
     END IF
   CASE(SPONGEBASEFLOW_PRUETT)    ! Pruett sponge
     IF (.NOT.doBaseFlow) THEN
       CALL PrintWarning('Trying to use Pruett Sponge without enabling BaseFlow!\n'//&
-                        'To avoid crash, BaseFlow functionality is now enabled and reinitialized!') 
+                        'To avoid crash, BaseFlow functionality is now enabled and reinitialized!')
       ! Enable BaseFlow and initialize
       doBaseFlow = .TRUE.
       CALL InitBaseFlow()
@@ -199,29 +200,34 @@ CALL CalcSpongeRamp()
 
 ! Preparation of the baseflow on each Gauss Point
 SWRITE(UNIT_stdOut,'(A)') '  Initialize Sponge Base Flow...'
-ALLOCATE(SpBaseFlow(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 
 SELECT CASE(SpBaseFlowType)
   CASE(SPONGEBASEFLOW_CONSTANT)  ! Constant baseflow from refstate
+    ALLOCATE(SpRefState(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+
     DO iElem=1,nElems
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-        SpBaseFlow(:,i,j,k,iElem) = RefStateCons(:,spongeRefState)
+        SpRefState(:,i,j,k,iElem) = RefStateCons(:,spongeRefState)
       END DO; END DO; END DO
     END DO
-    SpBaseFlow_p(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) => SpBaseFlow
+    SpBaseFlow_p(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) => SpRefState
 
   CASE(SPONGEBASEFLOW_EXACTFUNC) ! Exact function
+    ALLOCATE(SpRefState(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+
     DO iElem=1,nElems
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         !Save exactFunc state for later use
-        CALL ExactFunc(SpongeExactFunc,0.,Elem_xGP(:,i,j,k,iElem),SpBaseFlow(:,i,j,k,iElem))
+        CALL ExactFunc(SpongeExactFunc,0.,Elem_xGP(:,i,j,k,iElem),SpRefState(:,i,j,k,iElem))
       END DO; END DO; END DO
     END DO
-    SpBaseFlow_p(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) => SpBaseFlow
+    SpBaseFlow_p(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) => SpRefState
 
   CASE(SPONGEBASEFLOW_FILE)      ! Base Flow from .h5 File
-    CALL ReadBaseFlowSp(SpBaseFlowFile)
-    SpBaseFlow_p(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) => SpBaseFlow
+    ALLOCATE(SpRefState(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+
+    CALL ReadBaseFlowSp(SpRefFile)
+    SpBaseFlow_p(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) => SpRefState
     ! readin of the hdf5 base flow solution
 
   CASE(SPONGEBASEFLOW_PRUETT)    ! Pruett: RefState for computation from scratch, Base flow file for restart
@@ -588,7 +594,7 @@ END IF
 ! Read in state
 IF((N_Base.EQ.PP_N).AND.(TRIM(NodeType_Base).EQ.TRIM(NodeType)))THEN
   ! No interpolation needed, read solution directly from file
-  CALL ReadArray('DG_Solution',5,(/PP_nVar,PP_N+1,PP_N+1,PP_NZ+1,nElems/),OffsetElem,5,RealArray=SpBaseFlow)
+  CALL ReadArray('DG_Solution',5,(/PP_nVar,PP_N+1,PP_N+1,PP_NZ+1,nElems/),OffsetElem,5,RealArray=SpRefState)
 ELSE
   ! We need to interpolate the solution to the new computational grid
   SWRITE(UNIT_stdOut,*)'Interpolating base flow from file with N_Base=',N_Base,' to N=',PP_N
@@ -597,7 +603,7 @@ ELSE
   CALL GetVandermonde(N_Base,NodeType_Base,PP_N,NodeType,Vdm_NBase_N,modal=.TRUE.)
   CALL ReadArray('DG_Solution',5,(/PP_nVar,N_Base+1,N_Base+1,N_Base+1,nElems/),OffsetElem,5,RealArray=UTmp)
   DO iElem=1,nElems
-    CALL ChangeBasisVolume(PP_nVar,N_Base,PP_N,Vdm_NBase_N,UTmp(:,:,:,:,iElem),SpBaseFlow(:,:,:,:,iElem))
+    CALL ChangeBasisVolume(PP_nVar,N_Base,PP_N,Vdm_NBase_N,UTmp(:,:,:,:,iElem),SpRefState(:,:,:,:,iElem))
   END DO
   DEALLOCATE(UTmp,Vdm_NBase_N)
 END IF
@@ -685,6 +691,7 @@ END DO
 
 END SUBROUTINE Sponge
 
+
 !==================================================================================================================================
 !> Deallocate sponge arrays
 !==================================================================================================================================
@@ -692,7 +699,7 @@ SUBROUTINE FinalizeSponge()
 ! MODULES
 USE MOD_Areas
 USE MOD_Sponge_Vars      ,ONLY:Sponges,nSpongeRamps
-USE MOD_Sponge_Vars      ,ONLY:SpongeMat,SpongeMap,SpBaseFlow
+USE MOD_Sponge_Vars      ,ONLY:SpongeMat,SpongeMap,SpRefState
 USE MOD_Sponge_Vars      ,ONLY:SpongeMat_Out
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -707,7 +714,7 @@ SDEALLOCATE(Sponges)
 SDEALLOCATE(SpongeMap)
 SDEALLOCATE(SpongeMat)
 SDEALLOCATE(SpongeMat_Out)
-SDEALLOCATE(SpBaseFlow)
+SDEALLOCATE(SpRefState)
 
 END SUBROUTINE FinalizeSponge
 

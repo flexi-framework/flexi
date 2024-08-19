@@ -442,7 +442,7 @@ SpongeRefState                                Index of refstate in ini-file
 SpongeExactFunc                               Index of exactfunction
                                               (SpongeBaseFlow=exactfunction)
 
-SpongeBaseFlowFile                            FLEXI solution (e.g. TimeAvg) file from which
+SpongeRefFile                                 FLEXI solution (e.g. TimeAvg) file from which
                                               baseflow is read.
 
 tempFilterWidth                               Temporal filter width used to advance Pruett

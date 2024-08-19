@@ -31,7 +31,7 @@ LOGICAL                        :: SpongeViz                 !< Turn on to write 
 LOGICAL                        :: WriteSponge               !< Turn on to write the sponge region and strength to the state file
 INTEGER                        :: nSpongeElems              !< number of elements for which sponge is applied
 INTEGER,ALLOCATABLE            :: spongeMap(:)              !< mapping from Elem -> spongElem
-REAL,ALLOCATABLE,TARGET        :: SpBaseFlow(:,:,:,:,:)     !< precompute global reference state for whole field
+REAL,ALLOCATABLE,TARGET        :: SpRefState(:,:,:,:,:)     !< precompute global reference state for whole field
 REAL,POINTER                   :: SpBaseFlow_p(:,:,:,:,:)   !< Ponter to SpBaseFlow
 INTEGER                        :: SpBaseFlowType            !< Specifies the type of baseflow
 REAL,ALLOCATABLE               :: damping(:)                !< Strength of damping per face
@@ -39,6 +39,6 @@ REAL,ALLOCATABLE               :: SpongeMat(:,:,:,:)        !< precomputed spong
 REAL,ALLOCATABLE               :: SpongeMat_Out(:,:,:,:,:)  !< precomputed sponge functions per DOF and sponge elem
 REAL,ALLOCATABLE               :: tempFilterWidthSp(:)      !< Filter width of each sponge region
 REAL,ALLOCATABLE               :: SpongeDistance(:)         !< Array containing the distance of the ramping of the sponge
-CHARACTER(LEN=255)             :: SpBaseFlowFile            !< File contiaining the sponge baseflow
+CHARACTER(LEN=255)             :: SpRefFile                 !< File contiaining the sponge baseflow
 !==================================================================================================================================
 END MODULE MOD_Sponge_Vars
