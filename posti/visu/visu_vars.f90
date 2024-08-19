@@ -53,6 +53,8 @@ INTEGER                           :: NCalc_old                   !< Different po
 INTEGER                           :: nVarIni                     !< number of requested variables in parameter file
 INTEGER                           :: nVar_State                  !< number of variables in the state file
 INTEGER                           :: nVar_State_old = -1         !< saves previous nVar_State
+CHARACTER(LEN=255)                :: NodeType_State              !< NodeType in the state file
+CHARACTER(LEN=255)                :: NodeType_State_old          !< saves previous NodeType_State
 INTEGER                           :: nState_old = -1             !< saves previous PP_N
 INTEGER                           :: nElems_DG                   !< number of DG elements in state
 INTEGER                           :: nElems_FV                   !< number of FV elements in state
@@ -80,6 +82,7 @@ LOGICAL                           :: Avg2D_old = .FALSE.         !< Previus stat
 ! changed. For example the mesh file of different state files in a timeseries is the same ...
 LOGICAL                           :: changedStateFile            !< .h5 state file to visualize changed
 LOGICAL                           :: changedMeshFile             !< Mesh file changed
+LOGICAL                           :: changedNodeType             !< Node type changed
 LOGICAL                           :: changedNVisu                !< Polyomial degree for visualization changed
 LOGICAL                           :: changedNCalc                !< Polyomial degree for calculation changed
 LOGICAL                           :: changedVarNames             !< variables selected for visualization changed (ParaView plugin)

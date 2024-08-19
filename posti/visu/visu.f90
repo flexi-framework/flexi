@@ -236,6 +236,8 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   CALL set_formatting(MERGE("blue ","green",changedStateFile))       ; SWRITE(UNIT_stdOut,'(L1)') changedStateFile       ; CALL clear_formatting()
   SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedMeshFile         "
   CALL set_formatting(MERGE("blue ","green",changedMeshFile))        ; SWRITE(UNIT_stdOut,'(L1)') changedMeshFile        ; CALL clear_formatting()
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedNodeType         "
+  CALL set_formatting(MERGE("blue ","green",changedNodeType))        ; SWRITE(UNIT_stdOut,'(L1)') changedNodeType        ; CALL clear_formatting()
   SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedNVisu            "
   CALL set_formatting(MERGE("blue ","green",changedNVisu))           ; SWRITE(UNIT_stdOut,'(L1)') changedNVisu           ; CALL clear_formatting()
   SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedNCalc            "
@@ -344,12 +346,12 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
 #endif
 
   ! Convert coordinates to visu grid
-  IF (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly.OR.changedAvg2D)                                                                                         &
+  IF (changedMeshFile.OR.changedNodeType.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly.OR.changedAvg2D)   &
     CALL BuildVisuCoords()
 
   IF (doSurfVisu .AND. &
     ! Convert surface coordinates to visu grid
-    (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly.OR.changedBCnames)) &
+    (changedMeshFile.OR.changedNodeType.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly.OR.changedBCnames)) &
       CALL BuildSurfVisuCoords()
 END IF
 
@@ -363,6 +365,7 @@ withDGOperator_old    = withDGOperator
 DGonly_old            = DGonly
 Avg2D_old             = Avg2D
 NodeTypeVisuPosti_old = NodeTypeVisuPosti
+NodeType_State_old    = NodeType_State
 NState_old            = PP_N
 RestartMode           = -1
 

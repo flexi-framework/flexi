@@ -301,7 +301,7 @@ CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL
 LOGICAL                          :: RestartMean
-CHARACTER(LEN=255)               :: NodeType_State, cwd
+CHARACTER(LEN=255)               :: cwd
 INTEGER                          :: nElems_State
 #if PP_N!=N
 INTEGER                          :: N_State
@@ -397,23 +397,20 @@ END SELECT
 
 ! check if state, mesh, NVisu, DGonly or Avg2D changed
 changedStateFile = .NOT.STRICMP(statefile,statefile_old)
-changedMeshFile  = .NOT.(STRICMP(MeshFile,MeshFile_old))
+changedMeshFile  = .NOT.STRICMP(MeshFile,MeshFile_old)
 changedDGonly    = (DGonly.NEQV.DGonly_old)
-changedAvg2D     = (Avg2D.NEQV.Avg2D_old)
+changedAvg2D     = (Avg2D .NEQV.Avg2D_old)
 
 IF (changedStateFile .AND. MPIRoot) WRITE(*,*) "state file old -> new: ", TRIM(statefile_old), " -> ",TRIM(statefile)
 IF (changedMeshFile  .AND. MPIRoot) WRITE(*,*) " mesh file old -> new: ", TRIM(MeshFile_old) , " -> ",TRIM(MeshFile)
 
 ! if Mesh or State changed readin some more attributes/parameters
 IF (changedStateFile.OR.changedMeshFile) THEN
-  IF (.NOT.STRICMP(NodeType_State, NodeType)) THEN
-    CALL CollectiveStop(__STAMP__, &
-        "NodeType of state does not match with NodeType the visu-posti is compiled with!")
-  END IF
   CALL ReadAttribute(File_ID,'Project_Name',1,StrScalar =ProjectName)
   CALL ReadAttribute(File_ID,'Time',        1,RealScalar=OutputTime)
   ! If the polynomial degree is changing, we could need new mesh mappings.
-  IF (NState_old.NE.PP_N) changedMeshFile = .TRUE.
+  changedMeshFile = (NState_old.NE.PP_N)
+  changedNodeType = .NOT.STRICMP(NodeType_State,NodeType_State_old)
 END IF
 
 CALL CloseDataFile()

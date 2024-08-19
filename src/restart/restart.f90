@@ -251,7 +251,8 @@ GETTIME(StartT)
 ! Check if we want to perform a restart
 IF (LEN_TRIM(RestartFile).GT.0) THEN
   ! Restart not possible, some variables might be missing
-  IF (RestartMode.LT. 1) CALL CollectiveStop(__STAMP__,'Provided file for restart has not all conservative/primitive variables available!')
+  IF (RestartMode.LT. 1 .AND. .NOT. postiMode) CALL CollectiveStop(__STAMP__, &
+    'Provided file for restart has not all conservative/primitive variables available!')
 
   SWRITE(UNIT_stdOut,'(A,A,A)')' | Restarting from file "',TRIM(RestartFile),'":'
   ! Check if restart file is a valid state
@@ -515,7 +516,7 @@ IF (DoRestart) THEN
   ELSE ! InterpolateSolution
     ! We need to interpolate the solution to the new computational grid
     SWRITE(UNIT_stdOut,'(A,I0,3A,I0,3A)') ' | Interpolating solution from restart grid with N=',N_restart,' (',TRIM(NodeType_Restart), &
-                                          ') to computational grid with N='                   ,PP_N     ,' (',TRIM(NodeType),')'
+                                          ') to computational grid with N='                    ,PP_N     ,' (',TRIM(NodeType),')'
 
     CALL GetVandermonde(N_Restart, NodeType_Restart,PP_N,      NodeType,         &
                         Vdm_NRestart_N,     modal=.TRUE.)
