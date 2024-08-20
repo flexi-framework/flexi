@@ -851,7 +851,7 @@ IF (nElems.EQ.0) THEN
   values_out%len  = 0
   RETURN
 END IF
-SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')"   WRITE ",dim,"D DATA TO VTX XML BINARY (VTU) ARRAY..."
+SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')" WRITE ",dim,"D DATA   TO VTX XML BINARY (VTU) ARRAY..."
 
 ! values and coords are already in the correct structure of VTK/Paraview
 ! set the sizes of the arrays

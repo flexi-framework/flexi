@@ -389,10 +389,10 @@ OutputFormat = GETINTFROMSTR('OutputFormat')
 SELECT CASE(OutputFormat)
   CASE(OUTPUTFORMAT_NONE)
     CALL CollectiveStop(__STAMP__,'Output disabled, exiting.')
-  CASE(OUTPUTFORMAT_TECPLOT)
-    CALL CollectiveStop(__STAMP__,'Tecplot output removed due to license issues (possible GPL incompatibility).')
-  CASE(OUTPUTFORMAT_TECPLOTASCII)
-    CALL CollectiveStop(__STAMP__,'Tecplot output removed due to license issues (possible GPL incompatibility).')
+  ! CASE(OUTPUTFORMAT_TECPLOT)
+  !   CALL CollectiveStop(__STAMP__,'Tecplot output removed due to license issues (possible GPL incompatibility).')
+  ! CASE(OUTPUTFORMAT_TECPLOTASCII)
+  !   CALL CollectiveStop(__STAMP__,'Tecplot output removed due to license issues (possible GPL incompatibility).')
 END SELECT
 
 ! check if state, mesh, NVisu, DGonly or Avg2D changed

@@ -27,8 +27,8 @@ SAVE
 ! Output format for state visualization
 INTEGER                           :: OutputFormat              = 3
 INTEGER,PARAMETER                 :: OUTPUTFORMAT_NONE         = 0
-INTEGER,PARAMETER                 :: OUTPUTFORMAT_TECPLOT      = 1
-INTEGER,PARAMETER                 :: OUTPUTFORMAT_TECPLOTASCII = 2
+! INTEGER,PARAMETER                 :: OUTPUTFORMAT_TECPLOT      = 1
+! INTEGER,PARAMETER                 :: OUTPUTFORMAT_TECPLOTASCII = 2
 INTEGER,PARAMETER                 :: OUTPUTFORMAT_PARAVIEW     = 3
 INTEGER,PARAMETER                 :: OUTPUTFORMAT_HDF5         = 4
 !==================================================================================================================================

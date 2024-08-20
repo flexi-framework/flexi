@@ -169,26 +169,29 @@ CALL InitMPIInfo()
 CALL FinalizeParameters()
 ! Read Varnames to visualize and build calc and visu dependencies
 CALL prms%SetSection("posti")
-CALL prms%CreateStringOption( "MeshFile"        , "Custom mesh file ")
+CALL prms%CreateStringOption(       "MeshFile"        , "Custom mesh file ")
 CALL prms%CreateStringOption(       "OutputDirectory" , "Custom output directory")
-CALL prms%CreateIntFromStringOption("OutputFormat"    , "File format for visualization: None, Tecplot, TecplotASCII, ParaView, HDF5. "//&
-                                                        " Note: Tecplot output is currently unavailable due to licensing issues.",      &
-                                                        'paraview')
+CALL prms%CreateIntFromStringOption("OutputFormat"    , "File format for visualization: None,ParaView, HDF5."                           &
+                                                      , 'paraview')
 CALL addStrListEntry('OutputFormat','none'            , OUTPUTFORMAT_NONE)
-CALL addStrListEntry('OutputFormat','tecplot'         , OUTPUTFORMAT_TECPLOT)
-CALL addStrListEntry('OutputFormat','tecplotascii'    , OUTPUTFORMAT_TECPLOTASCII)
+! CALL addStrListEntry('OutputFormat','tecplot'         , OUTPUTFORMAT_TECPLOT)
+! CALL addStrListEntry('OutputFormat','tecplotascii'    , OUTPUTFORMAT_TECPLOTASCII)
 CALL addStrListEntry('OutputFormat','paraview'        , OUTPUTFORMAT_PARAVIEW)
 CALL addStrListEntry('OutputFormat','hdf5'            , OUTPUTFORMAT_HDF5)
-CALL prms%CreateStringOption( "VarName"         , "Names of variables, which should be visualized.", multiple=.TRUE.)
-CALL prms%CreateLogicalOption("noVisuVars"      , "If no VarNames are given, this flags supresses visu of standard variables",&
-                                                  ".FALSE.")
-CALL prms%CreateIntOption(    "NVisu"           , "Polynomial degree at which solution is sampled for visualization.")
-CALL prms%CreateIntOption(    "NCalc"           , "Polynomial degree at which calculations are done.")
-CALL prms%CreateLogicalOption("Avg2D"           , "Average solution in z-direction",".FALSE.")
-CALL prms%CreateStringOption( "NodeTypeVisu"    , "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner"    ,"VISU")
-CALL prms%CreateLogicalOption("DGonly"          , "Visualize FV elements as DG elements."    ,".FALSE.")
-CALL prms%CreateStringOption( "BoundaryName"    , "Names of boundaries for surfaces, which should be visualized.", multiple=.TRUE.)
-CALL prms%CreateLogicalOption("HighOrder"       , "Write high-order element representation",".FALSE.")
+CALL prms%CreateStringOption(       "VarName"         , "Names of variables, which should be visualized."              , multiple=.TRUE.)
+CALL prms%CreateLogicalOption(      "noVisuVars"      , "If no VarNames are given, this flags supresses visu of standard variables"     &
+                                                      , '.FALSE.')
+CALL prms%CreateIntOption(          "NVisu"           , "Polynomial degree at which solution is sampled for visualization.")
+CALL prms%CreateIntOption(          "NCalc"           , "Polynomial degree at which calculations are done.")
+CALL prms%CreateLogicalOption(      "Avg2D"           , "Average solution in z-direction"                                               &
+                                                      , '.FALSE.')
+CALL prms%CreateStringOption(       "NodeTypeVisu"    , "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner"              &
+                                                      , 'VISU')
+CALL prms%CreateLogicalOption(      "DGonly"          , "Visualize FV elements as DG elements."                                         &
+                                                      , '.FALSE.')
+CALL prms%CreateStringOption(       "BoundaryName"    , "Names of boundaries for surfaces, which should be visualized.", multiple=.TRUE.)
+CALL prms%CreateLogicalOption(      "HighOrder"       , "Write high-order element representation"                                       &
+                                                      , '.FALSE.')
 
 IF (doPrintHelp.GT.0) THEN
   CALL PrintDefaultParameterFile(doPrintHelp.EQ.2,statefile) !statefile string conatains --help etc!

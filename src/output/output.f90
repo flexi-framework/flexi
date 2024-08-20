@@ -21,6 +21,7 @@ MODULE MOD_Output
 ! MODULES
 USE MOD_ReadInTools
 USE ISO_C_BINDING
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 
 INTERFACE
@@ -37,13 +38,13 @@ END INTERFACE
 
 ! Output format for state visualization
 INTEGER,PARAMETER :: OUTPUTFORMAT_NONE         = 0
-INTEGER,PARAMETER :: OUTPUTFORMAT_TECPLOT      = 1
-INTEGER,PARAMETER :: OUTPUTFORMAT_TECPLOTASCII = 2
+! INTEGER,PARAMETER :: OUTPUTFORMAT_TECPLOT      = 1
+! INTEGER,PARAMETER :: OUTPUTFORMAT_TECPLOTASCII = 2
 INTEGER,PARAMETER :: OUTPUTFORMAT_PARAVIEW     = 3
 
 ! Output format for ASCII data files
 INTEGER,PARAMETER :: ASCIIOUTPUTFORMAT_CSV     = 0
-INTEGER,PARAMETER :: ASCIIOUTPUTFORMAT_TECPLOT = 1
+! INTEGER,PARAMETER :: ASCIIOUTPUTFORMAT_TECPLOT = 1
 
 INTERFACE DefineParametersOutput
   MODULE PROCEDURE DefineParametersOutput
@@ -77,11 +78,17 @@ INTERFACE FinalizeOutput
   MODULE PROCEDURE FinalizeOutput
 END INTERFACE
 
-PUBLIC:: InitOutput,PrintPercentage,PrintStatusLine,Visualize,InitOutputToFile,OutputToFile,FinalizeOutput
+PUBLIC:: DefineParametersOutput
+PUBLIC:: InitOutput
+PUBLIC:: PrintPercentage
+PUBLIC:: PrintStatusLine
+PUBLIC:: Visualize
+PUBLIC:: InitOutputToFile
+PUBLIC:: OutputToFile
+PUBLIC:: FinalizeOutput
 PUBLIC:: print_userblock
 !==================================================================================================================================
 
-PUBLIC::DefineParametersOutput
 CONTAINS
 
 !==================================================================================================================================
@@ -94,27 +101,26 @@ USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Output")
-CALL prms%CreateIntOption(          'NVisu',       "Polynomial degree at which solution is sampled for visualization.")
-CALL prms%CreateIntOption(          'NOut',        "Polynomial degree at which solution is written. -1: NOut=N, >0: NOut", '-1')
-CALL prms%CreateStringOption(       'ProjectName', "Name of the current simulation (mandatory).")
-CALL prms%CreateLogicalOption(      'Logging',     "Write log files containing debug output.", '.FALSE.')
-CALL prms%CreateLogicalOption(      'ErrorFiles',  "Write error files containing error output.", '.TRUE.')
-CALL prms%CreateIntFromStringOption('OutputFormat',"File format for visualization: None, Tecplot, TecplotASCII, ParaView. "//&
-                                                 " Note: Tecplot output is currently unavailable due to licensing issues.", 'None')
+CALL prms%CreateIntOption(          'NVisu'            ,"Polynomial degree at which solution is sampled for visualization.")
+CALL prms%CreateIntOption(          'NOut'             ,"Polynomial degree at which solution is written. -1: NOut=N, >0: NOut",'-1')
+CALL prms%CreateStringOption(       'ProjectName'      ,"Name of the current simulation (mandatory).")
+CALL prms%CreateLogicalOption(      'Logging'          ,"Write log files containing debug output."                     , '.FALSE.')
+CALL prms%CreateLogicalOption(      'ErrorFiles'       ,"Write error files containing error output."                   ,  '.TRUE.')
+CALL prms%CreateIntFromStringOption('OutputFormat'     ,"File format for visualization: None, ParaView. "              , 'None'   )
 CALL addStrListEntry('OutputFormat','none',        OUTPUTFORMAT_NONE)
-CALL addStrListEntry('OutputFormat','tecplot',     OUTPUTFORMAT_TECPLOT)
-CALL addStrListEntry('OutputFormat','tecplotascii',OUTPUTFORMAT_TECPLOTASCII)
+! CALL addStrListEntry('OutputFormat','tecplot',     OUTPUTFORMAT_TECPLOT)
+! CALL addStrListEntry('OutputFormat','tecplotascii',OUTPUTFORMAT_TECPLOTASCII)
 CALL addStrListEntry('OutputFormat','paraview',    OUTPUTFORMAT_PARAVIEW)
-CALL prms%CreateIntFromStringOption('ASCIIOutputFormat',"File format for ASCII files, e.g. body forces: CSV, Tecplot."&
-                                                       , 'CSV')
+CALL prms%CreateIntFromStringOption('ASCIIOutputFormat',"File format for ASCII files, e.g. body forces: CSV, Tecplot." , 'CSV'    )
 CALL addStrListEntry('ASCIIOutputFormat','csv',    ASCIIOUTPUTFORMAT_CSV)
-CALL addStrListEntry('ASCIIOutputFormat','tecplot',ASCIIOUTPUTFORMAT_TECPLOT)
-CALL prms%CreateLogicalOption(      'doPrintStatusLine','Print: percentage of time, ...', '.FALSE.')
-CALL prms%CreateLogicalOption(      'WriteStateFiles','Write HDF5 state files. Disable this only for debugging issues. \n'// &
-                                                      'NO SOLUTION WILL BE WRITTEN!', '.TRUE.')
-CALL prms%CreateLogicalOption(      'WriteTimeAvgFiles','Write HDF5 time average files. Disable this only for debugging. \n'// &
-                                                      'NO TIME AVERAGE FILES WILL BE WRITTEN!', '.TRUE.')
+! CALL addStrListEntry('ASCIIOutputFormat','tecplot',ASCIIOUTPUTFORMAT_TECPLOT)
+CALL prms%CreateLogicalOption(      'doPrintStatusLine','Print: percentage of time, ...'                               , '.FALSE.')
+CALL prms%CreateLogicalOption(      'WriteStateFiles'  ,'Write HDF5 state files. Disable this only for debugging issues. \n'   // &
+                                                        'NO SOLUTION WILL BE WRITTEN!'                                 , '.TRUE.' )
+CALL prms%CreateLogicalOption(      'WriteTimeAvgFiles','Write HDF5 time average files. Disable this only for debugging. \n'   // &
+                                                        'NO TIME AVERAGE FILES WILL BE WRITTEN!'                       , '.TRUE.' )
 END SUBROUTINE DefineParametersOutput
+
 
 !==================================================================================================================================
 !> Initialize all output variables.
@@ -207,6 +213,7 @@ END IF  ! Logging
 OutputInitIsDone =.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT OUTPUT DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
+
 END SUBROUTINE InitOutput
 
 
@@ -622,30 +629,30 @@ END DO ! iVar=1,PP_nVar
 
 ! Visualize data
 SELECT CASE(OutputFormat)
-CASE(OUTPUTFORMAT_TECPLOT)
-    CALL CollectiveStop(__STAMP__,'Tecplot output removed due to license issues (possible GPL incompatibility).')
-CASE(OUTPUTFORMAT_TECPLOTASCII)
-    CALL CollectiveStop(__STAMP__,'Tecplot output removed due to license issues (possible GPL incompatibility).')
-CASE(OUTPUTFORMAT_PARAVIEW)
+  ! CASE(OUTPUTFORMAT_TECPLOT)
+  !     CALL CollectiveStop(__STAMP__,'Tecplot output removed due to license issues (possible GPL incompatibility).')
+  ! CASE(OUTPUTFORMAT_TECPLOTASCII)
+  !     CALL CollectiveStop(__STAMP__,'Tecplot output removed due to license issues (possible GPL incompatibility).')
+  CASE(OUTPUTFORMAT_PARAVIEW)
 #if FV_ENABLED
-  FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))
+    FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))
 #else
-  FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
+    FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
 #endif
-  Coords_NVisu_p => Coords_NVisu
-  U_NVisu_p => U_NVisu
-  CALL WriteDataToVTK(PP_nVar_loc,NVisu,nElems-nFV_Elems,StrVarNames_loc,Coords_NVisu_p,U_NVisu_p,TRIM(FileString_DG),dim=PP_dim,DGFV=0)
+    Coords_NVisu_p => Coords_NVisu
+    U_NVisu_p => U_NVisu
+    CALL WriteDataToVTK(PP_nVar_loc,NVisu,nElems-nFV_Elems,StrVarNames_loc,Coords_NVisu_p,U_NVisu_p,TRIM(FileString_DG),dim=PP_dim,DGFV=0)
 #if FV_ENABLED
-  FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))
-  FV_Coords_NVisu_p => FV_Coords_NVisu
-  FV_U_NVisu_p => FV_U_NVisu
-  CALL WriteDataToVTK(PP_nVar_loc,NVisu_FV,nFV_Elems,StrVarNames_loc,FV_Coords_NVisu_p,FV_U_NVisu_p,TRIM(FileString_FV),dim=PP_dim,DGFV=1)
+    FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))
+    FV_Coords_NVisu_p => FV_Coords_NVisu
+    FV_U_NVisu_p => FV_U_NVisu
+    CALL WriteDataToVTK(PP_nVar_loc,NVisu_FV,nFV_Elems,StrVarNames_loc,FV_Coords_NVisu_p,FV_U_NVisu_p,TRIM(FileString_FV),dim=PP_dim,DGFV=1)
 
-  IF (MPIRoot) THEN
-    ! write multiblock file
-    FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
-    CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV)
-  ENDIF
+    IF (MPIRoot) THEN
+      ! write multiblock file
+      FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
+      CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV)
+    ENDIF
 #endif
 END SELECT
 
@@ -830,6 +837,7 @@ IF(.NOT.file_exists)THEN ! No restart create new file
   END IF
   CLOSE(ioUnit) ! outputfile
 END IF
+
 END SUBROUTINE InitOutputToFile
 
 

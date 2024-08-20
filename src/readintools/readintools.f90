@@ -1491,7 +1491,7 @@ IF (MPIRoot) THEN
   IF (.NOT.FILEEXISTS(filename)) &
     CALL CollectiveStop(__STAMP__,"File '"//TRIM(filename)//"' does not exist.")
 
-  SWRITE(UNIT_stdOut,'(A,A,A,A)') ' | Extract parameter file from "',TRIM(filename),'" to "',TRIM(prmfile),'"'
+  SWRITE(UNIT_stdOut,'(A,A,A,A,A)') ' | Extract parameter file from "',TRIM(filename),'" to "',TRIM(prmfile),'"'
 
   ! Open parameter file for reading
   OPEN(NEWUNIT=fileUnit,FILE=TRIM(filename),STATUS='OLD',ACTION='READ',ACCESS='SEQUENTIAL',IOSTAT=stat)
