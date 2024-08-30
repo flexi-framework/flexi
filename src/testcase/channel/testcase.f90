@@ -178,7 +178,9 @@ END SUBROUTINE InitTestcase
 
 !==================================================================================================================================
 !> Initial conditions for the channel testcase. Initializes a velocity profile in the streamwise direction and superimposes
-!> velocity disturbances to accelerate the development of turbulence.
+!> velocity disturbances to accelerate the development of turbulence. Initial velocity profile is based on:
+!>   H. Reichardt, "Vollständige Darstellung der turbulenten Geschwindigkeitsverteilung in glatten Leitungen", ZAMM 31 (1951)
+!>   p. 208–219, DOI: https://doi.org/10.1002/zamm.19510310704.
 !==================================================================================================================================
 SUBROUTINE ExactFuncTestcase(tIn,x,Resu,Resu_t,Resu_tt)
 ! MODULES
@@ -198,35 +200,35 @@ REAL                            :: yPlus,Amplitude
 !==================================================================================================================================
 Prim(:) = RefStatePrim(:,IniRefState)
 
-! Initialize mean turbulent velocity profile in x
+! Initialize mean turbulent velocity profile in x based on Reichardt 1951.
 IF(x(2).LE.0) THEN
   yPlus = (x(2)+1.)*Re_tau ! Lower half
 ELSE
   yPlus = (1.-x(2))*Re_tau ! Upper half
 END IF
-Prim(VEL1) = 1./0.41*LOG(1+0.41*yPlus)+7.8*(1-EXP(-yPlus/11.)-yPlus/11.*EXP(-yPlus/3.))
+Prim(VEL1) = 1./0.41*LOG(1+0.41*yPlus)+7.8*(1-EXP(-yPlus/11.)-yPlus/11.*EXP(-yPlus/3.)) ! Eq. (18)
 
 ! Superimpose sinusoidal disturbances to accelerate development of turbulence
 Amplitude = 0.1*Prim(VEL1)
 #if EQNSYSNR == 2
-Prim(VEL1)=Prim(VEL1)+SIN(20.0*PP_PI*(x(2)/(2.0)))*SIN(20.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(VEL1)=Prim(VEL1)+SIN(30.0*PP_PI*(x(2)/(2.0)))*SIN(30.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(VEL1)=Prim(VEL1)+SIN(35.0*PP_PI*(x(2)/(2.0)))*SIN(35.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(VEL1)=Prim(VEL1)+SIN(40.0*PP_PI*(x(2)/(2.0)))*SIN(40.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(VEL1)=Prim(VEL1)+SIN(45.0*PP_PI*(x(2)/(2.0)))*SIN(45.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(VEL1)=Prim(VEL1)+SIN(50.0*PP_PI*(x(2)/(2.0)))*SIN(50.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+Prim(VEL1) = Prim(VEL1) + Amplitude*SIN(20.0*PP_PI*(x(2)/(2.0)))    *SIN(20.0*PP_PI*(x(3)/(2*PP_PI)))
+Prim(VEL1) = Prim(VEL1) + Amplitude*SIN(30.0*PP_PI*(x(2)/(2.0)))    *SIN(30.0*PP_PI*(x(3)/(2*PP_PI)))
+Prim(VEL1) = Prim(VEL1) + Amplitude*SIN(35.0*PP_PI*(x(2)/(2.0)))    *SIN(35.0*PP_PI*(x(3)/(2*PP_PI)))
+Prim(VEL1) = Prim(VEL1) + Amplitude*SIN(40.0*PP_PI*(x(2)/(2.0)))    *SIN(40.0*PP_PI*(x(3)/(2*PP_PI)))
+Prim(VEL1) = Prim(VEL1) + Amplitude*SIN(45.0*PP_PI*(x(2)/(2.0)))    *SIN(45.0*PP_PI*(x(3)/(2*PP_PI)))
+Prim(VEL1) = Prim(VEL1) + Amplitude*SIN(50.0*PP_PI*(x(2)/(2.0)))    *SIN(50.0*PP_PI*(x(3)/(2*PP_PI)))
 
-Prim(VEL2)=Prim(VEL2)+SIN(30.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(30.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(VEL2)=Prim(VEL2)+SIN(35.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(35.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(VEL2)=Prim(VEL2)+SIN(40.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(40.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(VEL2)=Prim(VEL2)+SIN(45.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(45.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(VEL2)=Prim(VEL2)+SIN(50.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(50.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+Prim(VEL2) = Prim(VEL2) + Amplitude*SIN(30.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(30.0*PP_PI*(x(3)/(2*PP_PI)))
+Prim(VEL2) = Prim(VEL2) + Amplitude*SIN(35.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(35.0*PP_PI*(x(3)/(2*PP_PI)))
+Prim(VEL2) = Prim(VEL2) + Amplitude*SIN(40.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(40.0*PP_PI*(x(3)/(2*PP_PI)))
+Prim(VEL2) = Prim(VEL2) + Amplitude*SIN(45.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(45.0*PP_PI*(x(3)/(2*PP_PI)))
+Prim(VEL2) = Prim(VEL2) + Amplitude*SIN(50.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(50.0*PP_PI*(x(3)/(2*PP_PI)))
 
-Prim(VEL3)=Prim(VEL3)+SIN(30.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(30.0*PP_PI*(x(2)/(2.0)))*Amplitude
-Prim(VEL3)=Prim(VEL3)+SIN(35.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(35.0*PP_PI*(x(2)/(2.0)))*Amplitude
-Prim(VEL3)=Prim(VEL3)+SIN(40.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(40.0*PP_PI*(x(2)/(2.0)))*Amplitude
-Prim(VEL3)=Prim(VEL3)+SIN(45.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(45.0*PP_PI*(x(2)/(2.0)))*Amplitude
-Prim(VEL3)=Prim(VEL3)+SIN(50.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(50.0*PP_PI*(x(2)/(2.0)))*Amplitude
+Prim(VEL3) = Prim(VEL3) + Amplitude*SIN(30.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(30.0*PP_PI*(x(2)/(2.0)))
+Prim(VEL3) = Prim(VEL3) + Amplitude*SIN(35.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(35.0*PP_PI*(x(2)/(2.0)))
+Prim(VEL3) = Prim(VEL3) + Amplitude*SIN(40.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(40.0*PP_PI*(x(2)/(2.0)))
+Prim(VEL3) = Prim(VEL3) + Amplitude*SIN(45.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(45.0*PP_PI*(x(2)/(2.0)))
+Prim(VEL3) = Prim(VEL3) + Amplitude*SIN(50.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(50.0*PP_PI*(x(2)/(2.0)))
 #endif
 
 Prim(TEMP) = 0. ! T does not matter for prim to cons
