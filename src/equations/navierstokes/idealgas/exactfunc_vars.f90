@@ -40,6 +40,7 @@ REAL              :: AmplitudeFactor   !< amplitudefactor of the harmoinic gauss
 REAL              :: SiqmaSqr          !< Sigma squared of the gaussian distribution
 REAL              :: JetRadius         !< parameter for Roundjet
 REAL              :: JetEnd            !< parameter for Roundjet
+REAL              :: JetAmplitude      !< parameter for amplitude (max velocity) of jet
 LOGICAL           :: RoundJetInitDone=.FALSE.
 #if PARABOLIC
 REAL              :: delta99_in        !< boundary layer thickness for Blasius solution

@@ -78,6 +78,7 @@ CALL addStrListEntry('IniExactFunc','sinevelx'          ,41)
 CALL addStrListEntry('IniExactFunc','sinevely'          ,42)
 CALL addStrListEntry('IniExactFunc','sinevelz'          ,43)
 CALL addStrListEntry('IniExactFunc','roundjet'          ,5)
+CALL addStrListEntry('IniExactFunc','parabjet'          ,51)
 CALL addStrListEntry('IniExactFunc','cylinder'          ,6)
 CALL addStrListEntry('IniExactFunc','shuvortex'         ,7)
 CALL addStrListEntry('IniExactFunc','couette'           ,8)
@@ -98,8 +99,9 @@ CALL prms%CreateRealOption(         'PreShockDens', "Parameter required for CASE
 CALL prms%CreateRealArrayOption(    'IniCenter',    "Shu Vortex CASE(7) (x,y,z)")
 CALL prms%CreateRealArrayOption(    'IniAxis',      "Shu Vortex CASE(7) (x,y,z)")
 CALL prms%CreateRealOption(         'IniHalfwidth', "Shu Vortex CASE(7)", '0.2')
-CALL prms%CreateRealOption(         'JetRadius',    "Roundjet CASE(5/33)", '1.0')
-CALL prms%CreateRealOption(         'JetEnd',       "Roundjet CASE(5/33)", '10.0')
+CALL prms%CreateRealOption(         'JetRadius',    "Roundjet CASE(5,51,33)", '1.0')
+CALL prms%CreateRealOption(         'JetEnd',       "Roundjet CASE(5,51,33)", '10.0')
+CALL prms%CreateRealOption(         'JetAmplitude', "Roundjet CASE(5,51,33)", '1.0')
 CALL prms%CreateRealOption(         'Ramping',      "Subsonic mass inflow CASE(28)"  , '1.0')
 CALL prms%CreateRealOption(         'P_Parameter',  "Couette-Poiseuille flow CASE(8)", '0.0')
 CALL prms%CreateRealOption(         'U_Parameter',  "Couette-Poiseuille flow CASE(8)", '0.01')
@@ -147,6 +149,10 @@ SELECT CASE (IniExactFunc)
     AdvVel          = GETREALARRAY('AdvVel',3)
     IniFrequency    = GETREAL('IniFrequency','1.0')
     IniAmplitude    = GETREAL('IniAmplitude','0.1')
+  CASE(5,51)
+    JetRadius       = GETREAL('JetRadius')
+    JetEnd          = GETREAL('JetEnd')
+    JetAmplitude    = GETREAL('JetAmplitude')
   CASE(7) ! Shu Vortex
     IniCenter       = GETREALARRAY('IniCenter',3,'(/0.,0.,0./)')
     IniAxis         = GETREALARRAY('IniAxis',3,'(/0.,0.,1./)')
@@ -158,10 +164,10 @@ SELECT CASE (IniExactFunc)
   CASE(10) ! shock
     MachShock       = GETREAL('MachShock')
     PreShockDens    = GETREAL('PreShockDens')
-CASE(14)
-  HarmonicFrequency = GETREAL('HarmonicFrequency')
-  AmplitudeFactor   = GETREAL('AmplitudeFactor')
-  SiqmaSqr          = GETREAL('SigmaSqr')
+  CASE(14)
+    HarmonicFrequency = GETREAL('HarmonicFrequency')
+    AmplitudeFactor   = GETREAL('AmplitudeFactor')
+    SiqmaSqr          = GETREAL('SigmaSqr')
 #if PARABOLIC
   CASE(1338) ! Blasius boundary layer solution
     delta99_in      = GETREAL('delta99_in')
@@ -202,7 +208,7 @@ USE MOD_Eos_Vars       ,ONLY: Kappa,sKappaM1,KappaM1,KappaP1,R
 USE MOD_Exactfunc_Vars ,ONLY: IniCenter,IniHalfwidth,IniAmplitude,IniFrequency,IniAxis,AdvVel
 USE MOD_Exactfunc_Vars ,ONLY: MachShock,PreShockDens
 USE MOD_Exactfunc_Vars ,ONLY: P_Parameter,U_Parameter
-USE MOD_Exactfunc_Vars ,ONLY: JetRadius,JetEnd
+USE MOD_Exactfunc_Vars ,ONLY: JetRadius,JetEnd,JetAmplitude
 USE MOD_Equation_Vars  ,ONLY: IniRefState,RefStateCons,RefStatePrim
 USE MOD_Timedisc_Vars  ,ONLY: fullBoundaryOrder,CurrentStage,dt,RKb,RKc,t
 USE MOD_TestCase       ,ONLY: ExactFuncTestcase
@@ -452,6 +458,21 @@ CASE(5) !Roundjet Bogey Bailly 2002, Re=65000, x-axis is jet axis
   CALL PrimToCons(prim,ResuR)
   ! after x/r0=10 blend to ResuR
   Resu=ResuL+(ResuR-ResuL)*0.5*(1.+tanh(x(1)/JetRadius-JetEnd))
+CASE(51)
+  ! Parabolic velocity distribution following
+  ! "Benchmark Computations of Laminar Flow Around a Cylinder", Schäfer and Turek, 1996.
+  ! https://doi.org/10.1007/978-3-322-89849-4_39
+  ! ATTENTION: In contrast to paper, velocity profile is defined around y,z=0. and NOT y,z=H/2.
+  prim = RefStatePrim(:,RefState)
+  prim(VELV) = 0.
+  IF (NORM2(x(2:PP_dim)).LE.JetRadius) THEN
+    prim(VEL1) = JetAmplitude*4.*(JetRadius-(x(2)))*(JetRadius+(x(2)))/(2.*JetRadius)**2 ! 2D-1, 2D-2
+#if PP_dim == 3
+    ! Multiply contribution of z-dimension
+    prim(VEL1) = prim(VEL1)  *4.*(JetRadius-(x(3)))*(JetRadius+(x(3)))/(2.*JetRadius)**2 ! 3D-1, 3D-2
+#endif
+  END IF
+  CALL PrimToCons(prim,resu)
 CASE(6)  ! Cylinder flow
   IF(tEval .EQ. 0.)THEN   ! Initialize potential flow
     prim(DENS)=RefStatePrim(DENS,RefState)  ! Density
