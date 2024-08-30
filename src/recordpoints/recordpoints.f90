@@ -34,6 +34,10 @@ INTERFACE RecordPoints
   MODULE PROCEDURE RecordPoints
 END INTERFACE
 
+INTERFACE EvalRecordPoints
+  MODULE PROCEDURE EvalRecordPoints
+END INTERFACE
+
 INTERFACE WriteRP
   MODULE PROCEDURE WriteRP
 END INTERFACE
@@ -45,6 +49,7 @@ END INTERFACE
 PUBLIC :: DefineParametersRecordPoints
 PUBLIC :: InitRecordPoints
 PUBLIC :: RecordPoints
+PUBLIC :: EvalRecordPoints
 PUBLIC :: WriteRP
 PUBLIC :: FinalizeRecordPoints
 !==================================================================================================================================
@@ -346,14 +351,56 @@ END SUBROUTINE InitRPBasis
 !==================================================================================================================================
 SUBROUTINE RecordPoints(nVar,StrVarNames,iter,t,forceSampling)
 ! MODULES
-USE MOD_Globals
-USE MOD_Preproc
 USE MOD_Analyze_Vars,     ONLY: WriteData_dt,tWriteData
-USE MOD_DG_Vars          ,ONLY: U
-USE MOD_RecordPoints_Vars,ONLY: RP_Data,RP_ElemID
+USE MOD_RecordPoints_Vars,ONLY: RP_Data
 USE MOD_RecordPoints_Vars,ONLY: RP_Buffersize,RP_MaxBufferSize,RP_SamplingOffset,iSample
-USE MOD_RecordPoints_Vars,ONLY: l_xi_RP,l_eta_RP,nRP
+USE MOD_RecordPoints_Vars,ONLY: nRP
 USE MOD_Timedisc_Vars,    ONLY: dt
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)             :: nVar                    !< Number of variables in U array
+CHARACTER(LEN=255),INTENT(IN)  :: StrVarNames(nVar)       !< String with the names of the variables
+INTEGER(KIND=8),INTENT(IN)     :: iter                    !< current number of timesteps
+REAL,INTENT(IN)                :: t                       !< current time t
+LOGICAL,INTENT(IN)             :: forceSampling           !< force sampling (e.g. at first/last timestep of computation)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                    :: U_RP(nVar,nRP)
+!----------------------------------------------------------------------------------------------------------------------------------
+IF(MOD(iter,INT(RP_SamplingOffset,KIND=8)).NE.0 .AND. .NOT. forceSampling) RETURN
+
+IF(.NOT.ALLOCATED(RP_Data))THEN
+  ! Compute required buffersize from timestep and add 20% tolerance
+  ! +1 is added to ensure a minimum buffersize of 2
+  RP_Buffersize = MIN(CEILING((1.2*WriteData_dt)/(dt*RP_SamplingOffset))+1,RP_MaxBufferSize)
+  ALLOCATE(RP_Data(0:nVar,nRP,RP_Buffersize))
+END IF
+
+! evaluate state at RPs
+CALL EvalRecordPoints(U_RP)
+
+! Increment counter and fill buffer
+iSample = iSample + 1
+RP_Data(1:nVar,:,iSample) = U_RP
+RP_Data(0,     :,iSample) = t
+
+! dataset is full, write data and reset
+IF(iSample.EQ.RP_Buffersize) CALL WriteRP(nVar,StrVarNames,tWriteData,.FALSE.)
+
+END SUBROUTINE RecordPoints
+
+
+!==================================================================================================================================
+!> Evaluate solution at current time t at recordpoint positions
+!==================================================================================================================================
+PPURE SUBROUTINE EvalRecordPoints(U_RP)
+! MODULES
+USE MOD_Preproc
+USE MOD_DG_Vars          ,ONLY: U
+USE MOD_RecordPoints_Vars,ONLY: RP_ElemID
+USE MOD_RecordPoints_Vars,ONLY: l_xi_RP,l_eta_RP,nRP
 #if PP_dim==3
 USE MOD_RecordPoints_Vars,ONLY: l_zeta_RP
 #endif
@@ -365,31 +412,13 @@ USE MOD_RecordPoints_Vars,ONLY: FV_RP_ijk
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)             :: nVar                    !< Number of variables in U array
-CHARACTER(LEN=255),INTENT(IN)  :: StrVarNames(nVar)     !< String with the names of the variables
-INTEGER(KIND=8),INTENT(IN)     :: iter                    !< current number of timesteps
-REAL,INTENT(IN)                :: t                       !< current time t
-LOGICAL,INTENT(IN)             :: forceSampling           !< force sampling (e.g. at first/last timestep of computation)
+REAL,INTENT(INOUT)      :: U_RP(PP_nVar,nRP)          !< State at recordpoints
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: i,j,k,iRP
-REAL                    :: u_RP(nVar,nRP)
 REAL                    :: l_eta_zeta_RP
 !----------------------------------------------------------------------------------------------------------------------------------
-
-IF(MOD(iter,INT(RP_SamplingOffset,KIND=8)).NE.0 .AND. .NOT. forceSampling) RETURN
-
-IF(.NOT.ALLOCATED(RP_Data))THEN
-  ! Compute required buffersize from timestep and add 20% tolerance
-  ! +1 is added to ensure a minimum buffersize of 2
-  RP_Buffersize = MIN(CEILING((1.2*WriteData_dt)/(dt*RP_SamplingOffset))+1,RP_MaxBufferSize)
-  ALLOCATE(RP_Data(0:nVar,nRP,RP_Buffersize))
-END IF
-
-! evaluate state at RP
-iSample=iSample+1
 U_RP=0.
-
 DO iRP=1,nRP
 #if FV_ENABLED
   IF (FV_Elems(RP_ElemID(iRP)).EQ.0)THEN ! DG
@@ -401,7 +430,7 @@ DO iRP=1,nRP
       l_eta_zeta_RP=l_eta_RP(j,iRP)
 #endif /*FV_ENABLED*/
       DO i=0,PP_N
-        U_RP(:,iRP)=U_RP(:,iRP) + U(:,i,j,k,RP_ElemID(iRP))*l_xi_RP(i,iRP)*l_eta_zeta_RP
+        U_RP(:,iRP) = U_RP(:,iRP) + U(:,i,j,k,RP_ElemID(iRP))*l_xi_RP(i,iRP)*l_eta_zeta_RP
       END DO !i
     END DO; END DO !k
 #if FV_ENABLED
@@ -412,15 +441,8 @@ DO iRP=1,nRP
                     FV_RP_ijk(3,iRP),RP_ElemID(iRP))
   END IF
 #endif /*FV_ENABLED*/
-
 END DO ! iRP
-RP_Data(1:nVar,:,iSample)=U_RP
-RP_Data(0,     :,iSample)=t
-
-! dataset is full, write data and reset
-IF(iSample.EQ.RP_Buffersize) CALL WriteRP(nVar,StrVarNames,tWriteData,.FALSE.)
-
-END SUBROUTINE RecordPoints
+END SUBROUTINE EvalRecordPoints
 
 
 !==================================================================================================================================
