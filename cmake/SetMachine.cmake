@@ -68,7 +68,7 @@ IF (MACHINE_USE_SCOREP)
 
   # Set default build type to profile
   IF (NOT CMAKE_BUILD_TYPE)
-    SET (CMAKE_BUILD_TYPE Profile CACHE STRING "Choose the type of build, options are: Debug Release Profile Sanitize." FORCE)
+    SET (CMAKE_BUILD_TYPE Profile CACHE STRING "Choose the type of build, options are: Release RelWithDebInfo Profile Debug Sanitize." FORCE)
   ENDIF (NOT CMAKE_BUILD_TYPE)
   IF (CMAKE_BUILD_TYPE MATCHES "Release")
     MESSAGE (WARNING "Score-P requires debug compile flags which are not available with BUILD_TYPE='Release'")

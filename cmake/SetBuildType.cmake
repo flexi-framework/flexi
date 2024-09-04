@@ -3,13 +3,13 @@
 # =========================================================================
 # make sure that the default is a RELEASE
 IF (NOT CMAKE_BUILD_TYPE)
-  SET (CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: Debug, Release, Profile, Sanitize (only GNU))." FORCE)
+  SET (CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: Release, RelWithDebInfo, Profile, Debug, Sanitize (only GNU))." FORCE)
    IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
-     SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release Profile Sanitize)
+     SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release RelWithDebInfo Profile Sanitize)
    ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
-     SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release Profile)
+     SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release RelWithDebInfo Profile)
    ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Cray")
-     SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release Profile)
+     SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release RelWithDebInfo Profile)
    ENDIF()
 ENDIF (NOT CMAKE_BUILD_TYPE)
 
