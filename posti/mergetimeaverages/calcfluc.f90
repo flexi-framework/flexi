@@ -72,7 +72,7 @@ InputFile=Args(1)
 ! Partitioning - we partition along the last dimension of the arrays
 CALL OpenDataFile(InputFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL GetDataSize(File_ID,'Mean',nDims,HSize)
-nGlobalElems = INT(HSIZE(nDims))
+nGlobalElems = INT(HSize(nDims))
 DEALLOCATE(HSize)
 #if USE_MPI
 nElems = INT(nGlobalElems/nProcessors)
@@ -241,7 +241,7 @@ SWRITE(UNIT_stdOut,'(132("="))')
 #if USE_MPI
 CALL FinalizeMPI()
 CALL MPI_FINALIZE(iError)
-IF(iError .NE. 0) STOP 'MPI finalize error'
+IF (iError.NE.MPI_SUCCESS) STOP 'MPI finalize error'
 #endif
 
 CONTAINS
@@ -259,7 +259,8 @@ SWRITE(UNIT_stdOut,'(A,A,A)') "Read from HDF5 file ", TRIM(InputFile), "..."
 CALL OpenDataFile(InputFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 ! Safety check if the number of elements did not change
 CALL GetDataSize(File_ID,'Mean',nDims,HSize)
-IF (INT(HSIZE(nDims)).NE.nGlobalElems)  STOP 'Number of elements in HDF5 file changed during computation!'
+IF (INT(HSize(nDims)).NE.nGlobalElems)  STOP 'Number of elements in HDF5 file changed during computation!'
+DEALLOCATE(HSize)
 CALL GetArrayAndName('Mean'      ,'VarNames_Mean'      ,nValMean      ,UMeanTmp      ,VarNamesMean)
 CALL GetArrayAndName('MeanSquare','VarNames_MeanSquare',nValMeanSquare,UMeanSquareTmp,VarNamesMeanSquare)
 nVarMean       = nValMean(1)

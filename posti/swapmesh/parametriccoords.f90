@@ -52,6 +52,7 @@ CONTAINS
 SUBROUTINE GetParametricCoordinates()
 ! MODULES
 USE MOD_Globals
+USE MOD_Globals_Vars,          ONLY: StartTime
 USE MOD_Basis,                 ONLY: ChebyGaussLobNodesAndWeights,BarycentricWeights
 USE MOD_ChangeBasisByDim,      ONLY: ChangeBasisVolume
 USE MOD_Interpolation,         ONLY: GetVandermonde,GetDerivativeMatrix
@@ -311,7 +312,7 @@ END DO
 SWRITE(Unit_stdOut,'(I12,A)') nNotFound,' nodes not found.'
 
 EndT = FLEXITIME()
-SWRITE(UNIT_stdOut,'(A,F0.3,A)')' EVALUATING PARAMETRIC COORDINATES DONE  [',EndT-StartT,'s]'
+CALL DisplayMessageAndTime(EndT-StartT, 'EVALUATING PARAMETRIC COORDINATES DONE', DisplayLine=.FALSE.)
 
 END SUBROUTINE GetParametricCoordinates
 

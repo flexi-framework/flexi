@@ -501,7 +501,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: firstSideID,lastSideID,SideID,p,q
+INTEGER :: SideID,p,q !,firstSideID,lastSideID
 !==================================================================================================================================
 
 !IF(doMPISides)THEN
@@ -819,23 +819,14 @@ SUBROUTINE FV_PrepareSurfGradient_Parabolic(iElem,gradUxi_tmp,gradUeta_tmp  &
   ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_FV_Vars  ,ONLY: FV_Metrics_fTilde_sJ_xi,FV_Metrics_gTilde_sJ_xi
-USE MOD_FV_Vars  ,ONLY: FV_Metrics_fTilde_sJ_eta,FV_Metrics_gTilde_sJ_eta
-USE MOD_FV_Vars  ,ONLY: gradUx_xi  ,gradUy_xi
-USE MOD_FV_Vars  ,ONLY: gradUx_eta ,gradUy_eta
 #if (PP_dim==3)
-USE MOD_FV_Vars  ,ONLY: FV_Metrics_fTilde_sJ_zeta,FV_Metrics_gTilde_sJ_zeta
-USE MOD_FV_Vars  ,ONLY: FV_Metrics_hTilde_sJ_xi
-USE MOD_FV_Vars  ,ONLY: FV_Metrics_hTilde_sJ_eta
-USE MOD_FV_Vars  ,ONLY: FV_Metrics_hTilde_sJ_zeta
-USE MOD_FV_Vars  ,ONLY: gradUx_zeta ,gradUy_zeta ,gradUz_zeta,gradUz_xi,gradUz_eta
 USE MOD_FV_Vars   ,ONLY: FV_Metrics_TangVec2_slave,FV_Metrics_TangVec2_master
 #endif
 USE MOD_FV_Vars   ,ONLY: FV_Metrics_NormVec_slave,FV_Metrics_TangVec1_slave
 USE MOD_FV_Vars   ,ONLY: FV_Metrics_NormVec_master,FV_Metrics_TangVec1_master
 USE MOD_FV_Vars   ,ONLY: FV_surf_gradU_master,FV_surf_gradU_slave
 #if VOLINT_VISC
-USE MOD_Mesh_Vars          ,ONLY: ElemToSide,S2V
+USE MOD_Mesh_Vars ,ONLY: ElemToSide,S2V
 #endif /* VOLINT_VISC */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

@@ -35,10 +35,10 @@ USE MOD_Interpolation_Vars, ONLY: L_Minus,L_Plus
 USE MOD_Mesh_Vars    ,ONLY: NormalSigns,S2V,NormalDirs
 USE MOD_DG_Vars      ,ONLY: U,UPrim,U_master,U_slave,UPrim_master,UPrim_slave
 USE MOD_Mesh_Vars    ,ONLY: Metrics_fTilde,Metrics_gTilde,nElems,Ja_face,Ja_slave
-#endif
-#if PP_dim==3 || VOLINT_VISC
+#if PP_dim==3
 USE MOD_Mesh_Vars    ,ONLY: Metrics_hTilde
-#endif
+#endif /*PP_dim==3*/
+#endif /*SPLIT_DG*/
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems_master,FV_Elems_slave,FV_w_inv
 #endif /* FV_ENABLED */
@@ -238,6 +238,7 @@ END DO ! SideID=1,nSides
 
 END SUBROUTINE SurfInt
 
+
 #if FV_ENABLED == 2
 !==================================================================================================================================
 !> In this routine, the surface integral will be computed for Gauss nodes
@@ -251,19 +252,19 @@ SUBROUTINE SurfIntBlend(&
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_DG_Vars      ,ONLY: U,UPrim,U_master,U_slave,UPrim_master,UPrim_slave
 USE MOD_Mesh_Vars    ,ONLY: SideToElem,nSides
 USE MOD_Mesh_Vars    ,ONLY: firstMPISide_YOUR,lastMPISide_MINE
 USE MOD_Mesh_Vars    ,ONLY: S2V2,nElems
+USE MOD_Mesh_Vars    ,ONLY: Metrics_fTilde,Metrics_gTilde,nElems,Ja_face,Ja_slave
 #ifdef SPLIT_DG
 USE MOD_SplitFlux    ,ONLY: SplitDGVolume_pointer ! computes volume fluxes in split formulation
 USE MOD_Interpolation_Vars, ONLY: L_Minus,L_Plus
 USE MOD_Mesh_Vars    ,ONLY: NormalSigns,S2V,NormalDirs
-#endif
-USE MOD_DG_Vars      ,ONLY: U,UPrim,U_master,U_slave,UPrim_master,UPrim_slave
-USE MOD_Mesh_Vars    ,ONLY: Metrics_fTilde,Metrics_gTilde,nElems,Ja_face,Ja_slave
-#if PP_dim==3 || VOLINT_VISC
+#if PP_dim==3
 USE MOD_Mesh_Vars    ,ONLY: Metrics_hTilde
-#endif
+#endif /*PP_dim==3*/
+#endif /*SPLIT_DG*/
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems_master,FV_Elems_slave,FV_w_inv
 #if FV_ENABLED == 2
@@ -466,6 +467,7 @@ END DO ! SideID=1,nSides
 END SUBROUTINE SurfIntBlend
 #endif
 
+
 #elif (PP_NodeType == 2)
 !==================================================================================================================================
 !> In this routine, the surface integral will be computed for Gauss-Lobatto nodes
@@ -641,21 +643,23 @@ REAL,INTENT(INOUT) :: Ut(TP_nVar,0:Nloc,0:Nloc,0:ZDIM(Nloc))
 ! LOCAL VARIABLES
 !==================================================================================================================================
 SELECT CASE(locSideID)
-CASE(XI_MINUS)
-  Ut(:,0,:,:)   =Ut(:,0,:,:)   +Flux*FV_w_inv(0)
-CASE(ETA_MINUS)
-  Ut(:,:,0,:)   =Ut(:,:,0,:)   +Flux*FV_w_inv(0)
-CASE(ZETA_MINUS)
-  Ut(:,:,:,0)   =Ut(:,:,:,0)   +Flux*FV_w_inv(0)
-CASE(XI_PLUS)
-  Ut(:,Nloc,:,:)=Ut(:,Nloc,:,:)+Flux*FV_w_inv(Nloc)
-CASE(ETA_PLUS)
-  Ut(:,:,Nloc,:)=Ut(:,:,Nloc,:)+Flux*FV_w_inv(Nloc)
-CASE(ZETA_PLUS)
-  Ut(:,:,:,Nloc)=Ut(:,:,:,Nloc)+Flux*FV_w_inv(Nloc)
+  CASE(XI_MINUS)
+    Ut(:,0,:,:)   =Ut(:,0,:,:)   +Flux*FV_w_inv(0)
+  CASE(ETA_MINUS)
+    Ut(:,:,0,:)   =Ut(:,:,0,:)   +Flux*FV_w_inv(0)
+  CASE(ZETA_MINUS)
+    Ut(:,:,:,0)   =Ut(:,:,:,0)   +Flux*FV_w_inv(0)
+  CASE(XI_PLUS)
+    Ut(:,Nloc,:,:)=Ut(:,Nloc,:,:)+Flux*FV_w_inv(Nloc)
+  CASE(ETA_PLUS)
+    Ut(:,:,Nloc,:)=Ut(:,:,Nloc,:)+Flux*FV_w_inv(Nloc)
+  CASE(ZETA_PLUS)
+    Ut(:,:,:,Nloc)=Ut(:,:,:,Nloc)+Flux*FV_w_inv(Nloc)
 END SELECT !locSideID
+
 END SUBROUTINE SurfInt_FV
 #endif
+
 
 !==================================================================================================================================
 !> \brief Update DG time derivative with corresponding SurfInt contribution
@@ -693,43 +697,44 @@ INTEGER            :: l
 !==================================================================================================================================
 SELECT CASE(locSideID)
 #if (PP_NodeType==1 || (PP_NodeType==2 && defined(EXACT_MM)))
-CASE(XI_MINUS)
-  DO l=0,Nloc
-    Ut(:,l,:,:) =Ut(:,l,:,:)   +Flux*L_hatMinus(l)
-  END DO
-CASE(ETA_MINUS)
-  DO l=0,Nloc
-    Ut(:,:,l,:) =Ut(:,:,l,:)   +Flux*L_hatMinus(l)
-  END DO
-CASE(ZETA_MINUS)
-  DO l=0,Nloc
-    Ut(:,:,:,l) =Ut(:,:,:,l)   +Flux*L_hatMinus(l)
-  END DO
-CASE(XI_PLUS)
-  DO l=0,Nloc
-    Ut(:,l,:,:) =Ut(:,l,:,:)   +Flux*L_hatPlus(l)
-  END DO
-CASE(ETA_PLUS)
-  DO l=0,Nloc
-    Ut(:,:,l,:) =Ut(:,:,l,:)   +Flux*L_hatPlus(l)
-  END DO
-CASE(ZETA_PLUS)
-  DO l=0,Nloc
-    Ut(:,:,:,l) =Ut(:,:,:,l)   +Flux*L_hatPlus(l)
-  END DO
+  CASE(XI_MINUS)
+    DO l=0,Nloc
+      Ut(:,l,:,:) =Ut(:,l,:,:)   +Flux*L_hatMinus(l)
+    END DO
+  CASE(ETA_MINUS)
+    DO l=0,Nloc
+      Ut(:,:,l,:) =Ut(:,:,l,:)   +Flux*L_hatMinus(l)
+    END DO
+  CASE(ZETA_MINUS)
+    DO l=0,Nloc
+      Ut(:,:,:,l) =Ut(:,:,:,l)   +Flux*L_hatMinus(l)
+    END DO
+  CASE(XI_PLUS)
+    DO l=0,Nloc
+      Ut(:,l,:,:) =Ut(:,l,:,:)   +Flux*L_hatPlus(l)
+    END DO
+  CASE(ETA_PLUS)
+    DO l=0,Nloc
+      Ut(:,:,l,:) =Ut(:,:,l,:)   +Flux*L_hatPlus(l)
+    END DO
+  CASE(ZETA_PLUS)
+    DO l=0,Nloc
+      Ut(:,:,:,l) =Ut(:,:,:,l)   +Flux*L_hatPlus(l)
+    END DO
 #elif (PP_NodeType==2 && !defined(EXACT_MM))
-CASE(XI_MINUS)
-  Ut(:,0,:,:)   =Ut(:,0,:,:)   +Flux*L_hatMinus
-CASE(ETA_MINUS)
-  Ut(:,:,0,:)   =Ut(:,:,0,:)   +Flux*L_hatMinus
-CASE(ZETA_MINUS)
-  Ut(:,:,:,0)   =Ut(:,:,:,0)   +Flux*L_hatMinus
-CASE(XI_PLUS)
-  Ut(:,Nloc,:,:)=Ut(:,Nloc,:,:)+Flux*L_hatPlus
-CASE(ETA_PLUS)
-  Ut(:,:,Nloc,:)=Ut(:,:,Nloc,:)+Flux*L_hatPlus
-CASE(ZETA_PLUS)
-  Ut(:,:,:,Nloc)=Ut(:,:,:,Nloc)+Flux*L_hatPlus
+  CASE(XI_MINUS)
+    Ut(:,0,:,:)   =Ut(:,0,:,:)   +Flux*L_hatMinus
+  CASE(ETA_MINUS)
+    Ut(:,:,0,:)   =Ut(:,:,0,:)   +Flux*L_hatMinus
+  CASE(ZETA_MINUS)
+    Ut(:,:,:,0)   =Ut(:,:,:,0)   +Flux*L_hatMinus
+  CASE(XI_PLUS)
+    Ut(:,Nloc,:,:)=Ut(:,Nloc,:,:)+Flux*L_hatPlus
+  CASE(ETA_PLUS)
+    Ut(:,:,Nloc,:)=Ut(:,:,Nloc,:)+Flux*L_hatPlus
+  CASE(ZETA_PLUS)
+    Ut(:,:,:,Nloc)=Ut(:,:,:,Nloc)+Flux*L_hatPlus
 #endif
 END SELECT !locSideID
+
 END SUBROUTINE DoSurfInt

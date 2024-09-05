@@ -247,6 +247,7 @@ IF (useBaseflow) THEN
     CALL ReadArray('Mean',5,&
                   (/INT(HSize(1)),N_State+1,N_State+1,N_StateZ+1,nElems_State/),0,5,RealArray=Utmp)
     CALL CloseDataFile()
+    DEALLOCATE(HSize)
 
     ktmp(:) = RESHAPE(Utmp(VarSortTimeAvg,:,:,:,:), (/nDoFs*nVarDMD/))
 
@@ -489,6 +490,7 @@ END SUBROUTINE performDMD
 
 
 SUBROUTINE WriteDmdStateFile()
+! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_IO_HDF5

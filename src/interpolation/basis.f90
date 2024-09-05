@@ -94,7 +94,6 @@ PUBLIC::PolynomialMassMatrix
 
 CONTAINS
 
-
 !==================================================================================================================================
 !> Build a 1D Vandermonde matrix from an orthonormal Legendre basis to a nodal basis and reverse
 !==================================================================================================================================
@@ -368,7 +367,6 @@ REAL,INTENT(OUT),OPTIONAL :: wGP(0:N_in)       !< Gauss point weights
 INTEGER                   :: nIter = 10        ! max. number of newton iterations
 REAL                      :: Tol   = 1.E-15    ! tolerance for Newton iteration: TODO: use variable tolerance here!
 INTEGER                   :: iGP,iter
-REAL                      :: L_Np1,Lder_Np1    ! L_{N_in+1},Lder_{N_in+1}
 REAL                      :: q,qder,L          ! \f$ q=L_{N_in+1}-L_{N_in-1} \f$ ,qder is derivative, \f$ L=L_{N_in} \f$
 REAL                      :: dx                ! Newton step
 REAL                      :: xGP_init(1:N_in)  ! Initial guess for all inner nodes based on Hale and Townsend
@@ -392,24 +390,25 @@ DO iGP=1,N_in
   ! Newton iteration
   DO iter=0,nIter
     CALL qAndLEvaluationRadau(N_in,xGP(iGP),q,qder,L)
-    dx=-q/qder
-    xGP(iGP)=xGP(iGP)+dx
+    dx       = -q/qder
+    xGP(iGP) = xGP(iGP)+dx
     IF(abs(dx).LT.Tol*abs(xGP(iGP))) EXIT
   END DO ! iter
   IF(iter.GT.nIter) THEN
-    SWRITE(*,*) 'maximum iteration steps >10 in Newton iteration for LGR point:'
+    SWRITE(UNIT_stdOut,'(A)') 'maximum iteration steps >10 in Newton iteration for LGR point:'
     xGP(iGP) = xGP_init(iGP)
     ! Newton iteration
     DO iter=0,nIter
       SWRITE(*,*)'iter,x^i',iter,xGP(iGP)     !DEBUG
       CALL qAndLEvaluationRadau(N_in,xGP(iGP),q,qder,L)
-      dx=-q/qder
-      xGP(iGP)=xGP(iGP)+dx
+      dx       = -q/qder
+      xGP(iGP) = xGP(iGP)+dx
       IF(abs(dx).LT.Tol*abs(xGP(iGP))) EXIT
     END DO ! iter
     CALL Abort(__STAMP__,&
                'ERROR: Legendre Gauss Radau nodes could not be computed up to desired precision. Code stopped!')
   END IF ! (iter.GT.nIter)
+
   IF(PRESENT(wGP))THEN
     wGP(iGP)=(1.-xGP(iGP))/((N_In+1)*L)**2
   END IF
@@ -465,11 +464,11 @@ ELSE ! N_in>1
       IF(abs(dx).LT.Tol*abs(xGP(iGP))) EXIT
     END DO ! iter
     IF(iter.GT.nIter) THEN
-      SWRITE(*,*) 'maximum iteration steps >10 in Newton iteration for Legendre Gausspoint'
+      SWRITE(UNIT_stdOut,'(A)') 'maximum iteration steps >10 in Newton iteration for Legendre Gausspoint'
       xGP(iGP)=-cos(cheb_tmp*REAL(2*iGP+1)) !initial guess
       ! Newton iteration
       DO iter=0,nIter
-        SWRITE(*,*)iter,xGP(iGP)    !DEBUG
+        SWRITE(UNIT_stdOut,*)iter,xGP(iGP)    !DEBUG
         CALL LegendrePolynomialAndDerivative(N_in+1,xGP(iGP),L_Np1,Lder_Np1)
         dx=-L_Np1/Lder_Np1
         xGP(iGP)=xGP(iGP)+dx
@@ -617,11 +616,11 @@ IF(N_in.GT.1)THEN
       IF(abs(dx).LT.Tol*abs(xGP(iGP))) EXIT
     END DO ! iter
     IF(iter.GT.nIter) THEN
-      SWRITE(*,*) 'maximum iteration steps >10 in Newton iteration for LGL point:'
+      SWRITE(UNIT_stdOut,'(A)') 'maximum iteration steps >10 in Newton iteration for LGL point:'
       xGP(iGP)=-cos(cont1*(REAL(iGP)+0.25)-cont2/(REAL(iGP)+0.25)) !initial guess
       ! Newton iteration
       DO iter=0,nIter
-        SWRITE(*,*)'iter,x^i',iter,xGP(iGP)     !DEBUG
+        SWRITE(UNIT_stdOut,*)'iter,x^i',iter,xGP(iGP)     !DEBUG
         CALL qAndLEvaluation(N_in,xGP(iGP),q,qder,L)
         dx=-q/qder
         xGP(iGP)=xGP(iGP)+dx
@@ -644,7 +643,6 @@ IF(mod(N_in,2) .EQ. 0) THEN
   IF(PRESENT(wGP))wGP(N_in/2)=wGP(0)/(L*L)
 END IF ! (mod(N_in,2) .EQ. 0)
 END SUBROUTINE LegGaussLobNodesAndWeights
-
 
 
 !==================================================================================================================================
@@ -672,7 +670,6 @@ DO iGP=1,N_in
 END DO ! iGP
 wBary(:)=1./wBary(:)
 END SUBROUTINE BarycentricWeights
-
 
 
 !==================================================================================================================================
@@ -823,6 +820,8 @@ DO i=0,N_in; DO j=0,N_in
   M(i,j)    = M(i,j)    + alpha*wGP(i)*wGP(j)*pNi*pNj
   Minv(i,j) = Minv(i,j) + beta*pNi*pNj
 END DO; END DO
+#else
+NO_OP(xGP)
 #endif
 
 END SUBROUTINE PolynomialMassMatrix

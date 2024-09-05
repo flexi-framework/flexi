@@ -158,8 +158,8 @@ ENDIF()
 # =========================================================================
 # Eddy viscosity models
 # =========================================================================
-CMAKE_DEPENDENT_OPTION(FLEXI_EDDYVISCOSITY "Enable eddy viscosity modells" OFF
-                                           "FLEXI_PARABOLIC"               OFF)
+CMAKE_DEPENDENT_OPTION(FLEXI_EDDYVISCOSITY "Enable eddy viscosity models" OFF
+                                           "FLEXI_PARABOLIC"              OFF)
 IF (FLEXI_EDDYVISCOSITY)
   ADD_DEFINITIONS(-DEDDYVISCOSITY=1)
 ELSE()
@@ -331,6 +331,7 @@ FILE(GLOB_RECURSE flexiF90 ./src/interpolation/*.f90
                            ./src/output/*.f90
                            ./src/baseflow/*.f90
                            ./src/sponge/*.f90
+                           ./src/avg2d/*.f90
                            ./src/filter/*.f90
                            ./src/io_hdf5/*.f90
                            ./src/timedisc/*.f90

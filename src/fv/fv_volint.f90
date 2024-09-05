@@ -47,7 +47,7 @@ USE MOD_PreProc                         ! all PP_*** variables
 USE MOD_Flux         ,ONLY: EvalFlux3D  ! 3D fluxes
 USE MOD_FV_Vars
 #if VOLINT_VISC
-USE MOD_Lifting_Vars ,ONLY: gradUx,gradUy,gradUz
+! USE MOD_Lifting_Vars ,ONLY: gradUx,gradUy,gradUz
 USE MOD_Flux         ,ONLY: EvalDiffFlux3D
 #endif
 USE MOD_Riemann      ,ONLY: Riemann
@@ -77,7 +77,7 @@ REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ-1) :: f_zeta,g_zeta,h_zeta
 REAL                                            :: UPrim_zeta(PP_nVarPrim,0:PP_N  ,0:PP_N  ,0:PP_NZ-1)
 #endif /*PP_dim == 3*/
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ)          :: Fvisc_FV
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: f,g,h      !< viscous volume fluxes at GP
+! REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: f,g,h      !< viscous volume fluxes at GP
 #endif
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ)        :: F_FV
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: Ut_FV
@@ -168,7 +168,7 @@ DO iElem=1,nElems
 
     ! 4. calculate advective part of the flux
     CALL Riemann(PP_N,F_FV,UCons_L,UCons_R,UPrim_L,UPrim_R,          &
-        FV_NormVecXi (:,:,:,i,iElem), FV_TangVec1Xi(:,:,:,i,iElem), FV_TangVec2Xi(:,:,:,i,iElem),.FALSE.)
+                 FV_NormVecXi (:,:,:,i,iElem), FV_TangVec1Xi(:,:,:,i,iElem), FV_TangVec2Xi(:,:,:,i,iElem),.FALSE.)
 
 #if VOLINT_VISC
     ! 5. compute viscous flux in normal direction of the interface
@@ -286,7 +286,7 @@ END DO ! j
 
     ! 4. calculate advective part of the flux
     CALL Riemann(PP_N,F_FV,UCons_L,UCons_R,UPrim_L,UPrim_R,          &
-        FV_NormVecZeta (:,:,:,k,iElem), FV_TangVec1Zeta(:,:,:,k,iElem), FV_TangVec2Zeta(:,:,:,k,iElem),.FALSE.)
+                 FV_NormVecZeta (:,:,:,k,iElem), FV_TangVec1Zeta(:,:,:,k,iElem), FV_TangVec2Zeta(:,:,:,k,iElem),.FALSE.)
 #if VOLINT_VISC
     ! 5. compute viscous flux in normal direction of the interface
     DO q=0,PP_N; DO p=0,PP_N

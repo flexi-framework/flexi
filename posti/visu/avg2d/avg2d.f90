@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
@@ -231,7 +231,7 @@ SUBROUTINE Average2D(nVarCalc_DG,nVarCalc_FV,NCalc_DG,NCalc_FV,nElems_DG,nElems_
     UVisu_DG,UVisu_FV)
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_Visu_Vars          ,ONLY: Elem_IJK,FVAmountAvg2D,Avg2DHDF5Output
+USE MOD_Visu_Vars          ,ONLY: Elem_IJK,FVAmountAvg2D,OutputFormat,OUTPUTFORMAT_HDF5
 USE MOD_Visu_Vars          ,ONLY: mapDGElemsToAllElems,mapFVElemsToAllElems
 USE MOD_Visu_Vars          ,ONLY: mapElemIJToDGElemAvg2D,mapElemIJToFVElemAvg2D,mapAllVarsToVisuVars
 USE MOD_Visu_Vars          ,ONLY: nVarVisu,NVisu,NVisu_FV,nElemsAvg2D_FV,nElemsAvg2D_DG
@@ -381,14 +381,15 @@ IF (MPIRoot) THEN
 END IF
 
 #if USE_MPI
-IF (Avg2DHDF5Output) THEN
-  ! Distribute the averaged data back
-  CALL MPI_BCAST(UAvg_DG,nElemsAvg2D_DG*(NCalc_DG+1)**2*nVarVisu,MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
-  CALL MPI_BCAST(UAvg_FV,nElemsAvg2D_FV*(NCalc_FV+1)**2*nVarVisu,MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
-END IF
+SELECT CASE(OutputFormat)
+  CASE(OUTPUTFORMAT_HDF5)
+    ! Distribute the averaged data back
+    CALL MPI_BCAST(UAvg_DG,nElemsAvg2D_DG*(NCalc_DG+1)**2*nVarVisu,MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
+    CALL MPI_BCAST(UAvg_FV,nElemsAvg2D_FV*(NCalc_FV+1)**2*nVarVisu,MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
+END SELECT
 #endif
 
-IF ((MPIRoot).OR.(Avg2DHDF5Output)) THEN
+IF (MPIRoot .OR. OutputFormat.EQ.OUTPUTFORMAT_HDF5) THEN
   ! Convert the averaged data to the visu grid
   DO iVar=startIndexMapVarCalc,endIndexMapVarCalc
     iVarVisu = mapAllVarsToVisuVars(iVar)

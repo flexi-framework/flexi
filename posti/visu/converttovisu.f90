@@ -188,6 +188,7 @@ END DO
 
 END SUBROUTINE ConvertToVisu_FV
 
+
 !===================================================================================================================================
 !> Convert the calculated surface FV quantities to the visualization grid.
 !===================================================================================================================================
@@ -386,19 +387,19 @@ SUBROUTINE ConvertToVisu_GenericData(statefile)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Visu_Vars
-USE MOD_IO_HDF5            ,ONLY: HSize
+USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume,ChangeBasisSurf
 USE MOD_HDF5_Input         ,ONLY: File_ID,GetVarNames
 USE MOD_HDF5_Input         ,ONLY: OpenDataFile,ReadArray,CloseDataFile,DatasetExists,ReadAttribute,GetDataSize
-USE MOD_Mesh_Vars          ,ONLY: nElems,offsetElem,nBCSides,ElemToSide
-USE MOD_StringTools        ,ONLY: STRICMP,split_string
 USE MOD_Interpolation      ,ONLY: GetVandermonde
-USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume,ChangeBasisSurf
 USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
 USE MOD_Interpolation_Vars ,ONLY: L_Minus,L_Plus
-USE MOD_ProlongToFace      ,ONLY: EvalElemFace
+USE MOD_IO_HDF5            ,ONLY: HSize
 USE MOD_Mappings           ,ONLY: buildMappings
+USE MOD_Mesh_Vars          ,ONLY: nElems,offsetElem,nBCSides,ElemToSide
+USE MOD_ProlongToFace      ,ONLY: EvalElemFace
+USE MOD_StringTools        ,ONLY: STRICMP,split_string
 USE MOD_Visu_Avg2D         ,ONLY: Average2D,BuildVandermonds_Avg2D
+USE MOD_Visu_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -453,7 +454,6 @@ DO iVar=nVarDep+1,nVarAll
 
       ! Check if we have a new dataset
       datasetChanged = .NOT.STRICMP(TRIM(DataSetName),TRIM(DataSetOld))
-
       SWRITE(UNIT_stdOut,'(A,A,A,A)') " Convert variable ",TRIM(VariableName)," from dataset ", TRIM(DatasetName)
 
       ! Get metadata if dataset changed

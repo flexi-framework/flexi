@@ -34,9 +34,8 @@ extern "C" {
         struct IntARRAY* nodeids_out,    struct DoubleARRAY* coordsFV_out,
         struct DoubleARRAY* valuesFV_out,struct IntARRAY* nodeidsFV_out,
         struct CharARRAY* varnames_out,
-        struct DoubleARRAY* coordsSurf_out,  struct DoubleARRAY* valuesSurf_out, 
-        struct IntARRAY* nodeidsSurf_out,    struct DoubleARRAY* coordsSurfFV_out,
-        struct DoubleARRAY* valuesSurfFV_out,struct IntARRAY* nodeidsSurfFV_out,
+        struct DoubleARRAY* coordsSurf_out,   struct DoubleARRAY* valuesSurf_out,    struct IntARRAY* nodeidsSurf_out,
+        struct DoubleARRAY* coordsSurfFV_out, struct DoubleARRAY* valuesSurfFV_out,  struct IntARRAY* nodeidsSurfFV_out,
         struct CharARRAY* varnamesSurf_out);
 }
 
@@ -47,5 +46,4 @@ extern "C" {
 extern "C" {
   extern void __mod_visu_MOD_finalizevisu();
 }
-
 #endif /* VISU_PLUGIN_H */

@@ -855,24 +855,36 @@ END FUNCTION ELEMIPROC
 !> Read arrays nElems_IJK (global number of elements in i,j,k direction) and Elem_IJK (mapping from global element to i,j,k index)
 !> for meshes thar are i,j,k sorted.
 !===================================================================================================================================
-SUBROUTINE ReadIJKSorting()
+SUBROUTINE ReadIJKSorting(doGlobal)
 ! MODULES
-USE MOD_Mesh_Vars,       ONLY: nElems_IJK,Elem_IJK,offsetElem,nElems,MeshFile
+USE MOD_Mesh_Vars,       ONLY: nElems_IJK,Elem_IJK,offsetElem,nElems,nGlobalElems,MeshFile
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
+LOGICAL,INTENT(IN),OPTIONAL      :: doGlobal
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-LOGICAL        :: dsExists
+LOGICAL                          :: dsExists
+LOGICAL                          :: doGlobal_loc
 !===================================================================================================================================
+IF (PRESENT(doGlobal)) THEN
+  doGlobal_loc = doGlobal
+ELSE
+  doGlobal_loc = .FALSE.
+END IF
 
 CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL DatasetExists(File_ID,'nElems_IJK',dsExists)
 IF(dsExists)THEN
   CALL ReadArray('nElems_IJK',1,(/3/),0,1,IntArray=nElems_IJK)
-  ALLOCATE(Elem_IJK(3,nElems))
-  CALL ReadArray('Elem_IJK',2,(/3,nElems/),offsetElem,2,IntArray=Elem_IJK)
+  IF (doGlobal_loc) THEN
+    ALLOCATE(Elem_IJK(3,nGlobalElems))
+    CALL ReadArray('Elem_IJK',2,(/3,nGlobalElems/),0,2,IntArray=Elem_IJK)
+  ELSE
+    ALLOCATE(Elem_IJK(3,nElems))
+    CALL ReadArray('Elem_IJK',2,(/3,nElems/),offsetElem,2,IntArray=Elem_IJK)
+  END IF
 END IF
 CALL CloseDataFile()
 END SUBROUTINE ReadIJKSorting

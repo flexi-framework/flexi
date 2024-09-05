@@ -7,7 +7,9 @@ SET(TOOL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/posti/visu")
 MESSAGE(STATUS "Posti: building ${TOOL_NAME} tool.")
 INCLUDE_DIRECTORIES( ${TOOL_DIR})
 
-FILE(GLOB ${TOOL_NAME}F90 ${TOOL_DIR}/avg2d.f90
+FILE(GLOB ${TOOL_NAME}F90 ${TOOL_DIR}/avg2d/avg2d.f90
+                          ${TOOL_DIR}/io_hdf5/visu_hdf5_output.f90
+                          ${TOOL_DIR}/mesh/mesh.f90
                           ${TOOL_DIR}/calc.f90
                           ${TOOL_DIR}/CMakeLists.txt
                           ${TOOL_DIR}/converttovisu.f90
@@ -16,12 +18,12 @@ FILE(GLOB ${TOOL_NAME}F90 ${TOOL_DIR}/avg2d.f90
                           ${TOOL_DIR}/pluginTypes_visu.h
                           ${TOOL_DIR}/plugin_visu.h
                           ${TOOL_DIR}/posti_visu.f90
-                          ${TOOL_DIR}/readstate.f90
-                          ${TOOL_DIR}/visu_Cwrapper.f90
                           ${TOOL_DIR}/visu.f90
-                          ${TOOL_DIR}/visumesh.f90
+                          ${TOOL_DIR}/visu_Cwrapper.f90
+                          ${TOOL_DIR}/visu_init.f90
+                          ${TOOL_DIR}/visu_mesh.f90
+                          ${TOOL_DIR}/visu_state.f90
                           ${TOOL_DIR}/visu_vars.f90)
-
 
 ADD_LIBRARY(${TOOL_NAME}libF90 OBJECT ${${TOOL_NAME}F90})
 SET_TARGET_PROPERTIES(${TOOL_NAME}libF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
@@ -157,6 +159,9 @@ IF (POSTI_VISU_PARAVIEW AND ParaView_FOUND)
    ADD_DEPENDENCIES(     visuReader${POSTI_VISU_PARAVIEW_SUFFIX} ${TOOL_NAME}lib libflexishared)
    TARGET_LINK_LIBRARIES(visuReader${POSTI_VISU_PARAVIEW_SUFFIX} PUBLIC ${TOOL_NAME}lib libflexishared)
 
+  # Enable VTKm optimizations
+  SET(VTKm_Vectorization "native" CACHE STRING "Level of compiler vectorization support" FORCE)
+
    # ParaView really adds a lot of CMake variables
    # > Adios2
    MARK_AS_ADVANCED(FORCE ADIOS2_DIR)
@@ -175,6 +180,10 @@ IF (POSTI_VISU_PARAVIEW AND ParaView_FOUND)
    MARK_AS_ADVANCED(FORCE catalyst_DIR)
    # > Embree
    MARK_AS_ADVANCED(FORCE embree_DIR)
+   # > FastFloat
+   MARK_AS_ADVANCED(FORCE FastFloat_DIR)
+   # > FreeType
+   MARK_AS_ADVANCED(FORCE freetype_DIR)
    # > HDF5
    MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_dl)
    MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_hdf5)
@@ -240,16 +249,18 @@ IF (POSTI_VISU_PARAVIEW AND ParaView_FOUND)
    MARK_AS_ADVANCED(FORCE Qt5X11Extras_DIR)
    # > rkcommon
    MARK_AS_ADVANCED(FORCE rkcommon_DIR)
-   # > TIFF
-   MARK_AS_ADVANCED(FORCE tiff_DIR)
    # > TBB
    MARK_AS_ADVANCED(FORCE TBB_DIR)
    MARK_AS_ADVANCED(FORCE TBB_ROOT)
    MARK_AS_ADVANCED(FORCE TBB_ROOT_DIR)
+   # > TIFF
+   MARK_AS_ADVANCED(FORCE tiff_DIR)
+   MARK_AS_ADVANCED(FORCE Tiff_DIR)
    # > VTK
    MARK_AS_ADVANCED(FORCE VTK_DIR)
    MARK_AS_ADVANCED(FORCE VTK_MPI_NUMPROCS)
    MARK_AS_ADVANCED(FORCE VTKm_DIR)
+   MARK_AS_ADVANCED(FORCE VTKm_Vectorization)
    # > Verdict
    MARK_AS_ADVANCED(FORCE Verdict_DIR)
    # > XCB

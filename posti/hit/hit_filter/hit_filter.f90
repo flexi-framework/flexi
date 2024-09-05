@@ -98,6 +98,7 @@ CALL DatasetExists(File_ID,'FieldData',FieldDataExists)
 IF (FieldDataExists) THEN
   CALL GetDataSize(File_ID,'FieldData',nDims,HSize)
   nVarField_HDF5 = INT(HSize(1))
+  DEALLOCATE(HSize)
 
   ALLOCATE(FieldData(1:nVarField_HDF5,0:N_HDF5,0:N_HDF5,0:N_HDF5,1:nElems_HDF5))
   ALLOCATE(VarNames_FieldData(nVarField_HDF5))

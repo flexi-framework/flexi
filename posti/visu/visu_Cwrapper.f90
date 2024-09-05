@@ -81,11 +81,11 @@ SUBROUTINE visu_requestInformation(mpi_comm_IN, strlen_state, statefile_IN, strl
 USE ISO_C_BINDING
 ! MODULES
 USE MOD_Globals
-USE MOD_MPI        ,ONLY: InitMPI
-USE MOD_Visu_Vars  ,ONLY: VarnamesAll,BCNamesAll,nVarIni
-USE MOD_Visu       ,ONLY: visu_getVarNamesAndFileType
-USE MOD_VTK        ,ONLY: CARRAY
 USE MOD_IO_HDF5    ,ONLY: InitMPIInfo
+USE MOD_MPI        ,ONLY: InitMPI
+USE MOD_Visu_Init  ,ONLY: visu_getVarNamesAndFileType
+USE MOD_Visu_Vars  ,ONLY: VarnamesAll,BCNamesAll,nVarIni
+USE MOD_VTK        ,ONLY: CARRAY
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -137,17 +137,18 @@ END SUBROUTINE visu_requestInformation
 !> ParaView reader, and afterwards the data and coordinate arrays as well as the variable names are converted to C arrays since
 !> ParaView needs the data in this format.
 !===================================================================================================================================
-SUBROUTINE visu_CWrapper(mpi_comm_IN,UseHighOrder                   ,&
-    strlen_prm      ,prmfile_IN                                     ,&
-    strlen_posti    ,postifile_IN                                   ,&
-    strlen_state    ,statefile_IN                                   ,&
-    coordsDG_out    ,valuesDG_out    ,nodeidsDG_out                 ,&
-    coordsFV_out    ,valuesFV_out    ,nodeidsFV_out    ,varnames_out,&
-    coordsSurfDG_out,valuesSurfDG_out,nodeidsSurfDG_out             ,&
-    coordsSurfFV_out,valuesSurfFV_out,nodeidsSurfFV_out,varnamesSurf_out)
+SUBROUTINE visu_CWrapper(mpi_comm_IN ,UseHighOrder     ,&
+    strlen_prm, prmfile_IN, strlen_posti, postifile_IN, strlen_state, statefile_IN,&
+    coordsDG_out    ,valuesDG_out    ,nodeidsDG_out    ,&
+    coordsFV_out    ,valuesFV_out    ,nodeidsFV_out    ,&
+    varnames_out,                                       &
+    coordsSurfDG_out,valuesSurfDG_out,nodeidsSurfDG_out,&
+    coordsSurfFV_out,valuesSurfFV_out,nodeidsSurfFV_out,&
+    varnamesSurf_out)
 ! MODULES
 USE ISO_C_BINDING
 USE MOD_Globals
+USE MOD_Output_Vars ,ONLY: doPrintStatusLine
 USE MOD_Visu_Vars
 USE MOD_Visu        ,ONLY: visu
 USE MOD_VTK         ,ONLY: WriteCoordsToVTK_array,WriteDataToVTK_array,WriteVarnamesToVTK_array,CARRAY
@@ -185,6 +186,10 @@ CHARACTER(LEN=255)            :: statefile
 prmfile   = cstrToChar255(prmfile_IN,   strlen_prm)
 postifile = cstrToChar255(postifile_IN, strlen_posti)
 statefile = cstrToChar255(statefile_IN, strlen_state)
+
+! Enable progress indicator
+doPrintStatusLine = .TRUE.
+
 CALL visu(mpi_comm_IN, prmfile, postifile, statefile)
 
 ! Map Fortran arrays to C pointer
