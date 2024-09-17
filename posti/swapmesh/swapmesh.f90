@@ -481,7 +481,7 @@ SUBROUTINE WriteNewStateFile()
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_IO_HDF5            
-USE MOD_HDF5_Output,        ONLY: WriteState
+USE MOD_HDF5_Output,        ONLY: WriteState, WriteAttribute
 USE MOD_Output_Vars,        ONLY: ProjectName
 USE MOD_Swapmesh_Vars,      ONLY: Time_State,MeshFileNew,NodeTypeOut,NodeTypeState
 !----------------------------------------------------------------------------------------------------------------------------------!
