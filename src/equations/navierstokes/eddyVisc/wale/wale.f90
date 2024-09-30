@@ -16,41 +16,37 @@
 #include "eos.h"
 
 !===================================================================================================================================
-!> Subroutines necessary for calculating Smagorinsky Eddy-Viscosity, originally derived in
-!>   - Smagorinsky, Joseph. "General circulation experiments with the primitive equations: I. The basic experiment."
-!>     Monthly weather review 91.3 (1963): 99-164.
-!>
-!> The Van-Driest damping for the Smagorinsky model for channel flow is originally used in
-!>   - Moin, Parviz, and John Kim. "Numerical investigation of turbulent channel flow."
-!>     Journal of fluid mechanics 118 (1982): 341-377.
-!===================================================================================================================================
-MODULE MOD_Smagorinsky
+!> Subroutines necessary for calculating the eddy-viscosity in the Wall-Adapting Local Eddy-Viscosity (WALE) model, derived in:
+!>   - Nicoud, F., Ducros, F. Subgrid-Scale Stress Modelling Based on the Square of the Velocity Gradient Tensor. Flow, Turbulence
+!>     and Combustion 62, 183–200 (1999). https://doi.org/10.1023/A:1009995426001
+!==================================================================================================================================
+MODULE MOD_WALE
 ! MODULES
 IMPLICIT NONE
 PRIVATE
 
-INTERFACE InitSmagorinsky
-  MODULE PROCEDURE InitSmagorinsky
+INTERFACE InitWALE
+  MODULE PROCEDURE InitWALE
 END INTERFACE
 
-INTERFACE Smagorinsky
-  MODULE PROCEDURE Smagorinsky_Point
-  MODULE PROCEDURE Smagorinsky_Volume
+INTERFACE WALE
+  MODULE PROCEDURE WALE_Point
+  MODULE PROCEDURE WALE_Volume
 END INTERFACE
 
-INTERFACE FinalizeSmagorinsky
-  MODULE PROCEDURE FinalizeSmagorinsky
+INTERFACE FinalizeWALE
+  MODULE PROCEDURE FinalizeWALE
 END INTERFACE
 
-PUBLIC::InitSmagorinsky, Smagorinsky_Volume, FinalizeSmagorinsky
+PUBLIC::InitWALE, WALE_Volume, FinalizeWALE
 !===================================================================================================================================
 
 CONTAINS
 
 !===================================================================================================================================
-!> Get model parameters and initialize Smagorinsky model
+!> Get model parameters and initialize WALE model
 !===================================================================================================================================
-SUBROUTINE InitSmagorinsky()
+SUBROUTINE InitWALE()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -65,84 +61,94 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: i,j,k,iElem
-REAL    :: CellVol,yPlus
+REAL    :: CellVol
 !===================================================================================================================================
-IF(((.NOT.InterpolationInitIsDone).AND.(.NOT.MeshInitIsDone)).OR.SmagorinskyInitIsDone)THEN
+IF(((.NOT.InterpolationInitIsDone).AND.(.NOT.MeshInitIsDone)).OR.WALEInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,&
-    "InitSmagorinsky not ready to be called or already called.")
+    "InitWALE not ready to be called or already called.")
 END IF
 SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT SMAGORINSKY...'
+SWRITE(UNIT_stdOut,'(A)') ' INIT WALE...'
 
 ! Read model coefficient
 CS = GETREAL('CS')
-! Do Van Driest style damping or not (only for channel!)
-VanDriest = GETLOGICAL('VanDriest')
 
-ALLOCATE(damp(1,0:PP_N,0:PP_N,0:PP_NZ,nElems))
-damp = 1.
+! Allocate precomputed (model constant*filter width)**2
+ALLOCATE(CSdeltaS2(nElems))
 
-! Smago: (damp*CS*deltaS)**2 * S_eN * dens
-! Precompute first term and store in damp
-! Calculate the filter width deltaS: deltaS=( Cell volume )^(1/3) / ( PP_N+1 )
+! WALE: (CS*deltaS)**2 * beta * dens
+! Calculate the filter width deltaS := (Cell volume)^(1/3) / (PP_N+1)
 DO iElem=1,nElems
   CellVol = 0.
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     CellVol = CellVol + wGP(i)*wGP(j)*wGP(k)/sJ(i,j,k,iElem,0)
-    IF (VanDriest)THEN
-      yPlus = (1. - ABS(Elem_xGP(2,i,j,k,iElem))) / mu0   ! y-dir
-      damp(1,i,j,k,iElem) = 1. - EXP(-yPlus/26.) ! Van Driest damping factor
-    END IF
   END DO; END DO; END DO
-  DeltaS(iElem) = CellVol**(1./3.) / (REAL(PP_N)+1.)
-
-  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    damp(1,i,j,k,iElem) = (damp(1,i,j,k,iElem) * CS * deltaS(iElem))**2
-  END DO; END DO; END DO
+  DeltaS(iElem)    = CellVol**(1./3.) / (REAL(PP_N)+1.)
+  CsDeltaS2(iElem) = (DeltaS(iElem)*CS)**2.
 END DO
 
-SmagorinskyInitIsDone=.TRUE.
-SWRITE(UNIT_stdOut,'(A)')' INIT SMAGORINSKY DONE!'
+WALEInitIsDone=.TRUE.
+SWRITE(UNIT_stdOut,'(A)')' INIT WALE DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
 
-END SUBROUTINE InitSmagorinsky
+END SUBROUTINE InitWALE
 
 
 !===================================================================================================================================
-!> Compute Smagorinsky Eddy-Visosity
+!> Compute WALE eddy-visosity
 !===================================================================================================================================
-PPURE SUBROUTINE Smagorinsky_Point(gradUx,gradUy,gradUz,dens,damp,muSGS)
+PPURE SUBROUTINE WALE_Point(gradUx,gradUy,gradUz,dens,CsDeltaS2,muSGS)
 ! MODULES
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL,DIMENSION(PP_nVarLifting),INTENT(IN)  :: gradUx, gradUy, gradUz   !> Gradients in x,y,z directions
-REAL                          ,INTENT(IN)  :: dens    !> pointwise density
-REAL                          ,INTENT(IN)  :: damp    !> constant factor (damp*CS*deltaS)**2
-REAL                          ,INTENT(OUT) :: muSGS   !> pointwise eddyviscosity
+REAL                          ,INTENT(IN)  :: dens       !> pointwise density
+REAL                          ,INTENT(IN)  :: CsDeltaS2  !> constant factor (CS*deltaS)**2
+REAL                          ,INTENT(OUT) :: muSGS      !> pointwise eddyviscosity
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                                    :: S_eN
+REAL                                    :: g(3,3)    !> Velocity gradient tensor (g_ij)
+REAL                                    :: g_sq(3,3) !> Squared velocity gradient tensor (g^2_ij = g_ik * g_kj)
+REAL                                    :: tr_g_sq   !> Volumetric part of squared velocity gradient tensor (g^2_kk/3.)
+REAL                                    :: norm_S    !> Norm of strain rate tensor (S_ij*S_ij)
+                                                     !>   with: S_ij = 1/2*(g_ij + g_ji)
+REAL                                    :: norm_S_d  !> Norm of symmetric, deviatoric part of g_sq (S^d_ij*S^d_ij)
+                                                     !>   with: S^d_ij = 1/2*(g^2_ij + g^2_ji) - delta_ij*g^2_kk/3.   (Eq.10)
 !===================================================================================================================================
-! Already take the square root of 2 into account here
-S_eN = SQRT ( 2.*(gradUx(LIFT_VEL1)**2 + gradUy(LIFT_VEL2)**2 + gradUz(LIFT_VEL3)**2) &
-              + ( gradUy(LIFT_VEL1) + gradUx(LIFT_VEL2) )**2                    &
-              + ( gradUz(LIFT_VEL1) + gradUx(LIFT_VEL3) )**2                    &
-              + ( gradUz(LIFT_VEL2) + gradUy(LIFT_VEL3) )**2 )
-! Smagorinsky model: (damp * CS * deltaS)**2 * S_eN * rho
-! we store the first constant term in damp
-muSGS = damp * S_eN * dens
-END SUBROUTINE Smagorinsky_Point
+! Build velocity gradient tensor (g_ij)
+g(:,1)=gradUx(LIFT_VELV)
+g(:,2)=gradUy(LIFT_VELV)
+g(:,3)=gradUz(LIFT_VELV)
+
+! Squared gradient tensor (g^2_ij = g_ik * g_kj)
+g_sq(:,:) = MATMUL(g,g)
+
+! Volumetric contribution of squared gradient tensor (g_kk/3.).
+tr_g_sq = (g_sq(1,1) + g_sq(2,2) + g_sq(3,3))/3.
+
+! Compute contractions of type (A_ij*A_ij) of S and S_d, respectively
+! (both matrices are symmetric => just take off-diagonal entries from upper triangle twice!)
+! 1.) S_ij*S_ij
+norm_S   = 0.5*( (g(1,2)+g(2,1))**2 + (g(2,3)+g(3,2))**2 + (g(3,1)+g(1,3))**2 ) & ! Off-diagonal elements
+         + g(1,1)**2 + g(2,2)**2 + g(3,3)**2                                      ! Diagonal elements
+! 2.) S^d_ij*S^d_ij (Account for trace as in Eq. (10))
+norm_S_d = 0.5*( (g_sq(1,2)+g_sq(2,1))**2 + (g_sq(2,3)+g_sq(3,2))**2 + (g_sq(3,1)+g_sq(1,3))**2 ) & ! Off-diagonal
+         + (g_sq(1,1)-tr_g_sq)**2 + (g_sq(2,2)-tr_g_sq)**2 + (g_sq(3,3)-tr_g_sq)**2                 ! Diagonal
+
+! WALE model: mu = rho * (DeltaS*C_w)**2 * beta
+muSGS = dens * CsDeltaS2 * norm_S_d**(3./2.) / (norm_S**(5./2.) + norm_S_d**(5./4.)) ! Eq. (13)
+END SUBROUTINE WALE_Point
 
 
 !===================================================================================================================================
-!> Compute Smagorinsky Eddy-Visosity for the volume
+!> Compute WALE Eddy-Visosity for the volume
 !===================================================================================================================================
-SUBROUTINE Smagorinsky_Volume()
+SUBROUTINE WALE_Volume()
 ! MODULES
 USE MOD_PreProc
 USE MOD_Mesh_Vars,         ONLY: nElems
-USE MOD_EddyVisc_Vars,     ONLY: damp, muSGS
+USE MOD_EddyVisc_Vars,     ONLY: CsDeltaS2, muSGS
 USE MOD_Lifting_Vars,      ONLY: gradUx, gradUy, gradUz
 USE MOD_DG_Vars,           ONLY: U
 IMPLICIT NONE
@@ -154,17 +160,17 @@ INTEGER             :: i,j,k,iElem
 !===================================================================================================================================
 DO iElem = 1,nElems
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    CALL Smagorinsky_Point(gradUx(:   ,i,j,k,iElem), gradUy(:,i,j,k,iElem), gradUz(:,i,j,k,iElem), &
-                                U(DENS,i,j,k,iElem),   damp(1,i,j,k,iElem),  muSGS(1,i,j,k,iElem))
+    CALL WALE_Point(gradUx(   :,i,j,k,iElem), gradUy(:,i,j,k,iElem), gradUz(:,i,j,k,iElem), &
+                         U(DENS,i,j,k,iElem), CsDeltaS2(     iElem),  muSGS(1,i,j,k,iElem))
   END DO; END DO; END DO ! i,j,k
 END DO
-END SUBROUTINE Smagorinsky_Volume
+END SUBROUTINE WALE_Volume
 
 
 !===============================================================================================================================
-!> Deallocate arrays and finalize variables used by Smagorinsky SGS model
+!> Deallocate arrays and finalize variables used by WALE SGS model
 !===============================================================================================================================
-SUBROUTINE FinalizeSmagorinsky()
+SUBROUTINE FinalizeWALE()
 ! MODULES
 USE MOD_EddyVisc_Vars
 IMPLICIT NONE
@@ -173,9 +179,9 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===============================================================================================================================
-SDEALLOCATE(damp)
-SmagorinskyInitIsDone = .FALSE.
+SDEALLOCATE(CsDeltaS2)
+WALEInitIsDone = .FALSE.
 
-END SUBROUTINE FinalizeSmagorinsky
+END SUBROUTINE FinalizeWALE
 
-END MODULE MOD_Smagorinsky
+END MODULE MOD_WALE
