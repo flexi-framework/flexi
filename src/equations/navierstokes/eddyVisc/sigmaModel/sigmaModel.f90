@@ -26,16 +26,16 @@ IMPLICIT NONE
 PRIVATE
 
 INTERFACE InitSigmaModel
-   MODULE PROCEDURE InitSigmaModel
+  MODULE PROCEDURE InitSigmaModel
 END INTERFACE
 
 INTERFACE SigmaModel
-   MODULE PROCEDURE SigmaModel_Point
-   MODULE PROCEDURE SigmaModel_Volume
+  MODULE PROCEDURE SigmaModel_Point
+  MODULE PROCEDURE SigmaModel_Volume
 END INTERFACE
 
 INTERFACE FinalizeSigmaModel
-   MODULE PROCEDURE FinalizeSigmaModel
+  MODULE PROCEDURE FinalizeSigmaModel
 END INTERFACE
 
 PUBLIC::InitSigmaModel,SigmaModel_Volume,FinalizeSigmaModel
@@ -54,7 +54,7 @@ USE MOD_EddyVisc_Vars
 USE MOD_ReadInTools        ,ONLY: GETREAL,GETLOGICAL
 USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone,wGP
 USE MOD_Mesh_Vars          ,ONLY: MeshInitIsDone,nElems,sJ
- IMPLICIT NONE
+IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -156,7 +156,7 @@ INTEGER             :: i,j,k,iElem
 DO iElem = 1,nElems
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     CALL SigmaModel_Point(gradUx(    :,i,j,k,iElem), gradUy(:,i,j,k,iElem), gradUz(:,i,j,k,iElem), &
-                               U(DENS,i,j,k,iElem),       CSdeltaS2(iElem),  muSGS(1,i,j,k,iElem))
+                                U(DENS,i,j,k,iElem),      CSdeltaS2(iElem),  muSGS(1,i,j,k,iElem))
   END DO; END DO; END DO ! i,j,k
 END DO
 END SUBROUTINE SigmaModel_Volume
@@ -175,7 +175,6 @@ IMPLICIT NONE
 !===============================================================================================================================
 SDEALLOCATE(CSdeltaS2)
 SigmaModelInitIsDone = .FALSE.
-
 END SUBROUTINE FinalizeSigmaModel
 
 END MODULE MOD_SigmaModel

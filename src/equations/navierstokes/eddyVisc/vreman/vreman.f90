@@ -26,16 +26,16 @@ IMPLICIT NONE
 PRIVATE
 
 INTERFACE InitVreman
-   MODULE PROCEDURE InitVreman
+  MODULE PROCEDURE InitVreman
 END INTERFACE
 
 INTERFACE Vreman
-   MODULE PROCEDURE Vreman_Point
-   MODULE PROCEDURE Vreman_Volume
+  MODULE PROCEDURE Vreman_Point
+  MODULE PROCEDURE Vreman_Volume
 END INTERFACE
 
 INTERFACE FinalizeVreman
-   MODULE PROCEDURE FinalizeVreman
+  MODULE PROCEDURE FinalizeVreman
 END INTERFACE
 
 PUBLIC::InitVreman, Vreman_Volume, FinalizeVreman
@@ -54,7 +54,7 @@ USE MOD_EddyVisc_Vars
 USE MOD_ReadInTools        ,ONLY: GETREAL,GETLOGICAL
 USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone,wGP
 USE MOD_Mesh_Vars          ,ONLY: MeshInitIsDone,nElems,sJ
- IMPLICIT NONE
+IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -72,21 +72,20 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT VREMAN...'
 ! Read model coefficient
 ! Vreman model, paper CS=Smagorinsky constant: 0.18
 ! Vreman model, paper CS=Smagorinsky constant for FLEXI: 0.11
-CS        = GETREAL('CS')
+CS = GETREAL('CS')
 
 ! Allocate precomputed (model constant*filter width)**2
 ALLOCATE(CSdeltaS2(nElems))
 
 ! Vreman: (CS*deltaS)**2 * SQRT(B/A) * dens
-! Precompute first term and store in damp
-! Calculate the filter width deltaS: deltaS=( Cell volume )^(1/3) / ( PP_N+1 )
+! Calculate the filter width deltaS: deltaS = (Cell volume)^(1/3) / (PP_N+1)
 DO iElem=1,nElems
   CellVol = 0.
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     CellVol = CellVol + wGP(i)*wGP(j)*wGP(k)/sJ(i,j,k,iElem,0)
   END DO; END DO; END DO
-  DeltaS(iElem)    = CellVol**(1./3.)  / (REAL(PP_N)+1.)
-  CSdeltaS2(iElem) = 2.5*(CS * DeltaS(iElem))**2
+  DeltaS(iElem)    = CellVol**(1./3.) / (REAL(PP_N)+1.)
+  CSdeltaS2(iElem) = 2.5 * (CS*DeltaS(iElem))**2
 END DO
 
 VremanInitIsDone=.TRUE.
@@ -122,7 +121,7 @@ DO j=1,3; DO i=1,3; DO k=1,3
 END DO; END DO; END DO! i,j,k=1,3
 B=beta(1,1)*beta(2,2)-beta(1,2)**2+beta(1,1)*beta(3,3)-beta(1,3)**2+beta(2,2)*beta(3,3)-beta(2,3)**2
 
-A=0
+A=0.
 DO j=1,3; DO i=1,3
   A=A+alpha(i,j)*alpha(i,j)
 END DO; END DO! i,j=1,3
