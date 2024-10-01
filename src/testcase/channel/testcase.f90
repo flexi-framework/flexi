@@ -25,12 +25,12 @@
 !>    Physics of fluids 11.4 (1999): 943-945.
 !>  - Lee, Myoungkyu, and Robert D. Moser. "Direct numerical simulation of turbulent channel flow up to Re_tau=5200."
 !>    Journal of Fluid Mechanics 774 (2015): 395-415.
-!> The channel halfwidth is set to 1 and the Reynolds number is thus set with mu0 = 1/Re_tau. 
-!> CPG: It follows, rho=1 and the pressure is computed to obtain the specified Bulk Mach number 
+!> The channel halfwidth is set to 1 and the Reynolds number is thus set with mu0 = 1/Re_tau.
+!> CPG: It follows, rho=1 and the pressure is computed to obtain the specified Bulk Mach number
 !> (Mach=0.1 for the Moser case). Hence, u_tau = tau = -dp/dx = 1 .
 !> CFR: Force constant mass flow in channel.
 !> Differences between forcing described in:
-!> Quadrio, M., et al. (2016). "Does the choice of the forcing term affect flow statistics in DNS of turbulent channel flow?" 
+!> Quadrio, M., et al. (2016). "Does the choice of the forcing term affect flow statistics in DNS of turbulent channel flow?"
 !> European Journal of Mechanics - B/Fluids 55: 286-293.
 
 !==================================================================================================================================
@@ -163,9 +163,9 @@ CALL CollectiveStop(__STAMP__,'The testcase has not been implemented for FV yet!
 ForcingType = GETINTFROMSTR("ForcingType")
 SELECT CASE(ForcingType)
 CASE(FORCING_CPG)
-  SWRITE(UNIT_stdOut,*) 'Forcing method in turbulent channel test case: Constant pressure gradient (CPG)'
+  SWRITE(UNIT_stdOut,'(A)') 'Forcing method in turbulent channel test case: Constant pressure gradient (CPG)'
 CASE(FORCING_CFR)
-  SWRITE(UNIT_stdOut,*) 'Forcing method in turbulent channel test case: Constant flow rate (CFR)'
+  SWRITE(UNIT_stdOut,'(A)') 'Forcing method in turbulent channel test case: Constant flow rate (CFR)'
 CASE DEFAULT
   CALL CollectiveStop(__STAMP__,'Forcing method in turbulent channel test case unknown!')
 END SELECT
@@ -326,7 +326,7 @@ massFlowGlobal=0.
 BulkVel =0.
 
 DO iElem=1,nElems
-  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     massFlowGlobal = massFlowGlobal+U(MOM1,i,j,k,iElem)*wGPVol(i,j,k)/sJ(i,j,k,iElem,0)
     BulkVel = BulkVel+U(MOM1,i,j,k,iElem)/U(DENS,i,j,k,iElem)*wGPVol(i,j,k)/sJ(i,j,k,iElem,0)
   END DO; END DO; END DO
@@ -354,20 +354,20 @@ CASE(FORCING_CFR)
     massFlowPrev = massFlowRef
     firstTimeStep=.FALSE.
   END IF
-  
+
   massFlow = massFlowGlobal ! use global
-  
+
   ! 2. compute forcing term dp/dx
   ! dpdx_n+1 = dpdx_n - (mRef - 2*m_n + m_n-1) / (surf*dt)
   dpdx = dpdxPrev - 0.3*(massFlowRef - 2*massFlow + massFlowPrev) / (Surf(massFlowBC)*dt)
-  
+
   !! proposed by Lenormand:
   !!dpdx = dpdxPrev - (alpha*(massFlow-massFlowRef) + beta*(massFlowPrev - massFlowRef)) / (Surf(massFlowBC))
   !alpha=2.
   !beta =-0.2
   !massFlowPredictor = massFlow+dt/dtPrev*(massFlow-massFlowPrev)
   !dpdx = dpdxPrev + (alpha*(massFlowPredictor-massFlowRef) + beta*(massFlow - massFlowRef)) / (Surf(massFlowBC))
-  
+
   massFlowPrev = massFlow
   dpdxPrev     = dpdx
   dtPrev       = dt
