@@ -242,18 +242,13 @@ homepage:
   rules:
     - if: '$DO_DEPLOY && $CI_SERVER_URL =~ /.*\.iag\.uni-stuttgart\.de$/'
   cache:
-    - key: "${CI_COMMIT_REF_SLUG}-DOC"
-      paths: [doc/doxygen]
-      policy: pull
     - key: "${CI_COMMIT_REF_SLUG}-USERGUIDE"
       paths: [doc/userguide]
       policy: pull
   variables:
     FF_ENABLE_JOB_CLEANUP: 1
   script:
-    - cd doc
-    - rsync --recursive --delete doxygen/doxygen flexi@euler:homepage/
-    - rsync --recursive --delete userguide       flexi@euler:homepage/
+    - rsync --recursive --delete doc/userguide/userguide.pdf webserver:nrg.git/nrg_website/NRG/userguide/userguide.pdf
 
 github:
   extends: .default_build_param
