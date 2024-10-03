@@ -69,9 +69,7 @@ INTEGER                       :: iElemOld,iElemNew
 REAL                          :: Utmp(1:nVar_State,0:NInter,0:NInter,0:ZDIM(NInter))
 REAL                          :: L_xi(    0:NState,0:NInter,0:NInter,0:ZDIM(NInter))
 REAL                          :: L_eta(   0:NState,0:NInter,0:NInter,0:ZDIM(NInter))
-#if PP_dim == 3
 REAL                          :: L_zeta(  0:NState,0:NInter,0:NInter,0:NInter)
-#endif
 REAL                          :: L_eta_zeta
 REAL                          :: xGP(0:NState),wBaryGP(0:NState)
 REAL                          :: StartT,EndT
@@ -85,7 +83,7 @@ SWRITE(UNIT_stdOut,'(A,A)',ADVANCE='NO')' INTERPOLATE STATE TO NEW MESH ...',ACH
 StartT = FLEXITIME()
 U      = 0.
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iElemNew,iElemOld,L_xi,ii,jj,kk,L_eta,L_zeta,L_eta_zeta,Utmp,i,j,k)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iElemNew,iElemOld,ii,jj,kk,L_xi,L_eta,L_zeta,L_eta_zeta,Utmp,i,j,k)
 !$OMP DO
 DO iElemNew=1,nElemsNew
   IF (ExtrudePeriodic) THEN
