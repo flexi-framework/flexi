@@ -42,6 +42,12 @@ INTERFACE Restart
   MODULE PROCEDURE Restart
 END INTERFACE
 
+#if FV_ENABLED
+INTERFACE SupersampleFVCell
+  MODULE PROCEDURE SupersampleFVCell
+END INTERFACE
+#endif
+
 INTERFACE FinalizeRestart
   MODULE PROCEDURE FinalizeRestart
 END INTERFACE
@@ -50,6 +56,9 @@ PUBLIC :: DefineParametersRestart
 PUBLIC :: InitRestartFile
 PUBLIC :: InitRestart
 PUBLIC :: Restart
+#if FV_ENABLED
+PUBLIC :: SupersampleFVCell
+#endif
 PUBLIC :: FinalizeRestart
 !==================================================================================================================================
 

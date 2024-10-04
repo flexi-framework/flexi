@@ -257,6 +257,9 @@ USE MOD_MPI                 ,ONLY: FinalizeMPI
 #if FV_ENABLED
 USE MOD_FV_Basis            ,ONLY: InitFV_Basis,FinalizeFV_Basis,DefineParametersFV_Basis
 USE MOD_Mortar              ,ONLY: InitMortar,FinalizeMortar
+USE MOD_FV_Vars             ,ONLY: FV_Elems
+USE MOD_Restart             ,ONLY: SupersampleFVCell
+USE MOD_Restart_Vars        ,ONLY: NFVRestartSuper
 #endif /*FV_ENABLED*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

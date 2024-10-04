@@ -25,5 +25,7 @@ SAVE
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL              :: doCalcTimeAverage   =.FALSE.      !< marks if time averaging should be performed
+REAL   ,ALLOCATABLE  :: UAvg(:,:,:,:,:)                   !< time averaged solution U
+REAL   ,ALLOCATABLE  :: UFluc(:,:,:,:,:)                  !< time averaged solution squared (U^2)
 !==================================================================================================================================
 END MODULE MOD_AnalyzeEquation_Vars
