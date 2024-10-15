@@ -53,8 +53,7 @@ USE MOD_PreProc
 USE MOD_EddyVisc_Vars
 USE MOD_ReadInTools        ,ONLY: GETREAL,GETLOGICAL
 USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone,wGP
-USE MOD_Mesh_Vars          ,ONLY: MeshInitIsDone,nElems,sJ,Elem_xGP
-USE MOD_EOS_Vars           ,ONLY: mu0
+USE MOD_Mesh_Vars          ,ONLY: MeshInitIsDone,nElems,sJ
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -108,13 +107,14 @@ REAL                          ,INTENT(IN)  :: CsDeltaS2  !> constant factor (CS*
 REAL                          ,INTENT(OUT) :: muSGS      !> pointwise eddyviscosity
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                                    :: g(3,3)    !> Velocity gradient tensor (g_ij)
-REAL                                    :: g_sq(3,3) !> Squared velocity gradient tensor (g^2_ij = g_ik * g_kj)
-REAL                                    :: tr_g_sq   !> Volumetric part of squared velocity gradient tensor (g^2_kk/3.)
-REAL                                    :: norm_S    !> Norm of strain rate tensor (S_ij*S_ij)
-                                                     !>   with: S_ij = 1/2*(g_ij + g_ji)
-REAL                                    :: norm_S_d  !> Norm of symmetric, deviatoric part of g_sq (S^d_ij*S^d_ij)
-                                                     !>   with: S^d_ij = 1/2*(g^2_ij + g^2_ji) - delta_ij*g^2_kk/3.   (Eq.10)
+REAL                                 :: g(3,3)      !> Velocity gradient tensor (g_ij)
+REAL                                 :: g_sq(3,3)   !> Squared velocity gradient tensor (g^2_ij = g_ik * g_kj)
+REAL                                 :: tr_g_sq     !> Volumetric part of squared velocity gradient tensor (g^2_kk/3.)
+REAL                                 :: norm_S      !> Norm of strain rate tensor (S_ij*S_ij)
+                                                    !>   with: S_ij = 1/2*(g_ij + g_ji)
+REAL                                 :: norm_S_d    !> Norm of symmetric, deviatoric part of g_sq (S^d_ij*S^d_ij)
+                                                    !>   with: S^d_ij = 1/2*(g^2_ij + g^2_ji) - delta_ij*g^2_kk/3.   (Eq.10)
+REAL,PARAMETER                       :: eps = 1.e-9 !> Small number to avoid division by zero
 !===================================================================================================================================
 ! Build velocity gradient tensor (g_ij)
 g(:,1)=gradUx(LIFT_VELV)
@@ -137,7 +137,13 @@ norm_S_d = 0.5*( (g_sq(1,2)+g_sq(2,1))**2 + (g_sq(2,3)+g_sq(3,2))**2 + (g_sq(3,1
          + (g_sq(1,1)-tr_g_sq)**2 + (g_sq(2,2)-tr_g_sq)**2 + (g_sq(3,3)-tr_g_sq)**2                 ! Diagonal
 
 ! WALE model: mu = rho * (DeltaS*C_w)**2 * beta
-muSGS = dens * CsDeltaS2 * norm_S_d**(3./2.) / (norm_S**(5./2.) + norm_S_d**(5./4.)) ! Eq. (13)
+! Check if gradients are small, since then quotient A/B tends towards 0/0, which is undefined.
+! Set mu_sgs=0 manually in this case instead. The limits here are chosen in an ad hoc manner.
+IF (norm_S_d .LT. eps) THEN
+  muSGS = 0.
+ELSE
+  muSGS = dens * CsDeltaS2 * norm_S_d**(3./2.) / (norm_S**(5./2.) + norm_S_d**(5./4.)) ! Eq. (13)
+END IF
 END SUBROUTINE WALE_Point
 
 
