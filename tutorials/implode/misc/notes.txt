@@ -1,0 +1,19 @@
+I've attached a t=2.5 shot of FV elements showing some FV present.  I
+used Minmod with Ind=(-4,-3) with DG beginning at t = 0.01.
+
+All 6 faces have "Wall Slip" (Boundary Type 9) conditions.  I believe
+this is a solid wall but with free slip BC's.  I can run something else
+if you'd like??
+
+
+Here is the FV only full t=2.5 rotated setup and t=2.5 comparison plots.  The
+rotation angle was 0.4 radians.  The plot to line pdf shows data along 2 rays
+from origin to the midpoints of the 2 far box sides.  Both lines are symmetric
+to the centerline of the box (perpendicular to the initial discontinuity.  If
+the calculations are symmetric, these density plots should be a single line,
+one atop the other.  They aren't.  These are at the end time.  I also showed
+the density plot in the box at t=2.5 with the 2 rays to illustrate what I'd
+done in the other plot. I have not yet compared these results to those without
+rotation., but will do that soon.  Included are the hopr ini file and resulting
+mesh.
+
