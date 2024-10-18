@@ -108,28 +108,33 @@ REAL                          ,INTENT(IN)  :: CSdeltaS2  !> filter width
 REAL                          ,INTENT(OUT) :: muSGS      !> pointwise eddyviscosity
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER      :: i,j,k
-REAL         :: alpha(3,3),beta(3,3)
-REAL         :: A,B
+INTEGER        :: i,j,k
+REAL           :: alpha(3,3),beta(3,3)
+REAL           :: A,B
+REAL,PARAMETER :: eps_A = 1.e-5
+REAL,PARAMETER :: eps_B = 1.e-12
 !===================================================================================================================================
 alpha(1,:)=gradUx(LIFT_VELV)
 alpha(2,:)=gradUy(LIFT_VELV)
 alpha(3,:)=gradUz(LIFT_VELV)
-beta=0.
-DO j=1,3; DO i=1,3; DO k=1,3
-  beta(i,j)=beta(i,j)+alpha(k,i)*alpha(k,j)
-END DO; END DO; END DO! i,j,k=1,3
-B=beta(1,1)*beta(2,2)-beta(1,2)**2+beta(1,1)*beta(3,3)-beta(1,3)**2+beta(2,2)*beta(3,3)-beta(2,3)**2
 
-A=0.
+beta = 0.
 DO j=1,3; DO i=1,3
-  A=A+alpha(i,j)*alpha(i,j)
-END DO; END DO! i,j=1,3
+  DO k=1,3
+    beta(i,j) = beta(i,j) + alpha(k,i)*alpha(k,j)
+  END DO ! k=1,3
+END DO; END DO ! i,j=1,3
+B = beta(1,1)*beta(2,2)-beta(1,2)**2+beta(1,1)*beta(3,3)-beta(1,3)**2+beta(2,2)*beta(3,3)-beta(2,3)**2
+
+A = 0.
+DO j=1,3; DO i=1,3
+  A = A + alpha(i,j)*alpha(i,j)
+END DO; END DO ! i,j=1,3
 
 ! Vreman: 2.5*(CS * deltaS)**2 * SQRT(B/A) * dens
 ! Check if gradients are small, since then quotient A/B tends towards 0/0, which is undefined.
 ! Set mu_sgs=0 manually in this case instead. The limits here are chosen in an ad hoc manner.
-IF (B .LT. 1d-12 .OR. A .LT. 1d-5) THEN
+IF ( (B .LT. eps_B) .OR. (A .LT. eps_A) ) THEN
   muSGS = 0.
 ELSE
   muSGS = CSdeltaS2 * SQRT(B/A) * dens
