@@ -125,9 +125,12 @@ SELECT CASE(OverintegrationType)
     CALL Overintegration(U)
 END SELECT
 
-#if FV_ENABLED == 2 || FV_ENABLED == 3
-! FV Blending requires the indicator before the DG operator
+! Indicator (and FV_FillIni) need to be called for the DG operator below to return a valid solution
+#if FV_ENABLED
 CALL CalcIndicator(U,t)
+#endif
+#if FV_ENABLED == 1
+IF(.NOT.DoRestart)  CALL FV_FillIni()
 #endif
 ! initial update of baseflow
 IF (doBaseFlow) CALL UpdateBaseFlow(0.)
@@ -135,12 +138,11 @@ IF (doBaseFlow) CALL UpdateBaseFlow(0.)
 ! Do first RK stage of first timestep to fill gradients
 CALL DGTimeDerivative_weakForm(t)
 
+! Compute indicator again (and switch) since first indicator call above did not include gradients (needed by e.g. Ducros indicator)
+#if FV_ENABLED
+CALL CalcIndicator(U,t)
+#endif
 #if FV_ENABLED == 1
-! initial switch to FV sub-cells (must be called after DGTimeDerivative_weakForm, since indicator may require gradients)
-CALL CalcIndicator(U,t)
-IF(.NOT.DoRestart)  CALL FV_FillIni()
-! FV_FillIni might still give invalid cells, switch again ...
-CALL CalcIndicator(U,t)
 CALL FV_Switch(U,AllowToDG=.FALSE.)
 #endif /* FV_ENABLED == 1 */
 #if PP_LIMITER
