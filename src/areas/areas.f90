@@ -56,7 +56,7 @@ USE MOD_ReadInTools
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INOUT VARIABLES
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 CHARACTER(LEN=*),INTENT(IN)                 :: AreaStr         !< Area name
 TYPE(tArea),INTENT(INOUT),TARGET            :: locArea         !< Area type, will be filled in the routine
@@ -262,23 +262,23 @@ END SUBROUTINE InitArea
 !----------------------------------------------------------------------------------------------------------------------------------!
 SUBROUTINE PointInPoly(PointX,PointY,PolyX,PolyY,PolyN,Inside)
 ! MODULES                                                                                                                          !
-!----------------------------------------------------------------------------------------------------------------------------------!
-! insert modules here
-!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)         :: PointX,PointY,PolyX(PolyN),PolyY(PolyN)
+!----------------------------------------------------------------------------------------------------------------------------------!
 INTEGER,INTENT(IN)      :: PolyN
+REAL,INTENT(IN)         :: PointX
+REAL,INTENT(IN)         :: PointY
+REAL,INTENT(IN)         :: PolyX(PolyN)
+REAL,INTENT(IN)         :: PolyY(PolyN)
 LOGICAL,INTENT(INOUT)   :: Inside
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: i,j,InOrOut
 REAL                    :: xj,yj,xi,yi
-LOGICAL                 :: ix , iy , jx , jy , EOR
+LOGICAL                 :: ix , iy , jx , jy
 !===================================================================================================================================
-
-! EXCLUSIVE OR STATEMENT FUNCTION.
-EOR(ix,iy) = (ix .OR. iy) .AND. .NOT.(ix .AND. iy)
 
 Inside = .FALSE.
 InOrOut = -1
@@ -306,22 +306,22 @@ DO i=1,PolyN
   jy = (yj.GE.0.0)
 
   ! CHECK WHETHER (PointX,PointY) IS ON VERTICAL SIDE OF POLYGON.
-  IF ( xi.EQ.0.0 .AND. xj.EQ.0.0 .AND. EOR(iy,jy) ) THEN
+  IF ( xi.EQ.0.0 .AND. xj.EQ.0.0 .AND. ix.NEQV.iy ) THEN
     InOrOut = 0
     RETURN
   ENDIF
   ! CHECK WHETHER (PointX,PointY) IS ON HORIZONTAL SIDE OF POLYGON.
-  IF ( yi.EQ.0.0 .AND. yj.EQ.0.0 .AND. EOR(ix,jx) ) THEN
+  IF ( yi.EQ.0.0 .AND. yj.EQ.0.0 .AND. ix.NEQV.iy ) THEN
     InOrOut = 0
     RETURN
   ENDIF
 
   ! CHECK WHETHER BOTH ENDS OF THIS SIDE ARE COMPLETELY 1) TO RIGHT
   ! OF, 2) TO LEFT OF, OR 3) BELOW (PointX,PointY).
-  IF ( .NOT.((iy .OR. jy) .AND. EOR(ix,jx)) ) CYCLE
+  IF ( .NOT.((iy .OR. jy) .AND. ix.NEQV.iy) ) CYCLE
 
   ! DOES THIS SIDE OBVIOUSLY CROSS LINE RISING VERTICALLY FROM (PointX,PointY)
-  IF ( .NOT.(iy .AND. jy .AND. EOR(ix,jx)) ) THEN
+  IF ( .NOT.(iy .AND. jy .AND. ix.NEQV.iy) ) THEN
     IF ( (yi*xj-xi*yj)/(xj-xi).LT.0.0 ) THEN
       CYCLE
     ELSEIF ( (yi*xj-xi*yj)/(xj-xi).EQ.0.0 ) THEN
@@ -349,7 +349,7 @@ USE MOD_Areas_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INOUT VARIABLES
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 TYPE(tArea),INTENT(INOUT),TARGET            :: locArea          !< area type, will be filled in the routine
 !-----------------------------------------------------------------------------------------------------------------------------------
