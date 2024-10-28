@@ -256,8 +256,9 @@ USE MOD_MPI                 ,ONLY: FinalizeMPI
 #endif /*USE_MPI*/
 #if FV_ENABLED
 USE MOD_FV_Basis            ,ONLY: InitFV_Basis,FinalizeFV_Basis,DefineParametersFV_Basis
-USE MOD_Mortar              ,ONLY: InitMortar,FinalizeMortar
 USE MOD_FV_Vars             ,ONLY: FV_Elems
+USE MOD_Indicator_Vars      ,ONLY: IndValue
+USE MOD_Mortar              ,ONLY: InitMortar,FinalizeMortar
 USE MOD_Restart             ,ONLY: SupersampleFVCell
 USE MOD_Restart_Vars        ,ONLY: NFVRestartSuper
 #endif /*FV_ENABLED*/
@@ -338,6 +339,15 @@ END IF
 IF (meshMode_loc.EQ.2)THEN
   CALL InitFV_Basis()
   CALL InitMortar()
+END IF
+
+IF (.NOT.ALLOCATED(FV_Elems)) THEN
+  ALLOCATE(FV_Elems(nElems)) ! holds information if element is DG (0) or FV (1)
+  FV_Elems = 0.
+END IF
+IF (.NOT.ALLOCATED(IndValue)) THEN
+  ALLOCATE(IndValue(nElems)) ! holds information if element is DG (0) or FV (1)
+  IndValue = 0.
 END IF
 #endif
 
