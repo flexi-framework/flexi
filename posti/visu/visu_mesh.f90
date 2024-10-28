@@ -58,6 +58,9 @@ USE MOD_ReadInTools   ,ONLY: prms,GETINT,GETSTR,GETLOGICAL,CountOption
 USE MOD_ReadInTools   ,ONLY: FinalizeParameters
 USE MOD_StringTools   ,ONLY: STRICMP
 USE MOD_VTK           ,ONLY: WriteCoordsToVTK_array
+#if FV_ENABLED
+USE MOD_FV_Basis      ,ONLY: InitFV_Basis,FinalizeFV_Basis,DefineParametersFV_Basis
+#endif
 #if USE_MPI
 USE MOD_MPI           ,ONLY: FinalizeMPI
 #endif
@@ -77,6 +80,9 @@ CALL FinalizeMPI()
 #endif
 CALL FinalizeMesh()
 CALL FinalizeInterpolation()
+#if FV_ENABLED
+CALL FinalizeFV_Basis()
+#endif
 
 CALL OpenDataFile(meshfile_in,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL ReadAttribute(File_ID,'Ngeo',1,IntScalar=Ngeo)
@@ -85,6 +91,9 @@ CALL CloseDataFile()
 IF (LEN_TRIM(postifile).GT.0) THEN
   ! read options from parameter file
   CALL DefineParametersInterpolation()
+#if FV_ENABLED
+  CALL DefineParametersFV_Basis()
+#endif
   CALL DefineParametersMesh()
   CALL prms%SetSection("posti")
   CALL prms%CreateIntOption('NVisu', "Number of points at which solution is sampled for visualization.")
@@ -99,9 +108,15 @@ END IF
 NVisu_FV = 1
 
 ! read mesh, depending if we should visualize the Jacobian or not different mesh modes are needed (calculate metrics or not)
-meshModeLoc = 0
-IF (nVarIni.GT.0) meshModeLoc=2
 CALL InitInterpolation(NVisu)
+IF (nVarIni.GT.0) THEN
+  meshModeLoc = 2
+#if FV_ENABLED
+  CALL InitFV_Basis()
+#endif
+ELSE
+  meshModeLoc = 0
+END IF
 CALL InitMesh(meshMode=meshModeLoc,MeshFile_IN=MeshFile_in)
 
 ! convert to visu grid
