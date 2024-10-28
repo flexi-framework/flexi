@@ -45,10 +45,10 @@ CONTAINS
 SUBROUTINE FV_Switch(U,U2,U3,AllowToDG)
 ! MODULES
 USE MOD_PreProc
+USE MOD_Analyze
+USE MOD_FV_Vars
 USE MOD_Indicator_Vars  ,ONLY: IndValue
 USE MOD_Indicator       ,ONLY: IndPersson
-USE MOD_FV_Vars
-USE MOD_Analyze
 USE MOD_Mesh_Vars       ,ONLY: nElems, sJ
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -62,7 +62,8 @@ LOGICAL,INTENT(IN)          :: AllowToDG                                  !< if 
 ! LOCAL VARIABLES
 REAL    :: U_DG(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL    :: ind
-INTEGER :: iElem
+INTEGER :: iElem,i,j,k
+LOGICAL :: FV_Valid
 !==================================================================================================================================
 DO iElem=1,nElems
   IF (FV_Elems(iElem).EQ.0) THEN ! DG Element
@@ -79,6 +80,17 @@ DO iElem=1,nElems
     IF ((IndValue(iElem).LT.FV_IndLowerThreshold).AND.AllowToDG) THEN
       U_DG = U(:,:,:,:,iElem)
       CALL FV_InterpolateFV2DG(U_DG(:,:,:,:),sJ(:,:,:,iElem,0:FV_SIZE))
+      ! Check validity of solution
+      IF (FV_toDG_check) THEN
+        FV_Valid = .TRUE.
+        DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+          ASSOCIATE (U_Check => U_DG(:,i,j,k))
+          IF (.NOT. EOS_VALID(U_Check)) FV_Valid = .FALSE.
+          END ASSOCIATE
+        END DO; END DO; END DO
+        IF (.NOT.FV_Valid) CYCLE
+      END IF
+      ! Check additional indicator
       IF (FV_toDG_indicator) THEN
         ind = IndPersson(U_DG(:,:,:,:))
         IF (ind.GT.FV_toDG_limit) CYCLE
@@ -132,13 +144,13 @@ END SUBROUTINE FV_ProlongFVElemsToFace
 
 !==================================================================================================================================
 !> Interpolate solution from DG representation to FV subcells.
-!> Interpolation is done either conservatively in reference space or non-conservatively in phyiscal space.
+!> Interpolation is done either conservatively in reference space or non-conservatively in physical space.
 !==================================================================================================================================
 PPURE SUBROUTINE FV_InterpolateDG2FV(U_In,sJ_In)
 ! MODULES
 USE MOD_PreProc
-USE MOD_FV_Vars          ,ONLY: switchConservative,FV_Vdm
 USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisVolume
+USE MOD_FV_Vars          ,ONLY: switchConservative,FV_Vdm
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -168,13 +180,13 @@ END SUBROUTINE FV_InterpolateDG2FV
 
 !==================================================================================================================================
 !> Interpolate solution from FV subcell representation to DG.
-!> Interpolation is done either conservatively in reference space or non-conservatively in phyiscal space.
+!> Interpolation is done either conservatively in reference space or non-conservatively in physical space.
 !==================================================================================================================================
 PPURE SUBROUTINE FV_InterpolateFV2DG(U_In,sJ_In)
 ! MODULES
 USE MOD_PreProc
-USE MOD_FV_Vars          ,ONLY: switchConservative,FV_sVdm
 USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisVolume
+USE MOD_FV_Vars          ,ONLY: switchConservative,FV_sVdm
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -208,9 +220,9 @@ END SUBROUTINE FV_InterpolateFV2DG
 SUBROUTINE FV_Info(iter)
 ! MODULES
 USE MOD_Globals
-USE MOD_Mesh_Vars    ,ONLY: nGlobalElems
 USE MOD_Analyze_Vars ,ONLY: totalFV_nElems
 USE MOD_FV_Vars      ,ONLY: FV_Elems
+USE MOD_Mesh_Vars    ,ONLY: nGlobalElems
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

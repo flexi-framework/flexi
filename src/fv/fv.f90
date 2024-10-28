@@ -70,6 +70,9 @@ CALL prms%CreateRealOption(   'FV_IndUpperThreshold' ,"Upper threshold: Element 
 CALL prms%CreateRealOption(   'FV_IndLowerThreshold' ,"Lower threshold: Element is switched from FV to DG if indicator \n"      //&
                                                       "falls below this value"                                                    &
                                                      ,'-99.')
+CALL prms%CreateLogicalOption('FV_toDG_check'        ,"Apply additional validation against EOS to check if DG solution after \n"//&
+                                                      " switch from FV to DG is valid."                                           &
+                                                     ,'.TRUE.')
 CALL prms%CreateLogicalOption('FV_toDG_indicator'    ,"Apply additional Persson indicator to check if DG solution after \n"     //&
                                                       " switch from FV to DG is valid."                                           &
                                                      ,'.FALSE.')
@@ -96,7 +99,7 @@ END SUBROUTINE DefineParametersFV
 
 !==================================================================================================================================
 !> Read in parameters needed for FV sub-cells (indicator min/max and type of limiter) and allocate several arrays.
-!> Build metrics for FV sub-cells and performe initial switch from DG to FV sub-cells for all troubled cells.
+!> Build metrics for FV sub-cells and perform initial switch from DG to FV sub-cells for all troubled cells.
 !==================================================================================================================================
 SUBROUTINE InitFV()
 ! MODULES
@@ -146,8 +149,10 @@ switchConservative = GETLOGICAL("FV_SwitchConservative")
 FV_IndLowerThreshold = GETREAL('FV_IndLowerThreshold')
 FV_IndUpperThreshold = GETREAL('FV_IndUpperThreshold')
 
-! Read flag indicating, if an additional Persson indicator should check if a FV sub-cells element really contains no oscillations
-! anymore.
+! Read flag for additional indicators
+! EOS validation to check if a FV sub-cells element really contains no oscillations anymore
+FV_toDG_check     = GETLOGICAL('FV_toDG_check')
+! Persson indicator to check if a FV sub-cells element really contains no oscillations anymore
 FV_toDG_indicator = GETLOGICAL('FV_toDG_indicator')
 IF (FV_toDG_indicator) THEN
   FV_toDG_limit = GETREAL('FV_toDG_limit')
@@ -353,7 +358,7 @@ END SUBROUTINE InitFV
 
 !==================================================================================================================================
 !> Interpolate face solution from DG representation to FV subcells.
-!> Interpolation is done either conservatively in reference space or non-conservatively in phyiscal space.
+!> Interpolation is done either conservatively in reference space or non-conservatively in physical space.
 !==================================================================================================================================
 PPURE SUBROUTINE FV_InterpolateDG2FV_Face(nVar,U_In,sJ_In)
 ! MODULES

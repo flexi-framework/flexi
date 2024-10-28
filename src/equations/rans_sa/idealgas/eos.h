@@ -51,6 +51,7 @@
 
 ! routines to compute physical quantities from conservative variables or extended variables
 ! conservative
+#define EOS_VALID(U)                   (U(DENS).GT.0. .AND. U(ENER).GT.0. .AND. U(MUSA).GT.0.)
 #define VELOCITY_H(U,sRho)             (U(MOMV)*sRho)
 #define SPEEDOFSOUND_H(p,sRho)         (SQRT(Kappa*p*sRho))
 #define TOTALENERGY_H(U,sRho,Vel)      (U(ENER)/U(DENS))

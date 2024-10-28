@@ -647,7 +647,7 @@ REAL                :: gradUzeta_central_face   (       PP_nVarLifting,0:PP_N  ,
 !==================================================================================================================================
 ! NOTE: Main steps:
 ! 1. map gradients form GRAD to PRIM to LIFT on faces for viscous fluxes
-! 2. Calculate the gradients in xi-, eta-, zeta-direction on all FV inner sides via aritmetic mean of four neighbour cells
+! 2. Calculate the gradients in xi-, eta-, zeta-direction on all FV inner sides via arithmetic mean of four neighbour cells
 !    (use the "unlimited" central gradients and not the "limited" gradients)
 ! 3. Calculate the gradients in x-,  y- ,  z-   direction on all FV inner sides with corresponding FV-metrics
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -665,7 +665,7 @@ DO k=0,PP_NZ+1; DO j=0,PP_N; DO i=0,PP_N
 END DO; END DO; END DO! i,j,k=0,PP_N
 #endif
 
-! 2. Calculate the gradients in xi-, eta-, zeta-direction on all FV inner sides via aritmetic mean of four neighbour cells
+! 2. Calculate the gradients in xi-, eta-, zeta-direction on all FV inner sides via arithmetic mean of four neighbour cells
 ! First the gradients normal to the gradient normal to the sides is copied
 ! From Green's theorem: du(xi)_dxi = 1/dxi (u_{i+1,j,k} - u_{i,j,k})
 DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N-1
@@ -880,7 +880,7 @@ DO locSideID = 2, 5
         END IF
 #endif /* PP_dim==3 */
     END SELECT
-    ! Rotate from element local xi/eta/zeta sytem to normal system of master side
+    ! Rotate from element local xi/eta/zeta system to normal system of master side
     IF (flip.EQ.0) THEN
       FV_surf_gradU_master (:,1,p,q,SideID)= FV_Metrics_NormVec_master (1,p,q,SideID)*gradMapPrim_XI (:)&
                                            + FV_Metrics_NormVec_master (2,p,q,SideID)*gradMapPrim_ETA(:)

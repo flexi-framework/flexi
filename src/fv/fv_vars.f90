@@ -36,6 +36,8 @@ REAL                   :: FV_IndLowerThreshold   !< Lower threshold: Element is 
 #if FV_ENABLED == 1
 LOGICAL                :: FV_toDG_indicator      !< additional Persson indicator applied to DG solution after switch from FV to DG
                                                  !< to check if DG solution is valid
+LOGICAL                :: FV_toDG_check          !< additional check against equation of state after switch from FV to DG
+                                                 !< to check if DG solution is valid
 REAL                   :: FV_toDG_limit          !< limit for ^ this indicator: If FV_toDG_indicator is above limit, keep FV
 LOGICAL                :: FV_toDGinRK            !< Flag that allows switching of FV elements to DG during Runge Kutta stages.
                                                  !< This may violated the DG timestep restriction of the element.
@@ -106,7 +108,7 @@ REAL,ALLOCATABLE       :: Ut_zeta(:,:,:,:,:)
 ! FV variables on reference element
 REAL,ALLOCATABLE       :: FV_X(:)                !< positions of 'midpoints' of FV subcells in [-1,1]
 REAL,ALLOCATABLE       :: FV_BdryX(:)            !< positions of boundaries of FV subcells in [-1,1]
-REAL,ALLOCATABLE       :: FV_w(:)                !< weights of FV subcells (lenght of subcell)
+REAL,ALLOCATABLE       :: FV_w(:)                !< weights of FV subcells (length of subcell)
 REAL,ALLOCATABLE       :: FV_w_inv(:)            !< 1/FV_w
 REAL,ALLOCATABLE       :: FV_Vdm(:,:)            !< Vandermonde to switch from DG to FV
 REAL,ALLOCATABLE       :: FV_sVdm(:,:)           !< Vandermonde to switch from FV to DG
