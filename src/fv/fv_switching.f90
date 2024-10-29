@@ -46,10 +46,14 @@ SUBROUTINE FV_Switch(U,U2,U3,AllowToDG)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Analyze
+USE MOD_EOS             ,ONLY: ConsToPrim
 USE MOD_FV_Vars
 USE MOD_Indicator_Vars  ,ONLY: IndValue
 USE MOD_Indicator       ,ONLY: IndPersson
 USE MOD_Mesh_Vars       ,ONLY: nElems, sJ
+#if PP_NodeType == 1
+USE MOD_ProlongToFace   ,ONLY: EvalElemFace
+#endif /*PP_NodeType == 1*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -62,8 +66,17 @@ LOGICAL,INTENT(IN)          :: AllowToDG                                  !< if 
 ! LOCAL VARIABLES
 REAL    :: U_DG(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL    :: ind
-INTEGER :: iElem,i,j,k
+INTEGER :: iElem
+! A posterio checking
 LOGICAL :: FV_Valid
+INTEGER :: i,j,k
+REAL    :: U_Cons(CONS)
+REAL    :: U_Prim(PRIM)
+#if PP_NodeType == 1
+INTEGER :: locSide
+REAL    :: UFace_Cons(CONS,0:PP_N,0:PP_NZ)
+REAL    :: UFace_Prim(PRIM,0:PP_N,0:PP_NZ)
+#endif /*PP_NodeType == 1*/
 !==================================================================================================================================
 DO iElem=1,nElems
   IF (FV_Elems(iElem).EQ.0) THEN ! DG Element
@@ -84,10 +97,21 @@ DO iElem=1,nElems
       IF (FV_toDG_check) THEN
         FV_Valid = .TRUE.
         DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-          ASSOCIATE (U_Check => U_DG(:,i,j,k))
-          IF (.NOT. EOS_VALID(U_Check)) FV_Valid = .FALSE.
-          END ASSOCIATE
+          U_Cons = U_DG(:,i,j,k)
+          CALL ConsToPrim(U_Prim,U_Cons)
+          IF (.NOT. EOS_VALID(U_Prim)) FV_Valid = .FALSE.
         END DO; END DO; END DO
+#if PP_NodeType == 1
+        DO locSide = 1,6
+          CALL EvalElemFace(PP_nVar,PP_N,U_DG,UFace_Cons,locSide)
+          CALL ConsToPrim(PP_N,UFace_Prim,UFace_Cons)
+          DO j=0,PP_NZ; DO i=0,PP_N
+            ASSOCIATE (U_Prim => UFace_Prim(:,i,j))
+              IF (.NOT. EOS_VALID(U_Prim)) FV_Valid = .FALSE.
+            END ASSOCIATE
+          END DO; END DO
+        END DO ! locSide = 1,6
+#endif /*PP_NodeType == 1*/
         IF (.NOT.FV_Valid) CYCLE
       END IF
       ! Check additional indicator
