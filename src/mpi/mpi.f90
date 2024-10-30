@@ -132,8 +132,8 @@ ELSE
   CALL MPI_COMM_GET_ATTR(MPI_COMM_WORLD,MPI_APPNUM,myApp,foundAttr,iError)
   IF (foundAttr) THEN
     ! Split communicator to obtain own MPI_COMM_FLEXI per executable (explicit cast, since API requires INT().)
-    color = INT(myApp)
-    CALL MPI_COMM_SPLIT(MPI_COMM_WORLD,color,MPI_INFO_NULL,MPI_COMM_FLEXI,iError)
+    color = MAX(INT(myApp), 0)
+    CALL MPI_COMM_SPLIT(MPI_COMM_WORLD,color,0,MPI_COMM_FLEXI,iError)
   ELSE
     ! Duplicate communicator instead of just copying it. Creates a clean copy with all the cached information intact
     CALL MPI_COMM_DUP(MPI_COMM_WORLD,MPI_COMM_FLEXI,iError)
