@@ -489,8 +489,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Lifting_Vars ,ONLY: gradUx_master,gradUx_slave,gradUy_master,gradUy_slave
 USE MOD_FV_Vars      ,ONLY: FV_Elems_Sum,FV_surf_gradU_master,FV_surf_gradU_slave
-!USE MOD_Mesh_Vars    ,ONLY: firstInnerSide,lastInnerSide,firstMPISide_MINE,lastMPISide_MINE
-USE MOD_Mesh_Vars    ,ONLY: nSides,NormVec,TangVec1,firstMortarInnerSide
+USE MOD_Mesh_Vars    ,ONLY: nSides,NormVec,TangVec1,firstMortarInnerSide,lastMPISide_MINE
 #if PP_dim==3
 USE MOD_Mesh_Vars    ,ONLY: TangVec2
 USE MOD_Lifting_Vars ,ONLY: gradUz_master,gradUz_slave
@@ -501,20 +500,9 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: SideID,p,q !,firstSideID,lastSideID
+INTEGER :: SideID,p,q
 !==================================================================================================================================
-
-!IF(doMPISides)THEN
-!  ! fill only flux for MINE MPISides
-!  firstSideID = firstMPISide_MINE
-!  lastSideID  = lastMPISide_MINE
-!ELSE
-!  ! fill only InnerSides
-!  firstSideID = firstInnerSide
-!  lastSideID  = lastInnerSide
-!END IF
-
-DO SideID = firstMortarInnerSide, nSides
+DO SideID = firstMortarInnerSide, lastMPISide_MINE
   SELECT CASE(FV_Elems_Sum(SideID))
   CASE(0) ! both DG
     CYCLE

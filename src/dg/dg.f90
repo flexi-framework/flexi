@@ -289,6 +289,7 @@ USE MOD_MPI                 ,ONLY: StartExchange_FV_Elems
 USE MOD_FV_Vars             ,ONLY: gradUxi,gradUeta,gradUzeta
 #if VOLINT_VISC
 USE MOD_FV_Vars             ,ONLY: gradUxi_central,gradUeta_central,gradUzeta_central
+USE MOD_FV_Vars             ,ONLY: FV_surf_gradU_master,FV_surf_gradU_slave
 USE MOD_FV_Reconstruction   ,ONLY: FV_SurfCalcGradients_Parabolic
 #endif /* VOLINT_VISC */
 USE MOD_FV_Vars             ,ONLY: FV_surf_gradU,FV_multi_master,FV_multi_slave
@@ -446,6 +447,9 @@ CALL U_MortarPrim(FV_multi_master,FV_multi_slave,doMPiSides=.FALSE.)
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U)        ! U_slave: slave -> master
 #if FV_ENABLED
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_Elems) ! FV_Elems_slave: slave -> master
+! communicate FV_Elems_master from master to slave to define FV_Elems_Sum properly also for YOUR sides (needed e.g. by Lifting_FillFlux_NormVec)
+CALL StartExchange_FV_Elems(FV_Elems_master,1,nSides,MPIRequest_FV_Elems(:,SEND),MPIRequest_FV_Elems(:,RECV),SendID=1)
+                                                            ! Receive YOUR, Send MINE / FV_Elems_master: master -> slave
 #if (FV_ENABLED == 2) && (PP_NodeType==1)
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_U)     ! FV_U_slave: slave -> master
 #endif
@@ -463,6 +467,9 @@ CALL GetPrimitiveStateSurface(U_master,U_slave,UPrim_master,UPrim_slave)
 CALL GetPrimitiveStateSurface(FV_U_master,FV_U_slave,FV_UPrim_master,FV_UPrim_slave)
 #endif
 #if FV_ENABLED
+#if USE_MPI
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_Elems) ! FV_Elems_master: master -> slave
+#endif
 ! Build four-states-array for the 4 different combinations DG/DG(0), FV/DG(1), DG/FV(2) and FV/FV(3) a face can be.
 FV_Elems_Sum = FV_Elems_master + 2*FV_Elems_slave
 #endif /*FV_ENABLED*/
@@ -511,11 +518,17 @@ CALL FV_SurfCalcGradients_BC(UPrim_master,FV_surf_gradU,t)
 ! 5.5)
 CALL FV_ProlongToDGFace(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,FV_surf_gradU,doMPISides=.FALSE.)
 ! 5.6)
+#if VOLINT_VISC && USE_MPI
+CALL StartReceiveMPIData(FV_surf_gradU_slave,DataSizeSideGradParabolic,1,nSides,MPIRequest_FV_gradU(:,RECV),SendID=2)
+#endif
 CALL FV_CalcGradients(UPrim,FV_surf_gradU,gradUxi,gradUeta,gradUzeta &
 #if VOLINT_VISC
     ,gradUxi_central,gradUeta_central,gradUzeta_central &
 #endif /* VOLINT_VISC */
     )
+#if VOLINT_VISC && USE_MPI
+CALL StartSendMPIData(FV_surf_gradU_slave,DataSizeSideGradParabolic,1,nSides,MPIRequest_FV_gradU(:,SEND),SendID=2)
+#endif
 #endif /* FV_ENABLED && FV_RECONSTRUCT */
 
 #if PARABOLIC
@@ -590,6 +603,9 @@ CALL FinishExchangeMPIData(6*nNbProcs,MPIRequest_gradU) ! gradUx,y,z: slave -> m
 CALL FV_DGtoFV(PP_nVarLifting,gradUx_master,gradUx_slave)
 CALL FV_DGtoFV(PP_nVarLifting,gradUy_master,gradUy_slave)
 CALL FV_DGtoFV(PP_nVarLifting,gradUz_master,gradUz_slave)
+#if USE_MPI
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_gradU) ! FV_surf_gradU_slave: slave -> master
+#endif
 CALL FV_SurfCalcGradients_Parabolic()
 #endif /* VOLINT_VISC */
 

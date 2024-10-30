@@ -215,9 +215,10 @@ MPIRequest_gradU = MPI_REQUEST_NULL
 #if EDDYVISCOSITY
 DataSizeSideSGS= (PP_N+1)*(PP_NZ+1)
 #endif
-DataSizeSide      =PP_nVar*(PP_N+1)*(PP_NZ+1)
-DataSizeSidePrim  =PP_nVarPrim*(PP_N+1)*(PP_NZ+1)
-DataSizeSideGrad  =PP_nVarLifting*(PP_N+1)*(PP_NZ+1)
+DataSizeSide             =PP_nVar*(PP_N+1)*(PP_NZ+1)
+DataSizeSidePrim         =PP_nVarPrim*(PP_N+1)*(PP_NZ+1)
+DataSizeSideGrad         =PP_nVarLifting*(PP_N+1)*(PP_NZ+1)
+DataSizeSideGradParabolic=PP_nVarLifting*(PP_N+1)*(PP_NZ+1)*3
 
 ! split communicator into smaller groups (e.g. for local nodes)
 GroupSize=GETINT('GroupSize')
