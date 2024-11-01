@@ -885,9 +885,9 @@ DO locSideID = 2, 5
                                +gradUeta_tmp(PRIM_LIFT,ijk(1),ijk(3),ijk(2)+1))
         ! Across DG Side
         IF (locSideID .EQ. ZETA_MINUS) THEN
-          gradMapPrim_Zeta = gradUeta_tmp(PRIM_LIFT,ijk(1),ijk(2),ijk(3))
+          gradMapPrim_Zeta = gradUzeta_tmp(PRIM_LIFT,ijk(1),ijk(2),ijk(3))
         ELSE
-          gradMapPrim_Zeta = gradUeta_tmp(PRIM_LIFT,ijk(1),ijk(2),ijk(3)+1)
+          gradMapPrim_Zeta = gradUzeta_tmp(PRIM_LIFT,ijk(1),ijk(2),ijk(3)+1)
         END IF
 #endif /* PP_dim==3 */
     END SELECT
