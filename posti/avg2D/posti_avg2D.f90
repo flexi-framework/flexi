@@ -146,7 +146,11 @@ CALL GetDatasetNamesInGroup("/",tmpDatasetNames)
 CALL CloseDataFile()
 
 ! Copy the current file, so we keep all the attributes etc.
-NewFileName = Args(StartArgs)(:LEN(TRIM(Args(StartArgs)))-3)//'_avg2D.h5'
+IF (doAvg1D) THEN
+  NewFileName = Args(StartArgs)(:LEN(TRIM(Args(StartArgs)))-3)//'_avg1D.h5'
+ELSE
+  NewFileName = Args(StartArgs)(:LEN(TRIM(Args(StartArgs)))-3)//'_avg2D.h5'
+END IF
 IF (MPIRoot) CALL EXECUTE_COMMAND_LINE("cp -f "//TRIM(Args(StartArgs))//" "//TRIM(NewFileName))
 
 ! Loop over all the datasets
