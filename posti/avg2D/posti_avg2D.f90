@@ -58,6 +58,7 @@ INTEGER                              :: nElems_IJK_HDF5(3)
 INTEGER                              :: iArg
 INTEGER                              :: StartArgs,nFiles
 CHARACTER(LEN=255)                   :: tmp,arg
+LOGICAL                              :: doAvg1D
 !===================================================================================================================================
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
@@ -193,6 +194,28 @@ DO iDataset = 1, SIZE(tmpDatasetNames)
       j = Elem_IJK(2,iElem)
       RealElemArray(:,iElem) = RealElemAvg(:,i,j)
     END DO ! iElem
+    ! Average again in x-direction
+    IF (doAvg1D) THEN
+      DEALLOCATE(RealElemAvg)
+      ALLOCATE(RealElemAvg(nVar,nElems_IJK(2),nElems_IJK(3)))
+      RealElemAvg = 0.
+      DO iElem=1,nElems
+        ! Indixes in the IJK sorting
+        i = Elem_IJK(2,iElem)
+        j = Elem_IJK(3,iElem)
+        ! Build sum
+        RealElemAvg(:,i,j) = RealElemAvg(:,i,j) + RealElemArray(:,iElem)
+      END DO ! iElem
+      ! Finish sum
+      RealElemAvg = RealElemAvg / nElems_IJK(1)
+      ! Write back to the array itself
+      DO iElem=1,nElems
+        ! Indixes in the IJK sorting
+        i = Elem_IJK(2,iElem)
+        j = Elem_IJK(3,iElem)
+        RealElemArray(:,iElem) = RealElemAvg(:,i,j)
+      END DO ! iElem
+    END IF ! doAvg1D
   ELSE IF (nDims.EQ.5) THEN
     ! Pointwise data set
     ALLOCATE(RealAvg(nVar,0:N,0:N,nElems_IJK(1),nElems_IJK(2)))
@@ -224,6 +247,37 @@ DO iDataset = 1, SIZE(tmpDatasetNames)
         END DO ! l = 0,N
       END DO; END DO ! p,q=0,PP_N
     END DO ! iElem
+    ! Average again in x-direction
+    IF (doAvg1D) THEN
+      DEALLOCATE(RealAvg)
+      ALLOCATE(RealAvg(nVar,0:N,0:N,nElems_IJK(2),nElems_IJK(3)))
+      RealAvg = 0.
+      DO iElem=1,nElems
+        ! Indixes in the IJK sorting
+        i = Elem_IJK(2,iElem)
+        j = Elem_IJK(3,iElem)
+        ! Build sum
+        DO q=0,N; DO p=0,N
+          DO l = 0,N
+            RealAvg(:,p,q,i,j) = RealAvg(:,p,q,i,j) + RealArray(:,l,q,p,iElem)*wGP(l)/2.
+          END DO ! l = 0,N
+        END DO; END DO ! p,q=0,PP_N
+      END DO ! iElem
+      ! Finish sum
+      RealAvg = RealAvg / (nElems_IJK(1))
+      ! Write back to the array itself
+      DO iElem=1,nElems
+        ! Indixes in the IJK sorting
+        i = Elem_IJK(2,iElem)
+        j = Elem_IJK(3,iElem)
+        ! Build sum
+        DO q=0,N; DO p=0,N
+          DO l = 0,N
+            RealArray(:,p,q,l,iElem) = RealAvg(:,p,q,i,j)
+          END DO ! l = 0,N
+        END DO; END DO ! p,q=0,PP_N
+      END DO ! iElem
+    END IF
   END IF
 
   ! Open new file and write the array
