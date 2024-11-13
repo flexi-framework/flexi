@@ -263,19 +263,31 @@ SET_PROPERTY(CACHE FLEXI_TESTCASE PROPERTY STRINGS ${TESTCASES})
 # Unit test at end of compilation
 # =========================================================================
 # Check is unit tests can be activated
-IF(BUILD_TYPE_LC MATCHES "sanitize" AND LIBS_USE_MPI)
-  SET(ACTIVATE_UNIT_TEST OFF)
+IF(BUILD_TYPE_LC MATCHES "sanitize" AND LIBS_USE_MPI OR BUILD_TYPE_LC MATCHES "profile")
+  SET(ACTIVATE_UNIT_TEST       OFF)
+  # Store if we force-disabled the unit tests
+  SET(UNIT_TEST_FORCE_DISABLED ON  CACHE BOOL "Force disable unit tests" FORCE)
   # Check if unit tests were previously activated
-  IF(FLEXI_UNITTESTS AND LIBS_MPI_NAME MATCHES "OpenMPI")
-    MESSAGE(WARNING "Unit tests automatically disabled (FLEXI_UNITTESTS=OFF) with\n CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}\n LIBS_USE_MPI = ${LIBS_USE_MPI}\nas the tests will always fail due to memory errors returned from the MPI library.")
+  IF(FLEXI_UNITTESTS)
+    IF (BUILD_TYPE_LC MATCHES "profile")
+      MESSAGE(WARNING "Unit tests automatically disabled (FLEXI_UNITTESTS=OFF) with\n CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}\nas the tests will always fail due to memory errors returned from the profiling library.")
+    ELSEIF (LIBS_MPI_NAME MATCHES "OpenMPI")
+      MESSAGE(WARNING "Unit tests automatically disabled (FLEXI_UNITTESTS=OFF) with\n CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}\n LIBS_USE_MPI = ${LIBS_USE_MPI}\nas the tests will always fail due to memory errors returned from the MPI library.")
+    ENDIF()
     SET(FLEXI_UNITTESTS OFF)
   ENDIF()
 ELSE()
   SET(ACTIVATE_UNIT_TEST ON)
 ENDIF()
+MARK_AS_ADVANCED(FORCE UNIT_TEST_FORCE_DISABLED)
 
 # Enable unit testing only when ACTIVATE_UNIT_TEST=ON
 CMAKE_DEPENDENT_OPTION(FLEXI_UNITTESTS "Enable unit tests after build" ON "ACTIVATE_UNIT_TEST" OFF)
+# Re-enable if previously force disabled
+IF (ACTIVATE_UNIT_TEST AND UNIT_TEST_FORCE_DISABLED)
+  SET(FLEXI_UNITTESTS ON)
+  SET(UNIT_TEST_FORCE_DISABLED OFF CACHE BOOL "Force disable unit tests" FORCE)
+ENDIF()
 
 IF(FLEXI_UNITTESTS)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/unitTests/CMakeLists.txt)
@@ -295,8 +307,8 @@ FUNCTION(add_exec target)
   STRING(TOUPPER ${target} TARGETUP)
   ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --cyan "SUCCESS: ${TARGETUP} BUILD COMPLETE!")
   # Strip executable/shared library when building in release mode
-  ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD DEPENDS "${target}" COMMAND $<$<CONFIG:release>:${CMAKE_STRIP}> ARGS --strip-unneeded $<TARGET_FILE:${target}>)
-  ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD DEPENDS "${target}" COMMAND $<$<CONFIG:release>:${CMAKE_STRIP}> ARGS --strip-unneeded $<TARGET_FILE:libflexishared>)
+  ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD COMMAND $<$<CONFIG:release>:${CMAKE_STRIP}> ARGS --strip-unneeded $<TARGET_FILE:${target}>)
+  ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD COMMAND $<$<CONFIG:release>:${CMAKE_STRIP}> ARGS --strip-unneeded $<TARGET_FILE:libflexishared>)
 ENDFUNCTION()
 
 FUNCTION(add_lib_shared target)
