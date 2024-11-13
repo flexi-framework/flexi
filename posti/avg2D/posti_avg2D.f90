@@ -58,7 +58,7 @@ INTEGER                              :: nElems_IJK_HDF5(3)
 INTEGER                              :: iArg
 INTEGER                              :: StartArgs,nFiles
 CHARACTER(LEN=255)                   :: tmp,arg
-LOGICAL                              :: doAvg1D
+LOGICAL                              :: doAvg1D, dsExists
 !===================================================================================================================================
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
@@ -93,6 +93,7 @@ DO iArg = 1,MIN(nArgs,3)
     SWRITE(UNIT_stdOut,'(A,I0)') ' End   layer for averaging is ',maxK
     SWRITE(UNIT_stdOut,'(132("="))')
   ELSEIF (STRICMP(arg(1:7), "--avg1D")) THEN
+    StartArgs = StartArgs+1
     doAvg1D = .TRUE.
     SWRITE(UNIT_stdOut,'(A)') ' Averaging will also be performed in x-direction!'
     SWRITE(UNIT_stdOut,'(132("="))')
@@ -121,6 +122,8 @@ CALL CloseDataFile()
 
 ! Read in the ijk sorting of the mesh
 CALL OpenDataFile(TRIM(MeshFile),create=.FALSE.,single=.TRUE.,readOnly=.TRUE.)
+CALL DatasetExists(File_ID,'Elem_IJK',dsExists)
+IF (.NOT.dsExists) CALL CollectiveStop(__STAMP__,'ERROR: Mesh file is not IJK sorted!')
 CALL GetDataSize(File_ID,'Elem_IJK',nDims,HSize)
 nElems = INT(HSIZE(nDims))
 ALLOCATE(Elem_IJK(3,nElems))
