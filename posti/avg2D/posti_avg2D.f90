@@ -70,15 +70,16 @@ SWRITE(UNIT_stdOut,'(A)') ' AVG2D TOOL'
 SWRITE(UNIT_stdOut,'(132("="))')
 
 CALL ParseCommandlineArguments()
-! First check if the first two arguments contain --minK=, or --maxK=
+! First check if the first two arguments contain --minK=, or --maxK= or --avg1D
 StartArgs    = 1
 minK         = -HUGE(1)
 maxK         =  HUGE(1)
+doAvg1D      = .FALSE.
 
-DO iArg = 1,MIN(nArgs,2)
+DO iArg = 1,MIN(nArgs,3)
   arg = Args(iArg)
 
-  ! check if the -minK= flag is used, read requires dummystring
+  ! check if the -minK= or --avg1D flags are used, read requires dummystring
   IF (STRICMP(arg(1:7), "--minK=")) THEN
     StartArgs = StartArgs+1
     tmp=TRIM(arg(8:LEN(arg)))
@@ -91,11 +92,22 @@ DO iArg = 1,MIN(nArgs,2)
     READ(tmp,*) maxK
     SWRITE(UNIT_stdOut,'(A,I0)') ' End   layer for averaging is ',maxK
     SWRITE(UNIT_stdOut,'(132("="))')
+  ELSEIF (STRICMP(arg(1:7), "--avg1D")) THEN
+    doAvg1D = .TRUE.
+    SWRITE(UNIT_stdOut,'(A)') ' Averaging will also be performed in x-direction!'
+    SWRITE(UNIT_stdOut,'(132("="))')
   END IF
 END DO
 
 ! sanity check
 IF (minK.GT.maxK) CALL CollectiveStop(__STAMP__,'Requested larger minimum than maximum!')
+
+! Give user input that x-averaging is possible
+IF (.NOT.doAvg1D) THEN
+  SWRITE(UNIT_stdOut,'(A)') ' Averaging will NOT be performed in x-direction! To enable, use:'
+  SWRITE(UNIT_stdOut,'(A)') '    posti_avg2D --avg1D statefile.h5'
+  SWRITE(UNIT_stdOut,'(132("="))')
+END IF
 
 ! check if at least 2 timeavg files are there
 nFiles = nArgs-StartArgs+1
