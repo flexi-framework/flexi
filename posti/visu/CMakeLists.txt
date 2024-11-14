@@ -87,11 +87,11 @@ IF (POSTI_VISU_PARAVIEW AND ParaView_FOUND)
    SET(POSTI_VISU_PARAVIEW_SUFFIX "" CACHE STRING "Pass custom suffix to plugin to be able to load several plugins simultaneously")
 
   # High-order elements only supported with ParaView 5.5+
-  IF(${ParaView_VERSION} VERSION_LESS "5.5")
-    ADD_DEFINITIONS(-DPV_HIGHORDER=0)
-  ELSE()
-    ADD_DEFINITIONS(-DPV_HIGHORDER=1)
-  ENDIF()
+  # IF(${ParaView_VERSION} VERSION_LESS "5.5")
+  #   ADD_COMPILE_DEFINITIONS(PV_HIGHORDER=0)
+  # ELSE()
+  #   ADD_COMPILE_DEFINITIONS(PV_HIGHORDER=1)
+  # ENDIF()
 
    # For Paraview >= 5.7, we need to stash the files one directory deeper
    IF(${ParaView_VERSION} VERSION_LESS "5.7")
