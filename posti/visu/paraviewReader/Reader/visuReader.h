@@ -1,6 +1,6 @@
 /*
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -106,8 +106,9 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       int RequestInformation(vtkInformation *, vtkInformationVector **, vtkInformationVector *);
       int RequestData(vtkInformation *, vtkInformationVector **, vtkInformationVector *);
 
-      void InsertData(vtkMultiBlockDataSet* mb, int blockno, struct DoubleARRAY* coords,
-            struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames);
+      void InsertData  (vtkMultiBlockDataSet* mb,          int blockno
+                      , struct DoubleARRAY* coords,        struct DoubleARRAY* values
+                      , struct IntARRAY*    nodeids,       struct CharARRAY* varnames);
 
       vtkDataArraySelection* VarDataArraySelection;
       vtkDataArraySelection* BCDataArraySelection;

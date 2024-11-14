@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -41,6 +42,8 @@ USE MOD_Analyze             ,ONLY: Analyze
 USE MOD_Analyze_Vars        ,ONLY: analyze_dt,tWriteData,WriteData_dt
 USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
 USE MOD_ApplyJacobianCons   ,ONLY: ApplyJacobianCons
+USE MOD_BaseFlow            ,ONLY: UpdateBaseFlow
+USE MOD_BaseFlow_Vars       ,ONLY: doBaseFlow
 USE MOD_DG                  ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars             ,ONLY: U
 USE MOD_Equation_Vars       ,ONLY: StrVarNames
@@ -53,7 +56,7 @@ USE MOD_Overintegration_Vars,ONLY: OverintegrationType
 USE MOD_Predictor           ,ONLY: FillInitPredictor
 USE MOD_RecordPoints        ,ONLY: RecordPoints
 USE MOD_RecordPoints_Vars   ,ONLY: RP_onProc
-USE MOD_Restart_Vars        ,ONLY: DoRestart,RestartTime
+USE MOD_Restart_Vars        ,ONLY: DoRestart,RestartTime,FlushInitialState
 USE MOD_TestCase            ,ONLY: AnalyzeTestCase,CalcForcing
 USE MOD_TimeDisc_Functions  ,ONLY: InitTimeStep,UpdateTimeStep,AnalyzeTimeStep
 USE MOD_TimeStep            ,ONLY: TimeStep
@@ -62,13 +65,14 @@ USE MOD_TimeDisc_Vars       ,ONLY: iter,iter_analyze,maxIter
 USE MOD_TimeDisc_Vars       ,ONLY: t,tStart,tEnd,dt,tAnalyze
 USE MOD_TimeDisc_Vars       ,ONLY: TimeDiscType
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize,writeCounter,nCalcTimestep
+USE MOD_TimeDisc_Vars       ,ONLY: time_start
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
 #if FV_ENABLED
 USE MOD_Indicator           ,ONLY: CalcIndicator
 #endif /*FV_ENABLED*/
 #if FV_ENABLED == 1
 USE MOD_FV_Switching        ,ONLY: FV_FillIni,FV_Switch,FV_Info
-#elif FV_ENABLED == 2
+#elif FV_ENABLED == 2 || FV_ENABLED == 3
 USE MOD_FV_Blending         ,ONLY: FV_Info
 #endif /*FV_ENABLED == 1*/
 #if PP_LIMITER
@@ -81,9 +85,15 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER                       :: TimeArray(8)              !< Array for system time
 !==================================================================================================================================
 
 SWRITE(UNIT_stdOut,'(132("-"))')
+
+! Get system time
+CALL DATE_AND_TIME(values=TimeArray)
+SWRITE(UNIT_stdOut,'(A,I2.2,A1,I2.2,A1,I4.4,A1,I2.2,A1,I2.2,A1,I2.2)') &
+  ' Sys date  :    ',timeArray(3),'.',timeArray(2),'.',timeArray(1),' ',timeArray(5),':',timeArray(6),':',timeArray(7)
 
 ! write number of grid cells and dofs only once per computation
 SWRITE(UNIT_stdOut,'(A13,ES16.7)')'#GridCells : ',REAL(nGlobalElems)
@@ -115,20 +125,24 @@ SELECT CASE(OverintegrationType)
     CALL Overintegration(U)
 END SELECT
 
-#if FV_ENABLED == 2
-! FV Blending requires the indicator before the DG operator
+! Indicator (and FV_FillIni) need to be called for the DG operator below to return a valid solution
+#if FV_ENABLED
 CALL CalcIndicator(U,t)
 #endif
+#if FV_ENABLED == 1
+IF(.NOT.DoRestart)  CALL FV_FillIni()
+#endif
+! initial update of baseflow
+IF (doBaseFlow) CALL UpdateBaseFlow(0.)
 
 ! Do first RK stage of first timestep to fill gradients
 CALL DGTimeDerivative_weakForm(t)
 
+! Compute indicator again (and switch) since first indicator call above did not include gradients (needed by e.g. Ducros indicator)
+#if FV_ENABLED
+CALL CalcIndicator(U,t)
+#endif
 #if FV_ENABLED == 1
-! initial switch to FV sub-cells (must be called after DGTimeDerivative_weakForm, since indicator may require gradients)
-CALL CalcIndicator(U,t)
-IF(.NOT.DoRestart)  CALL FV_FillIni()
-! FV_FillIni might still give invalid cells, switch again ...
-CALL CalcIndicator(U,t)
 CALL FV_Switch(U,AllowToDG=.FALSE.)
 #endif /* FV_ENABLED == 1 */
 #if PP_LIMITER
@@ -137,7 +151,7 @@ IF(DoPPLimiter) CALL PPLimiter()
 
 IF(.NOT.DoRestart) THEN
   SWRITE(UNIT_stdOut,'(A)') ' WRITING INITIAL SOLUTION:'
-ELSE
+ELSEIF (FlushInitialState) THEN
   SWRITE(UNIT_stdOut,'(A)') ' REWRITING SOLUTION:'
 END IF
 
@@ -148,12 +162,13 @@ CALL AnalyzeTestCase(t,.FALSE.)
 CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData,isErrorFile=.FALSE.)
 CALL Visualize(t,U)
 
-! No computation needed if tEnd = tStart!
-IF((t.GE.tEnd).OR.maxIter.EQ.0) RETURN
+! compute initial timestep
+CALL InitTimeStep()
 
 ! Run initial analyze
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' Errors of initial solution:'
+! print initial analyze
 CALL Analyze(t,iter)
 
 ! compute initial timestep
@@ -172,9 +187,11 @@ CALL PPLimiter_Info(1_8)
 SWRITE(UNIT_stdOut,'(A)') ' CALCULATION RUNNING...'
 
 IF(TimeDiscType.EQ.'ESDIRK') CALL FillInitPredictor(t)
+CALL CPU_TIME(time_start)
 
 ! Run computation
 DO
+  IF (doBaseFlow)       CALL UpdateBaseFlow(dt)
   ! Update time step
   CALL UpdateTimeStep()
 
@@ -192,7 +209,7 @@ DO
   ! Perform analysis at the end of the RK loop
   CALL AnalyzeTimeStep()
 
-  CALL PrintStatusLine(t,dt,tStart,tEnd)
+  CALL PrintStatusLine(t,dt,tStart,tEnd,iter,maxIter)
 
   IF(doFinalize) EXIT
 END DO

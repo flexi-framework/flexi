@@ -1,10 +1,11 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2017 Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! Copyright (c) 2016-2017 Gregor Gassner (github.com/project-fluxo/fluxo)
 ! Copyright (c) 2016-2017 Florian Hindenlang (github.com/project-fluxo/fluxo)
 ! Copyright (c) 2016-2017 Andrew Winters (github.com/project-fluxo/fluxo)
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -72,7 +73,6 @@ INTERFACE FinalizeRiemann
   MODULE PROCEDURE FinalizeRiemann
 END INTERFACE
 
-
 PUBLIC::DefineParametersRiemann
 PUBLIC::InitRiemann
 PUBLIC::Riemann
@@ -83,7 +83,6 @@ PUBLIC::ViscousFlux
 !==================================================================================================================================
 
 CONTAINS
-
 
 !==================================================================================================================================
 !> Define parameters
@@ -135,6 +134,7 @@ CALL addStrListEntry('RiemannBC','same',         PRM_RIEMANN_SAME)
 CALL prms%CreateRealOption('RiemannPhiFactor', "Factor to adjust imbalance of advective and acoustic dissipation, fixes grid alligned shock instabilities", "5")
 END SUBROUTINE DefineParametersRiemann
 
+
 !==================================================================================================================================!
 !> Initialize Riemann solver routines, read inner and BC Riemann solver parameters and set pointers
 !==================================================================================================================================!
@@ -144,6 +144,7 @@ USE MOD_Globals
 USE MOD_ReadInTools ,ONLY: GETINTFROMSTR, GETREAL
 !----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -251,6 +252,7 @@ END SELECT
 phiFactor = GETREAL("RiemannPhiFactor")
 END SUBROUTINE InitRiemann
 
+
 !==================================================================================================================================
 !> Computes the numerical flux for a side calling the flux calculation pointwise.
 !> Conservative States are rotated into normal direction in this routine and are NOT backrotated: don't use it after this routine!!
@@ -259,6 +261,7 @@ END SUBROUTINE InitRiemann
 SUBROUTINE Riemann_Side(Nloc,FOut,U_L,U_R,UPrim_L,UPrim_R,nv,t1,t2,doBC)
 ! MODULES
 USE MOD_Flux         ,ONLY:EvalEulerFlux1D_fast
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -284,13 +287,12 @@ ELSE
 END IF
 
 DO j=0,ZDIM(Nloc); DO i=0,Nloc
-  ! Momentum has to be rotatet using the normal system individual for each
+  ! Momentum has to be rotated using the normal system individual for each
   ! left state: U_L
   U_LL(EXT_DENS)=U_L(DENS,i,j)
   U_LL(EXT_SRHO)=1./U_LL(EXT_DENS)
   U_LL(EXT_ENER)=U_L(ENER,i,j)
   U_LL(EXT_PRES)=UPrim_L(PRES,i,j)
-
 
   ! rotate velocity in normal and tangential direction
   U_LL(EXT_VEL1)=DOT_PRODUCT(UPrim_L(VELV,i,j),nv(:,i,j))
@@ -340,7 +342,9 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
 #endif
   Fout(ENER,i,j)=F(ENER)
 END DO; END DO
+
 END SUBROUTINE Riemann_Side
+
 
 !==================================================================================================================================
 !> Computes the numerical flux
@@ -350,6 +354,7 @@ END SUBROUTINE Riemann_Side
 SUBROUTINE Riemann_Point(FOut,U_L,U_R,UPrim_L,UPrim_R,nv,t1,t2,doBC)
 ! MODULES
 USE MOD_Flux         ,ONLY:EvalEulerFlux1D_fast
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -372,13 +377,12 @@ ELSE
   Riemann_loc => Riemann_pointer
 END IF
 
-! Momentum has to be rotatet using the normal system individual for each
+! Momentum has to be rotated using the normal system individual for each
 ! left state: U_L
 U_LL(EXT_DENS)=U_L(DENS)
 U_LL(EXT_SRHO)=1./U_LL(EXT_DENS)
 U_LL(EXT_ENER)=U_L(ENER)
 U_LL(EXT_PRES)=UPrim_L(PRES)
-
 
 ! rotate velocity in normal and tangential direction
 U_LL(EXT_VEL1)=DOT_PRODUCT(UPrim_L(VELV),nv(:))
@@ -424,10 +428,11 @@ Fout(MOMV)=nv(:)*F(MOM1)  &
 #if PP_dim==3
           +t2(:)*F(MOM3)
 #else
-          +0.
+          + 0.
 #endif
 Fout(ENER)=F(ENER)
 END SUBROUTINE Riemann_Point
+
 
 #if PARABOLIC
 !==================================================================================================================================
@@ -444,6 +449,7 @@ SUBROUTINE ViscousFlux_Side(Nloc,F,UPrim_L,UPrim_R, &
 USE MOD_Flux         ,ONLY: EvalDiffFlux3D
 USE MOD_Lifting_Vars ,ONLY: diffFluxX_L,diffFluxY_L,diffFluxZ_L
 USE MOD_Lifting_Vars ,ONLY: diffFluxX_R,diffFluxY_R,diffFluxZ_R
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -485,6 +491,7 @@ DO q=0,ZDIM(Nloc); DO p=0,Nloc
 END DO; END DO
 END SUBROUTINE ViscousFlux_Side
 
+
 !==================================================================================================================================
 !> Computes the viscous NSE diffusion fluxes in all directions to approximate the numerical flux
 !> Actually not a Riemann solver, only here for coding reasons
@@ -497,6 +504,7 @@ SUBROUTINE ViscousFlux_Point(F,UPrim_L,UPrim_R, &
                             )
 ! MODULES
 USE MOD_Flux         ,ONLY: EvalDiffFlux3D
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -537,6 +545,7 @@ F(:)=0.5*(nv(1)*(diffFluxX_L(:)+diffFluxX_R(:)) &
 END SUBROUTINE ViscousFlux_Point
 #endif /* PARABOLIC */
 
+
 !==================================================================================================================================
 !> Local Lax-Friedrichs (Rusanov) Riemann solver
 !==================================================================================================================================
@@ -546,6 +555,7 @@ USE MOD_EOS_Vars      ,ONLY: Kappa
 #ifdef SPLIT_DG
 USE MOD_SplitFlux     ,ONLY: SplitDGSurface_pointer
 #endif /*SPLIT_DG*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -578,6 +588,7 @@ END SUBROUTINE Riemann_LF
 PPURE SUBROUTINE Riemann_HLLC(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: KappaM1!,kappa
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -654,6 +665,7 @@ USE MOD_EOS_Vars  ,ONLY: kappaM1
 #ifdef SPLIT_DG
 USE MOD_SplitFlux ,ONLY: SplitDGSurface_pointer
 #endif /*SPLIT_DG*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -721,6 +733,7 @@ F = F - 0.5*(Alpha1*ABS(a(1))*r1 + &
 #endif /*SPLIT_DG*/
 END SUBROUTINE Riemann_Roe
 
+
 !=================================================================================================================================
 !> Roe's approximate Riemann solver using the Harten and Hymen II entropy fix, see
 !> Pelanti, Marica & Quartapelle, Luigi & Vigevano, L & Vigevano, Luigi. (2018):
@@ -732,6 +745,7 @@ USE MOD_EOS_Vars      ,ONLY: Kappa,KappaM1
 #ifdef SPLIT_DG
 USE MOD_SplitFlux ,ONLY: SplitDGSurface_pointer
 #endif /*SPLIT_DG*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -841,31 +855,31 @@ END SUBROUTINE Riemann_RoeEntropyFix
 !>  A review of entropy fixes as applied to Roe's linearization.
 !> The GShockFix or Grid Alligned Shock Fix uses the modified Roe flux formulation from the paper:
 !> N. Fleischmann, S. Adami, X. Y. Hu, and N. A. Adams, “A low dissipation method to cure the grid-aligned shock instability,” 
-!> Journal of Computational Physics, vol. 401, p. 109004, Jan. 2020   
+!> Journal of Computational Physics, vol. 401, p. 109004, Jan. 2020
 !=================================================================================================================================
 PPURE SUBROUTINE Riemann_RoeEntropyGShockFix(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
-USE MOD_EOS_Vars      ,ONLY: Kappa,KappaM1
+USE MOD_EOS_Vars  ,ONLY: Kappa,KappaM1
 #ifdef SPLIT_DG
 USE MOD_SplitFlux ,ONLY: SplitDGSurface_pointer
 #endif /*SPLIT_DG*/
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-                                               !> extended solution vector on the left/right side of the interface
-REAL,DIMENSION(PP_2Var),INTENT(IN) :: U_LL,U_RR
-                                               !> advection fluxes on the left/right side of the interface
-REAL,DIMENSION(PP_nVar),INTENT(IN) :: F_L,F_R
-REAL,DIMENSION(PP_nVar),INTENT(OUT):: F        !< resulting Riemann flux
+                                                !> extended solution vector on the left/right side of the interface
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL,U_RR
+                                                !> advection fluxes on the left/right side of the interface
+REAL,DIMENSION(PP_nVar),INTENT(IN)  :: F_L,F_R
+REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F        !< resulting Riemann flux
 !---------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                 :: iVar
-REAL                    :: c_L,c_R
-REAL                    :: H_L,H_R
-REAL                    :: SqrtRho_L,SqrtRho_R,sSqrtRho,absVel
-REAL                    :: RoeVel(3),RoeH,Roec,RoeDens
-REAL,DIMENSION(PP_nVar) :: r1,r2,r3,r4,r5,a,al,ar,Delta_U,Alpha  ! Roe eigenvectors
-REAL                    :: tmp,da
+INTEGER                             :: iVar
+REAL                                :: c_L,c_R
+REAL                                :: H_L,H_R
+REAL                                :: SqrtRho_L,SqrtRho_R,sSqrtRho,absVel
+REAL                                :: RoeVel(3),RoeH,Roec,RoeDens
+REAL,DIMENSION(PP_nVar)             :: r1,r2,r3,r4,r5,a,al,ar,Delta_U,Alpha  ! Roe eigenvectors
+REAL                                :: tmp,da
 !=================================================================================================================================
 c_L       = SPEEDOFSOUND_HE(U_LL)
 c_R       = SPEEDOFSOUND_HE(U_RR)
@@ -960,6 +974,7 @@ USE MOD_EOS_Vars  ,ONLY: kappaM1,kappa
 #ifdef SPLIT_DG
 USE MOD_SplitFlux ,ONLY: SplitDGSurface_pointer
 #endif /*SPLIT_DG*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -1040,6 +1055,7 @@ END SUBROUTINE Riemann_RoeL2
 PPURE SUBROUTINE Riemann_HLL(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars, ONLY: KappaM1
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -1084,6 +1100,7 @@ ELSE
 END IF ! subsonic case
 END SUBROUTINE Riemann_HLL
 
+
 !=================================================================================================================================
 !> Harten-Lax-Van-Leer-Einfeldt Riemann solver
 !=================================================================================================================================
@@ -1091,6 +1108,7 @@ PPURE SUBROUTINE Riemann_HLLE(F_L,F_R,U_LL,U_RR,F)
 !=================================================================================================================================
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa,KappaM1
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -1133,6 +1151,7 @@ ELSE
 END IF ! subsonic case
 END SUBROUTINE Riemann_HLLE
 
+
 !=================================================================================================================================
 !> Harten-Lax-Van-Leer-Einfeldt-Munz Riemann solver
 !=================================================================================================================================
@@ -1140,6 +1159,7 @@ PPURE SUBROUTINE Riemann_HLLEM(F_L,F_R,U_LL,U_RR,F)
 !=================================================================================================================================
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa,KappaM1
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -1196,6 +1216,7 @@ ELSE
 END IF ! subsonic case
 END SUBROUTINE Riemann_HLLEM
 
+
 #ifdef SPLIT_DG
 !==================================================================================================================================
 !> Riemann solver using purely the average fluxes
@@ -1203,6 +1224,7 @@ END SUBROUTINE Riemann_HLLEM
 PPURE SUBROUTINE Riemann_FluxAverage(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_SplitFlux     ,ONLY: SplitDGSurface_pointer
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -1220,6 +1242,7 @@ REAL,DIMENSION(PP_nVar),INTENT(OUT):: F         !< resulting Riemann flux
 CALL SplitDGSurface_pointer(U_LL,U_RR,F)
 END SUBROUTINE Riemann_FluxAverage
 
+
 !==================================================================================================================================
 !> kinetic energy preserving and entropy consistent flux according to Chandrashekar (2012)
 !==================================================================================================================================
@@ -1227,6 +1250,7 @@ PPURE SUBROUTINE Riemann_CH(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa,sKappaM1
 USE MOD_SplitFlux     ,ONLY: SplitDGSurface_pointer,GetLogMean
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -1274,11 +1298,13 @@ F(ENER)      = F(ENER)      - 0.5*LambdaMax*( &
 END SUBROUTINE Riemann_CH
 #endif /*SPLIT_DG*/
 
+
 !==================================================================================================================================
 !> Finalize Riemann solver routines
 !==================================================================================================================================
 SUBROUTINE FinalizeRiemann()
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
@@ -1286,6 +1312,5 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !==================================================================================================================================
 END SUBROUTINE FinalizeRiemann
-
 
 END MODULE MOD_Riemann

@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -27,6 +28,7 @@ INTEGER,PARAMETER      :: EDDYVISCTYPE_SMAGO    = 1
 INTEGER,PARAMETER      :: EDDYVISCTYPE_VREMAN   = 2
 INTEGER,PARAMETER      :: EDDYVISCTYPE_SIGMA    = 3
 INTEGER,PARAMETER      :: EDDYVISCTYPE_DYNSMAGO = 4
+INTEGER,PARAMETER      :: EDDYVISCTYPE_WALE     = 5
 
 INTERFACE DefineParametersEddyVisc
   MODULE PROCEDURE DefineParametersEddyVisc
@@ -52,13 +54,14 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !==================================================================================================================================
 CALL prms%SetSection("EddyViscParameters")
-CALL prms%CreateIntFromStringOption('eddyViscType',  'Type of eddy viscosity. None, Smagorinsky, dynSmagorinsky, Vreman, Sigma',&
-                                                     'none')
+CALL prms%CreateIntFromStringOption('eddyViscType',  'Type of eddy viscosity model: &
+                                                     &None, Smagorinsky, dynSmagorinsky, Vreman, Sigma, WALE', 'None')
 CALL addStrListEntry(               'eddyViscType',  'none',          EDDYVISCTYPE_NONE    )
 CALL addStrListEntry(               'eddyViscType',  'smagorinsky',   EDDYVISCTYPE_SMAGO   )
 CALL addStrListEntry(               'eddyViscType',  'dynsmagorinsky',EDDYVISCTYPE_DYNSMAGO)
 CALL addStrListEntry(               'eddyViscType',  'vreman',        EDDYVISCTYPE_VREMAN  )
 CALL addStrListEntry(               'eddyViscType',  'sigma',         EDDYVISCTYPE_SIGMA   )
+CALL addStrListEntry(               'eddyViscType',  'wale',          EDDYVISCTYPE_WALE    )
 CALL prms%CreateIntOption(          'N_testFilter',  'Polynomial degree of test filter (modal cutoff filter).','-1')
 CALL prms%CreateRealOption(         'CS',            'EddyViscParameters constant')
 CALL prms%CreateRealOption(         'PrSGS',         'Turbulent Prandtl number','0.7')
@@ -81,6 +84,7 @@ USE MOD_Smagorinsky
 USE MOD_DynSmagorinsky
 USE MOD_Vreman
 USE MOD_SigmaModel
+USE MOD_Wale
 USE MOD_Mesh_Vars  ,ONLY: nElems,nSides
 USE MOD_ReadInTools,ONLY: GETINTFROMSTR, GETREAL
 USE MOD_IO_HDF5    ,ONLY: AddToFieldData,FieldOut
@@ -126,6 +130,10 @@ SELECT CASE(eddyViscType)
     CALL InitSigmaModel()
     ComputeEddyViscosity  => SigmaModel_Volume
     FinalizeEddyViscosity => FinalizeSigmaModel
+  CASE(EDDYVISCTYPE_WALE)  ! WALE Model (Nicoud et al., 1999)
+    CALL InitWALE()
+    ComputeEddyViscosity  => WALE_Volume
+    FinalizeEddyViscosity => FinalizeWALE
   CASE DEFAULT
     CALL CollectiveStop(__STAMP__,&
       'Eddy Viscosity Type not specified!')

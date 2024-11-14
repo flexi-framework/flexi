@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -106,7 +107,7 @@ USE MOD_TimeDisc_Vars       ,ONLY: CFLScale
 USE MOD_TimeDisc_Vars       ,ONLY: dtElem,dt,tend,tStart,dt_dynmin,dt_kill
 USE MOD_TimeDisc_Vars       ,ONLY: Ut_tmp,UPrev,S2
 USE MOD_TimeDisc_Vars       ,ONLY: maxIter,nCalcTimeStepMax
-USE MOD_TimeDisc_Vars       ,ONLY: SetTimeDiscCoefs,TimeDiscName,TimeDiscType,TimeDiscInitIsDone
+USE MOD_TimeDisc_Vars       ,ONLY: SetTimeDiscCoefs,TimeDiscName,TimeDiscMethod,TimeDiscType,TimeDiscInitIsDone
 USE MOD_TimeStep            ,ONLY: SetTimeStep
 #if PARABOLIC
 USE MOD_TimeDisc_Vars       ,ONLY: DFLScale
@@ -117,7 +118,6 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-CHARACTER(LEN=255):: TimeDiscMethod
 INTEGER           :: NEff
 !==================================================================================================================================
 IF(TimeDiscInitIsDone)THEN
@@ -243,8 +243,10 @@ SUBROUTINE UpdateTimeStep()
 ! MODULES
 USE MOD_Globals
 USE MOD_Analyze_Vars        ,ONLY: tWriteData
-USE MOD_HDF5_Output         ,ONLY: WriteState
+USE MOD_BaseFlow_Vars       ,ONLY: doBaseFlow
+USE MOD_HDF5_Output         ,ONLY: WriteState,WriteBaseFlow
 USE MOD_Mesh_Vars           ,ONLY: MeshFile
+USE MOD_Output_Vars         ,ONLY: ProjectName
 USE MOD_TimeDisc_Vars       ,ONLY: t,tAnalyze,tEnd,dt,dt_min,dt_minOld
 USE MOD_TimeDisc_Vars       ,ONLY: nCalcTimeStep,nCalcTimeStepMax
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
@@ -276,6 +278,7 @@ nCalcTimeStep = MIN(FLOOR(ABS(LOG10(ABS(dt_minOld/dt-1.)**2.*100.+EPSILON(0.))))
 dt_minOld     = dt
 IF (errType.NE.0) THEN
   CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData,isErrorFile=.TRUE.)
+  IF (doBaseFlow) CALL WriteBaseFlow(ProjectName=TRIM(ProjectName),MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData)
   CALL Abort(__STAMP__,&
 #if EQNSYSNR == 3
   'Error: (1) density, (2) convective / (3) viscous timestep / muTilde (4) is NaN. Type/time:',errType,t)
@@ -298,39 +301,45 @@ END SUBROUTINE UpdateTimeStep
 SUBROUTINE AnalyzeTimeStep()
 ! MODULES
 USE MOD_Globals
+USE MOD_Globals_Vars        ,ONLY: SimulationEfficiency,StartTime,WallTime
+USE MOD_PreProc
 USE MOD_Analyze             ,ONLY: Analyze
-USE MOD_Analyze_Vars        ,ONLY: analyze_dt,WriteData_dt,tWriteData,nWriteData
+USE MOD_Analyze_Vars        ,ONLY: analyze_dt,WriteData_dt,tWriteData,nWriteData,PID
 USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
+USE MOD_BaseFlow_Vars       ,ONLY: doBaseFlow
 USE MOD_DG                  ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars             ,ONLY: U
 USE MOD_Equation_Vars       ,ONLY: StrVarNames
 USE MOD_HDF5_Output         ,ONLY: WriteState,WriteBaseFlow
-USE MOD_Mesh_Vars           ,ONLY: MeshFile
+USE MOD_Mesh_Vars           ,ONLY: MeshFile,nGlobalElems
 USE MOD_Output              ,ONLY: Visualize,PrintAnalyze,PrintStatusLine
-USE MOD_PruettDamping       ,ONLY: TempFilterTimeDeriv
+USE MOD_Output_Vars         ,ONLY: ProjectName
 USE MOD_RecordPoints        ,ONLY: RecordPoints,WriteRP
 USE MOD_RecordPoints_Vars   ,ONLY: RP_onProc
-USE MOD_Sponge_Vars         ,ONLY: CalcPruettDamping
+USE MOD_Restart_Vars        ,ONLY: RestartTime,RestartWallTime
 USE MOD_TestCase            ,ONLY: AnalyzeTestCase
 USE MOD_TestCase_Vars       ,ONLY: nAnalyzeTestCase
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
-USE MOD_TimeDisc_Vars       ,ONLY: t,dt,dt_min,tAnalyze,tEnd,CalcTimeStart
+USE MOD_TimeDisc_Vars       ,ONLY: t,dt,dt_min,tAnalyze,iter_analyze,nRKStages,tEnd
 USE MOD_TimeDisc_Vars       ,ONLY: iter,iter_analyze,maxIter
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize,writeCounter
+USE MOD_Restart_Vars        ,ONLY: RestartTime,RestartWallTime
+USE MOD_TimeDisc_Vars       ,ONLY: CalcTimeStart,CalcTimeEnd
 #if FV_ENABLED == 1
 USE MOD_FV_Switching        ,ONLY: FV_Info
-#elif FV_ENABLED == 2
+#elif FV_ENABLED == 2 || FV_ENABLED == 3
 USE MOD_FV_Blending         ,ONLY: FV_Info
 #endif
 #if PP_LIMITER
 USE MOD_PPLimiter           ,ONLY: PPLimiter_Info,PPLimiter
-#endif
+#endif /*PP_LIMITER*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+REAL    :: WallTimeEnd               !> wall time of simulation end
 !===================================================================================================================================
 
 IF (iter.EQ.maxIter) THEN
@@ -343,12 +352,21 @@ IF (doAnalyze) THEN
   CALL DGTimeDerivative_weakForm(t)
 END IF
 
+! determine the SimulationEfficiency and PID here,
+! because it is used in ComputeElemLoad -> WriteElemTimeStatistics
+IF(doAnalyze) THEN
+  ! Get calculation time per DOF
+  CalcTimeEnd          = FLEXITIME()
+  WallTimeEnd          = CalcTimeEnd
+  WallTime             = WallTimeEnd-StartTime
+  SimulationEfficiency = (t-RestartTime)/((WallTimeEnd-RestartWallTime)*nProcessors/3600.) ! in [s] / [CPUh]
+  PID                  = (CalcTimeEnd-CalcTimeStart)*REAL(nProcessors)/(REAL(nGlobalElems)*REAL((PP_N+1)**PP_dim)*REAL(iter_analyze))/nRKStages
+END IF
+
 ! Call your analysis routine for your testcase here.
 IF((MOD(iter,INT(nAnalyzeTestCase,KIND=8)).EQ.0).OR.doAnalyze) CALL AnalyzeTestCase(t,doFinalize)
 ! Evaluate recordpoints
 IF(RP_onProc) CALL RecordPoints(PP_nVar,StrVarNames,iter,t,doAnalyze)
-! Update Pruett filter base flow
-IF(CalcPruettDamping) CALL TempFilterTimeDeriv(U,dt)
 
 ! Analyze and output now
 IF(doAnalyze)THEN
@@ -368,7 +386,7 @@ IF(doAnalyze)THEN
     ! Write various derived data
     IF(doCalcTimeAverage) CALL CalcTimeAverage(.TRUE.,dt,t)
     IF(RP_onProc)         CALL WriteRP(PP_nVar,StrVarNames,t,.TRUE.)
-    IF(CalcPruettDamping) CALL WriteBaseFlow(TRIM(MeshFile),t,tWriteData)
+    IF(doBaseFlow)        CALL WriteBaseFlow(TRIM(ProjectName),TRIM(MeshFile),t,tWriteData)
     ! Write state file
     ! NOTE: this should be last in the series, so we know all previous data
     ! has been written correctly when the state file is present
@@ -426,6 +444,7 @@ IF (dt.LT.dt_kill) &
   CALL Abort(__STAMP__,"TimeDisc ERROR - Initial timestep below critical kill timestep!")
 END FUNCTION EvalInitialTimeStep
 
+
 !==================================================================================================================================
 !> Evaluates the time step for the current update of U
 !==================================================================================================================================
@@ -433,9 +452,11 @@ FUNCTION EvalTimeStep(errType) RESULT(dt_Min)
 ! MODULES
 USE MOD_Globals
 USE MOD_Analyze_Vars        ,ONLY: tWriteData
+USE MOD_BaseFlow_Vars       ,ONLY: doBaseFlow
 USE MOD_CalcTimeStep        ,ONLY: CalcTimeStep
-USE MOD_HDF5_Output         ,ONLY: WriteState
+USE MOD_HDF5_Output         ,ONLY: WriteState,WriteBaseFlow
 USE MOD_Mesh_Vars           ,ONLY: MeshFile
+USE MOD_Output_Vars         ,ONLY: ProjectName
 USE MOD_TimeDisc_Vars       ,ONLY: dt_kill,dt_dynmin,t,dt_analyzemin,dtElem,nDtLimited
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -453,12 +474,12 @@ IF (dt_Min.LT.dt_dynmin) THEN
   nDtLimited  = nDtLimited + 1
 END IF
 IF (dt_Min.LT.dt_kill) THEN
-  CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
-                  FutureTime=tWriteData,isErrorFile=.TRUE.)
-  CALL Abort(__STAMP__,&
-    'TimeDisc ERROR - Critical Kill timestep reached! Time: ',RealInfo=t)
+  CALL WriteState(                                                 MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData,isErrorFile=.TRUE.)
+  IF (doBaseFlow) CALL WriteBaseFlow(ProjectName=TRIM(ProjectName),MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData)
+  CALL Abort(__STAMP__,'TimeDisc ERROR - Critical Kill timestep reached! Time: ',RealInfo=t)
 END IF
 END FUNCTION EvalTimeStep
+
 
 !===================================================================================================================================
 !> Scaling of the CFL number, from paper GASSNER, KOPRIVA, "A comparision of the Gauss and Gauss-Lobatto
@@ -532,6 +553,7 @@ dummy = Nin_DFL ! prevent compile warning
 #endif /*PARABOLIC*/
 END SUBROUTINE fillCFL_DFL
 
+
 !==================================================================================================================================
 !> Print information on the timestep
 !==================================================================================================================================
@@ -561,6 +583,7 @@ nDtLimited = 0
 
 END SUBROUTINE TimeDisc_Info
 
+
 !==================================================================================================================================
 !> Finalizes variables necessary for timedisc subroutines
 !==================================================================================================================================
@@ -568,6 +591,7 @@ SUBROUTINE FinalizeTimeDisc()
 ! MODULES
 USE MOD_TimeDisc_Vars
 USE MOD_TimeStep,      ONLY: TimeStep
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 TimeDiscInitIsDone = .FALSE.

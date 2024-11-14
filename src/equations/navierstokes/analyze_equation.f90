@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -91,6 +92,7 @@ USE MOD_Mesh_Vars,          ONLY: nBCs,BoundaryType,BoundaryName
 USE MOD_Output,             ONLY: InitOutputToFile
 USE MOD_Output_Vars,        ONLY: ProjectName
 USE MOD_TimeAverage,        ONLY: InitCalcTimeAverage
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -184,9 +186,10 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Analyze_Vars
 USE MOD_AnalyzeEquation_Vars
-USE MOD_Mesh_Vars,          ONLY: BoundaryName,nBCs,BoundaryType
 USE MOD_CalcBodyForces,     ONLY: CalcBodyForces
+USE MOD_Mesh_Vars,          ONLY: BoundaryName,nBCs,BoundaryType
 USE MOD_Output,             ONLY: OutputToFile
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -208,58 +211,61 @@ IF(doCalcMeanFlux)     CALL CalcMeanFlux(MeanFlux)
 IF(doCalcBulkState)    CALL CalcBulkState(bulkPrim,bulkCons)
 IF(doCalcTotalStates)  CALL CalcKessel(meanTotals)
 
+IF(MPIRoot)THEN
+  IF(doCalcBodyforces)THEN
+    WRITE(UNIT_stdOut,*)'BodyForces (Pressure, Friction) : '
+    WRITE(formatStr,'(A,I2,A)')'(A',maxlen,',6ES18.9)'
+    DO i=1,nBCs
+      IF(.NOT.isWall(i)) CYCLE
+      IF (doWriteBodyForces) &
+        CALL OutputToFile(FileName_BodyForce(i),(/Time/),(/9,1/),(/BodyForce(:,i),Fp(:,i),Fv(:,i)/))
+      WRITE(UNIT_stdOut,formatStr) ' '//TRIM(BoundaryName(i)),Fp(:,i),Fv(:,i)
+    END DO
+  END IF
 
-IF(MPIRoot.AND.doCalcBodyforces)THEN
-  WRITE(UNIT_stdOut,*)'BodyForces (Pressure, Friction) : '
-  WRITE(formatStr,'(A,I2,A)')'(A',maxlen,',6ES18.9)'
-  DO i=1,nBCs
-    IF(.NOT.isWall(i)) CYCLE
-    IF (doWriteBodyForces) &
-      CALL OutputToFile(FileName_BodyForce(i),(/Time/),(/9,1/),(/BodyForce(:,i),Fp(:,i),Fv(:,i)/))
-    WRITE(UNIT_stdOut,formatStr) ' '//TRIM(BoundaryName(i)),Fp(:,i),Fv(:,i)
-  END DO
-END IF
-IF(MPIRoot.AND.doCalcWallVelocity)THEN
-  WRITE(UNIT_stdOut,*)'Wall Velocities (mean/min/max)  : '
-  WRITE(formatStr,'(A,I2,A)')'(A',maxlen,',3ES18.9)'
-  DO i=1,nBCs
-    IF(.NOT.isWall(i)) CYCLE
-    IF (doWriteWallVelocity) &
-      CALL OutputToFile(FileName_WallVel(i),(/Time/),(/3,1/),(/meanV(i),minV(i),maxV(i)/))
-    WRITE(UNIT_stdOut,formatStr) ' '//TRIM(BoundaryName(i)),meanV(i),minV(i),maxV(i)
-  END DO
-END IF
+  IF(doCalcWallVelocity)THEN
+    WRITE(UNIT_stdOut,*)'Wall Velocities (mean/min/max)  : '
+    WRITE(formatStr,'(A,I2,A)')'(A',maxlen,',3ES18.9)'
+    DO i=1,nBCs
+      IF(.NOT.isWall(i)) CYCLE
+      IF (doWriteWallVelocity) &
+        CALL OutputToFile(FileName_WallVel(i),(/Time/),(/3,1/),(/meanV(i),minV(i),maxV(i)/))
+      WRITE(UNIT_stdOut,formatStr) ' '//TRIM(BoundaryName(i)),meanV(i),minV(i),maxV(i)
+    END DO
+  END IF
 
-IF(MPIRoot.AND.doCalcMeanFlux)THEN
-  WRITE(formatStr,'(A,I2,A,I2,A)')'(A',maxlen,',',PP_nVar,'ES18.9)'
-  WRITE(UNIT_stdOut,*)'MeanFlux through boundaries     : '
-  DO i=1,nBCs
-    IF((BoundaryType(i,BC_TYPE).EQ.1).AND.(BoundaryType(i,BC_ALPHA).LE.0)) CYCLE
-    IF (doWriteMeanFlux) &
-      CALL OutputToFile(FileName_MeanFlux(i),(/Time/),(/PP_nVar,1/),MeanFlux(:,i))
-    WRITE(UNIT_stdOut,formatStr) ' '//TRIM(BoundaryName(i)),MeanFlux(:,i)
-  END DO
-END IF  !(doCalcBodyforces)
+  IF(doCalcMeanFlux)THEN
+    WRITE(formatStr,'(A,I2,A,I2,A)')'(A',maxlen,',',PP_nVar,'ES18.9)'
+    WRITE(UNIT_stdOut,*)'MeanFlux through boundaries     : '
+    DO i=1,nBCs
+      IF((BoundaryType(i,BC_TYPE).EQ.1).AND.(BoundaryType(i,BC_ALPHA).LE.0)) CYCLE
+      IF (doWriteMeanFlux) &
+        CALL OutputToFile(FileName_MeanFlux(i),(/Time/),(/PP_nVar,1/),MeanFlux(:,i))
+      WRITE(UNIT_stdOut,formatStr) ' '//TRIM(BoundaryName(i)),MeanFlux(:,i)
+    END DO
+  END IF  !(doCalcBodyforces)
 
-IF(MPIRoot.AND.doCalcBulkState)THEN
-  IF (doWriteBulkState) &
-    CALL OutputToFile(FileName_Bulk,(/Time/),(/PP_nVarPrim+PP_nVar-1,1/),(/BulkPrim,BulkCons(2:PP_nVar)/))
-  WRITE(formatStr,'(A,I2,A)')'(A14,',PP_nVarPrim,'ES18.9)'
-  WRITE(UNIT_stdOut,formatStr)' Bulk Prims : ',bulkPrim
-  WRITE(formatStr,'(A,I2,A)')'(A14,',PP_nVar,'ES18.9)'
-  WRITE(UNIT_stdOut,formatStr)' Bulk Cons  : ',bulkCons
-END IF
+  IF(doCalcBulkState)THEN
+    IF (doWriteBulkState) &
+      CALL OutputToFile(FileName_Bulk,(/Time/),(/PP_nVarPrim+PP_nVar-1,1/),(/BulkPrim,BulkCons(2:PP_nVar)/))
+    WRITE(formatStr,'(A,I2,A)')'(A14,',PP_nVarPrim,'ES18.9)'
+    WRITE(UNIT_stdOut,formatStr)' Bulk Prims : ',bulkPrim
+    WRITE(formatStr,'(A,I2,A)')'(A14,',PP_nVar,'ES18.9)'
+    WRITE(UNIT_stdOut,formatStr)' Bulk Cons  : ',bulkCons
+  END IF
 
-IF(MPIRoot.AND.doCalcTotalStates)THEN
-  WRITE(UNIT_stdOut,*)'Mean total states at boundaries : '
-  WRITE(formatStr,'(A,I2,A)')'(A',maxlen,',4ES18.9)'
-  DO i=1,nBCs
-    IF(BoundaryType(i,BC_TYPE).EQ.1) CYCLE
-    IF (doWriteTotalStates) &
-      CALL OutputToFile(FileName_TotalStates(i),(/Time/),(/4,1/),meanTotals(:,i) )
-    WRITE(UNIT_stdOut,formatStr) ' '//TRIM(BoundaryName(i)),MeanTotals(:,i)
-  END DO
-END IF
+  IF(doCalcTotalStates)THEN
+    WRITE(UNIT_stdOut,*)'Mean total states at boundaries : '
+    WRITE(formatStr,'(A,I2,A)')'(A',maxlen,',4ES18.9)'
+    DO i=1,nBCs
+      IF(BoundaryType(i,BC_TYPE).EQ.1) CYCLE
+      IF (doWriteTotalStates) &
+        CALL OutputToFile(FileName_TotalStates(i),(/Time/),(/4,1/),meanTotals(:,i) )
+      WRITE(UNIT_stdOut,formatStr) ' '//TRIM(BoundaryName(i)),MeanTotals(:,i)
+    END DO
+  END IF
+END IF ! MPIRoot
+
 END SUBROUTINE AnalyzeEquation
 
 
@@ -273,10 +279,10 @@ USE MOD_PreProc
 USE MOD_Analyze_Vars,       ONLY: wGPVol,Vol
 USE MOD_Mesh_Vars,          ONLY: sJ,nElems
 USE MOD_DG_Vars,            ONLY: U,UPrim
-USE MOD_EOS,                ONLY: ConsToPrim
 #if FV_ENABLED
 USE MOD_FV_Vars,            ONLY: FV_Elems,FV_w
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -343,6 +349,7 @@ USE MOD_EOS_Vars,          ONLY: Kappa,R,sKappaM1,KappaM1
 #if FV_ENABLED
 USE MOD_FV_Vars,           ONLY: FV_Elems_master,FV_w
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -444,6 +451,7 @@ USE MOD_AnalyzeEquation_Vars, ONLY: isWall
 #if FV_ENABLED
 USE MOD_FV_Vars,              ONLY: FV_Elems_master,FV_w
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -512,6 +520,7 @@ USE MOD_Mesh_Vars,         ONLY: nSides,nMPISides_YOUR,AnalyzeSide,nBCs,Boundary
 #if FV_ENABLED
 USE MOD_FV_Vars,           ONLY: FV_Elems_master,FV_w
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -565,6 +574,7 @@ SUBROUTINE FinalizeAnalyzeEquation()
 ! MODULES
 USE MOD_AnalyzeEquation_Vars
 USE MOD_TimeAverage,        ONLY: FinalizeTimeAverage
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

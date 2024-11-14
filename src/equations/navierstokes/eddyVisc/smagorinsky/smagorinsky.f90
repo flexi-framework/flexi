@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -29,16 +30,16 @@ IMPLICIT NONE
 PRIVATE
 
 INTERFACE InitSmagorinsky
-   MODULE PROCEDURE InitSmagorinsky
+  MODULE PROCEDURE InitSmagorinsky
 END INTERFACE
 
 INTERFACE Smagorinsky
-   MODULE PROCEDURE Smagorinsky_Point
-   MODULE PROCEDURE Smagorinsky_Volume
+  MODULE PROCEDURE Smagorinsky_Point
+  MODULE PROCEDURE Smagorinsky_Volume
 END INTERFACE
 
 INTERFACE FinalizeSmagorinsky
-   MODULE PROCEDURE FinalizeSmagorinsky
+  MODULE PROCEDURE FinalizeSmagorinsky
 END INTERFACE
 
 PUBLIC::InitSmagorinsky, Smagorinsky_Volume, FinalizeSmagorinsky
@@ -58,7 +59,7 @@ USE MOD_ReadInTools        ,ONLY: GETREAL,GETLOGICAL
 USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone,wGP
 USE MOD_Mesh_Vars          ,ONLY: MeshInitIsDone,nElems,sJ,Elem_xGP
 USE MOD_EOS_Vars           ,ONLY: mu0
- IMPLICIT NONE
+IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -93,7 +94,7 @@ DO iElem=1,nElems
       damp(1,i,j,k,iElem) = 1. - EXP(-yPlus/26.) ! Van Driest damping factor
     END IF
   END DO; END DO; END DO
-  DeltaS(iElem) = CellVol**(1./3.)  / (REAL(PP_N)+1.)
+  DeltaS(iElem) = CellVol**(1./3.) / (REAL(PP_N)+1.)
 
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     damp(1,i,j,k,iElem) = (damp(1,i,j,k,iElem) * CS * deltaS(iElem))**2

@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -142,7 +143,7 @@ INTEGER                  :: HSize_proc(5)
 REAL,ALLOCATABLE         :: HIT_local(:,:,:,:,:)
 CHARACTER(LEN=31)        :: varnames(nHITVars)
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE HOMOGENEOUS ISOTROPIC TURBULENCE...'
 
 #if FV_ENABLED
@@ -184,6 +185,7 @@ IF(HIT_Forcing) THEN
       END IF
 
       ALLOCATE(HIT_local(1:3,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
+      DEALLOCATE(HSize)
       CALL ReadArray('HIT',5,HSize_proc,OffsetElem,5,RealArray=HIT_local)
       ! No interpolation needed, read solution directly from file
       IF(.NOT. InterpolateSolution)THEN
@@ -232,7 +234,8 @@ HIT_Avg = GETLOGICAL('HIT_Avg','.TRUE.')
 HIT_1st = GETLOGICAL('HIT_1st','.FALSE.')
 
 SWRITE(UNIT_stdOut,'(A)')' INIT TESTCASE HOMOGENEOUS ISOTROPIC TURBULENCE DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
+
 END SUBROUTINE InitTestcase
 
 

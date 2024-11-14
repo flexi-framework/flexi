@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -92,10 +93,9 @@ CALL GetNodesAndWeights(PP_N,'GAUSS',xi_Gauss,w_Gauss) !Gauss nodes and integrat
 error=ABS(0.25*SUM((MATMUL(TRANSPOSE(M_1_0),test1)+MATMUL(TRANSPOSE(M_2_0),test2))*w_Gauss)-1.)
 
 IF(error.GT. 100.*PP_RealTolerance) THEN
-  CALL Abort(__STAMP__,&
-    'problems in building Mortar',999,error)
+  CALL Abort(__STAMP__,'Problems in building mortar',999,error)
 ELSE
-  SWRITE(UNIT_stdOut,'(A)')'Mortar operators built successfully.'
+  SWRITE(UNIT_stdOut,'(A)')' Mortar operators built successfully.'
 END IF
 #endif
 

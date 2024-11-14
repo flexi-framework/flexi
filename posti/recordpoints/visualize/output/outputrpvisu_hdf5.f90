@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -45,7 +46,7 @@ SUBROUTINE WriteDataToHDF5(nSamples,nRP,nVal,VarNames,Time,Value,FileString)
 USE MOD_Globals
 USE HDF5
 USE MOD_IO_HDF5
-USE MOD_HDF5_Output
+USE MOD_HDF5_Output        ,ONLY: WriteAttribute,WriteArray
 USE MOD_ParametersVisu     ,ONLY: ProjectName
 USE MOD_ParametersVisu     ,ONLY: Line_LocalCoords,Plane_LocalCoords
 USE MOD_ParametersVisu     ,ONLY: OutputPlanes,OutputLines,OutputPoints
@@ -222,7 +223,7 @@ SUBROUTINE WriteBLPropsToHDF5(FileString)
 USE MOD_Globals
 USE HDF5
 USE MOD_IO_HDF5
-USE MOD_HDF5_Output
+USE MOD_HDF5_Output        ,ONLY: WriteAttribute,WriteArray
 USE MOD_EquationRP_Vars    ,ONLY: nBLProps,VarNames_BLProps
 USE MOD_ParametersVisu     ,ONLY: ProjectName
 USE MOD_RPSetVisuVisu_Vars ,ONLY: GroupNames

@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -93,17 +94,17 @@ PUBLIC::PolynomialMassMatrix
 
 CONTAINS
 
-
 !==================================================================================================================================
 !> Build a 1D Vandermonde matrix from an orthonormal Legendre basis to a nodal basis and reverse
 !==================================================================================================================================
 SUBROUTINE buildLegendreVdm(N_In,xi_In,Vdm_Leg,sVdm_Leg)
 ! MODULES
-USE MOD_Globals,ONLY:abort
+USE MOD_Globals,ONLY:Abort
 USE MOD_PreProc,ONLY:PP_RealTolerance
 #ifndef VDM_ANALYTICAL
 USE MOD_Mathtools,ONLY:INVERSE
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -146,16 +147,16 @@ END DO
 CALL InitializeVandermonde(N_In,N_In,wBary_Loc,xi_In,xGauss,Vdm_Lag)
 sVdm_Leg=MATMUL(Vdm_Leg_Gauss,Vdm_Lag)
 dummy=ABS(SUM(ABS(MATMUL(sVdm_Leg,Vdm_Leg)))/(N_In+1.)-1.)
-IF(dummy.GT.15.*PP_RealTolerance) CALL ABORT(__STAMP__,&
-                                         'problems in MODAL<->NODAL Vandermonde ',999,dummy)
+IF(dummy.GT.15.*PP_RealTolerance) CALL Abort(__STAMP__,&
+                                         'buildLegendreVdm: problems in MODAL<->NODAL Vandermonde ',999,dummy)
 #else
 ! Lapack
 sVdm_Leg=INVERSE(Vdm_Leg)
 
 !check (Vdm_Leg)^(-1)*Vdm_Leg := I
 dummy=ABS(SUM(ABS(MATMUL(sVdm_Leg,Vdm_Leg)))/(N_In+1.)-1.)
-IF(dummy.GT.10.*PP_RealTolerance) CALL ABORT(__STAMP__,&
-                                         'problems in MODAL<->NODAL Vandermonde ',999,dummy)
+IF(dummy.GT.10.*PP_RealTolerance) CALL Abort(__STAMP__,&
+                                         'problems in Legendre Vandermonde ',999,dummy)
 #endif
 END SUBROUTINE buildLegendreVdm
 
@@ -167,6 +168,7 @@ END SUBROUTINE buildLegendreVdm
 !===================================================================================================================================
 PPURE SUBROUTINE InitializeVandermonde(N_In,N_Out,wBary_In,xi_In,xi_Out,Vdm)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -193,6 +195,8 @@ END SUBROUTINE InitializeVandermonde
 !> algorithm 22, Kopriva book
 !===================================================================================================================================
 ELEMENTAL SUBROUTINE LegendrePolynomialAndDerivative(N_in,x,L,Lder)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -240,7 +244,9 @@ END SUBROUTINE LegendrePolynomialAndDerivative
 !> Compute Chebychev-Gauss nodes and integration weights (algorithm 27, Kopriva book)
 !==================================================================================================================================
 PPURE SUBROUTINE ChebyshevGaussNodesAndWeights(N_in,xGP,wGP)
+! MODULES
 USE MOD_Preproc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -267,7 +273,9 @@ END SUBROUTINE ChebyshevGaussNodesAndWeights
 !> Compute Chebychev-Gauss-Lobatto nodes and integration weights (algorithm 27, Kopriva book)
 !==================================================================================================================================
 PPURE SUBROUTINE ChebyGaussLobNodesAndWeights(N_in,xGP,wGP)
+! MODULES
 USE MOD_Preproc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -295,7 +303,9 @@ END SUBROUTINE ChebyGaussLobNodesAndWeights
 !> Compute Clenshaw-Curtis nodes and integration weights
 !==================================================================================================================================
 PPURE SUBROUTINE ClenshawCurtisNodesAndWeights(N_in,xGP,wGP)
+! MODULES
 USE MOD_Preproc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -357,7 +367,6 @@ REAL,INTENT(OUT),OPTIONAL :: wGP(0:N_in)       !< Gauss point weights
 INTEGER                   :: nIter = 10        ! max. number of newton iterations
 REAL                      :: Tol   = 1.E-15    ! tolerance for Newton iteration: TODO: use variable tolerance here!
 INTEGER                   :: iGP,iter
-REAL                      :: L_Np1,Lder_Np1    ! L_{N_in+1},Lder_{N_in+1}
 REAL                      :: q,qder,L          ! \f$ q=L_{N_in+1}-L_{N_in-1} \f$ ,qder is derivative, \f$ L=L_{N_in} \f$
 REAL                      :: dx                ! Newton step
 REAL                      :: xGP_init(1:N_in)  ! Initial guess for all inner nodes based on Hale and Townsend
@@ -381,24 +390,25 @@ DO iGP=1,N_in
   ! Newton iteration
   DO iter=0,nIter
     CALL qAndLEvaluationRadau(N_in,xGP(iGP),q,qder,L)
-    dx=-q/qder
-    xGP(iGP)=xGP(iGP)+dx
+    dx       = -q/qder
+    xGP(iGP) = xGP(iGP)+dx
     IF(abs(dx).LT.Tol*abs(xGP(iGP))) EXIT
   END DO ! iter
   IF(iter.GT.nIter) THEN
-    SWRITE(*,*) 'maximum iteration steps >10 in Newton iteration for LGR point:'
+    SWRITE(UNIT_stdOut,'(A)') 'maximum iteration steps >10 in Newton iteration for LGR point:'
     xGP(iGP) = xGP_init(iGP)
     ! Newton iteration
     DO iter=0,nIter
       SWRITE(*,*)'iter,x^i',iter,xGP(iGP)     !DEBUG
       CALL qAndLEvaluationRadau(N_in,xGP(iGP),q,qder,L)
-      dx=-q/qder
-      xGP(iGP)=xGP(iGP)+dx
+      dx       = -q/qder
+      xGP(iGP) = xGP(iGP)+dx
       IF(abs(dx).LT.Tol*abs(xGP(iGP))) EXIT
     END DO ! iter
     CALL Abort(__STAMP__,&
                'ERROR: Legendre Gauss Radau nodes could not be computed up to desired precision. Code stopped!')
   END IF ! (iter.GT.nIter)
+
   IF(PRESENT(wGP))THEN
     wGP(iGP)=(1.-xGP(iGP))/((N_In+1)*L)**2
   END IF
@@ -417,6 +427,7 @@ END SUBROUTINE LegGaussRadauNodesAndWeights
 SUBROUTINE LegendreGaussNodesAndWeights(N_in,xGP,wGP)
 !MODULES
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -453,11 +464,11 @@ ELSE ! N_in>1
       IF(abs(dx).LT.Tol*abs(xGP(iGP))) EXIT
     END DO ! iter
     IF(iter.GT.nIter) THEN
-      SWRITE(*,*) 'maximum iteration steps >10 in Newton iteration for Legendre Gausspoint'
+      SWRITE(UNIT_stdOut,'(A)') 'maximum iteration steps >10 in Newton iteration for Legendre Gausspoint'
       xGP(iGP)=-cos(cheb_tmp*REAL(2*iGP+1)) !initial guess
       ! Newton iteration
       DO iter=0,nIter
-        SWRITE(*,*)iter,xGP(iGP)    !DEBUG
+        SWRITE(UNIT_stdOut,*)iter,xGP(iGP)    !DEBUG
         CALL LegendrePolynomialAndDerivative(N_in+1,xGP(iGP),L_Np1,Lder_Np1)
         dx=-L_Np1/Lder_Np1
         xGP(iGP)=xGP(iGP)+dx
@@ -532,6 +543,8 @@ END SUBROUTINE qAndLEvaluationRadau
 !> Recursive algorithm using the N_in-1 N_in-2 Legendre polynomials. (Algorithm 24, Kopriva book)
 !==================================================================================================================================
 ELEMENTAL SUBROUTINE qAndLEvaluation(N_in,x,q,qder,L)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -568,6 +581,7 @@ SUBROUTINE LegGaussLobNodesAndWeights(N_in,xGP,wGP)
 ! MODULES
 USE MOD_Preproc
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -602,11 +616,11 @@ IF(N_in.GT.1)THEN
       IF(abs(dx).LT.Tol*abs(xGP(iGP))) EXIT
     END DO ! iter
     IF(iter.GT.nIter) THEN
-      SWRITE(*,*) 'maximum iteration steps >10 in Newton iteration for LGL point:'
+      SWRITE(UNIT_stdOut,'(A)') 'maximum iteration steps >10 in Newton iteration for LGL point:'
       xGP(iGP)=-cos(cont1*(REAL(iGP)+0.25)-cont2/(REAL(iGP)+0.25)) !initial guess
       ! Newton iteration
       DO iter=0,nIter
-        SWRITE(*,*)'iter,x^i',iter,xGP(iGP)     !DEBUG
+        SWRITE(UNIT_stdOut,*)'iter,x^i',iter,xGP(iGP)     !DEBUG
         CALL qAndLEvaluation(N_in,xGP(iGP),q,qder,L)
         dx=-q/qder
         xGP(iGP)=xGP(iGP)+dx
@@ -631,11 +645,12 @@ END IF ! (mod(N_in,2) .EQ. 0)
 END SUBROUTINE LegGaussLobNodesAndWeights
 
 
-
 !==================================================================================================================================
 !> Computes barycentric (interpolation) weights for interpolation polynomial given by set of nodes. (Algorithm 30, Kopriva book)
 !==================================================================================================================================
 PPURE SUBROUTINE BarycentricWeights(N_in,xGP,wBary)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -657,11 +672,12 @@ wBary(:)=1./wBary(:)
 END SUBROUTINE BarycentricWeights
 
 
-
 !==================================================================================================================================
 !> Computes polynomial differentiation matrix for interpolation polynomial given by set of nodes. (Algorithm 37, Kopriva book)
 !==================================================================================================================================
 PPURE SUBROUTINE PolynomialDerivativeMatrix(N_in,xGP,D)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -692,7 +708,9 @@ END SUBROUTINE PolynomialDerivativeMatrix
 !> Based on Algorithm 139, Kopriva
 !==================================================================================================================================
 ELEMENTAL FUNCTION ALMOSTEQUAL(x,y)
+! MODULES
 USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -718,6 +736,8 @@ END FUNCTION ALMOSTEQUAL
 !> Algorithm 34, Kopriva book
 !============================================================================================================================
 PPURE SUBROUTINE LagrangeInterpolationPolys(x,N_in,xGP,wBary,L)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -800,6 +820,8 @@ DO i=0,N_in; DO j=0,N_in
   M(i,j)    = M(i,j)    + alpha*wGP(i)*wGP(j)*pNi*pNj
   Minv(i,j) = Minv(i,j) + beta*pNi*pNj
 END DO; END DO
+#else
+NO_OP(xGP)
 #endif
 
 END SUBROUTINE PolynomialMassMatrix

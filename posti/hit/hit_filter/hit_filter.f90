@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -97,6 +98,7 @@ CALL DatasetExists(File_ID,'FieldData',FieldDataExists)
 IF (FieldDataExists) THEN
   CALL GetDataSize(File_ID,'FieldData',nDims,HSize)
   nVarField_HDF5 = INT(HSize(1))
+  DEALLOCATE(HSize)
 
   ALLOCATE(FieldData(1:nVarField_HDF5,0:N_HDF5,0:N_HDF5,0:N_HDF5,1:nElems_HDF5))
   ALLOCATE(VarNames_FieldData(nVarField_HDF5))

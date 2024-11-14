@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -74,6 +75,10 @@ CHARACTER(LEN=255),ALLOCATABLE       :: tmpDatasetNames(:)
 INTEGER                              :: nVarAvg(5),nVarFluc(5)
 INTEGER                              :: locsize(maxDim),globsize(maxDim),offsetsize(maxDim)
 
+! Printout
+CHARACTER(LEN=20)                    :: formatstr
+INTEGER                              :: lenDatasetNames
+
 !> Time
 REAL                                 :: dt,AvgTime,TotalAvgTime,TotalAvgTimeGlobal
 
@@ -99,6 +104,12 @@ CHARACTER(LEN=255)                   :: FilenameOut,FileTypeOut
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
 CALL InitMPIInfo()
+
+SWRITE(UNIT_stdOut,'(132("="))')
+SWRITE(UNIT_stdOut,'(A)') '===================================================   MERGE TIMEAVERAGES '//&
+                         '==================================================='
+SWRITE(UNIT_stdOut,'(132("="))')
+
 CALL ParseCommandlineArguments()
 
 ! Check if the number of arguments is correct
@@ -189,10 +200,23 @@ END SELECT
 ! Allocate arrays for the datasets
 ALLOCATE(avg(ref%nDataSets))
 
+! Length of longest dataset name
+lenDatasetNames = 0
+DO i = 1,ref%nDataSets
+  lenDatasetNames = MAX(lenDatasetNames,LEN(TRIM(ref%DatasetNames(i))))
+END DO
+
 DO i = 1,ref%nDataSets
   nDim            = ref%nDims(   i)
   locsize(1:nDim) = ref%nVal(1:nDim,i)
   locsize(  nDim) = nElems
+
+  ! Skip data set if the last dimension is not nElems
+  IF (ref%nVal(nDim,i).NE.nGlobalElems) THEN
+    WRITE(formatstr,'(A,I0,A)')'(A,A',lenDatasetNames,',A,I0)'
+    SWRITE(UNIT_stdOut,formatstr) ' Skip dataset ',TRIM(ref%DatasetNames(i)), ', entries in last dimension: ', ref%nVal(nDim,i)
+    CYCLE
+  END IF
 
   ALLOCATE(avg(i)%AvgData(PRODUCT(locsize(1:nDim))) &
           ,avg(i)%AvgTmp( PRODUCT(locsize(1:nDim))))
@@ -258,8 +282,20 @@ DO iFile = 1,nFiles
     CALL CollectiveStop(__STAMP__,'Change of node type not supported yet!')
   IF(.NOT.STRICMP(ref%MeshFile,loc%MeshFile))&
     CALL CollectiveStop(__STAMP__,'Change of mesh file not supported yet!')
-  IF(ANY(ref%nVal.NE.loc%nVal))&
-    CALL CollectiveStop(__STAMP__,'Change of polynomial degree and variables not supported!')
+
+  DO i = 1,ref%nDataSets
+    nDim            = ref%nDims(   i)
+    ! Skip data set if the last dimension is not nElems
+    IF (ref%nVal(nDim,i).NE.nGlobalElems) CYCLE
+    ! Arrays are allowed to change
+    SELECT CASE(TRIM(ref%DatasetNames(i)))
+      CASE('ElemData','FieldData','ElemTime')
+        CYCLE
+    END SELECT
+    ! Check if dataset size has changed
+    IF (ANY(ref%nVal(1:nDim,i).NE.loc%nVal(1:nDim,i))) &
+      CALL CollectiveStop(__STAMP__,'Change of polynomial degree and variables not supported! Dataset: '//TRIM(ref%DatasetNames(i)))
+  END DO
   ! TODO: check change of FV subcells ?!
 
   Time = loc%time
@@ -299,6 +335,15 @@ DO iFile = 1,nFiles
     locsize(1:nDim) = ref%nVal(1:nDim,i)
     locsize(nDim)   = nElems
 
+    ! Skip data set if the last dimension is not nElems
+    IF (ref%nVal(nDim,i).NE.nGlobalElems) CYCLE
+
+    ! Arrays are allowed to change
+    SELECT CASE(TRIM(ref%DatasetNames(i)))
+      CASE('ElemData','FieldData','ElemTime')
+        CYCLE
+    END SELECT
+
     CALL ReadArray(ArrayName  = TRIM(ref%DatasetNames(i)) &
                   ,Rank       = nDim                      &
                   ,nVal       = locsize(1:nDim)           &
@@ -323,6 +368,16 @@ DO iFile = 1,nFiles
 
     ! Compute total average
     DO i = 1,ref%nDataSets
+      nDim            = ref%nDims(i)
+      ! Skip data set if the last dimension is not nElems
+      IF (ref%nVal(nDim,i).NE.nGlobalElems) CYCLE
+
+      ! Arrays are allowed to change
+      SELECT CASE(TRIM(ref%DatasetNames(i)))
+        CASE('ElemData','FieldData','ElemTime')
+          CYCLE
+      END SELECT
+
       avg(i)%AvgData = avg(i)%AvgData/TotalAvgTime
 
       ! Identify the datasets
@@ -381,6 +436,15 @@ DO iFile = 1,nFiles
         CASE('DG_Solution','Mean','MeanSquare')
           ! Do nothing, already written above
         CASE DEFAULT
+          ! Skip data set if the last dimension is not nElems
+          IF (ref%nVal(nDim,i).NE.nGlobalElems) CYCLE
+
+          ! Arrays are allowed to change
+          SELECT CASE(TRIM(ref%DatasetNames(i)))
+            CASE('ElemData','FieldData','ElemTime')
+              CYCLE
+          END SELECT
+
           nDim             = ref%nDims(   i)
           locsize( 1:nDim) = ref%nVal(1:nDim,i)
           locsize(   nDim) = nElems
@@ -423,14 +487,14 @@ SWRITE(UNIT_stdOut,'(132("="))')
 #if USE_MPI
 CALL FinalizeMPI()
 CALL MPI_FINALIZE(iError)
-IF(iError .NE. 0) STOP 'MPI finalize error'
+IF (iError.NE.MPI_SUCCESS) STOP 'MPI finalize error'
 #endif
 
 CONTAINS
 
 
 !===================================================================================================================================
-!> Retrieves relevant header and dateset parameters from Flexi files and stores them in a type
+!> Retrieves relevant header and dataset parameters from Flexi files and stores them in a type
 !===================================================================================================================================
 SUBROUTINE GetParams(filename,f)
 ! MODULES

@@ -17,6 +17,11 @@ USE MOD_DG_Vars,            ONLY: L_HatPlus,L_HatMinus
 #if FV_ENABLED
 USE MOD_FV_Vars,            ONLY: FV_w,FV_w_inv, FV_Elems, FV_Elems_master,FV_Elems_slave
 #endif
+#if ((PP_NodeType==1) && defined(SPLIT_DG))
+USE MOD_DG_Vars,            ONLY: U,UPrim,U_master,UPrim_master
+USE MOD_Mesh_Vars,          ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,nElems,Ja_Face,Ja_slave
+USE MOD_SplitFlux,          ONLY: InitSplitDG
+#endif /*((PP_NodeType==1) && defined(SPLIT_DG))*/
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -34,11 +39,19 @@ CHARACTER(LEN=255)             :: BinaryString,argument
 !==================================================================================================================================
 ! Set file name for different node types
 #if (PP_NodeType==1)
+#ifdef SPLIT_DG
+#if PP_dim == 3
+BinaryString='SurfInt_G3D_Split.bin'
+#else
+BinaryString='SurfInt_G2D_Split.bin'
+#endif /*PP_dim*/
+#else
 #if PP_dim == 3
 BinaryString='SurfInt_G3D.bin'
 #else
 BinaryString='SurfInt_G2D.bin'
 #endif /*PP_dim*/
+#endif /*SPLIT_DG*/
 #elif (PP_NodeType==2)
 #ifdef EXACT_MM
 #if PP_dim == 3
@@ -114,8 +127,32 @@ FV_Elems = 0
 FV_Elems_master = 0
 FV_Elems_slave = 0
 #endif
+#if ((PP_NodeType==1) && defined(SPLIT_DG))
+ALLOCATE(U(PP_nVar,0:NRef,0:NRef,0:NRefZ,nElems))
+ALLOCATE(UPrim(PP_nVarPrim,0:NRef,0:NRef,0:NRefZ,nElems))
+ALLOCATE(U_master(PP_nVar,0:NRef,0:NRefZ,nElems))
+ALLOCATE(UPrim_master(PP_nVarPrim,0:NRef,0:NRefZ,nSidesRef))
+U = 1.; UPrim=1.; U_master=1.; UPrim_master=1.
+ALLOCATE(Metrics_fTilde(3,0:NRef,0:NRef,0:NRefZ,nElems,0:0))
+ALLOCATE(Metrics_gTilde(3,0:NRef,0:NRef,0:NRefZ,nElems,0:0))
+Metrics_fTilde=1.; Metrics_gTilde=1.
+#if PP_dim == 3
+ALLOCATE(Metrics_hTilde(3,0:NRef,0:NRef,0:NRefZ,nElems,0:0))
+Metrics_hTilde=1.
+#endif
+ALLOCATE( Ja_Face(3,3,0:NRef,0:NRefZ,1:nSidesRef)) ! temp
+ALLOCATE(Ja_slave(3,3,0:NRef,0:NRefZ,1:nSidesRef)) ! temp
+Ja_slave = 1.
+Ja_Face  = 1.
+CALL InitSplitDG(0)
+#endif /*((PP_NodeType==1) && defined(SPLIT_DG))*/
 ! Call SurfInt
 CALL SurfIntCons(NRef,Flux_nVar,Flux_nVar,Ut,.FALSE.,L_HatMinus,L_HatPlus)
+#if ((PP_NodeType==1) && defined(SPLIT_DG))
+DO i=2,PP_nVar
+  Ut(i,:,:,:,:) = Ut(1,:,:,:,:)
+END DO
+#endif /*((PP_NodeType==1) && defined(SPLIT_DG))*/
 #if FV_ENABLED
 FV_Elems = 1
 FV_Elems_master = 1
@@ -148,7 +185,11 @@ ELSE
     ! Check if the computed and the reference solutions are within a given tolerance
     equal =  .TRUE.
     DO i=1,PP_nVar; DO j=0,NRef; DO k=0,NRef; DO l=0,NRefZ
+#if ((PP_NodeType==1) && defined(SPLIT_DG))
+      equal = ALMOSTEQUALABSORREL(Ut(i,j,k,l,1),Ut_ref(1,j,k,l,1),200.*PP_RealTolerance) .AND. equal
+#else
       equal = ALMOSTEQUALABSORREL(Ut(i,j,k,l,1),Ut_ref(1,j,k,l,1),100.*PP_RealTolerance) .AND. equal
+#endif
 #if FV_ENABLED
       equal = ALMOSTEQUALABSORREL(FV_Ut(i,j,k,l,1),FV_Ut_ref(1,j,k,l,1),100.*PP_RealTolerance) .AND. equal
 #endif

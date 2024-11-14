@@ -1,8 +1,9 @@
 #!/bin/sh
 #=================================================================================================================================
-# Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+# Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+# Copyright (c) 2022-2024 Prof. Andrea Beck
 # This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-# For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+# For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 #
 # FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -16,6 +17,13 @@
 #===================================================================================================================================
 # Check the number and total size of files about to be commited
 #===================================================================================================================================
+
+# Executables, command -v is safe with sh
+BN_EXE=$(command -v basename)
+DU_EXE=$(command -v du)
+GIT_EXE=$(command -v git)
+LS_EXE=$(command -v ls)
+TR_EXE=$(command -v tr)
 
 # Check if override is requested
 if [ "$GIT_OVERRIDE_LIMITS" = "1" ]; then
@@ -31,20 +39,29 @@ SIZETOTALLIMIT=1000000
 SIZETOTALWARN=100000
 
 # Number of existing files plus 100
-NUMBERLIMIT=$(git ls-tree --full-tree -r --name-only HEAD | wc -l)
+NUMBERLIMIT=$($GIT_EXE ls-tree --full-tree -r --name-only HEAD | wc -l)
 NUMBERLIMIT=$(($NUMBERLIMIT + 100))
 NUMBERWARN=100
 
 # Local variables
 ERROR=0
-FILEWARN=0
 FILEERR=0
+FILEWARN=0
 FILESUM=0
+FILESUMERR=0
+FILESUMWARN=0
+EXEERR=0
+TABERR=0
+
+EXELINE=''
+TABLINE=''
+SIZEWARNLINE=''
+SIZEDENYLINE=''
 
 # Check if file is opened in a terminal
 if test -t 1; then
   # Check if terminal supports color
-  NbrOfColors=$(which tput > /dev/null && tput colors)
+  NbrOfColors=$(command -v tput > /dev/null && tput colors)
   if test -n "$NbrOfColors" && test "$NbrOfColors" -ge 8; then
     NC="$(tput sgr0)"
     RED="$(tput setaf 1)"
@@ -54,13 +71,14 @@ if test -t 1; then
 fi
 
 # Get a list of all staged files
-CHANGED=$(git diff --staged --name-only)
+CHANGED=$($GIT_EXE diff --staged --name-only)
 
 # Check if any changes are present
 if [ -n "$CHANGED" ]; then
   # Sort found files by size (-S) in reverse ordering (-r)
-  SORTED=$(ls -Shsr "$CHANGED" 2> /dev/null)
-  NUMBER=$(git diff --staged --numstat | wc -l)
+  CHANGED=$(echo "$CHANGED" | $TR_EXE '\n' ' ')
+  SORTED=$($LS_EXE --sort=size -r $CHANGED 2> /dev/null)
+  NUMBER=$($GIT_EXE diff --staged --numstat | wc -l)
 
   # Check the number of files
   if [ "$NUMBER" -ge "$NUMBERLIMIT" ]; then
@@ -72,11 +90,13 @@ if [ -n "$CHANGED" ]; then
 
   # Loop over all changes
   for file in $SORTED; do
+
     # Check if path is a file that exists
+    #  -f  True if FILE exists and is a regular file.
     if [ -f "$file" ]; then
       # -b, --bytes           equivalent to '--apparent-size --block-size=1'
-      LINE=$(du -h "$file")
-      FILESIZE=$(du -b "$file" | cut -d '	' -f1) # this is a tab, not a white space
+      LINE=$($LS_EXE -alhs "$file")
+      FILESIZE=$($DU_EXE -b "$file" | cut -d '	' -f1) # this is a tab, not a white space
 
       # Sum up the total file sizes
       FILESUM=$(($FILESUM + $FILESIZE))
@@ -84,39 +104,86 @@ if [ -n "$CHANGED" ]; then
       # Check the file size limit
       if [ "$FILESIZE" -gt "$SIZESINGLELIMIT" ]; then
         # Error header
-        if [ "$FILEERR" -eq 0 ]; then
-          printf "${RED}The following file(s) exceed the file size limit ($SIZESINGLELIMIT bytes)${NC}\n"
-          ERROR=1
-          FILEERR=1
-        fi
-        printf "$LINE\n"
+        ERROR=1
+        FILEERR=1
+        SIZEDENYLINE="$LINE\n$SIZEDENYLINE"
       # Check the file size warning
       elif [ "$FILESIZE" -gt "$SIZESINGLEWARN" ]; then
-        # Error header
-        if [ "$FILEWARN" -eq 0 ]; then
-          printf "${YELLOW}The following large file(s) are about to be committed (>$SIZESINGLEWARN bytes)${NC}\n"
-          FILEWARN=1
-        fi
-        printf "$LINE\n"
+        # Warning header
+        FILEWARN=1
+        SIZEWARNLINE="$LINE\n$SIZEWARNLINE"
       fi
     fi
 
     # Check total file size
     if [ "$FILESUM" -gt "$SIZETOTALLIMIT" ]; then
       # Error header
-      printf "${RED}The total file size exceeds the size limit ($SIZETOTALLIMIT bytes)${NC}\n"
       ERROR=1
+      FILESUMERR=1
     # Check the file size warning
     elif [ "$FILESUM" -gt "$SIZETOTALWARN" ]; then
       # Error header
-      printf "${YELLOW}Total file size to be committed ($FILESUM bytes)${NC}\n"
+      FILESUMWARN=1
     fi
+
+    # Check if file is executable
+    if [ -x "$file" ]; then
+      # Error header
+      ERROR=1
+      EXEERR=1
+      LINE=$($LS_EXE -alhs "$file")
+      EXELINE="$LINE\n$EXELINE"
+    fi
+
+    # Check for tab characters in specific file endings
+    name=$($BN_EXE -- "$file")
+    ext="${name##*.}"
+    name="${name%.*}"
+    if [ "$ext" = "txt" ] || [ "$ext" = "f90" ] || [ "$ext" = "ini" ]; then
+      # -P, --perl-regexp         PATTERNS are Perl regular expressions
+      NbrOfLinesWithTabs=$(grep -P '\t' $file | wc -l)
+      if [ "${NbrOfLinesWithTabs}" -gt 0 ]; then
+        LINE=$($LS_EXE -alhs "$file")
+        ERROR=1
+        TABERR=1
+        TABLINE="$LINE\n$TABLINE"
+      fi
+    fi
+
   done
+
+  if [ $FILEERR -ne 0 ]; then
+    printf "${RED}The following file(s) exceed the file size limit ($SIZESINGLELIMIT bytes)${NC}\n"
+    printf "$SIZEDENYLINE"
+  fi
+
+  if [ $FILEWARN -ne 0 ]; then
+    printf "${YELLOW}The following large file(s) are about to be committed (>$SIZESINGLEWARN bytes)${NC}\n"
+    printf "$SIZEWARNLINE"
+  fi
+
+  if [ $FILESUMERR -ne 0 ]; then
+    printf "${RED}The total file size exceeds the size limit ($SIZETOTALLIMIT bytes)${NC}\n"
+  fi
+
+  if [ $FILESUMWARN -ne 0 ]; then
+    printf "${YELLOW}Total file size to be committed ($FILESUM bytes)${NC}\n"
+  fi
+
+  if [ "$EXEERR" -ne 0 ]; then
+    printf "${RED}The following file(s) are executable, which is not allowed. Remove the execute permission via 'chmod -x filename' and try again.${NC}\n"
+    printf "$EXELINE"
+  fi
+
+  if [ "$TABERR" -ne 0 ]; then
+    printf "${RED}The following file(s) contain tabs, which is not allowed. Remove the tab stops and try again.${NC}\n"
+    printf "$TABLINE"
+  fi
 
   # Abort if hook encountered any error
   if [ "$ERROR" -ne 0 ]; then
     echo '------------------------------------------------------------------------------------------------------------------------------------'
-    echo 'Commit rejected! You can override this check by passing "GIT_OVERRIDE_LIMITS=1" to git.'
+    echo 'Commit rejected! You can override this check by passing "GIT_OVERRIDE_LIMITS=1" to git, e.g., run "GIT_OVERRIDE_LIMITS=1 git commit".'
     exit 1
   fi
 

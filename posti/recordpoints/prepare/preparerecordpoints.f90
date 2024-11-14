@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -25,38 +26,41 @@ PROGRAM PrepareRecordPoints
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Commandline_Arguments
+USE MOD_ReadInTools,        ONLY:prms,PrintDefaultParameterFile,FinalizeParameters
+USE MOD_ReadInTools,        ONLY:GETSTR,GETINT
 USE MOD_StringTools,        ONLY:STRICMP,GetFileExtension
-USE MOD_ReadInTools,        ONLY:prms,IgnoredParameters,PrintDefaultParameterFile,FinalizeParameters,GETSTR
 ! Flexilib initialization
-USE MOD_MPI,                ONLY:DefineParametersMPI,InitMPI
 USE MOD_IO_HDF5,            ONLY:DefineParametersIO_HDF5,InitIOHDF5
+USE MOD_MPI,                ONLY:DefineParametersMPI,InitMPI
 USE MOD_HDF5_Input
 USE MOD_Interpolation,      ONLY:InitInterpolation,FinalizeInterpolation
-USE MOD_Output,             ONLY:DefineParametersOutput,InitOutput,FinalizeOutput
-USE MOD_Output_Vars,        ONLY:ProjectName
 USE MOD_Mesh,               ONLY:DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Mesh_Vars,          ONLY:MeshFile
 USE MOD_Mortar,             ONLY:InitMortar,FinalizeMortar
+USE MOD_Output,             ONLY:DefineParametersOutput,InitOutput,FinalizeOutput
+USE MOD_Output_Vars,        ONLY:ProjectName,doPrintStatusLine
 #if USE_MPI
 USE MOD_MPI,                ONLY:FinalizeMPI
 #endif /*USE_MPI*/
 #if FV_ENABLED
 USE MOD_FV_Basis,           ONLY:InitFV_Basis,FinalizeFV_Basis
-#endif
+#endif /*FV_ENABLED*/
 ! Recordpoints
+USE MOD_HDF5_OutputRP
+USE MOD_RPParametricCoords, ONLY:GetRecordPoints
 USE MOD_RPSet
 USE MOD_VisuRP,             ONLY:VisuRP
-USE MOD_RPParametricCoords, ONLY:GetRecordPoints
-USE MOD_HDF5_OutputRP
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                            :: success=.TRUE.
+CHARACTER(LEN=2)                   :: tmpStr
 INTEGER                            :: Ntmp
 !===================================================================================================================================
 #if PP_dim ==2
 STOP 'Please compile with 3D to use the recordpoints tool!'
 #endif
+
 CALL SetStackSizeUnlimited()
 CALL InitMPI() ! NO PARALLELIZATION, ONLY FOR COMPILING WITH MPI FLAGS ON SOME MACHINES OR USING MPI-DEPENDANT HDF5
 IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
@@ -101,18 +105,32 @@ CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL ReadAttribute(File_ID,'Ngeo',1,IntScalar=Ntmp)
 CALL CloseDataFile()
 Ntmp = Ntmp*2
+WRITE(tmpStr,'(I2.2)') Ntmp
+Ntmp = GETINT('N',tmpStr)
 CALL InitInterpolation(Ntmp)
 #if FV_ENABLED
 CALL InitFV_Basis()
 #endif
 CALL InitMortar()
 CALL InitOutput()
+
+! Enable extra runtime output
+doPrintStatusLine = .TRUE.
+
 CALL InitMesh(meshMode=2,MeshFile_IN=MeshFile)
 
+! RP Routines
 CALL InitRPSet()
 CALL GetRecordPoints()
-CALL WriteRecordPointstoHDF5(ProjectName,MeshFile)
-CALL visuRP()
+! Only write out on MPIRoot
+IF (MPIRoot) THEN
+  CALL WriteRecordPointstoHDF5(ProjectName,MeshFile)
+  CALL visuRP()
+END IF
+
+#if USE_MPI
+CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
+#endif
 
 CALL FinalizeOutput()
 CALL FinalizeInterpolation()
@@ -127,7 +145,7 @@ CALL FinalizeCommandlineArguments()
 #if USE_MPI
 CALL FinalizeMPI()
 CALL MPI_FINALIZE(iError)
-IF(iError .NE. 0) STOP 'MPI finalize error'
+IF (iError.NE.MPI_SUCCESS) STOP 'MPI finalize error'
 #endif
 
 WRITE(UNIT_stdOut,'(132("="))')
@@ -146,6 +164,7 @@ USE MOD_ReadInTools ,ONLY: prms
 IMPLICIT NONE
 !===================================================================================================================================
 CALL prms%SetSection('Prepare Record Points')
+CALL prms%CreateIntOption( 'N'     ,"Number of Gauss points per element per direction.",'-1')
 CALL prms%CreateIntOption( 'NSuper',"Number of Newton start values per element per direction.",'0')
 CALL prms%CreateRealOption('maxTolerance',"Tolerance in parameter space at the element "//&
                            "boundaries, required to mark a recordpoint as found.",'1.E-3')

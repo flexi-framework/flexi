@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -25,16 +26,16 @@ IMPLICIT NONE
 PRIVATE
 
 INTERFACE InitSigmaModel
-   MODULE PROCEDURE InitSigmaModel
+  MODULE PROCEDURE InitSigmaModel
 END INTERFACE
 
 INTERFACE SigmaModel
-   MODULE PROCEDURE SigmaModel_Point
-   MODULE PROCEDURE SigmaModel_Volume
+  MODULE PROCEDURE SigmaModel_Point
+  MODULE PROCEDURE SigmaModel_Volume
 END INTERFACE
 
 INTERFACE FinalizeSigmaModel
-   MODULE PROCEDURE FinalizeSigmaModel
+  MODULE PROCEDURE FinalizeSigmaModel
 END INTERFACE
 
 PUBLIC::InitSigmaModel,SigmaModel_Volume,FinalizeSigmaModel
@@ -53,7 +54,7 @@ USE MOD_EddyVisc_Vars
 USE MOD_ReadInTools        ,ONLY: GETREAL,GETLOGICAL
 USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone,wGP
 USE MOD_Mesh_Vars          ,ONLY: MeshInitIsDone,nElems,sJ
- IMPLICIT NONE
+IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -94,7 +95,6 @@ END SUBROUTINE InitSigmaModel
 !===================================================================================================================================
 SUBROUTINE SigmaModel_Point(gradUx,gradUy,gradUz,dens,CSdeltaS2,muSGS)
 ! MODULES
-USE MOD_EddyVisc_Vars,     ONLY:CS
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -129,6 +129,7 @@ IF(info .NE. 0) THEN
   d_model = 0.
 ELSE
   sigma = SQRT(MAX(0.,lambda)) ! ensure were not negative
+  ! Sigma is in ascending order unlike in the paper by Nicoud (2011)
   d_model = (sigma(1)*(sigma(3)-sigma(2))*(sigma(2)-sigma(1)))/(sigma(3)**2)
 END IF
 ! Sigma-Model
@@ -155,7 +156,7 @@ INTEGER             :: i,j,k,iElem
 DO iElem = 1,nElems
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     CALL SigmaModel_Point(gradUx(    :,i,j,k,iElem), gradUy(:,i,j,k,iElem), gradUz(:,i,j,k,iElem), &
-                               U(DENS,i,j,k,iElem),       CSdeltaS2(iElem),  muSGS(1,i,j,k,iElem))
+                                U(DENS,i,j,k,iElem),      CSdeltaS2(iElem),  muSGS(1,i,j,k,iElem))
   END DO; END DO; END DO ! i,j,k
 END DO
 END SUBROUTINE SigmaModel_Volume
@@ -174,7 +175,6 @@ IMPLICIT NONE
 !===============================================================================================================================
 SDEALLOCATE(CSdeltaS2)
 SigmaModelInitIsDone = .FALSE.
-
 END SUBROUTINE FinalizeSigmaModel
 
 END MODULE MOD_SigmaModel

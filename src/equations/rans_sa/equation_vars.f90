@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -90,12 +91,15 @@ LOGICAL           :: EquationInitIsDone=.FALSE.
 INTERFACE fv1
   MODULE PROCEDURE fv1
 END INTERFACE
+
 INTERFACE fv2
   MODULE PROCEDURE fv2
 END INTERFACE
+
 INTERFACE fw
   MODULE PROCEDURE fw
 END INTERFACE
+
 INTERFACE STilde
   MODULE PROCEDURE STilde
 END INTERFACE
@@ -174,7 +178,10 @@ REAL                           :: g         ! auxiliary function
 !===================================================================================================================================
 
 IF(nuTilde.GE.0.)THEN
-  r = MIN(nuTilde/(STilde*(SAKappa**2)*(d**2)),rLim)
+  ! Avoid division by zero
+  IF (STilde.NE.0) THEN; r = MIN(nuTilde/(STilde*(SAKappa**2)*(d**2)),rLim)
+  ELSE                 ; r = rlim
+  END IF
   g = r + cw2*((r**6)-r)
 
   fw = g*(((1+(cw3**6))/((g**6)+(cw3**6)))**(1./6.))

@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -34,7 +35,6 @@ INTERFACE FinalizeCalctimestep
   MODULE PROCEDURE FinalizeCalctimestep
 END INTERFACE
 
-
 PUBLIC :: InitCalctimestep,CALCTIMESTEP,FinalizeCalctimestep
 !==================================================================================================================================
 
@@ -55,6 +55,7 @@ USE MOD_Mesh_Vars,ONLY:sJ,Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,nElems
 #if PARABOLIC
 USE MOD_EOS_Vars ,ONLY:KappasPr
 #endif /*PARABOLIC*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -87,6 +88,7 @@ DO FVE=0,FV_SIZE
   END DO
 END DO
 #endif /*PARABOLIC*/
+
 END SUBROUTINE
 
 
@@ -98,7 +100,7 @@ FUNCTION CALCTIMESTEP(errType)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_DG_Vars      ,ONLY:U
-USE MOD_EOS_Vars
+USE MOD_EOS_Vars     ,ONLY:Kappa,KappaM1,R
 USE MOD_Mesh_Vars    ,ONLY:sJ,Metrics_fTilde,Metrics_gTilde,Elem_xGP,nElems
 USE MOD_TimeDisc_Vars,ONLY:CFLScale,ViscousTimeStep,dtElem
 #ifndef GNU
@@ -113,6 +115,9 @@ USE MOD_Viscosity
 #endif /*PARABOLIC*/
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems
+#if FV_ENABLED == 2
+USE MOD_FV_Vars      ,ONLY: FV_alpha,FV_alpha_min
+#endif
 #endif
 #if EDDYVISCOSITY
 USE MOD_EddyVisc_Vars, ONLY: muSGS
@@ -184,7 +189,9 @@ DO iElem=1,nElems
   END DO; END DO; END DO ! i,j,k
 
 #if FV_ENABLED == 2
-  dtElem(iElem)=MINVAL(CFLScale(:))*2./SUM(Max_Lambda)
+  dtElem(iElem)=MERGE(CFLScale(0),CFLScale(1),FV_alpha(iElem).LE.FV_alpha_min)*2./SUM(Max_Lambda)
+#elif FV_ENABLED == 3
+  dtElem(iElem)=MERGE(CFLScale(0),CFLScale(1),ALL(FV_alpha(:,:,:,:,iElem).LE.FV_alpha_min))*2./SUM(Max_Lambda)
 #else
   dtElem(iElem)=CFLScale(FVE)*2./SUM(Max_Lambda)
 #endif
@@ -198,7 +205,7 @@ DO iElem=1,nElems
 
 #if PARABOLIC
   IF(SUM(Max_Lambda_v).GT.0.)THEN
-#if FV_ENABLED == 2
+#if FV_ENABLED == 2 || FV_ENABLED == 3
     dtElem(iElem)=MIN(dtElem(iElem),MINVAL(DFLScale(:))*4./SUM(Max_Lambda_v))
     TimeStepVisc= MIN(TimeStepVisc, MINVAL(DFLScale(:))*4./SUM(Max_Lambda_v))
 #else
@@ -234,6 +241,7 @@ END FUNCTION CALCTIMESTEP
 !==================================================================================================================================
 SUBROUTINE FinalizeCalctimestep()
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 SDEALLOCATE(MetricsAdv)

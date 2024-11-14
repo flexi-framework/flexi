@@ -1,10 +1,10 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2017 Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024 Prof. Claus-Dieter Munz
 ! Copyright (c) 2016-2017 Gregor Gassner (github.com/project-fluxo/fluxo)
 ! Copyright (c) 2016-2017 Florian Hindenlang (github.com/project-fluxo/fluxo)
 ! Copyright (c) 2016-2017 Andrew Winters (github.com/project-fluxo/fluxo)
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -22,7 +22,7 @@
 !> Computes the volume integral contribution based on U and updates Ut
 !> Volume integral is split into integral of advection and diffusion part
 !==================================================================================================================================
-#include "flexi.h"
+
 MODULE MOD_VolInt
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
@@ -42,7 +42,6 @@ INTERFACE VolInt_Visc
   MODULE PROCEDURE VolInt_weakForm_Visc
 END INTERFACE
 #endif
-
 
 PUBLIC::VolInt
 #if  PARABOLIC && !VOLINT_VISC
@@ -68,14 +67,15 @@ USE MOD_Lifting_Vars ,ONLY: gradUx,gradUy,gradUz
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(INOUT) :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< Time derivative of the volume integral (viscous part)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: i,j,k,l,iElem
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: f,g,h     !< Volume viscous fluxes at GP
+INTEGER                                       :: i,j,k,l,iElem
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: f,g,h           !< Volume viscous fluxes at GP
 !==================================================================================================================================
 ! Diffusive part
 DO iElem=1,nElems
@@ -127,16 +127,17 @@ USE MOD_Lifting_Vars ,ONLY: gradUx,gradUy,gradUz
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(OUT)   :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< Time derivative of the volume integral (viscous part)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: i,j,k,l,iElem
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: f,g,h     !< Volume advective fluxes at GP
+INTEGER                                       :: i,j,k,l,iElem
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: f,g,h           !< Volume advective fluxes at GP
 #if VOLINT_VISC
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: fv,gv,hv  !< Volume viscous fluxes at GP
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: fv,gv,hv        !< Volume viscous fluxes at GP
 #endif
 !==================================================================================================================================
 ! Diffusive part
@@ -185,6 +186,7 @@ END DO ! iElem
 END SUBROUTINE VolInt_weakForm
 #endif
 
+
 #ifdef SPLIT_DG
 !==================================================================================================================================
 !> Computes the advection and viscous part volume integral in SplitDG formulation
@@ -222,17 +224,25 @@ USE MOD_Lifting_Vars ,ONLY: gradUx,gradUy,gradUz
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems
 #endif
-USE MOD_SplitFlux    ,ONLY:SplitDGVolume_pointer ! computes volume fluxes in split formulation
+#if FV_ENABLED == 3
+USE MOD_Interpolation_Vars, ONLY: wGP
+USE MOD_FV_Vars      ,ONLY: Ut_xi,Ut_eta
+#if PP_dim == 3
+USE MOD_FV_Vars      ,ONLY: Ut_zeta
+#endif /*PP_dim == 3*/
+#endif
+USE MOD_SplitFlux    ,ONLY: SplitDGVolume_pointer ! computes volume fluxes in split formulation
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(OUT)   :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< Time derivative of the volume integral (viscous part)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: i,j,k,l,iElem
-REAL,DIMENSION(PP_nVar                     )  :: Flux         !< temp variable for split flux
+INTEGER                                       :: i,j,k,l,iElem
+REAL,DIMENSION(PP_nVar                     )  :: Flux            !< temp variable for split flux
 #if VOLINT_VISC
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: fv,gv,hv     !< Parabolic fluxes at GP
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: fv,gv,hv        !< Parabolic fluxes at GP
 #endif /*VOLINT_VISC*/
 !==================================================================================================================================
 DO iElem=1,nElems
@@ -269,70 +279,97 @@ DO iElem=1,nElems
 #else /*VOLINT_VISC*/
   ! We need to nullify the Ut array
   Ut(:,:,:,:,iElem) = 0.
+  ! For FV subblend only
+#if FV_ENABLED==3
+  Ut_xi  (:,:,:,:,iElem) = 0.
+  Ut_eta (:,:,:,:,iElem) = 0.
+#if PP_dim == 3
+  Ut_zeta(:,:,:,:,iElem) = 0.
+#endif /*PP_dim == 3*/
+#endif /*FV_ENABLED==3*/
 #endif /*VOLINT_VISC*/
-
 
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     DO l=i+1,PP_N
-       ! compute split flux in x-direction
-       CALL SplitDGVolume_pointer(U(:,i,j,k,iElem),UPrim(:,i,j,k,iElem), &
-                                  U(:,l,j,k,iElem),UPrim(:,l,j,k,iElem), &
-                                  Metrics_fTilde(:,i,j,k,iElem,0),Metrics_fTilde(:,l,j,k,iElem,0),Flux)
-#if VOLINT_VISC
-       ! add up time derivative
-       Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(l,i)*Flux(:) + D_Hat_T(l,i)*fv(:,l,j,k)
-       !symmetry
-       Ut(:,l,j,k,iElem) = Ut(:,l,j,k,iElem) + DVolSurf(i,l)*Flux(:) + D_Hat_T(i,l)*fv(:,i,j,k)
+      ! compute split flux in x-direction
+      CALL SplitDGVolume_pointer(U(:,i,j,k,iElem),UPrim(:,i,j,k,iElem), &
+                                 U(:,l,j,k,iElem),UPrim(:,l,j,k,iElem), &
+                                 Metrics_fTilde(:,i,j,k,iElem,0),Metrics_fTilde(:,l,j,k,iElem,0),Flux)
+#if FV_ENABLED == 3
+      ! 1.1 Compute the weighted flux
+      Ut_xi  (:,i,j,k,iElem) = Ut_xi  (:,i,j,k,iElem) + DVolSurf(l,i)*Flux(:)!*wGP(i)
+      ! symmetry
+      Ut_xi  (:,l,j,k,iElem) = Ut_xi  (:,l,j,k,iElem) + DVolSurf(i,l)*Flux(:)!*wGP(l)
 #else
-       ! add up time derivative
-       Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(l,i)*Flux(:)
-       !symmetry
-       Ut(:,l,j,k,iElem) = Ut(:,l,j,k,iElem) + DVolSurf(i,l)*Flux(:)
+      ! add up time derivative
+      Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(l,i)*Flux(:)
+      ! symmetry
+      Ut(:,l,j,k,iElem) = Ut(:,l,j,k,iElem) + DVolSurf(i,l)*Flux(:)
+#endif /*FV_ENABLED == 3*/
+#if VOLINT_VISC
+      ! add up time derivative
+      Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + D_Hat_T(l,i)*fv(:,l,j,k)
+      ! symmetry
+      Ut(:,l,j,k,iElem) = Ut(:,l,j,k,iElem) + D_Hat_T(i,l)*fv(:,i,j,k)
 #endif /*VOLINT_VISC*/
     END DO ! l
 
     DO l=j+1,PP_N
-       ! compute split flux in y-direction
-       CALL SplitDGVolume_pointer(U(:,i,j,k,iElem),UPrim(:,i,j,k,iElem), &
-                                  U(:,i,l,k,iElem),UPrim(:,i,l,k,iElem), &
-                                  Metrics_gTilde(:,i,j,k,iElem,0),Metrics_gTilde(:,i,l,k,iElem,0),Flux)
-#if VOLINT_VISC
-       ! add up time derivative
-       Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(l,j)*Flux(:) + D_Hat_T(l,j)*gv(:,i,l,k)
-       !symmetry
-       Ut(:,i,l,k,iElem) = Ut(:,i,l,k,iElem) + DVolSurf(j,l)*Flux(:) + D_Hat_T(j,l)*gv(:,i,j,k)
+      ! compute split flux in y-direction
+      CALL SplitDGVolume_pointer(U(:,i,j,k,iElem),UPrim(:,i,j,k,iElem), &
+                                 U(:,i,l,k,iElem),UPrim(:,i,l,k,iElem), &
+                                 Metrics_gTilde(:,i,j,k,iElem,0),Metrics_gTilde(:,i,l,k,iElem,0),Flux)
+#if FV_ENABLED == 3
+      ! 1.1 Compute the weighted flux
+      Ut_eta (:,i,j,k,iElem) = Ut_eta (:,i,j,k,iElem) + DVolSurf(l,j)*Flux(:)!*wGP(j)
+      ! symmetry
+      Ut_eta (:,i,l,k,iElem) = Ut_eta (:,i,l,k,iElem) + DVolSurf(j,l)*Flux(:)!*wGP(l)
 #else
-       ! add up time derivative
-       Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(l,j)*Flux(:)
-       !symmetry
-       Ut(:,i,l,k,iElem) = Ut(:,i,l,k,iElem) + DVolSurf(j,l)*Flux(:)
+      ! add up time derivative
+      Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(l,j)*Flux(:)
+      ! symmetry
+      Ut(:,i,l,k,iElem) = Ut(:,i,l,k,iElem) + DVolSurf(j,l)*Flux(:)
+#endif /*FV_ENABLED == 3*/
+#if VOLINT_VISC
+      ! add up time derivative
+      Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + D_Hat_T(l,j)*gv(:,i,l,k)
+      ! symmetry
+      Ut(:,i,l,k,iElem) = Ut(:,i,l,k,iElem) + D_Hat_T(j,l)*gv(:,i,j,k)
 #endif /*VOLINT_VISC*/
     END DO ! l
 
 #if PP_dim==3
     DO l=k+1,PP_N
-       ! compute split flux in z-direction
-       CALL SplitDGVolume_pointer(U(:,i,j,k,iElem),UPrim(:,i,j,k,iElem), &
-                                  U(:,i,j,l,iElem),UPrim(:,i,j,l,iElem), &
-                                  Metrics_hTilde(:,i,j,k,iElem,0),Metrics_hTilde(:,i,j,l,iElem,0),Flux)
-#if VOLINT_VISC
-       ! add up time derivative
-       Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(l,k)*Flux(:) + D_Hat_T(l,k)*hv(:,i,j,l)
-       !symmetry
-       Ut(:,i,j,l,iElem) = Ut(:,i,j,l,iElem) + DVolSurf(k,l)*Flux(:) + D_Hat_T(k,l)*hv(:,i,j,k)
+      ! compute split flux in z-direction
+      CALL SplitDGVolume_pointer(U(:,i,j,k,iElem),UPrim(:,i,j,k,iElem), &
+                                 U(:,i,j,l,iElem),UPrim(:,i,j,l,iElem), &
+                                 Metrics_hTilde(:,i,j,k,iElem,0),Metrics_hTilde(:,i,j,l,iElem,0),Flux)
+#if FV_ENABLED == 3
+      ! 1.1 Compute the weighted flux
+      Ut_zeta(:,i,j,k,iElem) = Ut_zeta(:,i,j,k,iElem) + DVolSurf(l,k)*Flux(:)!*wGP(k)
+      ! symmetry
+      Ut_zeta(:,i,j,l,iElem) = Ut_zeta(:,i,j,l,iElem) + DVolSurf(k,l)*Flux(:)!*wGP(l)
 #else
-       ! add up time derivative
-       Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(l,k)*Flux(:)
-       !symmetry
-       Ut(:,i,j,l,iElem) = Ut(:,i,j,l,iElem) + DVolSurf(k,l)*Flux(:)
+      ! add up time derivative
+      Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(l,k)*Flux(:)
+      ! symmetry
+      Ut(:,i,j,l,iElem) = Ut(:,i,j,l,iElem) + DVolSurf(k,l)*Flux(:)
+#endif /*FV_ENABLED == 3*/
+#if VOLINT_VISC
+      ! add up time derivative
+      Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + D_Hat_T(l,k)*hv(:,i,j,l)
+      ! symmetry
+      Ut(:,i,j,l,iElem) = Ut(:,i,j,l,iElem) + D_Hat_T(k,l)*hv(:,i,j,k)
 #endif /*VOLINT_VISC*/
     END DO ! l
 #endif /*PP_dim==3*/
 
   END DO; END DO; END DO !i,j,k
 END DO ! iElem
+
 END SUBROUTINE VolInt_splitForm
 #endif /*SPLIT_DG*/
+
 
 !==================================================================================================================================
 !> Compute the tranformed states for all conservative variables using the metric terms
@@ -340,6 +377,7 @@ END SUBROUTINE VolInt_splitForm
 PPURE SUBROUTINE VolInt_Metrics(nDOFs,f,g,h,Mf,Mg,Mh)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -381,7 +419,5 @@ DO i=1,nDOFs
 #endif
 END DO ! i
 END SUBROUTINE VolInt_Metrics
-
-
 
 END MODULE MOD_VolInt

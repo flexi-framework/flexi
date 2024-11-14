@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -114,16 +115,16 @@ IF(InterpolationInitIsDone.AND.FVInitBasisIsDone)THEN
     'InitFV_Basis not ready to be called or already called.')
 END IF
 
-#if PARABOLIC
-#if !(FV_RECONSTRUCT)
-CALL CollectiveStop(__STAMP__, &
-  'FV_RECONSTRUCT=0 and PARABOLIC=T is not allowed. Switch off PARABOLIC or switch on FV_RECONSTRUCT!')
-#endif
-#endif
+! #if PARABOLIC
+! #if !(FV_RECONSTRUCT)
+! CALL CollectiveStop(__STAMP__, &
+!   'FV_RECONSTRUCT=0 and PARABOLIC=T is not allowed. Switch off PARABOLIC or switch on FV_RECONSTRUCT!')
+! #endif
+! #endif
 
 ! The indicator value is used to decide where FV sub-cells are needed
 ! TODO: Force overwrite not so nice....
-#if FV_ENABLED == 2
+#if FV_ENABLED == 2 || FV_ENABLED == 3
   FV_CellType = FV_NODETYPE_SAME
 #else
   FV_CellType = GETINTFROMSTR('FV_CellType')

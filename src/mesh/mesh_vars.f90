@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -58,9 +59,9 @@ INTEGER,ALLOCATABLE :: ElemToTree(:)           !< Index of the tree correspondin
 ! Metrics on GaussPoints
 !----------------------------------------------------------------------------------------------------------------------------------
 REAL,ALLOCATABLE :: dXCL_N(:,:,:,:,:,:)          !< geometry Jacobian matrix on in reference space
-REAL,ALLOCATABLE :: Metrics_fTilde(:,:,:,:,:,:)  !< Metrics for transforming the fluxes f (1:3,0:N,0:N,0:N,nElems,0:FV)
-REAL,ALLOCATABLE :: Metrics_gTilde(:,:,:,:,:,:)  !< Metrics for transforming the fluxes g (1:3,0:N,0:N,0:N,nElems,0:FV)
-REAL,ALLOCATABLE :: Metrics_hTilde(:,:,:,:,:,:)  !< Metrics for transforming the fluxes h (1:3,0:N,0:N,0:N,nElems,0:FV)
+REAL,ALLOCATABLE,TARGET :: Metrics_fTilde(:,:,:,:,:,:)  !< Metrics for transforming the fluxes f (1:3,0:N,0:N,0:N,nElems,0:FV)
+REAL,ALLOCATABLE,TARGET :: Metrics_gTilde(:,:,:,:,:,:)  !< Metrics for transforming the fluxes g (1:3,0:N,0:N,0:N,nElems,0:FV)
+REAL,ALLOCATABLE,TARGET :: Metrics_hTilde(:,:,:,:,:,:)  !< Metrics for transforming the fluxes h (1:3,0:N,0:N,0:N,nElems,0:FV)
 REAL,ALLOCATABLE :: detJac_Ref(:,:,:,:,:)        !< determinant of the mesh Jacobian for each Gauss point at degree 3*NGeo
 REAL,ALLOCATABLE :: sJ(:,:,:,:,:)                !< inverse of Jacobian determinent for each Gauss Point at degree N
 REAL,ALLOCATABLE :: scaledJac(:,:,:,:)           !< scaled Jacobian determinent for each Gauss Point at degree N
@@ -74,6 +75,7 @@ REAL,ALLOCATABLE :: TangVec1(:,:,:,:,:)          !< tangential vector 1 for each
 REAL,ALLOCATABLE :: TangVec2(:,:,:,:,:)          !< tangential vector 3 for each side (1:3,0:N,0:N,nSides)
 REAL,ALLOCATABLE :: SurfElem(:,:,:,:)            !< surface area for each side        (    0:N,0:N,nSides)
 REAL,ALLOCATABLE :: Ja_Face(:,:,:,:,:)           !< surface  metrics for each side
+REAL,ALLOCATABLE :: Ja_slave(:,:,:,:,:)          !< surface  metrics for each side
 !----------------------------------------------------------------------------------------------------------------------------------
 INTEGER,ALLOCATABLE :: ElemInfo(:,:)           !< array containing the node and side connectivity of the elments as stored in the
                                                !< mesh file

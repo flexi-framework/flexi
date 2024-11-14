@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -60,6 +61,7 @@ USE MOD_Preproc
 USE MOD_ReadInTools, ONLY: CountOption,GETSTR,GETLOGICAL,GETINT
 USE MOD_Mesh_Vars,   ONLY: nElems
 USE MOD_AnalyzeEquation_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -76,8 +78,8 @@ IF((nVarAvg.EQ.0).AND.(nVarFluc.EQ.0))THEN
   CALL CollectiveStop(__STAMP__, &
     'No quantities for time averaging have been specified. Please specify quantities or disable time averaging!')
 END IF
-#if FV_ENABLED
-SWRITE(UNIT_stdOut,'(A)') 'Warning: If FV is enabled, time averaging is performed on integral cell mean values.'
+#if FV_ENABLED == 1
+SWRITE(UNIT_stdOut,'(A)') 'Warning: If FV Switching is enabled, time averaging is performed on integral cell mean values.'
 #endif
 
 ! Define variables to be averaged
@@ -285,6 +287,7 @@ END SUBROUTINE InitCalcTimeAverage
 !==================================================================================================================================
 PURE FUNCTION GETMAPBYNAME(VarName,VarNameList,nVarList)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -325,10 +328,11 @@ USE MOD_EOS          ,ONLY: ConsToPrim
 USE MOD_EOS_Vars     ,ONLY: Kappa
 USE MOD_Analyze_Vars ,ONLY: WriteData_dt
 USE MOD_AnalyzeEquation_Vars
-#if FV_ENABLED
+#if FV_ENABLED == 1
 USE MOD_FV_Vars      ,ONLY: FV_Elems,FV_Vdm
 USE MOD_ChangeBasisByDim,ONLY:ChangeBasisVolume
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -349,7 +353,7 @@ INTEGER                         :: p,q
 REAL                            :: GradVel(1:3,1:3), Shear(1:3,1:3)
 #endif
 REAL,POINTER                    :: Uloc(:,:,:,:)
-#if FV_ENABLED
+#if FV_ENABLED == 1
 REAL,TARGET                     :: UFV(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 #endif
 INTEGER                         :: FV_Elems_loc(1:nElems)
@@ -362,7 +366,7 @@ IF(ANY(CalcAvg(6:nMaxVarAvg))) getPrims=.TRUE.
 
 DO iElem=1,nElems
 
-#if FV_ENABLED
+#if FV_ENABLED == 1
   IF(FV_Elems(iElem).EQ.0) THEN ! DG Element
     CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,U(:,:,:,:,iElem),UFV)
     Uloc(CONS,0:PP_N,0:PP_N,0:PP_NZ) => UFV
@@ -465,8 +469,8 @@ DO iElem=1,nElems
 
 #if PARABOLIC
   IF(CalcFluc(17).OR.CalcFluc(18))THEN  !'Dissipation via vel gradients'
-#if FV_ENABLED
-  STOP 'WriteTimeAverage for dissipation via vel gradients (DR_u / DR_S) not implemented yet for FV!'
+#if FV_ENABLED  == 1
+  STOP 'WriteTimeAverage for dissipation via vel gradients (DR_u / DR_S) not implemented yet for FV Switching!'
 #endif
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       GradVel(:,1)=GradUx(LIFT_VELV,i,j,k,iElem)
@@ -501,7 +505,11 @@ IF(Finalize)THEN
   IF(nVarAvg .GT.0) UAvg =UAvg /dtAvg
   IF(nVarFluc.GT.0) UFluc=UFluc/dtAvg
   tFuture=t+WriteData_dt
-  FV_Elems_loc=FV_ENABLED
+#if FV_ENABLED == 1
+  FV_Elems_loc = 1
+#else
+  FV_Elems_loc = 0
+#endif
   CALL WriteTimeAverage(MeshFile,t,dtAvg,FV_Elems_loc,(/PP_N+1,PP_N+1,PP_NZ+1/),&
                         nVarAvg ,VarNamesAvgOut ,UAvg ,&
                         nVarFluc,VarNamesFlucOut,UFluc,&
@@ -522,6 +530,7 @@ END SUBROUTINE CalcTimeAverage
 SUBROUTINE FinalizeTimeAverage()
 ! MODULES
 USE MOD_AnalyzeEquation_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

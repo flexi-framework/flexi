@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2022  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -50,6 +51,12 @@ MODULE MOD_Metrics
 ! MODULES
 IMPLICIT NONE
 PRIVATE
+
+INTEGER,PARAMETER    :: GeoSize=10       !< number of entries in each line of ElemInfo
+INTEGER,PARAMETER    :: Geo_SurfElem=1
+INTEGER,PARAMETER    :: Geo_NormVec(3)=(/2,3,4/)
+INTEGER,PARAMETER    :: Geo_TangVec1(3)=(/5,6,7/)
+INTEGER,PARAMETER    :: Geo_TangVec2(3)=(/8,9,10/)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -178,7 +185,7 @@ USE MOD_Interpolation_Vars
 USE MOD_Interpolation      ,ONLY: GetVandermonde,GetNodesAndWeights,GetDerivativeMatrix
 USE MOD_Mesh_Vars          ,ONLY: NGeo,NGeoRef,nElems,offsetElem
 USE MOD_Mesh_Vars          ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,dXCL_N
-USE MOD_Mesh_Vars          ,ONLY: sJ,detJac_Ref,Ja_Face
+USE MOD_Mesh_Vars          ,ONLY: sJ,detJac_Ref,Ja_Face,Ja_slave
 USE MOD_Mesh_Vars          ,ONLY: NodeCoords,TreeCoords,Elem_xGP
 USE MOD_Mesh_Vars          ,ONLY: ElemToTree,xiMinMax,interpolateFromTree
 USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP
@@ -548,7 +555,7 @@ DO iElem=1,nElems
     CALL ChangeBasisVolume(3,PP_N,PP_N,Vdm_CLN_N,JaCL_N(3,:,:,:,:),Metrics_hTilde(:,:,:,:,iElem,0))
 #endif
     CALL CalcSurfMetrics(PP_N,FV_SIZE,JaCL_N,XCL_N,Vdm_CLN_N,iElem,&
-                         NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
+                         NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face,Ja_slave)
   END IF
 
   ! Print CalcMetrics progress
@@ -565,22 +572,23 @@ END DO !iElem=1,nElems
 
 #if USE_MPI
 ! Send surface geomtry informations from mpi master to mpi slave
-ALLOCATE(Geo(10,0:PP_N,0:PP_NZ,0:FV_SIZE,firstMPISide_MINE:nSides))
+ALLOCATE(Geo(GeoSize,0:PP_N,0:PP_NZ,0:FV_SIZE,firstMPISide_MINE:nSides))
 Geo=0.
-Geo(1,:,:,:,:)   =SurfElem(  :,0:PP_NZ,:,firstMPISide_MINE:nSides)
-Geo(2:4,:,:,:,:) =NormVec (:,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
-Geo(5:7,:,:,:,:) =TangVec1(:,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
-Geo(8:10,:,:,:,:)=TangVec2(:,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
+Geo(Geo_SurfElem,:,:,:,:)    = SurfElem(    :,0:PP_NZ,:,firstMPISide_MINE:nSides)
+Geo(Geo_NormVec ,:,:,:,:)  = NormVec (  :,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
+Geo(Geo_TangVec1,:,:,:,:)  = TangVec1(  :,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
+Geo(Geo_TangVec2,:,:,:,:) = TangVec2(  :,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
 MPIRequest_Geo=MPI_REQUEST_NULL
-CALL StartReceiveMPIData(Geo,10*(PP_N+1)**(PP_dim-1)*(FV_SIZE+1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,RECV),SendID=1) ! Receive YOUR / Geo: master -> slave
-CALL StartSendMPIData(   Geo,10*(PP_N+1)**(PP_dim-1)*(FV_SIZE+1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,SEND),SendID=1) ! SEND MINE / Geo: master -> slave
+CALL StartReceiveMPIData(Geo,GeoSize*(PP_N+1)**(PP_dim-1)*(FV_SIZE+1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,RECV),SendID=1) ! Receive YOUR / Geo: master -> slave
+CALL StartSendMPIData(   Geo,GeoSize*(PP_N+1)**(PP_dim-1)*(FV_SIZE+1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,SEND),SendID=1) ! SEND MINE / Geo: master -> slave
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Geo)
-SurfElem  (:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(1   ,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
-NormVec (:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(2:4 ,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
-TangVec1(:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(5:7 ,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
-TangVec2(:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(8:10,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
+SurfElem  (:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(Geo_SurfElem,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
+NormVec (:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(Geo_NormVec ,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
+TangVec1(:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(Geo_TangVec1,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
+TangVec2(:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(Geo_TangVec2,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
 DEALLOCATE(Geo)
 #endif /*USE_MPI*/
+
 
 #if FV_ENABLED
 #if USE_MPI
@@ -608,7 +616,7 @@ END SUBROUTINE CalcMetrics
 !> Input is JaCL_N, the 3D element metrics on Cebychev-Lobatto points.
 !> For each side the volume metrics are interpolated to the surface and rotated into the side reference frame.
 !==================================================================================================================================
-SUBROUTINE CalcSurfMetrics(Nloc,FVE,JaCL_N,XCL_N,Vdm_CLN_N,iElem,NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
+SUBROUTINE CalcSurfMetrics(Nloc,FVE,JaCL_N,XCL_N,Vdm_CLN_N,iElem,NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face,Ja_slave)
 ! MODULES
 USE MOD_Mathtools        ,ONLY: CROSS
 USE MOD_Mesh_Vars        ,ONLY: ElemToSide,nSides,meshHasMortars,MortarType
@@ -636,6 +644,7 @@ REAL,INTENT(OUT)   ::   TangVec2(3,0:Nloc,0:ZDIM(Nloc),0:FVE,1:nSides) !< (OUT) 
 REAL,INTENT(OUT)   ::   SurfElem(  0:Nloc,0:ZDIM(Nloc),0:FVE,1:nSides) !< (OUT) element face surface area
 REAL,INTENT(OUT)   ::   Face_xGP(3,0:Nloc,0:ZDIM(Nloc),0:FVE,1:nSides) !< (OUT) element face interpolation points
 REAL,INTENT(OUT),OPTIONAL :: Ja_Face(3,3,0:Nloc,0:ZDIM(Nloc),1:nSides) !< (OUT) surface metrics
+REAL,INTENT(OUT),OPTIONAL :: Ja_slave(3,3,0:Nloc,0:ZDIM(Nloc),1:nSides)!< (OUT) surface metrics
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: p,q,pq(2),dd,iLocSide,SideID,SideID2,iMortar,nbSideIDs(4),flip
@@ -660,30 +669,32 @@ DO iLocSide=1,6
 DO iLocSide=2,5
 #endif
   flip = ElemToSide(E2S_FLIP,iLocSide,iElem)
-  IF(flip.NE.0) CYCLE ! only master sides with flip=0
+  ! IF(flip.NE.0) CYCLE ! only master sides with flip=0
   SideID=ElemToSide(E2S_SIDE_ID,iLocSide,iElem)
 
-  SELECT CASE(iLocSide)
-  CASE(XI_MINUS)
-    tmp=XCL_N(1:3,0   ,:   ,:   )
-  CASE(XI_PLUS)
-    tmp=XCL_N(1:3,Nloc,:   ,:   )
-  CASE(ETA_MINUS)
-    tmp=XCL_N(1:3,:   ,0   ,:   )
-  CASE(ETA_PLUS)
-    tmp=XCL_N(1:3,:   ,Nloc,:   )
-  CASE(ZETA_MINUS)
-    tmp=XCL_N(1:3,:   ,:   ,0   )
-  CASE(ZETA_PLUS)
-    tmp=XCL_N(1:3,:   ,:   ,Nloc)
-  END SELECT
-  CALL ChangeBasisSurf(3,Nloc,Nloc,Vdm_CLN_N,tmp,tmp2)
-  ! turn into right hand system of side
-  DO q=0,ZDIM(Nloc); DO p=0,Nloc
-    pq=SideToVol2(Nloc,p,q,0,iLocSide,PP_dim)
-    ! Compute Face_xGP for sides
-    Face_xGP(1:3,p,q,0,sideID)=tmp2(:,pq(1),pq(2))
-  END DO; END DO ! p,q
+  IF (flip.EQ.0) THEN
+    SELECT CASE(iLocSide)
+    CASE(XI_MINUS)
+      tmp=XCL_N(1:3,0   ,:   ,:   )
+    CASE(XI_PLUS)
+      tmp=XCL_N(1:3,Nloc,:   ,:   )
+    CASE(ETA_MINUS)
+      tmp=XCL_N(1:3,:   ,0   ,:   )
+    CASE(ETA_PLUS)
+      tmp=XCL_N(1:3,:   ,Nloc,:   )
+    CASE(ZETA_MINUS)
+      tmp=XCL_N(1:3,:   ,:   ,0   )
+    CASE(ZETA_PLUS)
+      tmp=XCL_N(1:3,:   ,:   ,Nloc)
+    END SELECT
+    CALL ChangeBasisSurf(3,Nloc,Nloc,Vdm_CLN_N,tmp,tmp2)
+    ! turn into right hand system of side
+    DO q=0,ZDIM(Nloc); DO p=0,Nloc
+      pq=SideToVol2(Nloc,p,q,0,iLocSide,PP_dim)
+      ! Compute Face_xGP for sides
+      Face_xGP(1:3,p,q,0,sideID)=tmp2(:,pq(1),pq(2))
+    END DO; END DO ! p,q
+  END IF
 
   Ja_Face_l=0.
   DO dd=1,PP_dim
@@ -704,12 +715,14 @@ DO iLocSide=2,5
     CALL ChangeBasisSurf(3,Nloc,Nloc,Vdm_CLN_N,tmp,tmp2)
     ! turn into right hand system of side
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
-      pq=SideToVol2(Nloc,p,q,0,iLocSide,PP_dim)
+      pq=SideToVol2(Nloc,p,q,flip,iLocSide,PP_dim)
       Ja_Face_l(dd,1:3,p,q)=tmp2(:,pq(1),pq(2))
     END DO; END DO ! p,q
   END DO ! dd
-  IF(PRESENT(Ja_Face)) Ja_Face(:,:,:,:,SideID)=Ja_Face_l
+  IF(PRESENT(Ja_Face)  .AND. flip.EQ.0) Ja_Face(:,:,:,:,SideID)  = Ja_Face_l
+  IF(PRESENT(Ja_slave) .AND. flip.NE.0) Ja_slave(:,:,:,:,SideID) = Ja_Face_l
 
+  IF (flip.NE.0) CYCLE
 
   NormalDir=NormalDirs(iLocSide); TangDir=TangDirs(iLocSide); NormalSign=NormalSigns(iLocSide)
   CALL SurfMetricsFromJa(Nloc,NormalDir,TangDir,NormalSign,Ja_Face_l,&

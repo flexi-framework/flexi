@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -44,7 +45,7 @@ USE MOD_Globals
 USE MOD_Basis,             ONLY: LagrangeInterpolationPolys,BarycentricWeights
 USE MOD_Interpolation,     ONLY: GetNodesAndWeights
 USE MOD_SwapMesh_Vars,     ONLY: equalElem,Vdm_GPNState_GPNNew
-USE MOD_SwapMesh_Vars,     ONLY: NState,NInter,NNew,NodeTypeState,RefState,nVar_State
+USE MOD_SwapMesh_Vars,     ONLY: NState,NInter,NNew,NodeTypeState,RefState,nVar_State,NodeTypeOut
 USE MOD_SwapMesh_Vars,     ONLY: Vdm_CLNInter_GPNNew
 USE MOD_SwapMesh_Vars,     ONLY: UOld,xiInter,InterToElem,nElemsNew,IPDone
 USE MOD_SwapMesh_Vars,     ONLY: Elem_IJK,ExtrudeTo3D,ExtrudeK
@@ -68,9 +69,7 @@ INTEGER                       :: iElemOld,iElemNew
 REAL                          :: Utmp(1:nVar_State,0:NInter,0:NInter,0:ZDIM(NInter))
 REAL                          :: L_xi(    0:NState,0:NInter,0:NInter,0:ZDIM(NInter))
 REAL                          :: L_eta(   0:NState,0:NInter,0:NInter,0:ZDIM(NInter))
-#if PP_dim == 3
 REAL                          :: L_zeta(  0:NState,0:NInter,0:NInter,0:NInter)
-#endif
 REAL                          :: L_eta_zeta
 REAL                          :: xGP(0:NState),wBaryGP(0:NState)
 REAL                          :: StartT,EndT
@@ -84,7 +83,7 @@ SWRITE(UNIT_stdOut,'(A,A)',ADVANCE='NO')' INTERPOLATE STATE TO NEW MESH ...',ACH
 StartT = FLEXITIME()
 U      = 0.
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iElemNew,iElemOld,L_xi,ii,jj,kk,L_eta,L_zeta,L_eta_zeta,Utmp,i,j,k)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iElemNew,iElemOld,ii,jj,kk,L_xi,L_eta,L_zeta,L_eta_zeta,Utmp,i,j,k)
 !$OMP DO
 DO iElemNew=1,nElemsNew
   IF (ExtrudePeriodic) THEN
@@ -99,7 +98,7 @@ DO iElemNew=1,nElemsNew
   ! Equal elements
   IF(equalElem(iElemNew).GT.0) THEN
     iElemOld=equalElem(iElemNew)
-    IF(NState.EQ.NNew)THEN
+    IF((NState.EQ.Nnew).AND.(NodeTypeOut.EQ.NodetypeState))THEN
       U(:,:,:,:,iElemNew)=UOld(:,:,:,:,iElemOld)
     ELSE
       CALL ChangeBasisVolume(nVar_State,NState,NNew,Vdm_GPNState_GPNNew,UOld(:,:,:,:,iElemOld),U(:,:,:,:,iElemNew))
@@ -188,7 +187,7 @@ IF (ExtrudePeriodic) THEN
 END IF
 
 EndT = FLEXITIME()
-SWRITE(UNIT_stdOut,'(A,F0.3,A)')' INTERPOLATE STATE TO NEW MESH DONE  [',EndT-StartT,'s]'
+CALL DisplayMessageAndTime(EndT-StartT, 'INTERPOLATE STATE TO NEW MESH DONE', DisplayLine=.FALSE.)
 
 END SUBROUTINE InterpolateSolution
 

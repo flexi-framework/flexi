@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -93,20 +94,20 @@ SUBROUTINE TimeStepByLSERKW2(t)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Vector
-USE MOD_DG            ,ONLY: DGTimeDerivative_weakForm
-USE MOD_DG_Vars       ,ONLY: U,Ut,nTotalU
-USE MOD_PruettDamping ,ONLY: TempFilterTimeDeriv
-USE MOD_TimeDisc_Vars ,ONLY: dt,Ut_tmp,RKA,RKb,RKc,nRKStages,CurrentStage
+USE MOD_DG               ,ONLY: DGTimeDerivative_weakForm
+USE MOD_DG_Vars          ,ONLY: U,Ut,nTotalU
+USE MOD_TimeDisc_Vars    ,ONLY: dt,Ut_tmp,RKA,RKb,RKc,nRKStages,CurrentStage
 #if FV_ENABLED
-USE MOD_Indicator     ,ONLY: CalcIndicator
+USE MOD_BaseFlow_Vars    ,ONLY: BaseFlowFiltered
+USE MOD_Indicator        ,ONLY: CalcIndicator,doIndicatorBaseFlow
 #endif /*FV_ENABLED*/
 #if FV_ENABLED == 1
-USE MOD_FV_Switching  ,ONLY: FV_Switch
-USE MOD_FV_Vars       ,ONLY: FV_toDGinRK
+USE MOD_FV_Switching     ,ONLY: FV_Switch
+USE MOD_FV_Vars          ,ONLY: FV_toDGinRK
 #endif /*FV_ENABLED==1*/
 #if PP_LIMITER
-USE MOD_PPLimiter     ,ONLY: PPLimiter
-USE MOD_Filter_Vars   ,ONLY: DoPPLimiter
+USE MOD_PPLimiter        ,ONLY: PPLimiter
+USE MOD_Filter_Vars      ,ONLY: DoPPLimiter
 #endif /*PP_LIMITER*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -143,7 +144,11 @@ DO iStage = 1,nRKStages
 #if FV_ENABLED
   ! Time needs to be evaluated at the next step because time integration was already performed
   ASSOCIATE(tFV => MERGE(t+dt,t,iStage.EQ.nRKStages))
-  CALL CalcIndicator(U,tFV)
+  IF(doIndicatorBaseFlow) THEN
+    CALL CalcIndicator(BaseFlowFiltered,tFV)
+  ELSE
+    CALL CalcIndicator(U,tFV)
+  END IF
   END ASSOCIATE
 #endif /*FV_ENABLED*/
 #if FV_ENABLED == 1
@@ -168,19 +173,20 @@ SUBROUTINE TimeStepByLSERKK3(t)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Vector
-USE MOD_DG           ,ONLY: DGTimeDerivative_weakForm
-USE MOD_DG_Vars      ,ONLY: U,Ut,nTotalU
-USE MOD_TimeDisc_Vars,ONLY: dt,UPrev,S2,RKdelta,RKg1,RKg2,RKg3,RKb,RKc,nRKStages,CurrentStage
+USE MOD_DG               ,ONLY: DGTimeDerivative_weakForm
+USE MOD_DG_Vars          ,ONLY: U,Ut,nTotalU
+USE MOD_TimeDisc_Vars    ,ONLY: dt,UPrev,S2,RKdelta,RKg1,RKg2,RKg3,RKb,RKc,nRKStages,CurrentStage
 #if FV_ENABLED
-USE MOD_Indicator     ,ONLY: CalcIndicator
+USE MOD_BaseFlow_Vars    ,ONLY: BaseFlowFiltered
+USE MOD_Indicator        ,ONLY: CalcIndicator,doIndicatorBaseFlow
 #endif /*FV_ENABLED*/
 #if FV_ENABLED == 1
-USE MOD_FV_Switching  ,ONLY: FV_Switch
-USE MOD_FV_Vars       ,ONLY: FV_toDGinRK
+USE MOD_FV_Switching      ,ONLY: FV_Switch
+USE MOD_FV_Vars           ,ONLY: FV_toDGinRK
 #endif /*FV_ENABLED==1*/
 #if PP_LIMITER
-USE MOD_PPLimiter    ,ONLY: PPLimiter
-USE MOD_Filter_Vars  ,ONLY: DoPPLimiter
+USE MOD_PPLimiter        ,ONLY: PPLimiter
+USE MOD_Filter_Vars      ,ONLY: DoPPLimiter
 #endif /*PP_LIMITER*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -223,7 +229,11 @@ DO iStage = 1,nRKStages
 #if FV_ENABLED
   ! Time needs to be evaluated at the next step because time integration was already performed
   ASSOCIATE(tFV => MERGE(t+dt,t,iStage.EQ.nRKStages))
-  CALL CalcIndicator(U,tFV)
+  IF(doIndicatorBaseFlow) THEN
+    CALL CalcIndicator(BaseFlowFiltered,tFV)
+  ELSE
+    CALL CalcIndicator(U,tFV)
+  END IF
   ! NOTE: Apply switch and update FV_Elems
   END ASSOCIATE
 #endif /*FV_ENABLED*/
@@ -258,11 +268,9 @@ USE MOD_Implicit          ,ONLY: Newton
 USE MOD_Implicit_Vars     ,ONLY: LinSolverRHS,adaptepsNewton,epsNewton,nDOFVarProc,nGMRESIterdt,NewtonConverged,nInnerGMRES
 USE MOD_Mathtools         ,ONLY: GlobalVectorDotProduct
 USE MOD_Mesh_Vars         ,ONLY: nElems
-USE MOD_Precond           ,ONLY: BuildPrecond
-USE MOD_Precond_Vars      ,ONLY: PrecondIter
 USE MOD_Predictor         ,ONLY: Predictor,PredictorStoreValues
-USE MOD_TimeDisc_Vars     ,ONLY: dt,nRKStages,RKA_implicit,RKc_implicit,iter,CFLScale,CFLScale_Readin
-USE MOD_TimeDisc_Vars     ,ONLY: RKb_implicit,RKb_embedded,safety,ESDIRK_gamma
+USE MOD_TimeDisc_Vars     ,ONLY: dt,nRKStages,RKA_implicit,RKc_implicit,CFLScale,CFLScale_Readin
+USE MOD_TimeDisc_Vars     ,ONLY: RKb_implicit,RKb_embedded,safety
 #if PARABOLIC
 USE MOD_TimeDisc_Vars     ,ONLY: DFLScale,DFLScale_Readin
 #endif
@@ -272,6 +280,12 @@ USE MOD_Indicator         ,ONLY: CalcIndicator
 #if FV_ENABLED == 1
 USE MOD_FV_Switching      ,ONLY: FV_Switch
 #endif /*FV_ENABLED==1*/
+#if USE_PRECOND
+USE MOD_Precond           ,ONLY: BuildPrecond
+USE MOD_Precond_Vars      ,ONLY: PrecondIter
+USE MOD_TimeDisc_Vars     ,ONLY: iter,ESDIRK_gamma
+#endif /*USE_PRECOND*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -286,7 +300,9 @@ REAL    :: delta_embedded(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)          ! d
                                                                              ! full order scheme and embedded scheme
 !===================================================================================================================================
 !CALL DGTimeDerivative_weakForm(t)! has to be called before preconditioner to fill U_master/slave ! already called in timedisc
+#if USE_PRECOND
 IF ((iter==0).OR.(MOD(iter,PrecondIter)==0)) CALL BuildPrecond(t,ESDIRK_gamma,dt)
+#endif /*USE_PRECOND*/
 tStage                   = t
 Un                       = U
 Ut_implicit(:,:,:,:,:,1) = Ut
@@ -320,7 +336,7 @@ IF (adaptepsNewton.AND.NewtonConverged) THEN
   CALL GlobalVectorDotProduct(delta_embedded,delta_embedded,nDOFVarProc,epsNewton)
   epsNewton = (MIN(dt*SQRT(epsNewton)/safety,1E-3))
 #if DEBUG
-  SWRITE(*,*) 'epsNewton = ',epsNewton
+  SWRITE(UNIT_stdOut,'(A,ES16.7)') 'epsNewton = ',epsNewton
 #endif
 END IF
 
@@ -351,7 +367,7 @@ ELSE
     CALL Abort(__STAMP__, &
     'Newton not converged with GMRES Iterations of last Newton step and CFL reduction',nInnerGMRES,CFLScale(0)/CFLScale_Readin(0))
   END IF
-  SWRITE(*,*) 'Attention: Timestep failed, repeating with dt/2!'
+  SWRITE(UNIT_stdOut,'(A)') 'Attention: Timestep failed, repeating with dt/2!'
 END IF
 
 nGMRESIterdt = 0

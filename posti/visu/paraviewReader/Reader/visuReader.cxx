@@ -1,6 +1,6 @@
 /*
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -31,7 +31,6 @@
 #include <vtkStreamingDemandDrivenPipeline.h>
 #include <vtkMultiBlockDataSet.h>
 #include <vtkUnstructuredGrid.h>
-
 
 #include <libgen.h>
 #include <unistd.h>
@@ -72,10 +71,10 @@ visuReader::visuReader()
    this->SelectionObserver->SetClientData(this);
    // create array for state,primitive and derived quantities
    this->VarDataArraySelection = vtkDataArraySelection::New();
-   this->BCDataArraySelection = vtkDataArraySelection::New();
+   this->BCDataArraySelection  = vtkDataArraySelection::New();
    // add an observer
    this->VarDataArraySelection->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
-   this->BCDataArraySelection->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
+   this->BCDataArraySelection->AddObserver(vtkCommand::ModifiedEvent,  this->SelectionObserver);
 }
 
 /*
@@ -177,7 +176,11 @@ int visuReader::RequestInformation(vtkInformation *,
 
          // Select Density, FV_Elems by default
          if (varname.compare("Density") == 0) this->VarDataArraySelection->EnableArray(varname.c_str());
+#if FV_ENABLED == 1
          if (varname.compare("ElemData:FV_Elems") == 0) this->VarDataArraySelection->EnableArray(varname.c_str());
+#elif FV_ENABLED == 2
+         if (varname.compare("ElemData:FV_alpha") == 0) this->VarDataArraySelection->EnableArray(varname.c_str());
+#endif
       }
    }
    for (int iVar=0; iVar<bcnames.len/255; iVar++) {
@@ -440,7 +443,6 @@ int visuReader::RequestData(
       //mb->SetBlock(3, vtkUnstructuredGrid::New());
    }
 
-
     // Insert Surface DG data into output
    InsertData(mb, 0, &coordsSurf_DG, &valuesSurf_DG, &nodeidsSurf_DG, &varnamesSurf);
 
@@ -456,7 +458,6 @@ int visuReader::RequestData(
    SWRITE("RequestData finished");
    return 1;
 }
-
 
 /*
  * This function inserts the data, loaded by the Posti tool, into a ouput
@@ -581,97 +582,81 @@ visuReader::~visuReader(){
  * and return the names of the variables, ....
  */
 
-void visuReader::DisableAllVarArrays()
-{
+void visuReader::DisableAllVarArrays() {
    this->VarDataArraySelection->DisableAllArrays();
 }
-void visuReader::EnableAllVarArrays()
-{
+
+void visuReader::EnableAllVarArrays() {
    this->VarDataArraySelection->EnableAllArrays();
 }
-int visuReader::GetNumberOfVarArrays()
-{
+
+int visuReader::GetNumberOfVarArrays() {
    return this->VarDataArraySelection->GetNumberOfArrays();
 }
 
-const char* visuReader::GetVarArrayName(int index)
-{
-   if (index >= ( int ) this->GetNumberOfVarArrays() || index < 0)
-   {
+const char* visuReader::GetVarArrayName(int index) {
+   if (index >= ( int ) this->GetNumberOfVarArrays() || index < 0) {
       return NULL;
    }
-   else
-   {
+   else {
       return this->VarDataArraySelection->GetArrayName(index);
    }
 }
-int visuReader::GetVarArrayStatus(const char* name)
-{
+
+int visuReader::GetVarArrayStatus(const char* name) {
    return this->VarDataArraySelection->ArrayIsEnabled(name);
 }
 
-void visuReader::SetVarArrayStatus(const char* name, int status)
-{
-   if (status)
-   {
+void visuReader::SetVarArrayStatus(const char* name, int status) {
+   if (status) {
       this->VarDataArraySelection->EnableArray(name);
    }
-   else
-   {
+   else {
       this->VarDataArraySelection->DisableArray(name);
    }
 }
 
-void visuReader::DisableAllBCArrays()
-{
+void visuReader::DisableAllBCArrays() {
    this->BCDataArraySelection->DisableAllArrays();
 }
-void visuReader::EnableAllBCArrays()
-{
+
+void visuReader::EnableAllBCArrays() {
    this->BCDataArraySelection->EnableAllArrays();
 }
-int visuReader::GetNumberOfBCArrays()
-{
+
+int visuReader::GetNumberOfBCArrays() {
    return this->BCDataArraySelection->GetNumberOfArrays();
 }
 
-const char* visuReader::GetBCArrayName(int index)
-{
-   if (index >= ( int ) this->GetNumberOfBCArrays() || index < 0)
-   {
+const char* visuReader::GetBCArrayName(int index) {
+   if (index >= ( int ) this->GetNumberOfBCArrays() || index < 0) {
       return NULL;
    }
-   else
-   {
+   else {
       return this->BCDataArraySelection->GetArrayName(index);
    }
 }
-int visuReader::GetBCArrayStatus(const char* name)
-{
+
+int visuReader::GetBCArrayStatus(const char* name) {
    return this->BCDataArraySelection->ArrayIsEnabled(name);
 }
 
-void visuReader::SetBCArrayStatus(const char* name, int status)
-{
-   if (status)
-   {
+void visuReader::SetBCArrayStatus(const char* name, int status) {
+   if (status) {
       this->BCDataArraySelection->EnableArray(name);
    }
-   else
-   {
+   else {
       this->BCDataArraySelection->DisableArray(name);
    }
 }
 
 void visuReader::SelectionModifiedCallback(vtkObject*, unsigned long,
-      void* clientdata, void*)
-{
+      void* clientdata, void*) {
    static_cast<visuReader*>(clientdata)->Modified();
 }
 
 int visuReader::FillOutputPortInformation(
-      int vtkNotUsed(port), vtkInformation* info)
-{
+      int vtkNotUsed(port), vtkInformation* info) {
    info->Set(vtkDataObject::DATA_TYPE_NAME(), "vtkMultiBlockDataSet");
    return 1;
 }

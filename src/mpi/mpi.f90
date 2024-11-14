@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -102,8 +103,8 @@ END SUBROUTINE DefineParametersMPI
 
 
 !==================================================================================================================================
-!> Basic mpi initialization. Calls initialization routine of the mpi library and sets myRank, nProcessors and MPIRoot. If the code
-!> is not compiled with mpi, InitMPI sets standard values for these variables.
+!> Basic MPI initialization. Calls initialization routine of the MPI library and sets myRank, nProcessors and MPIRoot. If the code
+!> is not compiled with MPI, InitMPI sets standard values for these variables.
 !==================================================================================================================================
 SUBROUTINE InitMPI(mpi_comm_IN)
 ! MODULES
@@ -115,7 +116,9 @@ INTEGER,INTENT(IN),OPTIONAL      :: mpi_comm_IN !< MPI communicator
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 #if USE_MPI
-LOGICAL :: initDone
+LOGICAL :: initDone,foundAttr
+INTEGER :: color
+INTEGER(KIND=MPI_ADDRESS_KIND) :: myApp
 !==================================================================================================================================
 IF (PRESENT(mpi_comm_IN)) THEN
   MPI_COMM_FLEXI = mpi_comm_IN
@@ -123,10 +126,18 @@ ELSE
   CALL MPI_INIT(iError)
   CALL MPI_INITIALIZED(initDone,iError)
   IF(.NOT.initDone) CALL MPI_INIT(iError)
-  IF(iError .NE. 0) &
-    CALL Abort(__STAMP__,'Error in MPI_INIT',iError)
-  ! Duplicate communicator instead of just copying it. Creates a clean copy with all the cached information intact
-  CALL MPI_COMM_DUP(MPI_COMM_WORLD,MPI_COMM_FLEXI,iError)
+  IF(iError .NE. 0) CALL Abort(__STAMP__,'Error in MPI_INIT',iError)
+
+  ! Get number of own app if multiple apps have been launched in single mpirun command
+  CALL MPI_COMM_GET_ATTR(MPI_COMM_WORLD,MPI_APPNUM,myApp,foundAttr,iError)
+  IF (foundAttr) THEN
+    ! Split communicator to obtain own MPI_COMM_FLEXI per executable (explicit cast, since API requires INT().)
+    color = MAX(INT(myApp), 0)
+    CALL MPI_COMM_SPLIT(MPI_COMM_WORLD,color,0,MPI_COMM_FLEXI,iError)
+  ELSE
+    ! Duplicate communicator instead of just copying it. Creates a clean copy with all the cached information intact
+    CALL MPI_COMM_DUP(MPI_COMM_WORLD,MPI_COMM_FLEXI,iError)
+  END IF
 END IF
 
 CALL MPI_COMM_RANK(MPI_COMM_FLEXI, myRank     , iError)
@@ -146,18 +157,18 @@ MPILocalRoot=.TRUE.
 END SUBROUTINE InitMPI
 
 
-
 #if USE_MPI
 !==================================================================================================================================
-!> Initialize derived mpi variables used for communication
+!> Initialize derived MPI variables used for communication
 !==================================================================================================================================
 SUBROUTINE InitMPIVars()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_Interpolation_Vars,      ONLY: InterpolationInitIsDone
 USE MOD_MPI_Vars
 USE MOD_ReadinTools,             ONLY: GETINT
-USE MOD_Interpolation_Vars,      ONLY: InterpolationInitIsDone
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -178,6 +189,12 @@ ALLOCATE(MPIRequest_FV_Elems(nNbProcs,2) )
 ALLOCATE(MPIRequest_FV_gradU(nNbProcs,2) )
 MPIRequest_FV_Elems = MPI_REQUEST_NULL
 MPIRequest_FV_gradU = MPI_REQUEST_NULL
+#if ((FV_ENABLED == 2) && (PP_NodeType == 1))
+ALLOCATE(MPIRequest_FV_U(nNbProcs,2)    )
+ALLOCATE(MPIRequest_FV_Flux(nNbProcs,2) )
+MPIRequest_FV_U     = MPI_REQUEST_NULL
+MPIRequest_FV_Flux  = MPI_REQUEST_NULL
+#endif
 #if FV_RECONSTRUCT
 ALLOCATE(MPIRequest_Rec_MS(nNbProcs,2))
 ALLOCATE(MPIRequest_Rec_SM(nNbProcs,2))
@@ -198,9 +215,10 @@ MPIRequest_gradU = MPI_REQUEST_NULL
 #if EDDYVISCOSITY
 DataSizeSideSGS= (PP_N+1)*(PP_NZ+1)
 #endif
-DataSizeSide      =PP_nVar*(PP_N+1)*(PP_NZ+1)
-DataSizeSidePrim  =PP_nVarPrim*(PP_N+1)*(PP_NZ+1)
-DataSizeSideGrad  =PP_nVarLifting*(PP_N+1)*(PP_NZ+1)
+DataSizeSide             =PP_nVar*(PP_N+1)*(PP_NZ+1)
+DataSizeSidePrim         =PP_nVarPrim*(PP_N+1)*(PP_NZ+1)
+DataSizeSideGrad         =PP_nVarLifting*(PP_N+1)*(PP_NZ+1)
+DataSizeSideGradParabolic=PP_nVarLifting*(PP_N+1)*(PP_NZ+1)*3
 
 ! split communicator into smaller groups (e.g. for local nodes)
 GroupSize=GETINT('GroupSize')
@@ -213,6 +231,14 @@ END IF
 CALL MPI_COMM_RANK(MPI_COMM_NODE,myLocalRank,iError)
 CALL MPI_COMM_SIZE(MPI_COMM_NODE,nLocalProcs,iError)
 MPILocalRoot=(myLocalRank .EQ. 0)
+
+IF (nProcessors.EQ.nLocalProcs) THEN
+  SWRITE(UNIT_stdOUt,'(A,I0,A,I0,A)') ' | Starting gathered I/O communication with ',nLocalProcs,' procs in ',1,' group'
+ELSE
+  SWRITE(UNIT_stdOUt,'(A,I0,A,I0,A,I0,A)') ' | Starting gathered I/O communication with ',nLocalProcs,' procs each in ',&
+                                                        nProcessors/nLocalProcs,' groups for a total number of ',&
+                                                        nProcessors,' procs'
+END IF
 
 ! now split global communicator into small group leaders and the others
 MPI_COMM_LEADERS=MPI_COMM_NULL
@@ -231,7 +257,6 @@ ELSE
   nLeaderProcs=nProcessors-nWorkerProcs
 END IF
 END SUBROUTINE InitMPIvars
-
 
 
 !==================================================================================================================================
@@ -439,6 +464,10 @@ SDEALLOCATE(MPIRequest_Flux)
 #if FV_ENABLED
 SDEALLOCATE(MPIRequest_FV_Elems)
 SDEALLOCATE(MPIRequest_FV_gradU)
+#if ((FV_ENABLED == 2) && (PP_NodeType == 1))
+SDEALLOCATE(MPIRequest_FV_U)
+SDEALLOCATE(MPIRequest_FV_Flux)
+#endif
 #if FV_RECONSTRUCT
 SDEALLOCATE(MPIRequest_Rec_MS)
 SDEALLOCATE(MPIRequest_Rec_SM)
