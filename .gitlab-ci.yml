@@ -102,8 +102,8 @@ stages:
 
 .defaults_nightly_python: &defaults_weekly_python
   <<: *defaults_python
-  # rules:
-  #   - if: '$DO_NIGHTLY'
+  rules:
+    - if: '$DO_NIGHTLY'
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "build": Build on check-in

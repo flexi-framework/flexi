@@ -21,9 +21,9 @@ args = parser.parse_args()
 tmpdir = tempfile.mkdtemp()
 
 try :
-   ext = os.path.splitext(args.pictures[0])[1]
-except :
-   exit(1)
+    ext = os.path.splitext(args.pictures[0])[1]
+except Exception:
+    exit(1)
 
 cmd = ['identify']
 cmd.append('-format')
@@ -34,24 +34,24 @@ p.wait()
 dimension = p.stdout.read().strip()
 
 i = 0
-for p in args.pictures : 
-   i = i+1
-   sys.stdout.write('\r%05.2f %% Process: %s' % (100.0 * i / len(args.pictures), p))
-   sys.stdout.flush()
-   if args.trim :
-      cmd = ['convert']
-      cmd.append(p)
-      cmd.append('-crop')
-      cmd.append(dimension)
-   else :
-      cmd = ['cp']
-      cmd.append(p)
-   cmd.append(os.path.join(tmpdir, os.path.basename(p)))
-   p = subprocess.Popen(cmd)
-   p.wait()
+for p in args.pictures :
+    i = i+1
+    sys.stdout.write('\r%05.2f %% Process: %s' % (100.0 * i / len(args.pictures), p))
+    sys.stdout.flush()
+    if args.trim :
+        cmd = ['convert']
+        cmd.append(p)
+        cmd.append('-crop')
+        cmd.append(dimension)
+    else :
+        cmd = ['cp']
+        cmd.append(p)
+    cmd.append(os.path.join(tmpdir, os.path.basename(p)))
+    p = subprocess.Popen(cmd)
+    p.wait()
 
 sys.stdout.write('\n')
-    
+
 
 print('Generate movie ....')
 cmd = ['mencoder']
