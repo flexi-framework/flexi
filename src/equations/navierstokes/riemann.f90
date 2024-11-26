@@ -37,20 +37,20 @@ END INTERFACE
 
 PROCEDURE(RiemannInt),POINTER :: Riemann_pointer    !< pointer defining the standard inner Riemann solver
 PROCEDURE(RiemannInt),POINTER :: RiemannBC_pointer  !< pointer defining the standard BC    Riemann solver
-REAL :: phiFactor
-INTEGER,PARAMETER      :: PRM_RIEMANN_SAME          = -1
-INTEGER,PARAMETER      :: PRM_RIEMANN_LF            = 1
-INTEGER,PARAMETER      :: PRM_RIEMANN_HLLC          = 2
-INTEGER,PARAMETER      :: PRM_RIEMANN_ROE           = 3
-INTEGER,PARAMETER      :: PRM_RIEMANN_ROEL2         = 32
-INTEGER,PARAMETER      :: PRM_RIEMANN_ROEENTROPYFIX = 33
-INTEGER,PARAMETER      :: PRM_RIEMANN_HLL           = 4
-INTEGER,PARAMETER      :: PRM_RIEMANN_HLLE          = 5
-INTEGER,PARAMETER      :: PRM_RIEMANN_HLLEM         = 6
-INTEGER,PARAMETER      :: PRM_RIEMANN_ROEENTROPYGSHOCKFIX = 8
+REAL                   :: RiemannPhi                !< factor for Riemann solver with fox for grid aligned shocks
+INTEGER,PARAMETER      :: PRM_RIEMANN_SAME                = -1
+INTEGER,PARAMETER      :: PRM_RIEMANN_LF                  = 1
+INTEGER,PARAMETER      :: PRM_RIEMANN_HLLC                = 2
+INTEGER,PARAMETER      :: PRM_RIEMANN_ROE                 = 3
+INTEGER,PARAMETER      :: PRM_RIEMANN_ROEL2               = 32
+INTEGER,PARAMETER      :: PRM_RIEMANN_ROEENTROPYFIX       = 33
+INTEGER,PARAMETER      :: PRM_RIEMANN_ROEENTROPYGSHOCKFIX = 34
+INTEGER,PARAMETER      :: PRM_RIEMANN_HLL                 = 4
+INTEGER,PARAMETER      :: PRM_RIEMANN_HLLE                = 5
+INTEGER,PARAMETER      :: PRM_RIEMANN_HLLEM               = 6
 #ifdef SPLIT_DG
-INTEGER,PARAMETER      :: PRM_RIEMANN_CH            = 7
-INTEGER,PARAMETER      :: PRM_RIEMANN_Average       = 0
+INTEGER,PARAMETER      :: PRM_RIEMANN_CH                  = 7
+INTEGER,PARAMETER      :: PRM_RIEMANN_Average             = 0
 #endif
 
 INTERFACE InitRiemann
@@ -101,36 +101,37 @@ IMPLICIT NONE
 CALL prms%SetSection("Riemann")
 CALL prms%CreateIntFromStringOption('Riemann',   "Riemann solver to be used: LF, HLLC, Roe, RoeEntropyFix, HLL, HLLE, HLLEM", &
                                                  "RoeEntropyFix")
-CALL addStrListEntry('Riemann','lf',           PRM_RIEMANN_LF)
-CALL addStrListEntry('Riemann','hllc',         PRM_RIEMANN_HLLC)
-CALL addStrListEntry('Riemann','roe',          PRM_RIEMANN_ROE)
-CALL addStrListEntry('Riemann','roeentropyfix',PRM_RIEMANN_ROEENTROPYFIX)
-CALL addStrListEntry('Riemann','roel2',        PRM_RIEMANN_ROEL2)
-CALL addStrListEntry('Riemann','hll',          PRM_RIEMANN_HLL)
-CALL addStrListEntry('Riemann','hlle',         PRM_RIEMANN_HLLE)
-CALL addStrListEntry('Riemann','hllem',        PRM_RIEMANN_HLLEM)
+CALL addStrListEntry('Riemann','lf',                         PRM_RIEMANN_LF)
+CALL addStrListEntry('Riemann','hllc',                       PRM_RIEMANN_HLLC)
+CALL addStrListEntry('Riemann','roe',                        PRM_RIEMANN_ROE)
+CALL addStrListEntry('Riemann','roeentropyfix',              PRM_RIEMANN_ROEENTROPYFIX)
+CALL addStrListEntry('Riemann','roel2',                      PRM_RIEMANN_ROEL2)
+CALL addStrListEntry('Riemann','hll',                        PRM_RIEMANN_HLL)
+CALL addStrListEntry('Riemann','hlle',                       PRM_RIEMANN_HLLE)
+CALL addStrListEntry('Riemann','hllem',                      PRM_RIEMANN_HLLEM)
 CALL addStrListEntry('Riemann','roeentropygshockfix',        PRM_RIEMANN_ROEENTROPYGSHOCKFIX)
 #ifdef SPLIT_DG
-CALL addStrListEntry('Riemann','ch',           PRM_RIEMANN_CH)
-CALL addStrListEntry('Riemann','avg',          PRM_RIEMANN_Average)
+CALL addStrListEntry('Riemann','ch',                         PRM_RIEMANN_CH)
+CALL addStrListEntry('Riemann','avg',                        PRM_RIEMANN_Average)
 #endif
 CALL prms%CreateIntFromStringOption('RiemannBC', "Riemann solver used for boundary conditions: Same, LF, Roe, RoeEntropyFix, "//&
                                                  "HLL, HLLE, HLLEM",&
                                                  "Same")
-CALL addStrListEntry('RiemannBC','lf',           PRM_RIEMANN_LF)
-CALL addStrListEntry('RiemannBC','hllc',         PRM_RIEMANN_HLLC)
-CALL addStrListEntry('RiemannBC','roe',          PRM_RIEMANN_ROE)
-CALL addStrListEntry('RiemannBC','roeentropyfix',PRM_RIEMANN_ROEENTROPYFIX)
-CALL addStrListEntry('RiemannBC','roel2',        PRM_RIEMANN_ROEL2)
-CALL addStrListEntry('RiemannBC','hll',          PRM_RIEMANN_HLL)
-CALL addStrListEntry('RiemannBC','hlle',         PRM_RIEMANN_HLLE)
-CALL addStrListEntry('RiemannBC','hllem',        PRM_RIEMANN_HLLEM)
-CALL addStrListEntry('RiemannBC','roeentropygshockfix',        PRM_RIEMANN_ROEENTROPYGSHOCKFIX)
+CALL addStrListEntry('RiemannBC','lf',                       PRM_RIEMANN_LF)
+CALL addStrListEntry('RiemannBC','hllc',                     PRM_RIEMANN_HLLC)
+CALL addStrListEntry('RiemannBC','roe',                      PRM_RIEMANN_ROE)
+CALL addStrListEntry('RiemannBC','roeentropyfix',            PRM_RIEMANN_ROEENTROPYFIX)
+CALL addStrListEntry('RiemannBC','roel2',                    PRM_RIEMANN_ROEL2)
+CALL addStrListEntry('RiemannBC','hll',                      PRM_RIEMANN_HLL)
+CALL addStrListEntry('RiemannBC','hlle',                     PRM_RIEMANN_HLLE)
+CALL addStrListEntry('RiemannBC','hllem',                    PRM_RIEMANN_HLLEM)
+CALL addStrListEntry('RiemannBC','roeentropygshockfix',      PRM_RIEMANN_ROEENTROPYGSHOCKFIX)
 #ifdef SPLIT_DG
-CALL addStrListEntry('RiemannBC','ch',           PRM_RIEMANN_CH)
-CALL addStrListEntry('RiemannBC','avg',          PRM_RIEMANN_Average)
+CALL addStrListEntry('RiemannBC','ch',                       PRM_RIEMANN_CH)
+CALL addStrListEntry('RiemannBC','avg',                      PRM_RIEMANN_Average)
 #endif
-CALL addStrListEntry('RiemannBC','same',         PRM_RIEMANN_SAME)
+CALL addStrListEntry('RiemannBC','same',                     PRM_RIEMANN_SAME)
+! Riemann solver specific parameters
 CALL prms%CreateRealOption('RiemannPhiFactor', "Factor to adjust imbalance of advective and acoustic dissipation, fixes grid alligned shock instabilities", "5")
 END SUBROUTINE DefineParametersRiemann
 
@@ -248,8 +249,11 @@ CASE DEFAULT
     'RiemannBC solver not defined!')
 END SELECT
 #endif /*SPLIT_DG*/
-!read in of phiFactor
-phiFactor = GETREAL("RiemannPhiFactor")
+
+! Read in Phi for Riemann with grid aligned shock fix
+IF (Riemann.EQ.PRM_RIEMANN_ROEENTROPYGSHOCKFIX) &
+  RiemannPhi = GETREAL("RiemannRiemannPhi")
+
 END SUBROUTINE InitRiemann
 
 
@@ -903,7 +907,11 @@ Delta_U(DELTA_UV)   = U_RR(EXT_VELV) - U_LL(EXT_VELV)
 Delta_U(DELTA_U5)   = U_RR(EXT_PRES) - U_LL(EXT_PRES)
 
 ! mean eigenvalues and eigenvectors
-a  = (/ SIGN(1., RoeVel(1))*MAX(Roec/phiFactor, ABS(RoeVel(1))) - Roec, SIGN(1., RoeVel(1))*MAX(Roec/phiFactor, ABS(RoeVel(1))), SIGN(1., RoeVel(1))*MAX(Roec/phiFactor, ABS(RoeVel(1))), SIGN(1., RoeVel(1))*MAX(Roec/phiFactor, ABS(RoeVel(1))), SIGN(1., RoeVel(1))*MAX(Roec/phiFactor, ABS(RoeVel(1))) + Roec /)
+a  = (/ SIGN(1., RoeVel(1))*MAX(Roec/RiemannPhi, ABS(RoeVel(1))) - Roec, &
+        SIGN(1., RoeVel(1))*MAX(Roec/RiemannPhi, ABS(RoeVel(1))), &
+        SIGN(1., RoeVel(1))*MAX(Roec/RiemannPhi, ABS(RoeVel(1))), &
+        SIGN(1., RoeVel(1))*MAX(Roec/RiemannPhi, ABS(RoeVel(1))), &
+        SIGN(1., RoeVel(1))*MAX(Roec/RiemannPhi, ABS(RoeVel(1))) + Roec /)
 r1 = (/ 1.,             a(1),      RoeVel(2), RoeVel(3), RoeH-RoeVel(1)*Roec /)
 r2 = (/ 1.,             RoeVel(1), RoeVel(2), RoeVel(3), 0.5*absVel          /)
 r3 = (/ 0.,             0.,        1.,        0.,        RoeVel(2)           /)
