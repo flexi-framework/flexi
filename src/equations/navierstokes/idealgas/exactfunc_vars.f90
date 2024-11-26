@@ -27,6 +27,7 @@ SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 REAL              :: MachShock         !< Shock Mach speed for ExactFunction = 6 (shock)
 REAL              :: PreShockDens      !< Pre-shock density for ExactFunction = 6 (shock)
+REAL              :: ShockPos          !< Shock position for 1D shock tube for ExactFunction = 11 (shock)
 REAL              :: AdvVel(3)         !< Advection Velocity for the test cases
 REAL              :: IniFrequency      !< parameter used for synthetic test cases
 REAL              :: IniAmplitude      !< parameter used for synthetic test cases
