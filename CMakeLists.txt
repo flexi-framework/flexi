@@ -117,7 +117,7 @@ SET(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -D__FILENAME__='\"$(subst ${CMAK
 ENDIF()
 
 # add basedir for location of corresponding userblock-file
-ADD_DEFINITIONS("-DBASEDIR='\"${CMAKE_CURRENT_BINARY_DIR}/\"'")
+ADD_COMPILE_DEFINITIONS("BASEDIR='\"${CMAKE_CURRENT_BINARY_DIR}/\"'")
 
 # =========================================================================
 # echo COMPILE_DEFINITIONS
