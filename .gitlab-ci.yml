@@ -17,6 +17,7 @@ stages:
   - reggie_checkin
   - reggie_nightly
   - reggie_weekly
+  - python
   - documentation
   - deploy
 
@@ -31,10 +32,37 @@ stages:
     expire_in: 1 day
     when: on_failure
 
+.default_python_param: &default_python_param
+  tags: [dockertag]
+  image: python:latest
+  variables:
+    PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  cache:
+    paths:
+      - venv
+      - .cache/pip
+  before_script:
+    - ulimit -s unlimited
+    - module list || true
+    - python3 --version
+    # Setup Python pip
+    - python3 -m pip install --upgrade pip --root-user-action=ignore
+    - python3 -m pip --version
+    # Setup Python virtual environment
+    - rm -rf venv
+    - python3 -m venv venv
+    - source venv/bin/activate
+    # Install coverage
+    - pip install --no-cache-dir coverage --root-user-action=ignore
+
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Default parameters for the reggie stage
 .default_param: &default_param
   <<: *default_build_param
+  allow_failure: false
+
+.default_python: &default_python
+  <<: *default_python_param
   allow_failure: false
 
 .reggie_cache: &reggie_cache
@@ -57,6 +85,11 @@ stages:
   variables:
     FF_ENABLE_JOB_CLEANUP: 1
 
+.defaults_python: &defaults_python
+  extends: .default_python
+  variables:
+    FF_ENABLE_JOB_CLEANUP: 1
+
 .defaults_nightly: &defaults_nightly
   <<: *defaults
   rules:
@@ -66,6 +99,11 @@ stages:
   <<: *defaults
   rules:
     - if: '$DO_WEEKLY'
+
+.defaults_nightly_python: &defaults_weekly_python
+  <<: *defaults_python
+  rules:
+    - if: '$DO_NIGHTLY'
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "build": Build on check-in
@@ -194,6 +232,17 @@ imperator:
   script:
     - cd build
     - python ../reggie/reggie.py ../regressioncheck/checks/preconditioner -j 6
+
+# ----------------------------------------------------------------------------------------------------------------------------------------------------
+# Stage "python": Build and check the python scripts
+# ----------------------------------------------------------------------------------------------------------------------------------------------------
+ruff:
+  extends: .defaults_nightly_python
+  stage: python
+  script:
+    - python3 -m pip install ruff
+    - ruff --version
+    - ruff check --extend-ignore=E201,E202,E203,E221,E222,E225,E231,E271,E272 --line-length=132 --preview tools
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "documentation": Creates doxygen documentation & compiles the documentation creating the *.pdf

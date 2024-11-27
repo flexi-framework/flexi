@@ -10,24 +10,22 @@
 #************************************************************************************
 
 import os
-import re
 import argparse
 import subprocess
-import sys
 from extract_userblock import get_userblock, get_part
-from distutils         import spawn
+from distutils import spawn
 
-parser = argparse.ArgumentParser(description='Rebuild code revision from userblock data' + \
+parser = argparse.ArgumentParser(description='Rebuild code revision from userblock data' +
                                              'contained in HDF5 state file.')
-parser.add_argument('dir'  ,help='Name of empty directory where the rebuild will take place')
-parser.add_argument('state',help='HDF5 state file containing userblock')
+parser.add_argument('dir'  , help='Name of empty directory where the rebuild will take place')
+parser.add_argument('state', help='HDF5 state file containing userblock')
 
 args = parser.parse_args()
 
 if not os.path.exists(args.dir) :
     os.mkdir(args.dir)
 else :
-    if os.listdir(args.dir) != []: # is dir empty?
+    if os.listdir(args.dir) != []:  # is dir empty?
         print(os.listdir(args.dir))
         print("Rebuild directory is not empty => exit!")
         exit(1)
@@ -35,21 +33,21 @@ else :
 # get svn
 try:
     userblock = ""
-    userblock = get_userblock(args.state,userblock)
-except:
+    userblock = get_userblock(args.state, userblock)
+except Exception:
     print('Error while extracting userblock.')
     exit(1)
 git_url = get_part(userblock, "GIT URL")
 git_url = git_url.strip()
 
 # branch name
-gitbranch = get_part(userblock,"GIT BRANCH").strip()
+gitbranch = get_part(userblock, "GIT BRANCH").strip()
 branch = gitbranch.split()[0]
 print('Branch to be rebuilt is ' + branch)
 print('Branch revision ' + gitbranch.split()[1])
 
 # checkout code
-gitrevision = get_part(userblock,"GIT REFERENCE").strip()
+gitrevision = get_part(userblock, "GIT REFERENCE").strip()
 rev = gitrevision.split()[1]
 print('Reference branch name ' + gitrevision.split()[0])
 print('Reference branch revision ' + rev)
@@ -60,9 +58,9 @@ cmd = "git checkout -b " + branch + " " + rev
 os.chdir(args.dir)
 subprocess.call(cmd, shell=True)
 
-## apply git format-patch
-#git_patch = get_part(userblock, "GIT FORMAT-PATCH")
-#if git_patch :
+# apply git format-patch
+# git_patch = get_part(userblock, "GIT FORMAT-PATCH")
+# if git_patch :
 #  f = open("format_patch", 'w')
 #  f.write(git_patch)
 #  f.close()
@@ -80,7 +78,7 @@ if git_diff :
     f.close()
     try:
         subprocess.call("patch -p1 < diff_patch", shell=True)
-    except:
+    except Exception:
         print('Error while patching source code.')
         exit(1)
 
@@ -108,14 +106,14 @@ if not cmakepath:
 
 os.chdir(builddir)
 try:
-    p = subprocess.call(["cmake", "-C", "config.cmake" ,"../"])
-except:
+    p = subprocess.call(["cmake", "-C", "config.cmake" , "../"])
+except Exception:
     print('Error while configuring the build.')
     exit(1)
 
 # make
 try:
     p = subprocess.call(["make", "-j"])
-except:
+except Exception:
     print('Error while compiling the code.')
     exit(1)
