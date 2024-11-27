@@ -10,7 +10,9 @@ def modify_prm(path, properties) :
         line = lines[i]
         # split line at '='. Before is the property
         tmp = line.split("=")
-        if len(tmp) < 2: continue
+        if len(tmp) < 2:
+            continue
+
         prop = tmp[0]
         # iterate over all properties, that must be changed and check if
         # one matches the property of the current line
@@ -29,13 +31,15 @@ def modify_prm(path, properties) :
     f.close()
 
 
-def read_prm(path,param) :
+def read_prm(path, param) :
     lines = open(path, 'r').readlines()
     # iterate over all lines of parameter file
     for line in lines :
         # split line at '='. Before is the property
         tmp = line.split("=")
-        if len(tmp) < 2: continue
+        if len(tmp) < 2:
+            continue
+
         if tmp[0].strip() == param :
             # split tmp at '!'. Before is the  value
             tmp = tmp[1].split("!")

@@ -62,5 +62,6 @@ LOGICAL           :: SmagorinskyInitIsDone=.FALSE.    !< Logical indicating if S
 LOGICAL           :: DynSmagorinskyInitIsDone=.FALSE. !< Logical indicating if Smagorinsky model has been initialized
 LOGICAL           :: VremanInitIsDone=.FALSE.         !< Logical indicating if Vreman model has been initialized
 LOGICAL           :: SigmaModelInitIsDone=.FALSE.     !< Logical indicating if sigma model has been initialized
+LOGICAL           :: WALEInitIsDone=.FALSE.           !< Logical indicating if WALE model has been initialized
 
 END MODULE MOD_EddyVisc_Vars

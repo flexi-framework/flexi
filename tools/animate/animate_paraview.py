@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf8 -*-
 
-
 import os
 import sys
 import shutil
 import argparse
 import subprocess
-
 
 FILETYPES = ['.pvtu', '.vtu', '.plt', '.vtm', '.h5']
 """Supported filetypes for rendering with ParaView."""
@@ -72,9 +70,9 @@ def main(args):
         sys.stdout.write('\r%05.2f %% Animate: %s' % (100. * i / len(plotfiles), p))
         sys.stdout.flush()
         # get output filename
-        of = os.path.splitext(os.path.basename(p))[0]   # get filename, remove extension
-        of = of + args.output + '.png'                  # add appendix, add png extension
-        of = os.path.join(os.getcwd(), args.folder, of) # add output folder
+        of = os.path.splitext(os.path.basename(p))[0]    # get filename, remove extension
+        of = of + args.output + '.png'                   # add appendix, add png extension
+        of = os.path.join(os.getcwd(), args.folder, of)  # add output folder
         # write file
         fn = os.path.splitext(p)[0]+ args.output + '.py'
         with open(fn, 'w', encoding='utf-8') as f:

@@ -5,17 +5,19 @@
 
 # extract the L2 error of the last timestep
 def get_last_L2_error(lines) :
-    for l in lines[-15:] :
-        if "L_2" in l :
-            tmp = l.split(":")[1]
+    for line in lines[-15:] :
+        if "L_2" in line :
+            tmp = line.split(":")[1]
     return [float(x) for x in tmp.split()]
+
 
 # extract the L_inf error of the last timestep
 def get_last_Linf_error(lines) :
-    for l in lines[-15:] :
-        if "L_inf" in l :
-            tmp = l.split(":")[1]
+    for line in lines[-15:] :
+        if "L_inf" in line :
+            tmp = line.split(":")[1]
             return [float(x) for x in tmp.split()]
+
 
 def get_last_number(lines) :
     for line in reversed(lines) :
@@ -23,8 +25,9 @@ def get_last_number(lines) :
         for t in reversed(tmp) :
             try :
                 return float(t)
-            except :
+            except Exception:
                 pass
+
 
 def get_cpu_per_dof(lines) :
     for line in reversed(lines) :

@@ -103,8 +103,8 @@ END SUBROUTINE DefineParametersMPI
 
 
 !==================================================================================================================================
-!> Basic mpi initialization. Calls initialization routine of the mpi library and sets myRank, nProcessors and MPIRoot. If the code
-!> is not compiled with mpi, InitMPI sets standard values for these variables.
+!> Basic MPI initialization. Calls initialization routine of the MPI library and sets myRank, nProcessors and MPIRoot. If the code
+!> is not compiled with MPI, InitMPI sets standard values for these variables.
 !==================================================================================================================================
 SUBROUTINE InitMPI(mpi_comm_IN)
 ! MODULES
@@ -116,7 +116,9 @@ INTEGER,INTENT(IN),OPTIONAL      :: mpi_comm_IN !< MPI communicator
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 #if USE_MPI
-LOGICAL :: initDone
+LOGICAL :: initDone,foundAttr
+INTEGER :: color
+INTEGER(KIND=MPI_ADDRESS_KIND) :: myApp
 !==================================================================================================================================
 IF (PRESENT(mpi_comm_IN)) THEN
   MPI_COMM_FLEXI = mpi_comm_IN
@@ -124,10 +126,18 @@ ELSE
   CALL MPI_INIT(iError)
   CALL MPI_INITIALIZED(initDone,iError)
   IF(.NOT.initDone) CALL MPI_INIT(iError)
-  IF(iError .NE. 0) &
-    CALL Abort(__STAMP__,'Error in MPI_INIT',iError)
-  ! Duplicate communicator instead of just copying it. Creates a clean copy with all the cached information intact
-  CALL MPI_COMM_DUP(MPI_COMM_WORLD,MPI_COMM_FLEXI,iError)
+  IF(iError .NE. 0) CALL Abort(__STAMP__,'Error in MPI_INIT',iError)
+
+  ! Get number of own app if multiple apps have been launched in single mpirun command
+  CALL MPI_COMM_GET_ATTR(MPI_COMM_WORLD,MPI_APPNUM,myApp,foundAttr,iError)
+  IF (foundAttr) THEN
+    ! Split communicator to obtain own MPI_COMM_FLEXI per executable (explicit cast, since API requires INT().)
+    color = MAX(INT(myApp), 0)
+    CALL MPI_COMM_SPLIT(MPI_COMM_WORLD,color,0,MPI_COMM_FLEXI,iError)
+  ELSE
+    ! Duplicate communicator instead of just copying it. Creates a clean copy with all the cached information intact
+    CALL MPI_COMM_DUP(MPI_COMM_WORLD,MPI_COMM_FLEXI,iError)
+  END IF
 END IF
 
 CALL MPI_COMM_RANK(MPI_COMM_FLEXI, myRank     , iError)
@@ -149,7 +159,7 @@ END SUBROUTINE InitMPI
 
 #if USE_MPI
 !==================================================================================================================================
-!> Initialize derived mpi variables used for communication
+!> Initialize derived MPI variables used for communication
 !==================================================================================================================================
 SUBROUTINE InitMPIVars()
 ! MODULES
@@ -205,9 +215,10 @@ MPIRequest_gradU = MPI_REQUEST_NULL
 #if EDDYVISCOSITY
 DataSizeSideSGS= (PP_N+1)*(PP_NZ+1)
 #endif
-DataSizeSide      =PP_nVar*(PP_N+1)*(PP_NZ+1)
-DataSizeSidePrim  =PP_nVarPrim*(PP_N+1)*(PP_NZ+1)
-DataSizeSideGrad  =PP_nVarLifting*(PP_N+1)*(PP_NZ+1)
+DataSizeSide             =PP_nVar*(PP_N+1)*(PP_NZ+1)
+DataSizeSidePrim         =PP_nVarPrim*(PP_N+1)*(PP_NZ+1)
+DataSizeSideGrad         =PP_nVarLifting*(PP_N+1)*(PP_NZ+1)
+DataSizeSideGradParabolic=PP_nVarLifting*(PP_N+1)*(PP_NZ+1)*3
 
 ! split communicator into smaller groups (e.g. for local nodes)
 GroupSize=GETINT('GroupSize')

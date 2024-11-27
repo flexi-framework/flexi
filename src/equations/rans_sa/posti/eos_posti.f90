@@ -661,7 +661,8 @@ SUBROUTINE FillNonDimensionalGridSpacing(nSides_calc,mapBCSideToVisuSides,Nloc,d
 USE MOD_Eos_Vars
 USE MOD_Preproc
 USE MOD_Viscosity
-USE MOD_Mesh_Vars           ,ONLY: Elem_xGP,SideToElem,nBCSides
+USE MOD_Mesh_Vars           ,ONLY: NGeo,NodeCoords
+USE MOD_Mesh_Vars           ,ONLY: SideToElem,nBCSides
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -706,20 +707,20 @@ DO iSide = 1,nBCSides
     ! ATTENTION: These vectors are the connection of the cell vertices, so they do not include any information about curvature!
     SELECT CASE(locSideID)
       CASE(XI_MINUS,XI_PLUS)
-        yVec(:)   = NodeCoords(:,NGeo,0   ,0   ) - NodeCoords(:,0,0,0)
-        tVec(:,1) = NodeCoords(:,0   ,NGeo,0   ) - NodeCoords(:,0,0,0)
+        yVec(:)   = NodeCoords(:,NGeo,0   ,0   ,ElemID) - NodeCoords(:,0,0,0,ElemID)
+        tVec(:,1) = NodeCoords(:,0   ,NGeo,0   ,ElemID) - NodeCoords(:,0,0,0,ElemID)
 #if PP_dim==3
-        tVec(:,2) = NodeCoords(:,0   ,0   ,NGeo) - NodeCoords(:,0,0,0)
+        tVec(:,2) = NodeCoords(:,0   ,0   ,NGeo,ElemID) - NodeCoords(:,0,0,0,ElemID)
 #endif
       CASE(ETA_MINUS,ETA_PLUS)
-        yVec(:)   = NodeCoords(:,0   ,NGeo,0   ) - NodeCoords(:,0,0,0)
-        tVec(:,1) = NodeCoords(:,NGeo,0   ,0   ) - NodeCoords(:,0,0,0)
+        yVec(:)   = NodeCoords(:,0   ,NGeo,0   ,ElemID) - NodeCoords(:,0,0,0,ElemID)
+        tVec(:,1) = NodeCoords(:,NGeo,0   ,0   ,ElemID) - NodeCoords(:,0,0,0,ElemID)
 #if PP_dim==3
-        tVec(:,2) = NodeCoords(:,0   ,0   ,NGeo) - NodeCoords(:,0,0,0)
+        tVec(:,2) = NodeCoords(:,0   ,0   ,NGeo,ElemID) - NodeCoords(:,0,0,0,ElemID)
       CASE(ZETA_MINUS,ZETA_PLUS)
-        yVec(:)   = NodeCoords(:,0   ,0   ,NGeo) - NodeCoords(:,0,0,0)
-        tVec(:,1) = NodeCoords(:,NGeo,0   ,0   ) - NodeCoords(:,0,0,0)
-        tVec(:,2) = NodeCoords(:,0   ,NGeo,0   ) - NodeCoords(:,0,0,0)
+        yVec(:)   = NodeCoords(:,0   ,0   ,NGeo,ElemID) - NodeCoords(:,0,0,0,ElemID)
+        tVec(:,1) = NodeCoords(:,NGeo,0   ,0   ,ElemID) - NodeCoords(:,0,0,0,ElemID)
+        tVec(:,2) = NodeCoords(:,0   ,NGeo,0   ,ElemID) - NodeCoords(:,0,0,0,ElemID)
 #endif
     END SELECT
 

@@ -419,7 +419,8 @@ DO iElem=FirstElemInd,LastElemInd
       ! BC sides don't need a connection, except for internal (BC_TYPE=0), periodic (BC_TYPE=1) and "dummy" inner BCs (BC_TYPE=100).
       ! For all other BC sides: reset the flip and mortars settings, do not build a connection.
       IF(aSide%BCindex.NE.0)THEN ! BC
-        IF((BoundaryType(aSide%BCindex,BC_TYPE).NE.1).AND.&
+        IF((BoundaryType(aSide%BCindex,BC_TYPE).NE.0).AND.&
+           (BoundaryType(aSide%BCindex,BC_TYPE).NE.1).AND.&
            (BoundaryType(aSide%BCindex,BC_TYPE).NE.100))THEN
           aSide%flip  =0
           IF(iMortar.EQ.0) aSide%mortarType  = 0

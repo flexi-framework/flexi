@@ -96,6 +96,7 @@ CALL prms%CreateRealOption(         'IniAmplitude', "Amplitude for synthetic tes
 CALL prms%CreateRealOption(         'IniFrequency', "Frequency for synthetic test case")
 CALL prms%CreateRealOption(         'MachShock',    "Parameter required for CASE(10)", '1.5')
 CALL prms%CreateRealOption(         'PreShockDens', "Parameter required for CASE(10)", '1.0')
+CALL prms%CreateRealOption(         'ShockPos',     "Parameter required for CASE(11)", '0.5')
 CALL prms%CreateRealArrayOption(    'IniCenter',    "Shu Vortex CASE(7) (x,y,z)")
 CALL prms%CreateRealArrayOption(    'IniAxis',      "Shu Vortex CASE(7) (x,y,z)")
 CALL prms%CreateRealOption(         'IniHalfwidth', "Shu Vortex CASE(7)", '0.2')
@@ -164,6 +165,8 @@ SELECT CASE (IniExactFunc)
   CASE(10) ! shock
     MachShock       = GETREAL('MachShock')
     PreShockDens    = GETREAL('PreShockDens')
+  CASE(11,111) ! 1D shock tube problem
+    ShockPos        = GETREAL('ShockPos')
   CASE(14)
     HarmonicFrequency = GETREAL('HarmonicFrequency')
     AmplitudeFactor   = GETREAL('AmplitudeFactor')
@@ -206,7 +209,7 @@ USE MOD_Globals        ,ONLY: Abort
 USE MOD_Mathtools      ,ONLY: CROSS
 USE MOD_Eos_Vars       ,ONLY: Kappa,sKappaM1,KappaM1,KappaP1,R
 USE MOD_Exactfunc_Vars ,ONLY: IniCenter,IniHalfwidth,IniAmplitude,IniFrequency,IniAxis,AdvVel
-USE MOD_Exactfunc_Vars ,ONLY: MachShock,PreShockDens
+USE MOD_Exactfunc_Vars ,ONLY: MachShock,PreShockDens,ShockPos
 USE MOD_Exactfunc_Vars ,ONLY: P_Parameter,U_Parameter
 USE MOD_Exactfunc_Vars ,ONLY: JetRadius,JetEnd,JetAmplitude
 USE MOD_Equation_Vars  ,ONLY: IniRefState,RefStateCons,RefStatePrim
@@ -584,16 +587,14 @@ CASE(10) ! shock
   ! Tanh boundary
   Resu=-0.5*(Resul-Resur)*TANH(5.0*(x(1)-xs))+Resur+0.5*(Resul-Resur)
 CASE(11) ! Sod Shock tube
-  xs = 0.5
-  IF (X(1).LE.xs) THEN
+  IF (X(1).LE.ShockPos) THEN
     Resu = RefStateCons(:,1)
   ELSE
     Resu = RefStateCons(:,2)
   END IF
 CASE(111) ! Sedov blast wave
-  xs = 0.5
   Ms = SQRT(SUM((X(1:3)-1.5)**2))
-  IF ((Ms.LE.xs).AND.(Ms.NE.0)) THEN
+  IF ((Ms.LE.ShockPos).AND.(Ms.NE.0)) THEN
     prim(DENS)      = 1.3416
     prim(VEL1:VEL3) = 0.3615*(X(1:3)-1.5)/Ms
     prim(PRES)      = 1.5133

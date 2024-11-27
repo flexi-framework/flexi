@@ -58,6 +58,7 @@ INTEGER                              :: nElems_IJK_HDF5(3)
 INTEGER                              :: iArg
 INTEGER                              :: StartArgs,nFiles
 CHARACTER(LEN=255)                   :: tmp,arg
+LOGICAL                              :: doAvg1D, dsExists
 !===================================================================================================================================
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
@@ -69,15 +70,16 @@ SWRITE(UNIT_stdOut,'(A)') ' AVG2D TOOL'
 SWRITE(UNIT_stdOut,'(132("="))')
 
 CALL ParseCommandlineArguments()
-! First check if the first two arguments contain --minK=, or --maxK=
+! First check if the first two arguments contain --minK=, or --maxK= or --avg1D
 StartArgs    = 1
 minK         = -HUGE(1)
 maxK         =  HUGE(1)
+doAvg1D      = .FALSE.
 
-DO iArg = 1,MIN(nArgs,2)
+DO iArg = 1,MIN(nArgs,3)
   arg = Args(iArg)
 
-  ! check if the -minK= flag is used, read requires dummystring
+  ! check if the -minK= or --avg1D flags are used, read requires dummystring
   IF (STRICMP(arg(1:7), "--minK=")) THEN
     StartArgs = StartArgs+1
     tmp=TRIM(arg(8:LEN(arg)))
@@ -90,11 +92,23 @@ DO iArg = 1,MIN(nArgs,2)
     READ(tmp,*) maxK
     SWRITE(UNIT_stdOut,'(A,I0)') ' End   layer for averaging is ',maxK
     SWRITE(UNIT_stdOut,'(132("="))')
+  ELSEIF (STRICMP(arg(1:7), "--avg1D")) THEN
+    StartArgs = StartArgs+1
+    doAvg1D = .TRUE.
+    SWRITE(UNIT_stdOut,'(A)') ' Averaging will also be performed in x-direction!'
+    SWRITE(UNIT_stdOut,'(132("="))')
   END IF
 END DO
 
 ! sanity check
 IF (minK.GT.maxK) CALL CollectiveStop(__STAMP__,'Requested larger minimum than maximum!')
+
+! Give user input that x-averaging is possible
+IF (.NOT.doAvg1D) THEN
+  SWRITE(UNIT_stdOut,'(A)') ' Averaging will NOT be performed in x-direction! To enable, use:'
+  SWRITE(UNIT_stdOut,'(A)') '    posti_avg2D --avg1D statefile.h5'
+  SWRITE(UNIT_stdOut,'(132("="))')
+END IF
 
 ! check if at least 2 timeavg files are there
 nFiles = nArgs-StartArgs+1
@@ -108,6 +122,8 @@ CALL CloseDataFile()
 
 ! Read in the ijk sorting of the mesh
 CALL OpenDataFile(TRIM(MeshFile),create=.FALSE.,single=.TRUE.,readOnly=.TRUE.)
+CALL DatasetExists(File_ID,'Elem_IJK',dsExists)
+IF (.NOT.dsExists) CALL CollectiveStop(__STAMP__,'ERROR: Mesh file is not IJK sorted!')
 CALL GetDataSize(File_ID,'Elem_IJK',nDims,HSize)
 nElems = INT(HSIZE(nDims))
 ALLOCATE(Elem_IJK(3,nElems))
@@ -130,7 +146,11 @@ CALL GetDatasetNamesInGroup("/",tmpDatasetNames)
 CALL CloseDataFile()
 
 ! Copy the current file, so we keep all the attributes etc.
-NewFileName = Args(StartArgs)(:LEN(TRIM(Args(StartArgs)))-3)//'_avg2D.h5'
+IF (doAvg1D) THEN
+  NewFileName = Args(StartArgs)(:LEN(TRIM(Args(StartArgs)))-3)//'_avg1D.h5'
+ELSE
+  NewFileName = Args(StartArgs)(:LEN(TRIM(Args(StartArgs)))-3)//'_avg2D.h5'
+END IF
 IF (MPIRoot) CALL EXECUTE_COMMAND_LINE("cp -f "//TRIM(Args(StartArgs))//" "//TRIM(NewFileName))
 
 ! Loop over all the datasets
@@ -193,6 +213,28 @@ DO iDataset = 1, SIZE(tmpDatasetNames)
       j = Elem_IJK(2,iElem)
       RealElemArray(:,iElem) = RealElemAvg(:,i,j)
     END DO ! iElem
+    ! Average again in x-direction
+    IF (doAvg1D) THEN
+      DEALLOCATE(RealElemAvg)
+      ALLOCATE(RealElemAvg(nVar,nElems_IJK(2),nElems_IJK(3)))
+      RealElemAvg = 0.
+      DO iElem=1,nElems
+        ! Indixes in the IJK sorting
+        i = Elem_IJK(2,iElem)
+        j = Elem_IJK(3,iElem)
+        ! Build sum
+        RealElemAvg(:,i,j) = RealElemAvg(:,i,j) + RealElemArray(:,iElem)
+      END DO ! iElem
+      ! Finish sum
+      RealElemAvg = RealElemAvg / nElems_IJK(1)
+      ! Write back to the array itself
+      DO iElem=1,nElems
+        ! Indixes in the IJK sorting
+        i = Elem_IJK(2,iElem)
+        j = Elem_IJK(3,iElem)
+        RealElemArray(:,iElem) = RealElemAvg(:,i,j)
+      END DO ! iElem
+    END IF ! doAvg1D
   ELSE IF (nDims.EQ.5) THEN
     ! Pointwise data set
     ALLOCATE(RealAvg(nVar,0:N,0:N,nElems_IJK(1),nElems_IJK(2)))
@@ -224,6 +266,37 @@ DO iDataset = 1, SIZE(tmpDatasetNames)
         END DO ! l = 0,N
       END DO; END DO ! p,q=0,PP_N
     END DO ! iElem
+    ! Average again in x-direction
+    IF (doAvg1D) THEN
+      DEALLOCATE(RealAvg)
+      ALLOCATE(RealAvg(nVar,0:N,0:N,nElems_IJK(2),nElems_IJK(3)))
+      RealAvg = 0.
+      DO iElem=1,nElems
+        ! Indixes in the IJK sorting
+        i = Elem_IJK(2,iElem)
+        j = Elem_IJK(3,iElem)
+        ! Build sum
+        DO q=0,N; DO p=0,N
+          DO l = 0,N
+            RealAvg(:,p,q,i,j) = RealAvg(:,p,q,i,j) + RealArray(:,l,q,p,iElem)*wGP(l)/2.
+          END DO ! l = 0,N
+        END DO; END DO ! p,q=0,PP_N
+      END DO ! iElem
+      ! Finish sum
+      RealAvg = RealAvg / (nElems_IJK(1))
+      ! Write back to the array itself
+      DO iElem=1,nElems
+        ! Indixes in the IJK sorting
+        i = Elem_IJK(2,iElem)
+        j = Elem_IJK(3,iElem)
+        ! Build sum
+        DO q=0,N; DO p=0,N
+          DO l = 0,N
+            RealArray(:,p,q,l,iElem) = RealAvg(:,p,q,i,j)
+          END DO ! l = 0,N
+        END DO; END DO ! p,q=0,PP_N
+      END DO ! iElem
+    END IF
   END IF
 
   ! Open new file and write the array

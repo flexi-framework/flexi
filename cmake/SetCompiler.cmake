@@ -19,7 +19,7 @@ IF (CMAKE_FQDN_HOST MATCHES "hawk\.hww\.hlrs\.de$")
   # Use AMD Optimized Lapack/BLAS
   # SET(BLA_VENDOR "FLAME")
   # Set LUSTRE definition to account for filesystem and MPI implementation
-  ADD_DEFINITIONS(-DLUSTRE)
+  ADD_COMPILE_DEFINITIONS(LUSTRE)
 
 # SuperMUC
 ELSEIF (CMAKE_FQDN_HOST MATCHES "sng\.lrz\.de$")
@@ -33,7 +33,7 @@ ELSEIF (CMAKE_FQDN_HOST MATCHES "sng\.lrz\.de$")
     SET (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -qopt-zmm-usage=high")
   ENDIF()
   # Set LUSTRE definition to account for filesystem and MPI implementation
-  ADD_DEFINITIONS(-DLUSTRE)
+  ADD_COMPILE_DEFINITIONS(LUSTRE)
 
 # LUMI
 ELSEIF(CMAKE_FQDN_HOST MATCHES "\.can$")
@@ -49,7 +49,7 @@ ELSEIF(CMAKE_FQDN_HOST MATCHES "^(prandtl|grafik.*)\.iag\.uni\-stuttgart\.de")
   MESSAGE(STATUS "Compiling on ${CMAKE_HOSTNAME}")
   SET(FLEXI_INSTRUCTION "-march=native -mtune=native")
   # Set LUSTRE definition to account for filesystem
-  ADD_DEFINITIONS(-DLUSTRE)
+  ADD_COMPILE_DEFINITIONS(LUSTRE)
 
 ELSEIF (CMAKE_FQDN_HOST MATCHES "^ila(head.*|cfd.*)\.ila.uni\-stuttgart\.de")
   MESSAGE(STATUS "Compiling on ILA cluster")
@@ -60,17 +60,17 @@ ELSEIF (CMAKE_FQDN_HOST MATCHES "^ila(head.*|cfd.*)\.ila.uni\-stuttgart\.de")
     SET(FLEXI_INSTRUCTION "-xCORE-AVX2")
   ENDIF()
   # Work around MPI-IO issue 4446 on machines mounting storage via NFS
-  ADD_DEFINITIONS(-DNFS)
+  ADD_COMPILE_DEFINITIONS(NFS)
 
 ELSEIF (CMAKE_FQDN_HOST MATCHES "^(xenon.*|argon.*)\.ila.uni\-stuttgart\.de")
   MESSAGE(STATUS "Compiling on ILA student cluster")
   SET(FLEXI_INSTRUCTION "-march=native -mtune=native")
   # Work around MPI-IO issue 4446 on machines mountng storage via NFS
-  ADD_DEFINITIONS(-DNFS)
+  ADD_COMPILE_DEFINITIONS(NFS)
 
 ELSEIF ("${CMAKE_FQDN_HOST}" MATCHES "gitlab\.ila\.uni\-stuttgart\.de")
   MESSAGE(STATUS "Compiling on ILA Gitlab")
-  ADD_DEFINITIONS(-DVDM_ANALYTICAL)
+  ADD_COMPILE_DEFINITIONS(VDM_ANALYTICAL)
   SET(FLEXI_INSTRUCTION "-march=native -mtune=native")
 
 ELSE()

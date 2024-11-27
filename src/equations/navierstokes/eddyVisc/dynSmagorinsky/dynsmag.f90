@@ -26,12 +26,12 @@ IMPLICIT NONE
 PRIVATE
 
 INTERFACE InitDynSmagorinsky
-   MODULE PROCEDURE InitDynSmagorinsky
+  MODULE PROCEDURE InitDynSmagorinsky
 END INTERFACE
 
 INTERFACE DynSmagorinsky
-   MODULE PROCEDURE DynSmagorinsky_Point
-   MODULE PROCEDURE DynSmagorinsky_Volume
+  MODULE PROCEDURE DynSmagorinsky_Point
+  MODULE PROCEDURE DynSmagorinsky_Volume
 END INTERFACE
 
 !INTERFACE FinalizeDynSmagorinsky
@@ -64,7 +64,7 @@ USE MOD_Mesh_Vars          ,ONLY: dXCL_N
 USE MOD_Mesh_Vars          ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde
 USE MOD_Testcase_Vars      ,ONLY: testcase
 USE MOD_HDF5_input         ,ONLY: OpenDataFile,CloseDataFile,ReadArray
- IMPLICIT NONE
+IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------

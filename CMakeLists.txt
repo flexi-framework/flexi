@@ -12,17 +12,14 @@ SET(PROJECT_URL  "https://www.flexi-project.org")
 MESSAGE(STATUS "This is ${PROJECT_NAME} (v${PROJECT_VER})")
 MESSAGE(STATUS "Generating with [cmake] (v${CMAKE_VERSION})")
 # NOTE: use minimum CMake version required
-CMAKE_MINIMUM_REQUIRED(VERSION 3.6.3)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.10.0)
 # Policies (see https://cmake.org/cmake/help/v3.13/manual/cmake-policies.7.html)
-# VERSION_GREATER_EQUAL is incompatible with CMAKE versions < 3.7
-IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.6.0"))
   SET(GITSHALLOW "GIT_SHALLOW ON")
-ENDIF()
-IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.12.0"))
+IF(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.12.0")
   CMAKE_POLICY(SET CMP0074 NEW)
 ENDIF()
 # Required to link visulib against visuReader
-IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.13.0"))
+IF(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.13.0")
   CMAKE_POLICY(SET CMP0079 NEW)
 ENDIF()
 
@@ -120,7 +117,7 @@ SET(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -D__FILENAME__='\"$(subst ${CMAK
 ENDIF()
 
 # add basedir for location of corresponding userblock-file
-ADD_DEFINITIONS("-DBASEDIR='\"${CMAKE_CURRENT_BINARY_DIR}/\"'")
+ADD_COMPILE_DEFINITIONS("BASEDIR='\"${CMAKE_CURRENT_BINARY_DIR}/\"'")
 
 # =========================================================================
 # echo COMPILE_DEFINITIONS
