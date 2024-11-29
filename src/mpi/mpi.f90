@@ -276,7 +276,7 @@ INTEGER,INTENT(IN)          :: DataSize                                 !< size 
 INTEGER,INTENT(IN)          :: LowerBound                               !< lower side index for last dimension of FaceData
 INTEGER,INTENT(IN)          :: UpperBound                               !< upper side index for last dimension of FaceData
 INTEGER,INTENT(OUT)         :: MPIRequest(nNbProcs)                     !< communication handles
-REAL,INTENT(OUT)            :: FaceData(DataSize,LowerBound:UpperBound) !< the complete face data (for inner, BC and MPI sides).
+REAL,INTENT(INOUT)          :: FaceData(DataSize,LowerBound:UpperBound) !< the complete face data (for inner, BC and MPI sides).
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                     :: iNBProc

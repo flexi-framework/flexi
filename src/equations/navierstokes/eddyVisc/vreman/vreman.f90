@@ -34,9 +34,9 @@ INTERFACE Vreman
   MODULE PROCEDURE Vreman_Volume
 END INTERFACE
 
-INTERFACE FinalizeVreman
-  MODULE PROCEDURE FinalizeVreman
-END INTERFACE
+!INTERFACE FinalizeVreman
+!   MODULE PROCEDURE FinalizeVreman
+!END INTERFACE
 
 PUBLIC::InitVreman, Vreman_Volume, FinalizeVreman
 !===================================================================================================================================

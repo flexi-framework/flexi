@@ -266,7 +266,6 @@ SUBROUTINE PointInPoly(PointX,PointY,PolyX,PolyY,PolyN,Inside)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------!
 INTEGER,INTENT(IN)      :: PolyN
 REAL,INTENT(IN)         :: PointX
 REAL,INTENT(IN)         :: PointY

@@ -141,12 +141,12 @@ USE MOD_FV_Vars         ,ONLY: FV_Elems_master
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)             :: t                                                 !< Current time
-REAL,INTENT(IN)             :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Primitive solution from the inside
-REAL,OPTIONAL,INTENT(OUT)   :: Flux (PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides)     !< gradient flux
-REAL,OPTIONAL,INTENT(OUT)   :: FluxX(PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides)     !< gradient flux in x-dir
-REAL,OPTIONAL,INTENT(OUT)   :: FluxY(PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides)     !< gradient flux in y-dir
-REAL,OPTIONAL,INTENT(OUT)   :: FluxZ(PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides)     !< gradient flux in z-dir
+REAL,INTENT(IN)               :: t                                                 !< Current time
+REAL,INTENT(IN)               :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Primitive solution from the inside
+REAL,OPTIONAL,INTENT(INOUT)   :: Flux (PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides)     !< gradient flux
+REAL,OPTIONAL,INTENT(INOUT)   :: FluxX(PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides)     !< gradient flux in x-dir
+REAL,OPTIONAL,INTENT(INOUT)   :: FluxY(PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides)     !< gradient flux in y-dir
+REAL,OPTIONAL,INTENT(INOUT)   :: FluxZ(PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides)     !< gradient flux in z-dir
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                     :: SideID,p,q
