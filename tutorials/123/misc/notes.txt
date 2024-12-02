@@ -1,0 +1,9 @@
+Also attached pdfs for a modified 123 problem with exact results.  This
+problem had these differences from Alan's request: 0 <= x <= 1 with
+interface at x = 0.5, t = 0.15, and ul = -2. and ur = 2.  The flexi run
+had 800 zones.  I gave up trying to change Kamm's python and used his
+default parameters instead.  Less headache....
+
+Attached are 2 plots for the Einfeldt 123 case atr t=0.3 for 400
+elements, gamma = 1.4, with DG beginning at t = 0.01 and Indicators (-
+3,-4).
