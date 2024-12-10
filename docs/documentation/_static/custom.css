@@ -1,0 +1,17 @@
+.wy-nav-content {
+    max-width: none;
+    /*max-width: 75% !important;*/
+}
+
+/* .list-table td { */
+/*     padding: 0.5em;  /* Adjust the padding value to your liking */ */
+/* } */
+/**/
+/* .list-table td ul { */
+/*     margin: 0;      /* Remove margin from sub-item lists */ */
+/*     padding: 0;     /* Remove padding from sub-item lists */ */
+/* } */
+/**/
+/* .list-table td ul li { */
+/*     margin-bottom: 0.2em;  /* Adjust the bottom margin for sub-items */ */
+/* } */

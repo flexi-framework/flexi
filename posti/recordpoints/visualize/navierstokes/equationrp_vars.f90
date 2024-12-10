@@ -30,6 +30,7 @@ INTEGER,ALLOCATABLE                :: TransMap(:,:)                !< Mapping to
 LOGICAL,ALLOCATABLE                :: is2D(:)                      !< Indicating if one of those quantities is two dimensional
 ! BOUNDARY LAYER PROPERTIES --------------------------------------------------------------------------------------------------------
 INTEGER                            :: nBLProps                     !< Number of avariables for boundary layer properties
+INTEGER                            :: iDensity                     !< Position of Density in RPVars
 INTEGER                            :: iPressure                    !< Position of Pressure in RPVars
 INTEGER                            :: iVelocity                    !< Position of Velocity in RPVars
 CHARACTER(LEN=255),ALLOCATABLE     :: VarNames_BLProps(:)          !< Variable names of boundary layer properties

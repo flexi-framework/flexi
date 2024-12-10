@@ -19,10 +19,7 @@ MODULE MOD_DMD
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
+
 INTERFACE InitDMD
   MODULE PROCEDURE InitDMD
 END INTERFACE
@@ -44,18 +41,21 @@ INTERFACE FinalizeDMD
 END INTERFACE
 
 PUBLIC::InitDMD,DefineParametersDMD,performDMD,WriteDMDStateFile,FinalizeDMD
+!==================================================================================================================================
+
 CONTAINS
 
+!==================================================================================================================================
+!==================================================================================================================================
 SUBROUTINE DefineParametersDMD()
-!----------------------------------------------------------------------------------------------------------------------------------!
-! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_ReadInTools,             ONLY: prms
 USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension,INTTOSTR
-!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -70,18 +70,18 @@ CALL prms%CreateRealOption(   "ModeFreq"           , "Specify the mode frequency
 CALL prms%CreateLogicalOption("UseBaseflow"        , "Subtract the Baseflow-File from every single Snapshot",'.FALSE.')
 CALL prms%CreateStringOption( "Baseflow"           , "Name of the Baseflow-File")
 CALL prms%CreateLogicalOption("use2D"              , "Calculate DMD on 2D-Data",'.FALSE.')
-CALL prms%CreateLogicalOption('output2D'           , "Set true to activate hdf5 data output with flat third dimension.",'.FALSE.')
 
 END SUBROUTINE DefineParametersDMD
 
+
+!==================================================================================================================================
+!==================================================================================================================================
 SUBROUTINE InitDMD()
-!----------------------------------------------------------------------------------------------------------------------------------!
-! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Commandline_Arguments
-USE MOD_Readintools             ,ONLY: GETINT,GETREAL,GETLOGICAL,GETSTR,GETREALARRAY,CountOption
+USE MOD_Readintools,             ONLY: GETINT,GETREAL,GETLOGICAL,GETSTR,GETREALARRAY,CountOption
 USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension,INTTOSTR
 USE MOD_DMD_Vars,                ONLY: K,nFiles,nVar_State,N_State,nElems_State,NodeType_State,nDoFs,MeshFile_state
 USE MOD_DMD_Vars,                ONLY: dt,nModes,SvdThreshold,VarNameDMD,VarNames_State,Time_State,TimeEnd_State,sortFreq
@@ -92,7 +92,7 @@ USE MOD_Output_Vars,             ONLY: ProjectName,NOut
 USE MOD_HDF5_Input,              ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadAttribute,ReadArray,GetDataSize
 USE MOD_Mesh_Vars,               ONLY: OffsetElem,nGlobalElems,MeshFile
 USE MOD_EquationDMD,             ONLY: InitEquationDMD,CalcEquationDMD
-USE MOD_Interpolation_Vars ,     ONLY: NodeType
+USE MOD_Interpolation_Vars,      ONLY: NodeType
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
@@ -109,19 +109,20 @@ IF(nArgs.LT.3) CALL CollectiveStop(__STAMP__,'At least two files required for dm
 nFiles=nArgs-1
 
 nVarDMD=CountOption("VarNameDMD")
+
 ALLOCATE(VarNameDMD(nVarDMD))
 DO iVar=1,nVarDMD
   VarNameDMD(iVAr)   = GETSTR ('VarNameDMD'  ,'Density')
 END DO
-SvdThreshold = GETREAL('SvdThreshold','0.0')
-nModes       = GETINT ('nModes'      ,'9999')
-sortFreq     = GETLOGICAL ('sortFreq','False')
+
+SvdThreshold   = GETREAL('SvdThreshold','0.0')
+nModes         = GETINT ('nModes'      ,'9999')
+sortFreq       = GETLOGICAL ('sortFreq','False')
 PlotSingleMode = GETLOGICAL ('PlotSingleMode','False')
 IF (PlotSingleMode) ModeFreq = GETREAL('ModeFreq','0.0')
-useBaseflow  = GETLOGICAL('UseBaseflow','.FALSE.')
+useBaseflow    = GETLOGICAL('UseBaseflow','.FALSE.')
 IF (useBaseflow) Baseflow    = GETSTR    ('Baseflow','none')
-use2D        = GETLOGICAL('use2D','.FALSE.')
-output2D     = GETLOGICAL('output2D','.FALSE.')
+use2D          = GETLOGICAL('use2D','.FALSE.')
 
 IF (nModes .GT. (nFiles-1)) THEN
   nModes = nFiles - 1
@@ -150,19 +151,19 @@ END IF
 
 ALLOCATE(VarNames_State(nVar_State))
 CALL ReadAttribute(File_ID,'VarNames',nVar_State,StrArray=VarNames_State)
-CALL GetDataSize(File_ID,'DG_Solution',nDim,HSize)
+CALL GetDataSize(  File_ID,'DG_Solution',nDim,HSize)
 IF (HSize(4) .EQ. 1) THEN
-  use2D=.TRUE.
-  N_StateZ=0
+  use2D    = .TRUE.
+  N_StateZ = 0
   WRITE(UNIT_stdOut,'(A)') 'Provided states contain 2D-data, continue with two dimensional DMD'
 END IF
 CALL CloseDataFile()
 ! Set everything for output
-Time_State = starttime
-MeshFile = MeshFile_state
-NOut = N_State
+Time_State   = starttime
+MeshFile     = MeshFile_state
+NOut         = N_State
 nGlobalElems = nElems_State
-OffsetElem   = 0 ! OffsetElem is 0 since the tool only works on singel
+OffsetElem   = 0 ! OffsetElem is 0 since the tool only works on single
 
 IF (.NOT. use2D) THEN
   nDoFs = (N_State+1)**3 * nElems_State
@@ -170,12 +171,10 @@ ELSE
   nDoFs = (N_State+1)**2 * nElems_State
 END IF
 
-
 CALL InitEquationDMD()
 
 ALLOCATE(K    (nDoFs*nVarDMD,nFiles))
 ALLOCATE(Utmp (nVar_State   ,0:N_State,0:N_State,0:N_StateZ,nElems_State))
-
 
 DO iFile = 2, nFiles+1
   WRITE(UNIT_stdOut,'(132("="))')
@@ -189,7 +188,6 @@ DO iFile = 2, nFiles+1
   CALL ReadAttribute(File_ID,'Time',    1,RealScalar=time)
   CALL ReadArray('DG_Solution',5,&
                 (/nVar_State,N_State+1,N_State+1,N_StateZ+1,nElems_State/),0,5,RealArray=Utmp)
-
 
   CALL CloseDataFile()
 
@@ -210,79 +208,79 @@ TimeEnd_State = time
 IF (useBaseflow) THEN
   CALL OpenDataFile(Baseflow,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
   CALL ReadAttribute(File_ID,'File_Type',1,StrScalar =FileType)
+
   SELECT CASE(TRIM(FileType))
-  CASE('State')
-    ALLOCATE(Ktmp(nDoFs*nVarDMD))
-    CALL ReadAttribute(File_ID,'Time',    1,RealScalar=time)
-    CALL ReadArray('DG_Solution',5,&
-                  (/nVar_State,N_State+1,N_State+1,N_StateZ+1,nElems_State/),0,5,RealArray=Utmp)
+    CASE('State')
+      ALLOCATE(Ktmp(nDoFs*nVarDMD))
+      CALL ReadAttribute(File_ID,'Time',    1,RealScalar=time)
+      CALL ReadArray('DG_Solution',5,&
+                    (/nVar_State,N_State+1,N_State+1,N_StateZ+1,nElems_State/),0,5,RealArray=Utmp)
 
-    CALL CloseDataFile()
+      CALL CloseDataFile()
 
-    CALL CalcEquationDMD(Utmp,Ktmp(:))
-    DO iFile = 2,nFiles+1
-      K(:,iFile-1) = K(:,iFile-1) - Ktmp
-    END DO
-    DEALLOCATE(ktmp)
-  CASE('TimeAvg')
-    ALLOCATE(VarSortTimeAvg(nVarDMD))
-    CALL GetDataSize(File_ID,'Mean',nDim,HSize)
-    ALLOCATE(VarNames_TimeAvg(INT(HSize(1))))
-    CALL ReadAttribute(File_ID,'VarNames_Mean',INT(HSize(1)),StrArray=VarNames_TimeAvg)
-    DO j=1,nVarDMD
-      DO i=1,INT(HSize(1))
-        IF (TRIM(VarNameDMD(j)) .EQ. TRIM(VarNames_TimeAvg(i))) THEN
-          VarSortTimeAvg(i)=j
-          EXIT
-        ELSE IF(i .EQ. INT(HSize(1))) THEN
-          CALL Abort(__STAMP__,'Required DMD-Var not provided by TimeAvg-File')
-        END IF
+      CALL CalcEquationDMD(Utmp,Ktmp(:))
+      DO iFile = 2,nFiles+1
+        K(:,iFile-1) = K(:,iFile-1) - Ktmp
       END DO
-    END DO
+      DEALLOCATE(ktmp)
+    CASE('TimeAvg')
+      ALLOCATE(VarSortTimeAvg(nVarDMD))
+      CALL GetDataSize(File_ID,'Mean',nDim,HSize)
+      ALLOCATE(VarNames_TimeAvg(INT(HSize(1))))
+      CALL ReadAttribute(File_ID,'VarNames_Mean',INT(HSize(1)),StrArray=VarNames_TimeAvg)
+      DO j=1,nVarDMD
+        DO i=1,INT(HSize(1))
+          IF (TRIM(VarNameDMD(j)) .EQ. TRIM(VarNames_TimeAvg(i))) THEN
+            VarSortTimeAvg(i)=j
+            EXIT
+          ELSE IF(i .EQ. INT(HSize(1))) THEN
+            CALL Abort(__STAMP__,'Required DMD-Var not provided by TimeAvg-File')
+          END IF
+        END DO
+      END DO
 
-    ALLOCATE(Ktmp(nDoFs*nVarDMD))
-    DEALLOCATE(Utmp)
-    ALLOCATE(Utmp (HSize(1),0:N_State,0:N_State,0:N_StateZ,nElems_State))
+      ALLOCATE(Ktmp(nDoFs*nVarDMD))
+      DEALLOCATE(Utmp)
+      ALLOCATE(Utmp (HSize(1),0:N_State,0:N_State,0:N_StateZ,nElems_State))
 
-    CALL ReadArray('Mean',5,&
-                  (/INT(HSize(1)),N_State+1,N_State+1,N_StateZ+1,nElems_State/),0,5,RealArray=Utmp)
-    CALL CloseDataFile()
-    DEALLOCATE(HSize)
+      CALL ReadArray('Mean',5,&
+                    (/INT(HSize(1)),N_State+1,N_State+1,N_StateZ+1,nElems_State/),0,5,RealArray=Utmp)
+      CALL CloseDataFile()
+      DEALLOCATE(HSize)
 
-    ktmp(:) = RESHAPE(Utmp(VarSortTimeAvg,:,:,:,:), (/nDoFs*nVarDMD/))
+      ktmp(:) = RESHAPE(Utmp(VarSortTimeAvg,:,:,:,:), (/nDoFs*nVarDMD/))
 
-    DO iFile = 2,nFiles+1
-      K(:,iFile-1) = K(:,iFile-1) - Ktmp
-    END DO
+      DO iFile = 2,nFiles+1
+        K(:,iFile-1) = K(:,iFile-1) - Ktmp
+      END DO
 
-    DEALLOCATE(ktmp)
+      DEALLOCATE(ktmp)
   END SELECT
-
 END IF
 
 DEALLOCATE(Utmp)
 
 END SUBROUTINE InitDMD
 
+
+!==================================================================================================================================
+!==================================================================================================================================
 SUBROUTINE performDMD()
-!----------------------------------------------------------------------------------------------------------------------------------!
-! description
-!----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES                                                                                                                          !
 USE MOD_Globals
 USE MOD_DMD_Vars,                ONLY: K,nDoFs,nFiles,Phi,lambda,freq,dt,alpha,sigmaSort,sortFreq,SvdThreshold,nModes,nVarDMD
-!----------------------------------------------------------------------------------------------------------------------------------!
-! insert modules here
+! IMPLICIT VARIABLE HANDLING
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
-! Space-separated list of input and output types. Use: (int|real|logical|...)_(in|out|inout)_dim(n)
 !-----------------------------------------------------------------------------------------------------------------------------------
-! External Subroutines from LAPACK
+! INPUT / OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+! External subroutines from LAPACK
 EXTERNAL         DGESDD
 EXTERNAL         ZGEEV
 EXTERNAL         ZGESV
-! LOCAL VARIABLES
+! Internal variables
 INTEGER                          :: i,M,N,LDA,LDU,LDVT,LWMAX,INFO,LWORK,nFilter
 INTEGER,ALLOCATABLE              :: IWORK(:),IPIV(:),filter(:)
 DOUBLE PRECISION,ALLOCATABLE     :: WORK(:)
@@ -388,7 +386,6 @@ DEALLOCATE(STildeWork)
 DEALLOCATE(WORKC)
 DEALLOCATE(RWORK)
 
-
 ALLOCATE(Vand(N,nFiles-1))
 ALLOCATE(P(N,N))
 ALLOCATE(qTmp(N,N))
@@ -449,7 +446,6 @@ ALLOCATE(lambda(N))
 lambda = log(sigmaSort)/dt
 freq   = aimag(lambda)/(2*PI)
 
-
 ALLOCATE(RGlobMat(M,nFiles-1))
 RglobMat = K(:,2:nFiles)-DBLE(MATMUL(MATMUL(MATMUL(USVD,STilde),SigmaMat),WSVD))
 LDA  = M
@@ -478,7 +474,6 @@ WRITE(UNIT_stdOut,'(A,F12.6)') 'Projection error K(1):   ',Rsnap1
 WRITE(UNIT_stdOut,'(A,F12.6)') 'Projection error K(nFiles): ',Rsnap2
 WRITE(UNIT_stdOut,'(132("="))')
 
-
 DEALLOCATE(SigmaSVD)
 DEALLOCATE(STilde)
 DEALLOCATE(SigmaMat)
@@ -486,23 +481,28 @@ DEALLOCATE(USVD)
 DEALLOCATE(WSVD)
 DEALLOCATE(VR)
 DEALLOCATE(eigSTilde)
+
 END SUBROUTINE performDMD
 
 
-SUBROUTINE WriteDmdStateFile()
+!==================================================================================================================================
+!==================================================================================================================================
+SUBROUTINE WriteDMDStateFile()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_IO_HDF5
 USE MOD_HDF5_Output,        ONLY: WriteState,WriteTimeAverage,GenerateFileSkeleton,WriteAttribute,WriteArray
+USE MOD_HDF5_Output,        ONLY: MarkWriteSuccessful
 USE MOD_Output,             ONLY: InitOutput
 USE MOD_Output_Vars
 USE MOD_DMD_Vars,           ONLY: Phi,N_State,N_StateZ,nElems_State,nModes,freq,alpha,lambda,sigmaSort,Time_State,VarNameDMD
 USE MOD_DMD_Vars,           ONLY: dt,TimeEnd_State,ModeFreq,PlotSingleMode,nVarDMD,nDofs,N_StateZ_out
 USE MOD_Mesh_Vars,          ONLY: offsetElem,MeshFile
 USE MOD_2D                 ,ONLY: ExpandArrayTo3D
-!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -517,7 +517,6 @@ LOGICAL              :: connected
 COMPLEX              :: Phi_out(nDofs,nVarDMD,nModes)
 !===================================================================================================================================
 SWRITE(UNIT_stdOut,'(a,a,a)',ADVANCE='NO')' WRITE DMD MODES TO HDF5 FILE "',TRIM(ProjectName),'" ...'
-
 
 FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DMD',Time_State))//'.h5'
 
@@ -583,7 +582,8 @@ ELSE
   k = 0
   DO i = 1, nModes
     k=k+1
-    IF (freq(i) .LT. 0.) THEN
+    ! skip negative frequencies due to symmetry of spectrum, but ensure to keep to zeroth mode (numerical zero can also be small negative number)
+    IF (freq(i) .LT. -1e-12) THEN
       k=k-1
       CYCLE
     END IF
@@ -628,8 +628,9 @@ ELSE
 END IF ! PlotSingleMode
 CALL CloseDataFile()
 
+CALL MarkWriteSuccessful(FileName)
 
-!Write DMD spectrum to file
+! Write DMD spectrum to file
 FileUnit_DMD=155
 INQUIRE(UNIT=FileUnit_DMD, OPENED=connected)
 IF (Connected) THEN
@@ -660,14 +661,17 @@ END DO
 CLOSE(FILEUnit_DMD)
 
 SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES')'DONE'
-!!===================================================================================================================================
 
 END SUBROUTINE WriteDmdStateFile
 
+
+!==================================================================================================================================
+!==================================================================================================================================
 SUBROUTINE FinalizeDMD()
 ! MODULES
 USE MOD_Globals
 USE MOD_DMD_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -683,16 +687,18 @@ DEALLOCATE(sigmaSort)
 DEALLOCATE(K)
 DEALLOCATE(VarNameDMD)
 WRITE(UNIT_stdOut,'(A)') '  DMD FINALIZED'
+
 END SUBROUTINE FinalizeDMD
 
+
+!==================================================================================================================================
+! Quicksort algorithm: sorts a from first to last entry by the icolumn,
+!==================================================================================================================================
 RECURSIVE SUBROUTINE quicksort(a, first, last, icolumn, columns)
-!----------------------------------------------------------------------------------------------------------------------------------!
-! Quicksort algorythm: sorts a from first to last entry by the icolumn,
-!----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES                                                                                                                          !
-!----------------------------------------------------------------------------------------------------------------------------------!
-!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)    :: first, last, icolumn,columns
 REAL,INTENT(INOUT)    :: a(:,:)
@@ -720,6 +726,5 @@ IF (first < i-1) CALL quicksort(a(:,:), first, i-1, icolumn, columns)
 IF (j+1 < last)  CALL quicksort(a(:,:), j+1,  last, icolumn, columns)
 
 END SUBROUTINE quicksort
-
 
 END MODULE MOD_DMD

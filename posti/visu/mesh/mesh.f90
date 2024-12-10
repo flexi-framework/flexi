@@ -231,8 +231,8 @@ IMPLICIT NONE
 INTEGER            :: iElem,iSide,iLocSide,iSideVisu
 INTEGER            :: p,q,pq(2)
 REAL,ALLOCATABLE   :: Vdm_NGeo_NVisu(:,:)
-REAL               :: SurfCoords(1:3,0:NGeo,0:NGeo,0:0,1:nBCSides)   !< XYZ positions (first index 1:3) of the Face Node Coords
-REAL               :: tmp       (1:3,0:NGeo,0:NGeo)
+REAL               :: SurfCoords(1:3,0:NGeo,0:ZDIM(NGeo),0:0,1:nBCSides)   !< XYZ positions (first index 1:3) of the Face Node Coords
+REAL               :: tmp       (1:3,0:NGeo,0:ZDIM(NGeo))
 #if FV_ENABLED
 REAL,ALLOCATABLE   :: Vdm_NGeo_NVisu_FV(:,:)
 #endif
