@@ -254,15 +254,15 @@ documentation:
     - if: '$DO_DEPLOY'
     - if: '$DO_WEEKLY'
   script:
-    - cd doc/doxygen
+    - cd docs/doxygen
     - ./builddoxy.sh
   artifacts:
     paths:
       - src
-      - doc/doxygen
+      - docs/doxygen
   cache:
     key: "${CI_COMMIT_REF_SLUG}-DOC"
-    paths: [doc/doxygen]
+    paths: [docs/doxygen]
     policy: push
 
 userguide:
@@ -272,14 +272,22 @@ userguide:
     - if: '$DO_DEPLOY'
     - if: '$DO_WEEKLY'
   script:
-    - cd doc/userguide
-    - make
+    - cd docs/documentation
+    - python3 -m pip install --exists-action=w --no-cache-dir -r requirements.txt
+    - python3 -m sphinx -T -E -b html -d _build/doctrees -D language=en . _build/html
+    - ls -l _build/html
+    - python3 -m sphinx -b latex -D language=en -d _build/doctrees . _build/latex
+    - ls -l _build/latex
+    - cd _build/latex
+    - latexmk -r latexmkrc -pdf -f -dvi- -ps- -jobname=flexi -interaction=nonstopmode || true
+    - ls -l
+    - ls -l flexi.pdf
   artifacts:
     paths:
-      - doc/userguide
+      - docs/documentation
   cache:
     key: "${CI_COMMIT_REF_SLUG}-USERGUIDE"
-    paths: [doc/userguide]
+    paths: [docs/documentation]
     policy: push
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -292,12 +300,13 @@ homepage:
     - if: '$DO_DEPLOY && $CI_SERVER_URL =~ /.*\.iag\.uni-stuttgart\.de$/'
   cache:
     - key: "${CI_COMMIT_REF_SLUG}-USERGUIDE"
-      paths: [doc/userguide]
+      paths: [docs/documentation]
       policy: pull
   variables:
     FF_ENABLE_JOB_CLEANUP: 1
   script:
-    - rsync --recursive --delete doc/userguide/userguide.pdf webserver:nrg.git/nrg_website/NRG/userguide/userguide.pdf
+    - rsync --recursive --delete docs/documentation/_build/latex/flexi.pdf webserver:nrg.git/nrg_website/NRG/userguide/pdf/userguide.pdf
+    - rsync --recursive --delete docs/documentation/_build/html/*          webserver:nrg.git/nrg_website/NRG/userguide/html/.
 
 github:
   extends: .default_build_param

@@ -174,6 +174,10 @@ DO iVar=1,nVecTrans
 END DO
 
 IF(Plane_doBLProps.OR.Box_doBLProps) THEN
+  IF(iVelocity.EQ.-1) CALL CollectiveStop(__STAMP__,'To calculate BL properties, VelocityX needs to be provided as output variable')
+  iDensity=-1
+  iDensity=GETMAPBYNAME('Density',VarNameVisu,nVarVisu)
+  IF(iDensity.EQ.-1) CALL CollectiveStop(__STAMP__,'To calculate BL properties, Density needs to be provided as output variable')
   iPressure=-1
   iPressure=GETMAPBYNAME('Pressure',VarNameVisu,nVarVisu)
   IF(iPressure.GT.0) THEN

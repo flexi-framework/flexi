@@ -400,8 +400,13 @@ IF(Plane_doBLProps.OR.Box_doBLProps) THEN
     CALL CollectiveStop(__STAMP__,&
       'ERROR: Ini not defined! (Ini,nRefState):',RPRefState,REAL(nRefState))
   ELSE IF(RPRefState .EQ. 0)THEN
-    SWRITE(UNIT_stdOut,'(A)')' No RefState specified, using the first one'
-    RPRefState=1
+    IF(nRefState.EQ.0) THEN
+      CALL CollectiveStop(__STAMP__,&
+        'ERROR: Neither RPRefState nor RefState specified!')
+    ELSE
+      SWRITE(UNIT_stdOut,'(A)')' No RPRefState specified, using the first RefState'
+      RPRefState=1
+    END IF
   END IF
 
   ALLOCATE(RefStatePrim(PP_nVarPrim-1,nRefState))
