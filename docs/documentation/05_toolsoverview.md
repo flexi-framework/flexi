@@ -89,6 +89,7 @@ The practical application of `POSTI_VISU` can be practiced in the following tuto
 
 
 
+
 (sec:swap_mesh)=
 ### POSTI_SWAPMESH
 
@@ -160,8 +161,208 @@ An example of the `POSTI_SWAPMESH` tool can be found in
 ```
 
 
+(tools-recordpoints)=
+### Recordpoints
 
-<!--TODO:-->
+For investigations with a high temporal resolution, such as frequency analyses, it is generally not practical to write complete state files with a high output frequency. Among other things, this would generate a considerable memory requirement and unnecessarily slow down the simulation due to frequent I/O operations. 
+So-called record points can therefore be used within **FLEXI** for high-frequency outputs in time. These represent point samples and can sample the flow variables with high temporal resolution at defined points in the domain. Several record points can be combined to form geometric shapes such as lines or surfaces. 
+
+The **POSTI** tools available for this are:
+- POSTI_RP_PREPARE: Definition of the points in the flow domain 
+- POSTI_RP_VISUALIZE: Visualization of the variables recorded at runtime
+- POSTI_RP_EVALUATE: Subsequent evaluation of record points on existing volume solutions
+To use the **POSTI** tools, the compile flag `POSTI` and the compile flag associated with the respective tool must be activated.  
+
+
+(tools-recordpoints_prepare)=
+#### POSTI_RP_PREPARE
+
+The POSTI_RP_PREPARE tool uses its own parameter file. This specifies the grouping of the recordpoints (individual points, lines, planes, ...) and the associated mesh file for which the recordpoints will be defined. The parameters that can be used are documented in the table listed below. 
+
+The tool can be executed as follows:
+
+```bash
+posti_preparerecordpoints parameter_recordpoints.ini
+```
+
+After successful execution, an additional `h5` file is written with the name of the specified project name with postfix `_RPSet`. In order to record the data during the simulation, this file must be specified in the parameter file when executing **FLEXI**. If the `doVisuRP` option is used, the defined recordpoints are also written to a `vtm` file that can be viewed with Paraview. 
+
+
+```{list-table} POSTI_RP_PREPARE parameters.
+:header-rows: 1
+:name: tab:postirpprepare_parameters
+:align: center
+:width: 100%
+:widths: 25 25 50
+* - Parameter
+  - Possible Values
+  - Description
+* - ProjectName
+  - 
+  - Name used to identify the recordpoint file 
+* - MeshFile
+  - MeshFileName.h5
+  - Name of the mesh file
+* - NSuper
+  - 1 / 2 / 3 / ...
+  - Number of Newton start values per element per direction.
+* - maxTolerance
+  - value $\ge 0$
+  - Tolerance in parameter space at the element boundaries, required to mark a recordpoint as found. 
+* - doVisuRP
+  - T/F
+  - Write output file to visualize recordpoints.
+* - GroupName         
+  -
+  - Name of the RP group (one for each group!)  
+* - Line_GroupID      
+  -
+  - ID of a straight line group, defined by start and end coordinates and the number of points along that line, used to allocate the definition to a specific group  
+* - Line_nRP          
+  -
+  - Number of RPs on line  
+* - Line_xstart       
+  -
+  - Coordinates of start of line  
+* - Line_xend         
+  -
+  - Coordinates of end of line  
+* - Circle_GroupID    
+  -
+  - ID of a circular group, used to allocate the definition to a specific group  
+* - Circle_nRP        
+  -
+  - Number of RPs along circle  
+* - Circle_Center     
+  -
+  - Coordinates of circle center  
+* - Circle_Axis       
+  -
+  - Axis vector of circle  
+* - Circle_Dir        
+  -
+  - Vector defining the start point on the circle  
+* - Circle_Radius    
+  -
+  - Radius of the circle  
+* - Circle_Angle      
+  -
+  - Angle from the start point, 360° is a full circle  
+* - CustomLine_GroupID
+  -
+  - ID of a custom line, defined by an arbitrary number of RPs, used to allocate the definition to a specific group
+* - CustomLine_nRP    
+  -
+  - Number of points on the custom line  
+* - CustomLine_x      
+  -
+  - Coordinates of the points on the custom line  
+* - Point_GroupID     
+  -
+  - ID of a point group, used to allocate the definition to a specific group  
+* - Point_x           
+  -
+  - Coordinates of the single point  
+* - Plane_GroupID     
+  -
+  - ID of a plane group, defined by the corner points and the number of points in both directions, used to allocate the definition to a specific group  
+* - Plane_nRP         
+  -
+  - Number of points in the plane  
+* - Plane_CornerX     
+  -
+  - Coordinates of the 4 corner points (x1,y1,z1,x2,y2,z2,...)  
+* - Box_GroupID       
+  -
+  - ID of a box group, defined by the corner points and the number of points in both directions, used to allocate the definition to a specific group  
+* - Box_nRP           
+  -
+  - Number of points in the box  
+* - Box_CornerX       
+  -
+  - Coordinates of the 8 corner points (x1,y1,z1,x2,y2,z2,...)  
+* - Sphere_GroupID    
+  -
+  - ID of a spherical group, with points on the circumference, used to allocate the definition to a specific group  
+* - Sphere_nRP        
+  -
+  - Number of points on the spere in phi and theta direction  
+* - Sphere_Center     
+  -
+  - Coordinates of sphere center  
+* - Sphere_Axis      
+  -
+  - Axis vector of sphere  
+* - Sphere_Dir        
+  -
+  - Vector defining the start point on the sphere  
+* - Sphere_Radius     
+  -
+  - Radius of the sphere  
+* - Sphere_Angle      
+  -
+  - Phi angle of the sphere (360° is a full sphere)  
+* - BLPlane_GroupID   
+  -
+  - ID of a boundary layer group - works like a plane group, but the plane is created by projecting the points of a spline to the nearest boundary and extruding the plane along the normal with a stretching factor, used to allocate the definition to a specific group  
+* - BLPlane_nRP       
+  -
+  - Number of RPs along and normal to the boundary  
+* - BLPlane_nCP       
+  -
+  - Number of control points defining the spline (at least two)  
+* - BLPlane_CP        
+  -
+  - Coordinates of the spline control points  
+* - BLPlane_fac       
+  -
+  - Factor of geometrical stretching in wall-normal direction  
+* - BLPlane_height    
+  -
+  - Wall-normal extend of the plane for each control point  
+* - BLBox_GroupID     
+  -
+  - ID of a boundary layer group - works like a box group, but the box is created by projecting the points of a spline to the nearest boundary and extruding the box along the normal with a stretching factor, used to allocate the definition to a specific group  
+* - BLBox_nRP         
+  -
+  - Number of RPs along and normal to the boundary  
+* - BLBox_nCP         
+  -
+  - Number of control points defining the spline (at least two).  Defined once per BLBox  
+* - BLBox_nSP         
+  -
+  - Number of shifted splines (at least one), linear interpolation between the splines in shifted direction (linear extrusion)  
+* - BLBox_CP          
+  -
+  - Coordinates of the spline control points. nCPxnSP needed.  
+* - BLBox_fac         
+  -
+  - Factor of geometrical stretching in wall-normal direction.  
+* - BLBox_height 
+  -
+  - Wall-normal extend of the box for each control point
+```
+
+
+Exemplary applications of `POSTI_RP_PREPARE` can be found in the following tutorials: [](Cylinder), [](NACA0012)
+Sample parameter files can also be found here.
+
+
+(tools-recordpoints_visu)=
+#### POSTI_RP_VISUALIZE
+
+
+
+(tools-recordpoints_evaluate)=
+#### POSTI_RP_EVALUATE
+
+
+
+
+
+
+
+<!--## TODO:-->
 <!------------------------------------------------------------------------------------------------->
 <!--**posti_swapmesh**-->
 <!----------------------------------- -------------------------------------------------------------->
@@ -255,7 +456,7 @@ An example of the `POSTI_SWAPMESH` tool can be found in
 
 <!--Further info / usage example       No tutorials so far-->
 <!------------------------------------------------------------------------------------------------->
-<!---->
+
 
 
 <!--[>===========================================================================================================================<]-->
