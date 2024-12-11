@@ -72,12 +72,14 @@ USE MOD_SMParametricCoordinates, ONLY: GetParametricCoordinates
 USE MOD_Interpolation,           ONLY: InitInterpolation
 USE MOD_Output_Vars,             ONLY: NOut,ProjectName
 USE MOD_Mesh_Vars,               ONLY: nElems,OffsetElem,nGlobalElems
+#if USE_OPENMP
+USE OMP_Lib,                     ONLY: OMP_GET_WTIME
+#endif
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: i
 CHARACTER(LEN=255)  :: MeshFile_state
 INTEGER             :: nElems_State
 REAL                :: Time
@@ -130,11 +132,6 @@ ELSE
   abortTol     =GETREAL('abortTolerance',TRIM(tmp))
 END IF
 
-IF (CountOption('displacement').GE.1) THEN
-  ! Possibility to set a displacement between the old and new mesh by defining a vector
-  displacement = GETREALARRAY('displacement',3)
-END IF
-
 ! Init interpolation on new polynomial degree, will set PP_N to NNew
 CALL InitInterpolation(NNew)
 
@@ -147,31 +144,31 @@ ExtrudePeriodic = GETLOGICAL("ExtrudePeriodic",'.FALSE.')
 IF (ExtrudePeriodic) abortTol = HUGE(1.)
 
 ! Initialize the old mesh, store the mesh coordinates (transformed to CL points) and the number of elements as well as the old NGeo
-Time=FLEXITIME()
-SWRITE(UNIT_stdOut,'(A)') ' INIT OLD MESH ...'
+SWRITE(UNIT_stdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(A)', ADVANCE='NO') ' INIT OLD MESH...'
+Time = OMP_FLEXITIME()
 IF (ExtrudePeriodic) THEN
   CALL ReadMeshCoords(MeshFileOld,useCurvedsOld,NGeoOld,nElemsOld,xCLOld,nElems_IJK=nElemsOld_IJK)
 ELSE
-CALL ReadMeshCoords(MeshFileOld,useCurvedsOld,NGeoOld,nElemsOld,xCLOld)
+  CALL ReadMeshCoords(MeshFileOld,useCurvedsOld,NGeoOld,nElemsOld,xCLOld)
 END IF
-SWRITE(UNIT_stdOut,*)'done in ',FLEXITIME()-Time
-
-! Translate the old mesh along the displacement vector if needed
-IF (CountOption('displacement').GE.1) THEN
-  DO i=1,PP_dim
-    xCLOld(i,:,:,:,:) = xCLOld(i,:,:,:,:)+displacement(i)
-  END DO
-END IF
+CALL DisplayMessageAndTime(OMP_FLEXITIME()-TIME,'DONE!',DisplayLine=.FALSE.)
 
 ! Initialize new mesh
-Time=FLEXITIME()
-SWRITE(UNIT_stdOut,'(A)') ' INIT NEW MESH ...'
+SWRITE(UNIT_stdOut,'(A)', ADVANCE='NO') ' INIT NEW MESH...'
+Time = OMP_FLEXITIME()
 IF (ExtrudeTo3D.OR.ExtrudePeriodic) THEN
-CALL ReadMeshCoords(MeshFileNew,useCurvedsNew,NGeoNew,nElemsNew,xCLNew,Elem_IJK,nElems_IJK=nElemsNew_IJK)
+  CALL ReadMeshCoords(MeshFileNew,useCurvedsNew,NGeoNew,nElemsNew,xCLNew,Elem_IJK,nElems_IJK=nElemsNew_IJK)
 ELSE
   CALL ReadMeshCoords(MeshFileNew,useCurvedsNew,NGeoNew,nElemsNew,xCLNew)
 END IF
-SWRITE(UNIT_stdOut,*)'done in ',FLEXITIME()-Time
+CALL DisplayMessageAndTime(OMP_FLEXITIME()-TIME,'DONE!',DisplayLine=.TRUE.)
+
+! Transform mesh coordinates, i.e. reflect, rotate and translate the mesh and swapped state
+SWRITE(UNIT_stdOut,'(A)') ' APPLY COORDINATE TRANSFORMATION...'
+Time = OMP_FLEXITIME()
+CALL TransformMeshCoords(xCLOld, (NGeoOld+1)**3*nElemsOld)
+CALL DisplayMessageAndTime(OMP_FLEXITIME()-TIME,'DONE!',DisplayLine=.TRUE.)
 
 ! Set offset elem and local and global number of elements in mesh vars (later needed for output routine)
 nGlobalElems = nElemsNew
@@ -183,7 +180,6 @@ ALLOCATE(xCLInter(3,0:NInter,0:NInter,0:ZDIM(NInter),nElemsNew))
 CALL prepareVandermonde()
 
 ! Evaluate parametric coordinates
-SWRITE(UNIT_stdOut,'(A)') ' EVALUATING PARAMETRIC COORDINATES ...'
 ALLOCATE(xiInter(PP_dim,0:NInter,0:NInter,0:ZDIM(NInter),nElemsNew))
 ALLOCATE(InterToElem(   0:NInter,0:NInter,0:ZDIM(NInter),nElemsNew))
 ALLOCATE(IPDone(        0:NInter,0:NInter,0:ZDIM(NInter),nElemsNew))
@@ -298,6 +294,75 @@ IF (PRESENT(Elem_IJK).OR.PRESENT(nElems_IJK)) THEN
 END IF
 CALL CloseDataFile()
 END SUBROUTINE ReadMeshCoords
+
+
+!=================================================================================================================================
+!> Performs transformation to the mesh coordinates, which eventually transform (reflect, rotate, translate) the state.
+!> The transformations are computed in the following order:
+!> 1. Reflection
+!> 2. Rotation
+!> 3. Translation
+!=================================================================================================================================
+SUBROUTINE TransformMeshCoords(x, n)
+! MODULES
+USE MOD_Globals
+USE MOD_PreProc,     ONLY: PP_PI
+USE MOD_ReadInTools, ONLY: CountOption,GETINT,GETREAL,GETREALARRAY
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!---------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN) :: n        !> Number of points
+!---------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,INTENT(INOUT) :: x(3,n)   !> Coordinates
+!---------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: i,j
+REAL               :: mat(3,3)
+REAL               :: dx(3),ang(3)
+!=================================================================================================================================
+! 1. Reflection
+IF (CountOption('reflection').GE.1) THEN
+  i = GETINT('reflection_dir')
+  IF ( (i.GT.PP_dim) .OR. (i.LT.1)) CALL Abort(__STAMP__,'Reflection direction must be between 1 and 3!')
+  DO j=1,n
+    x(i,j) = -x(i,j)
+  END DO
+END IF
+! 2. Rotation
+IF (CountOption('rotation_angle').GE.1) THEN
+  ang = GETREALARRAY('rotation_angle',3)
+  IF ( (PP_dim.EQ.2) .AND. (ang(3).NE.0)) THEN
+    SWRITE(UNIT_stdOut,'(A)') "WARNING: Rotation around z-axis in 2D is not possible, setting angle to 0."
+    ang(3) = 0.
+  END IF
+  ang(1:PP_dim) = ang(1:PP_dim)/180.*PP_PI ! Convert from deg to rad
+  ! 3x3 rotation matrix for intrinsic rotation with ang = (yaw, pitch, roll)
+  mat(1,1) =  COS(ang(1))*COS(ang(2))
+  mat(1,2) =  COS(ang(1))*SIN(ang(2))*SIN(ang(3))-SIN(ang(1))*COS(ang(3))
+  mat(1,3) =  COS(ang(1))*SIN(ang(2))*COS(ang(3))+SIN(ang(1))*SIN(ang(3))
+  mat(2,1) =  SIN(ang(1))*COS(ang(2))
+  mat(2,2) =  SIN(ang(1))*SIN(ang(2))*SIN(ang(3))+COS(ang(1))*COS(ang(3))
+  mat(2,3) =  SIN(ang(1))*SIN(ang(2))*COS(ang(3))-COS(ang(1))*SIN(ang(3))
+  mat(3,1) = -SIN(ang(2))
+  mat(3,2) =  COS(ang(2))*SIN(ang(3))
+  mat(3,3) =  COS(ang(2))*COS(ang(3))
+  ! Rotate
+  DO j=1,n
+    x(:,j) = MATMUL(mat,x(:,j))
+  END DO
+END IF
+! 3. Translation
+IF (CountOption('displacement').GE.1) THEN
+  dx = GETREALARRAY('displacement',3)
+  DO j=1,n
+    DO i=1,PP_dim
+      x(i,j) = x(i,j) + dx(i)
+    END DO
+  END DO
+END IF
+END SUBROUTINE TransformMeshCoords
 
 
 !=================================================================================================================================
@@ -481,7 +546,7 @@ SUBROUTINE WriteNewStateFile()
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_IO_HDF5            
-USE MOD_HDF5_Output,        ONLY: WriteState, WriteAttribute
+USE MOD_HDF5_Output,        ONLY: WriteState,WriteAttribute
 USE MOD_Output_Vars,        ONLY: ProjectName
 USE MOD_Swapmesh_Vars,      ONLY: Time_State,MeshFileNew,NodeTypeOut,NodeTypeState
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -494,7 +559,7 @@ CHARACTER(LEN=255)             :: FileName,FileType
 !===================================================================================================================================
 CALL WriteState(TRIM(MeshFileNew),Time_State,Time_State,isErrorFile=.FALSE.)
 
-! Update the nodetype attribute in the State file, delete old attri and rewrite
+! Update the nodetype attribute in the State file, delete old attribute and rewrite
 IF (NodeTypeOut.NE.NodeTypeState) THEN
   SWRITE(UNIT_stdOut,'(A)') "Updating NodeType in Statefile to new NodeType."
   FileType=MERGE('ERROR_State','State      ',.FALSE.)

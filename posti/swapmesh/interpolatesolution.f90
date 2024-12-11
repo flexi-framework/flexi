@@ -73,14 +73,14 @@ REAL                          :: L_zeta(  0:NState,0:NInter,0:NInter,0:NInter)
 REAL                          :: L_eta_zeta
 REAL                          :: xGP(0:NState),wBaryGP(0:NState)
 REAL                          :: StartT,EndT
-INTEGER                       :: jElemNew,jElemOld,iElemExtrusion,iIter
+INTEGER                       :: jElemNew,iElemExtrusion,iIter
 !===================================================================================================================================
 ! GPs and Barycentric weights for solution
 CALL GetNodesAndWeights(NState,NodeTypeState,xGP)
 CALL BarycentricWeights(NState,xGP,wBaryGP)
 
-SWRITE(UNIT_stdOut,'(A,A)',ADVANCE='NO')' INTERPOLATE STATE TO NEW MESH ...',ACHAR(13)
-StartT = FLEXITIME()
+SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')' INTERPOLATE STATE TO NEW MESH...'
+StartT = OMP_FLEXITIME()
 U      = 0.
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iElemNew,iElemOld,ii,jj,kk,L_xi,L_eta,L_zeta,L_eta_zeta,Utmp,i,j,k)
@@ -186,8 +186,8 @@ IF (ExtrudePeriodic) THEN
   END DO
 END IF
 
-EndT = FLEXITIME()
-CALL DisplayMessageAndTime(EndT-StartT, 'INTERPOLATE STATE TO NEW MESH DONE', DisplayLine=.FALSE.)
+EndT = OMP_FLEXITIME()
+CALL DisplayMessageAndTime(EndT-StartT,'DONE!',DisplayLine=.FALSE.)
 
 END SUBROUTINE InterpolateSolution
 

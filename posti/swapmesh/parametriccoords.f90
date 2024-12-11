@@ -52,7 +52,6 @@ CONTAINS
 SUBROUTINE GetParametricCoordinates()
 ! MODULES
 USE MOD_Globals
-USE MOD_Globals_Vars,          ONLY: StartTime
 USE MOD_Basis,                 ONLY: ChebyGaussLobNodesAndWeights,BarycentricWeights
 USE MOD_ChangeBasisByDim,      ONLY: ChangeBasisVolume
 USE MOD_Interpolation,         ONLY: GetVandermonde,GetDerivativeMatrix
@@ -97,8 +96,8 @@ REAL               :: xi(1:PP_dim)
 ! Progress indicator
 REAL               :: StartT,EndT,percent
 !===================================================================================================================================
-StartT = FLEXITIME()
-SWRITE(UNIT_stdOut,'(A)') ' EVALUATING PARAMETRIC COORDINATES ...'
+StartT = OMP_FLEXITIME()
+SWRITE(UNIT_stdOut,'(A)') ' EVALUATING PARAMETRIC COORDINATES...'
 
 ! Prepare CL basis evaluation
 CALL ChebyGaussLobNodesAndWeights(NGeoOld,Xi_CLNGeo)
@@ -129,7 +128,6 @@ InterToElem = -999
 IPDone      = .FALSE.       ! Mark single interpolation point as done
 ElemDone    = .FALSE.       ! Mark new element as done
 ElemDoneOld = .FALSE.       ! Mark old element as done
-StartT      = FLEXITIME()
 ElemCounter = 0
 nEqualElems = 0
 equalElem   = -999
@@ -295,9 +293,9 @@ DO iElemNew = 1,nElemsNew
     IF (MAXVAL(ABS(xiInter(:,ii,jj,kk,iElemNew))).GT.maxTol) THEN
       ! RP has not been found
       IF(printTroublemakers)THEN
-        WRITE(*,*) 'IP with ID:',       ii,jj,kk,iElemNew,'is a troublemaker!'
-        WRITE(*,*) 'Coords:',xCLInter(:,ii,jj,kk,iElemNew)
-        WRITE(*,*) 'Xi:'    ,xiInter( :,ii,jj,kk,iElemNew)
+        SWRITE(UNIT_stdOut,*) 'IP with ID:',       ii,jj,kk,iElemNew,'is a troublemaker!'
+        SWRITE(UNIT_stdOut,*) 'Coords:',xCLInter(:,ii,jj,kk,iElemNew)
+        SWRITE(UNIT_stdOut,*) 'Xi:'    ,xiInter( :,ii,jj,kk,iElemNew)
       END IF
 
       ! Abort if severly broken and no refstate present (with refstate present abortTol=HUGE)
@@ -311,8 +309,8 @@ DO iElemNew = 1,nElemsNew
 END DO
 SWRITE(Unit_stdOut,'(I12,A)') nNotFound,' nodes not found.'
 
-EndT = FLEXITIME()
-CALL DisplayMessageAndTime(EndT-StartT, 'EVALUATING PARAMETRIC COORDINATES DONE', DisplayLine=.FALSE.)
+EndT = OMP_FLEXITIME()
+CALL DisplayMessageAndTime(EndT-StartT,'DONE!',DisplayLine=.TRUE.)
 
 END SUBROUTINE GetParametricCoordinates
 

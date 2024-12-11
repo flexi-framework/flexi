@@ -83,12 +83,18 @@ CALL prms%CreateRealOption(     "maxTolerance"       , "Tolerance used to mark p
                                                        "more than maxTolerance",'5.e-2')
 CALL prms%CreateLogicalOption(  "printTroublemakers" , "Turn output of not-found points on or off",'.TRUE.')
 CALL prms%CreateRealArrayOption("RefState"           , "If a RefState is defined, this state will be used at points that are "// &
-                                                        "marked as invalid - without a RefState, the program will abort in this case")
-CALL prms%CreateRealOption(     "abortTolerance"     , "Tolerance used to decide if the program should abort if no "// &
-                                                       "RefState is given")
+                                                       "marked as invalid - without a RefState, the program will abort in this case")
+CALL prms%CreateRealOption(     "abortTolerance"     , "Tolerance used to decide if the program should abort if no RefState is given")
 CALL prms%CreateLogicalOption(  "ExtrudeTo3D"        , "Perform an extrusion of a one-layer mesh to the 3D version",'.FALSE.')
 CALL prms%CreateIntOption(      "ExtrudeK"           , "Layer which is used in extrusion")
 CALL prms%CreateLogicalOption(  "ExtrudePeriodic"    , "Perform a periodic extrusion of a 3D mesh to a mesh with extended z length",'.FALSE.') 
+CALL prms%CreateRealArrayOption("rotation_angle"     , "Rotation angles around x-, y-, z-axis in degrees (in that order) for "// &
+                                                       "mesh. Can be used to rotate the state with swapmesh tool.",'(/0.,0.,0./)')
+CALL prms%CreateRealArrayOption("displacement"       , "Displacement in x-, y- and z-direction for old mesh.",'(/0.,0.,0./)')
+CALL prms%CreateIntOption(      "reflection_dir"     , "Reflect old mesh coordinates w.r.t to =0: none\n"// &
+                                                       "                                      =1: y-z-plane\n"// &
+                                                       "                                      =2: x-z-plane\n"// &
+                                                       "                                      =3: x-y-plane\n",'0')
 
 ! Parse parameters
 ! check for command line argument --help or --markdown
@@ -146,10 +152,8 @@ DO iArg=2,nArgs
   SWRITE(UNIT_stdOut,'(132("="))')
   CALL ReadOldStateFile(Args(iArg))
 
-  SWRITE(UNIT_stdOut,'(A)') ' EVALUATING SOLUTION ON NEW MESH ...'
   CALL InterpolateSolution()
 
-  SWRITE(UNIT_stdOut,'(A)') ' WRITING NEW SOLUTION ...'
   CALL WriteNewStateFile()
 END DO
 
