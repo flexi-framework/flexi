@@ -49,6 +49,10 @@ REAL              :: x_in(2)           !< inflow position for Blasius solution
 LOGICAL           :: BlasiusInitDone = .FALSE. !< Flag indicating that the parameters for Blasius have been read (they can be read
                                                !< both in exact func init and in BC init)
 #endif
+REAL              :: eradius_in        !< radius of high energy area for Sedov
+REAL              :: leblanc_x0        !< Location of initial discontinuity for LeBlanc
+REAL              :: Hui_Data(2)       !< Orientation and Location of axis intercept for Hui problem
+
 !==================================================================================================================================
 
 END MODULE MOD_Exactfunc_Vars

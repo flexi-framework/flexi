@@ -1,0 +1,2 @@
+1: crop-crop.pdf is the result of running: pdfcrop chart.pdf
+     This removes the large white space surrounding the illustration in crop.pdf.

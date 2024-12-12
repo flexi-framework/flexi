@@ -1,0 +1,15 @@
+#!/bin/sh
+
+cmake \
+-DCMAKE_BUILD_TYPE=RELEASE \
+-DCMAKE_Fortran_FLAGS="-DNDEBUG -O3 -march=native" \
+-DCMAKE_C_FLAGS="-DNDEBUG -O3 -march=native" \
+-DCMAKE_C_COMPILER=mpicc \
+-DCMAKE_CXX_COMPILER=mpicxx \
+-DCMAKE_Fortran_COMPILER=mpifort \
+-DFLEXI_FV=SWITCH \
+-DFLEXI_PARABOLIC:BOOL=OFF \
+-DFLEXI_2D:BOOL=ON \
+-DPOSTI:BOOL=OFF \
+\
+..

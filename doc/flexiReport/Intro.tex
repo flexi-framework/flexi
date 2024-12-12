@@ -1,0 +1,107 @@
+
+\section{Introduction}\label{sec:Intro}
+
+Flexi\cite{flexigeneral} is a transient, multi-dimensional fluid dynamics simulation code framework using both the discontinuous Galerkin method and Finite Volume method for discretizing the equations of mass, momentum, and energy conservation.  The equations include conservation of mass, momentum, and energy and allows for linear or nonlinear, compressible, viscous or inviscid flows, and RANS turbulence modeling\cite{flexiles}.  Full documentation and code is available at \url{github.com/flexi-framework/flexi}. The currently implemented features of Flexi include (\textit{c.f.,} Section 2.3 of the Flexi Project Documentation as compiled from the flexi-framework github site and given in the \textbf{references directory}):
+
+\begin{itemize}
+ \item Equation systems:
+   \begin{itemize}
+      \item compressible Euler equations
+      \item compressible Navier-Stokes equations
+      \item linear scalar advection and diffusion
+    \end{itemize}
+  \item Space discretization: DGSEM method:
+   \begin{itemize}
+     \item Legendre Gauss
+     \item Legendre Gauss Lobatto
+    \end{itemize}
+  \item Time discretization - explicit Runge-Kutta methods:
+  \begin{itemize}
+     \item standard RK methods
+     \item low storage RK methods
+     \item strong stability preserving RK methods
+    \end{itemize}
+  \item Two- or three-dimensional domains
+  \item Riemann solvers:
+  \begin{itemize}
+   \item local Lax-Friedrichs
+   \item HLL
+   \item HLLC
+   \item Roe-Pike
+   \end{itemize}
+  \item Curved Meshes
+  \item Nonconforming Meshes via mortar interfaces
+  \item Shock capturing
+  \begin{itemize}
+   \item  Employing finite volume subcells by either
+   \begin{itemize}
+    \item switching to finite volume subcells
+    \item blending the finite volume operator
+    \end{itemize}
+   \item Several shock indicators available
+   \end{itemize}
+ \item Boundary conditions
+   \begin{itemize}
+    \item Various subsonic inflow and outflow conditions
+    \item exact boundaries (Dirichlet)
+    \item periodic boundaries
+    \item slip wall (Euler wall)
+    \item non-slip walls (Navier-Stokes wall)
+    \item adiabatic
+    \item isothermal
+    \end{itemize}
+  \item Splitform discontinuous Galerkin schemes
+\end{itemize}
+
+The focus of the results presented here is running Flexi on classic Riemann problems in one- and two-dimensions. These include the Sod[\cite{sod1,sod2}] problem, the LeBlanc problem,  the Einfeldt problem (also known as the 1-2-3 problem)\cite{einfeldt}, and the two-dimensional Sedov\cite{Sedov} and Hui\cite{Hui} problems.  These problems are well documented and some have exact mathematical solutions so that the Flexi results may be compared to these solutions.  Those without exact solutions will be compared to relevant published results.  In presenting results no attempt has been made to determine the set of Flexi's many available parameters and their values for optimal results.
+
+Although Flexi is a general viscous thermo-fluid dynamics code, this report focuses on Riemann problems and so has been setup to solve the following equation system for the dependent variables density, momentum, and energy $F_i(x, y, z) = [\rho, m_i, E]$ in conservative form:
+
+\begin{eqnarray}
+ \partial_{,t} \rho + \partial_{,i} \left( m_i \right) & = & 0, \\
+ \partial_{,t} m_i + \partial_{,j} \left( (m_i*m_j/\rho) + P \delta_{ij}) \right) & = & 0, \\
+ \partial_{,t} E + \partial_{,i} \left( (m_i/\rho)(E + P) \right) & = & 0
+\end{eqnarray}
+\noindent where $\rho$ is the density, $m_i = \rho v_i$ is the momentum vector ($v_i$ the velocity vector), and the total energy per unit volume, $E = \rho u + \rho v_i v_i/2$, where $u$ is the specific internal energy and $\delta_{ij}$ is the Kronecker delta function.  The current Flexi release has only an ideal gas equation of state so that $P = (\gamma - 1) \rho u$, where $\gamma = C_p/C_v$ is the ideal gas ratio of specific heats.
+
+
+\begin{table}[h!]
+ \begin{center}
+  \caption{Conserved and Primitive Variable names used in Flexi for a \texorpdfstring{$\gamma$}-Law Ideal gas where \texorpdfstring{$R$} is the gas constant.}
+  \label{tab:flexiVars}
+  \begin{tabular}{|c|c|c|} \hline
+  \textbf{Physical Symbol} & \parbox{0.3\linewidth}{\centering \textbf{Conserved Variable}} & \parbox{0.3\linewidth}{\centering \textbf{Primitive Variable}} \\ \hline
+   $\rho$                                             & Density                              & \\
+   $m_x = \rho v_x$                            & MomentumX                      & \\
+   $m_y = \rho v_y$                            & MomentumY                      & \\
+   $m_z = \rho v_z$                             & MomentumZ                     & \\
+   $E_{sd} = \rho u + \rho V^2/2$     & EnergyStagnationDensity & \\
+   $v_x = M_x / \rho$                           &                                          & VelocityX \\
+   $v_y = M_y / \rho$                           &                                          & VelocityY \\
+   $v_z = M_z / \rho$                           &                                          & VelocityZ \\
+   $E_s = E_{sd}/\rho = u + V^2/2 $ &                                           & EnergyStagnation \\
+   $h = u + P/\rho$                             &                                           & EnthalpyStagnation \\
+   $s = R \left[ \frac{\ln(T)}{\gamma-1} - \ln(\rho) \right]$ &         & Entropy \\
+   $P = (\gamma - 1) \rho u$              &                                           & Pressure \\
+   $T = P/(\rho R) $                             &                                           & Temperature \\
+   $V = \sqrt{v_i v_i}$                        &                                           & VelocityMagnitude \\
+   $C = \sqrt{\gamma P/\rho}$          &                                           & VelocitySound \\
+   $ Ma = V/C$                                    &                                           & Mach \\
+   $T_0 = T \left[ 1+\frac{\gamma - 1}{2} Ma^2 \right]$
+                                                           &                                          & TotalTemperature \\
+    $P_0 = P \left[1+\frac{\gamma-1}{2} Ma^2 \right]^{\frac{\gamma}{\gamma-1}} $
+                                                           &                                          &TotalPressure \\
+    $\frac{\partial P}{\partial t}$        &                                          & PressureTimeDeriv \\ \hline
+  \end{tabular}
+ \end{center}
+\end{table}
+
+\noindent The primitive variables listed in Table \ref{tab:flexiVars} are calculated from the Flexi conserved variables whose names as listed may be used in post processing as described in \ref{sec:posti} to call out desired quantities to be written into the solution files.
+
+When comparing Flexi results with an available exact solution, the average $L_2$-norm of the difference, $\bar{\epsilon}$,  will be used where
+
+\begin{eqnarray}\label{eq:error}
+ \Delta_i & = & f_i - f_{{\mathrm{exact}}_i} \\
+ \bar{\epsilon}(\Delta_i) & = & \frac{1}{N} \sqrt{ \Delta_i \Delta_i} \label{eq:avgerr}
+\end{eqnarray}
+\noindent where $f$ and $f_{\mathrm{exact}}$ are vectors of the Flexi and exact variables of length $N$ being examined.
