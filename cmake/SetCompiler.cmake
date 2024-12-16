@@ -12,9 +12,9 @@ IF (CMAKE_FQDN_HOST MATCHES "hawk\.hww\.hlrs\.de$")
   MESSAGE(STATUS "Compiling on Hawk")
   # Overwrite compiler target architecture
   IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang")
-    SET(FLEXI_INSTRUCTION "-march=znver2 -mtune=znver2")
+    SET(FLEXI_INSTRUCTION "-march=znver2 -mtune=znver2" CACHE STRING "Compiler optimization options")
   ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
-    SET(FLEXI_INSTRUCTION "-xCORE-AVX2")
+    SET(FLEXI_INSTRUCTION "-xCORE-AVX2" CACHE STRING "Compiler optimization options")
   ENDIF()
   # Use AMD Optimized Lapack/BLAS
   # SET(BLA_VENDOR "FLAME")
@@ -26,9 +26,9 @@ ELSEIF (CMAKE_FQDN_HOST MATCHES "sng\.lrz\.de$")
   MESSAGE(STATUS "Compiling on SuperMUC")
   # Overwrite compiler target architecture
   IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang")
-    SET(FLEXI_INSTRUCTION "-march=skylake-avx512 -mtune=skylake-avx512")
+    SET(FLEXI_INSTRUCTION "-march=skylake-avx512 -mtune=skylake-avx512" CACHE STRING "Compiler optimization options")
   ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
-    SET(FLEXI_INSTRUCTION "-xSKYLAKE-AVX512")
+    SET(FLEXI_INSTRUCTION "-xSKYLAKE-AVX512" CACHE STRING "Compiler optimization options")
     # Explicitely enable usage of AVX512 registers
     SET (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -qopt-zmm-usage=high")
   ENDIF()
@@ -39,7 +39,7 @@ ELSEIF (CMAKE_FQDN_HOST MATCHES "sng\.lrz\.de$")
 ELSEIF(CMAKE_FQDN_HOST MATCHES "\.can$")
   MESSAGE(STATUS "Compiling on LUMI")
   IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
-    SET(FLEXI_INSTRUCTION "-march=znver3 -mtune=znver3")
+    SET(FLEXI_INSTRUCTION "-march=znver3 -mtune=znver3" CACHE STRING "Compiler optimization options")
   ELSE()
     MESSAGE(FATAL_ERROR "LUMI currently only supported using the GNU Compiler Collection (GCC). Please load/swap the following modules: LUMI PrgEnv-gnu cray-hdf5-parallel")
   ENDIF()
@@ -47,7 +47,7 @@ ELSEIF(CMAKE_FQDN_HOST MATCHES "\.can$")
 # IAG Prandtl
 ELSEIF(CMAKE_FQDN_HOST MATCHES "^(prandtl|grafik.*)\.iag\.uni\-stuttgart\.de")
   MESSAGE(STATUS "Compiling on ${CMAKE_HOSTNAME}")
-  SET(FLEXI_INSTRUCTION "-march=native -mtune=native")
+  SET(FLEXI_INSTRUCTION "-march=native -mtune=native" CACHE STRING "Compiler optimization options")
   # Set LUSTRE definition to account for filesystem
   ADD_COMPILE_DEFINITIONS(LUSTRE)
 
@@ -55,31 +55,31 @@ ELSEIF (CMAKE_FQDN_HOST MATCHES "^ila(head.*|cfd.*)\.ila.uni\-stuttgart\.de")
   MESSAGE(STATUS "Compiling on ILA cluster")
   # Overwrite compiler target architecture
   IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang")
-    SET(FLEXI_INSTRUCTION "-march=core-avx2 -mtune=core-avx2")
+    SET(FLEXI_INSTRUCTION "-march=core-avx2 -mtune=core-avx2" CACHE STRING "Compiler optimization options")
   ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
-    SET(FLEXI_INSTRUCTION "-xCORE-AVX2")
+    SET(FLEXI_INSTRUCTION "-xCORE-AVX2" CACHE STRING "Compiler optimization options")
   ENDIF()
   # Work around MPI-IO issue 4446 on machines mounting storage via NFS
   ADD_COMPILE_DEFINITIONS(NFS)
 
 ELSEIF (CMAKE_FQDN_HOST MATCHES "^(xenon.*|argon.*)\.ila.uni\-stuttgart\.de")
   MESSAGE(STATUS "Compiling on ILA student cluster")
-  SET(FLEXI_INSTRUCTION "-march=native -mtune=native")
+  SET(FLEXI_INSTRUCTION "-march=native -mtune=native" CACHE STRING "Compiler optimization options")
   # Work around MPI-IO issue 4446 on machines mountng storage via NFS
   ADD_COMPILE_DEFINITIONS(NFS)
 
 ELSEIF ("${CMAKE_FQDN_HOST}" MATCHES "gitlab\.ila\.uni\-stuttgart\.de")
   MESSAGE(STATUS "Compiling on ILA Gitlab")
   ADD_COMPILE_DEFINITIONS(VDM_ANALYTICAL)
-  SET(FLEXI_INSTRUCTION "-march=native -mtune=native")
+  SET(FLEXI_INSTRUCTION "-march=native -mtune=native" CACHE STRING "Compiler optimization options")
 
 ELSE()
   MESSAGE(STATUS "Compiling on a generic machine [${CMAKE_HOSTNAME}]")
   # Set compiler target architecture
   IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang" OR CMAKE_Fortran_COMPILER_ID MATCHES "Cray")
-    SET(FLEXI_INSTRUCTION "-march=native -mtune=native")
+    SET(FLEXI_INSTRUCTION "-march=native -mtune=native" CACHE STRING "Compiler optimization options")
   ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
-    SET(FLEXI_INSTRUCTION "-xHost")
+    SET(FLEXI_INSTRUCTION "-xHost" CACHE STRING "Compiler optimization options")
   ENDIF()
 ENDIF()
 
@@ -189,6 +189,7 @@ IF (FLEXI_PERFORMANCE_PGO)
 ENDIF()
 
 # Save the current compiler flags to the cache every time cmake configures the project.
+MARK_AS_ADVANCED(FORCE FLEXI_INSTRUCTION)
 MARK_AS_ADVANCED(FORCE CMAKE_Fortran_FLAGS)
 MARK_AS_ADVANCED(FORCE CMAKE_Fortran_FLAGS_RELEASE)
 MARK_AS_ADVANCED(FORCE CMAKE_Fortran_FLAGS_RELWITHDEBINFO)
