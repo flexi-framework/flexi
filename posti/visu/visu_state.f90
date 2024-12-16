@@ -99,6 +99,7 @@ USE MOD_Baseflow            ,ONLY: DefineParametersBaseflow,InitBaseflow,Finaliz
 USE MOD_DG                  ,ONLY: InitDG,DGTimeDerivative_weakForm,FinalizeDG
 USE MOD_EOS                 ,ONLY: DefineParametersEos
 USE MOD_Equation            ,ONLY: DefineParametersEquation,InitEquation,FinalizeEquation
+USE MOD_TestCase            ,ONLY: DefineParametersTestcase
 USE MOD_Exactfunc           ,ONLY: DefineParametersExactFunc
 USE MOD_Filter              ,ONLY: DefineParametersFilter,InitFilter,FinalizeFilter
 USE MOD_Interpolation       ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
@@ -171,6 +172,7 @@ CALL DefineParametersFV()
 CALL DefineParametersEos()
 CALL DefineParametersEquation()
 CALL DefineParametersExactFunc()
+CALL DefineParametersTestcase()
 #if PARABOLIC
 CALL DefineParametersLifting()
 #endif
