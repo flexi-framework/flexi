@@ -50,13 +50,18 @@ For a more detailed installation instructions, please see the [online documentat
 
 | Package          | Required | Installed by FLEXI |
 |:-----------------|:--------:|:------------------:|
-| Git              |      x   |                    |
-| CMake            |      x   |                    |
-| C/C++ Compiler   |      x   |                    |
-| Fortran Compiler |      x   |                    |
-| LAPACK           |      x   |      x             |
-| HDF5             |      x   |      x             |
-| MPI              |     (x)  |                    |
+| [Git](https://git-scm.com/)                                | x   |   |
+| [CMake](https://cmake.org)                                 | x   |   |
+| Fortran and C/C++ Compilers ([GNU](https://gcc.gnu.org/) compilers recommended)  |  x  |     |
+| [LAPACK](https://www.netlib.org/lapack) / [OpenBLAS](https://www.openblas.net)   |  x  |  x  |
+| [HDF5](https://www.hdfgroup.org)                           |  x  | x |
+| [MPI](https://www.mcs.anl.gov/research/projects/mpi)       | (x) |   |
+| [OpenMP](https://www.openmp.org)                           | (x) |   |
+| [FFTW](https://www.fftw.org)                               | (x) | x |
+| [PAPI](https://icl.cs.utk.edu/papi)                        |     |   |
+| [Reggie2.0](https://github.com/reggie-framework/reggie2.0) |     |   |
+| [ParaView](https://www.paraview.org/)                      |     |   |
+
 
 The MPI library is only required for running parallel simulations on multiple ranks. The HDF5 and LAPACK libraries can are optionally built and locally installed during the [FLEXI][flexi] build process. The names of the packages and the package manager might differ depending on the specific distribution used.
 
@@ -81,18 +86,6 @@ Navigate to the directory of the tutorial **cavity** and run [FLEXI][flexi]
 
     cd tutorials/cavity
     flexi parameter_flexi.ini
-
-# Used libraries
-[FLEXI][flexi] uses several external libraries as well as auxiliary functions from open source projects, including:
-* [CMake](https://cmake.org)
-* [FFTW](https://www.fftw.org)
-* [HDF5](https://www.hdfgroup.org)
-* [LAPACK](https://www.netlib.org/lapack)
-* [MPI](https://www.mcs.anl.gov/research/projects/mpi)
-* [OpenMP](https://www.openmp.org)
-* [OpenBLAS](https://www.openblas.net)
-* [PAPI](https://icl.cs.utk.edu/papi)
-* [Reggie2.0](https://github.com/reggie-framework/reggie2.0)
 
 [nrg]:           https://numericsresearchgroup.org/index.html
 [flexi]:         https://numericsresearchgroup.org/flexi_index.html
