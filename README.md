@@ -5,6 +5,7 @@
 [![doi](https://img.shields.io/badge/DOI-10.1016/j.camwa.2020.05.004-blue "DOI")](https://doi.org/10.1016/j.camwa.2020.05.004)
 [![youtube](https://img.shields.io/badge/YouTube-red?logo=youtube "YouTube")](https://www.youtube.com/@nrgiag8633)
 [![userguide](https://img.shields.io/badge/Userguide-silver "Userguide")][userguide]
+[![readthedocs](https://img.shields.io/badge/ReadTheDocs-2980b9 "ReadTheDocs")][readthedocs]
 [![gallery](https://img.shields.io/badge/Gallery-teal "Gallery")][gallery]
 
 # About
@@ -43,7 +44,7 @@ or use the following Bibtex entry
 To refer to specific applications and features, you can also cite the appropriate paper from this [list][publications].
 
 # Quick Start Guide
-For a more detailed installation instructions, please see the documention [here][userguide].
+For a more detailed installation instructions, please see the [online documentation][readthedocs] or the [userguide][userguide].
 
 [FLEXI][flexi] is tested for various Linux distributions including Ubuntu, OpenSUSE, CentOS, or Arch. ƎLexi also runs on macOS. For the installation, you require the following dependencies:
 
@@ -96,6 +97,7 @@ Navigate to the directory of the tutorial **cavity** and run [FLEXI][flexi]
 [nrg]:           https://numericsresearchgroup.org/index.html
 [flexi]:         https://numericsresearchgroup.org/flexi_index.html
 [publications]:  https://numericsresearchgroup.org/publications.html#services
-[userguide]:     https://numericsresearchgroup.org/userguide/userguide.pdf
+[userguide]:     https://numericsresearchgroup.org/userguide/pdf/userguide.pdf
+[readthedocs]:   https://numericsresearchgroup.org/userguide/html/index.html
 [gallery]:       https://numericsresearchgroup.org/gallery.html#portfolio
 [youtube]:       https://www.youtube.com/@nrgiag8633 
