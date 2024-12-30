@@ -4,7 +4,7 @@
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -15,7 +15,7 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Contains the computation of the Jacobian of the numerical flux function. Since we don't want to derive every single one of them, 
+!> Contains the computation of the Jacobian of the numerical flux function. Since we don't want to derive every single one of them,
 !> we employ a finite difference approximation that works for all flux functions.
 !===================================================================================================================================
 MODULE MOD_Riemann_FD
@@ -39,7 +39,7 @@ PUBLIC::Riemann_FD
 CONTAINS
 
 !===================================================================================================================================
-!> Contains the computation of directional derivative with finite difference of the hyperbolic numerical flux f*_adv. 
+!> Contains the computation of directional derivative with finite difference of the hyperbolic numerical flux f*_adv.
 !> We already pre-multiply with SurfElem.
 !===================================================================================================================================
 SUBROUTINE Riemann_FD(DFDU,U_L,U_R,UPrim_L,UPrim_R,normal,tangent1,tangent2,surf_loc,jk,FVElem_Sum,FVElem,FVSide)

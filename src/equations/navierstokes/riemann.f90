@@ -849,7 +849,7 @@ END SUBROUTINE Riemann_RoeEntropyFix
 !> Pelanti, Marica & Quartapelle, Luigi & Vigevano, L & Vigevano, Luigi. (2018):
 !>  A review of entropy fixes as applied to Roe's linearization.
 !> The GShockFix or Grid Alligned Shock Fix uses the modified Roe flux formulation from the paper:
-!> N. Fleischmann, S. Adami, X. Y. Hu, and N. A. Adams, “A low dissipation method to cure the grid-aligned shock instability,” 
+!> N. Fleischmann, S. Adami, X. Y. Hu, and N. A. Adams, “A low dissipation method to cure the grid-aligned shock instability,”
 !> Journal of Computational Physics, vol. 401, p. 109004, Jan. 2020
 !=================================================================================================================================
 PPURE SUBROUTINE Riemann_RoeEntropyGShockFix(F_L,F_R,U_LL,U_RR,F)
