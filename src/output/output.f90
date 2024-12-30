@@ -27,9 +27,13 @@ IMPLICIT NONE
 
 INTERFACE
   SUBROUTINE print_userblock(filename,inifilename) BIND(C)
-      USE ISO_C_BINDING, ONLY: C_CHAR
-      CHARACTER(KIND=C_CHAR) :: filename(*)
-      CHARACTER(KIND=C_CHAR) :: inifilename(*)
+    ! MODULES
+    USE ISO_C_BINDING, ONLY: C_CHAR
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+    ! INPUT / OUTPUT VARIABLES
+    CHARACTER(KIND=C_CHAR) :: filename(*)
+    CHARACTER(KIND=C_CHAR) :: inifilename(*)
   END SUBROUTINE print_userblock
 END INTERFACE
 

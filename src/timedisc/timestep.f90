@@ -26,6 +26,10 @@ PRIVATE
 ! > Dummy interface for time step function pointer
 ABSTRACT INTERFACE
   SUBROUTINE TimeIntegrator(t)
+    ! MODULES
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+    ! INPUT / OUTPUT VARIABLES
     REAL,INTENT(INOUT) :: t
   END SUBROUTINE TimeIntegrator
 END INTERFACE

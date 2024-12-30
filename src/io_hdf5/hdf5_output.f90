@@ -28,9 +28,13 @@ PRIVATE
 
 INTERFACE
   SUBROUTINE copy_userblock(outfilename,infilename) BIND(C)
-      USE ISO_C_BINDING, ONLY: C_CHAR
-      CHARACTER(KIND=C_CHAR) :: outfilename(*)
-      CHARACTER(KIND=C_CHAR) :: infilename(*)
+    ! MODULES
+    USE ISO_C_BINDING, ONLY: C_CHAR
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+    ! INPUT / OUTPUT VARIABLES
+    CHARACTER(KIND=C_CHAR) :: outfilename(*)
+    CHARACTER(KIND=C_CHAR) :: infilename(*)
   END SUBROUTINE copy_userblock
 END INTERFACE
 
