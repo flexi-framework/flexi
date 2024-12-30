@@ -465,9 +465,9 @@ CLASS(link), POINTER  :: current
 INTEGER               :: stat,iniUnit,nLines,i
 TYPE(Varying_String)  :: aStr,bStr
 CHARACTER(LEN=255)    :: HelpStr
-LOGICAL               :: firstWarn=.TRUE.
+LOGICAL,SAVE          :: firstWarn=.TRUE.
 CHARACTER(LEN=255),ALLOCATABLE :: FileContent(:)
-CHARACTER(LEN=1)      :: tmpChar=''
+CHARACTER(LEN=1)      :: tmpChar
 !==================================================================================================================================
 CALL this%CreateLogicalOption('ColoredOutput','Colorize stdout, included for compatibility with FLEXI', '.TRUE.')
 
@@ -493,8 +493,9 @@ IF(MPIRoot)THEN
   IF (stat.NE.0) CALL Abort(__STAMP__,"Could not open ini file.")
 
   ! parallel IO: ROOT reads file and sends it to all other procs
-  nLines=0
-  stat=0
+  nLines  = 0
+  stat    = 0
+  tmpChar = ''
   DO
     READ(iniunit,"(A)",IOSTAT=stat)tmpChar
     IF(stat.NE.0)EXIT
@@ -695,9 +696,9 @@ INTEGER                :: lineLen
 INTEGER                :: spaceNameLen
 INTEGER                :: spaceValueLen
 INTEGER                :: mode
-CHARACTER(LEN=255)     :: section = "-"
-CHARACTER(LEN=255)     :: singlesection = ""
-CHARACTER(LEN=255)     :: singleoption = ""
+CHARACTER(LEN=255)     :: section
+CHARACTER(LEN=255)     :: singlesection
+CHARACTER(LEN=255)     :: singleoption
 CHARACTER(LEN=20)      :: fmtLineLen
 CHARACTER(LEN=20)      :: fmtName
 CHARACTER(LEN=20)      :: fmtValue
@@ -709,9 +710,12 @@ CHARACTER(LEN=255)     :: intFromStringOutput
 CHARACTER(LEN=255)     :: fmtIntFromStringLength
 CHARACTER(LEN=255)     :: fmtStringIntFromString
 !==================================================================================================================================
+maxNameLen    = 0
+maxValueLen   = 0
+section       = "-"
+singlesection = ""
+singleoption  = ""
 
-maxNameLen  = 0
-maxValueLen = 0
 current => prms%firstLink
 ! check if name is a section or a option
 DO WHILE (ASSOCIATED(current))
@@ -1513,12 +1517,15 @@ LOGICAL,INTENT(OUT)          :: prmChanged  !< flag to indicate whether paramete
 ! LOCAL VARIABLES
 INTEGER               :: stat,fileUnit,copyUnit
 INTEGER               :: i,j
-CHARACTER(LEN=255)    :: tmp = ""
-CHARACTER(LEN=255)    :: tmp2= ""
-CHARACTER(LEN=255)    :: prmfile_copy=".tmp.ini"
+CHARACTER(LEN=255)    :: tmp
+CHARACTER(LEN=255)    :: tmp2
+CHARACTER(LEN=255)    :: prmfile_copy
 TYPE(Varying_String)  :: aStr
 !==================================================================================================================================
-prmChanged = .FALSE.
+prmChanged   = .FALSE.
+tmp          = ""
+tmp2         = ""
+prmfile_copy = ".tmp.ini"
 
 IF (MPIRoot) THEN
   IF (.NOT.FILEEXISTS(prmfile)) &
@@ -1589,11 +1596,13 @@ LOGICAL,INTENT(OUT)          :: prmChanged  !< flag to indicate whether paramete
 ! LOCAL VARIABLES
 INTEGER               :: stat1,stat2,prm1Unit,prm2Unit
 INTEGER               :: i
-CHARACTER(LEN=255)    :: tmp1=""
-CHARACTER(LEN=255)    :: tmp2=""
+CHARACTER(LEN=255)    :: tmp1
+CHARACTER(LEN=255)    :: tmp2
 TYPE(Varying_String)  :: aStr
 !==================================================================================================================================
 prmChanged = .FALSE.
+tmp1       = ""
+tmp2       = ""
 
 IF (MPIRoot) THEN
   IF (.NOT.FILEEXISTS(prmfile1)) &
