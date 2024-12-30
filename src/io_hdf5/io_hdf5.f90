@@ -549,7 +549,7 @@ SUBROUTINE GetDatasetNamesInGroup(group,names)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-CHARACTER(LEN=*)               :: group    !< name of group
+CHARACTER(LEN=*),INTENT(IN)    :: group    !< name of group
 CHARACTER(LEN=255),ALLOCATABLE :: names(:) !< names of datasets
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

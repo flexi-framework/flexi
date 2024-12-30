@@ -126,11 +126,11 @@ SUBROUTINE CollectiveStop(SourceFile,SourceLine,CompDate,CompTime,ErrorMessage,I
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*)                  :: SourceFile      !< Source file where error has occurred
+CHARACTER(LEN=*),INTENT(IN)       :: SourceFile      !< Source file where error has occurred
 INTEGER                           :: SourceLine      !< Line in source file
-CHARACTER(LEN=*)                  :: CompDate        !< Compilation date
-CHARACTER(LEN=*)                  :: CompTime        !< Compilation time
-CHARACTER(LEN=*)                  :: ErrorMessage    !< Error message
+CHARACTER(LEN=*),INTENT(IN)       :: CompDate        !< Compilation date
+CHARACTER(LEN=*),INTENT(IN)       :: CompTime        !< Compilation time
+CHARACTER(LEN=*),INTENT(IN)       :: ErrorMessage    !< Error message
 INTEGER,OPTIONAL                  :: IntInfo         !< Error info (integer)
 REAL,OPTIONAL                     :: RealInfo        !< Error info (real)
 !   There is no way back!
@@ -223,7 +223,7 @@ SUBROUTINE PrintWarning(msg)
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-CHARACTER(LEN=*) :: msg  !< output message
+CHARACTER(LEN=*),INTENT(IN) :: msg  !< output message
 !===================================================================================================================================
 IF (myRank.EQ.0) THEN
   WRITE(UNIT_stdOut,'(A)') '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
@@ -242,7 +242,7 @@ SUBROUTINE str2int(str,int_number,stat)
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(len=*),INTENT(IN) :: str        !< input string
+CHARACTER(LEN=*),INTENT(IN) :: str        !< input string
 INTEGER,INTENT(OUT)         :: int_number !< output integer
 INTEGER,INTENT(OUT)         :: stat       !< status
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -290,103 +290,103 @@ READ(str,*,IOSTAT=stat)  logical_number
 END SUBROUTINE str2logical
 
 
-!==================================================================================================================================
-!> read compile flags from a specified file
-!> example line in "CMakeLists.txt": SET(FLEXI_EQNSYSNAME "navierstokes" CACHE STRING "Used equation system")
-!> ParameterName: timestep
-!> output: 0.1
-!> Type of Msg: [G]et[P]arameter[F]rom[File] -> GPFF: not ordinary read-in tool
-!==================================================================================================================================
-SUBROUTINE GetParameterFromFile(FileName,ParameterName,output,DelimiterSymbolIN,CommentSymbolIN,DoDisplayInfo)
-! MODULES
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*),INTENT(IN)          :: FileName          !< e.g. './../myfile'
-CHARACTER(LEN=*),INTENT(IN)          :: ParameterName     !< e.g. 'timestep'
-CHARACTER(LEN=*),OPTIONAL,INTENT(IN) :: DelimiterSymbolIN !< e.g. '=' (default is '=')
-CHARACTER(LEN=*),OPTIONAL,INTENT(IN) :: CommentSymbolIN   !< e.g. '#' (default is '!')
-CHARACTER(LEN=*),INTENT(INOUT)       :: output            !< e.g. '0.1'
-LOGICAL,OPTIONAL,INTENT(IN)          :: DoDisplayInfo     !< default is: TRUE
-                                                          !< display DefMsg or errors if the parameter or the file is not found
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-LOGICAL                              :: ExistFile         !> file exists=.true., file does not exist=.false.
-INTEGER                              :: iSTATUS           !> status
-CHARACTER(LEN=255)                   :: temp,temp2,temp3  !> temp variables for read in of file lines
-CHARACTER(LEN=255)                   :: DelimiterSymbol   !> symbol for commenting out code, e.g., "#" or "!"
-CHARACTER(LEN=255)                   :: CommentSymbol     !> symbol for commenting out code, e.g., "#" or "!"
-INTEGER                              :: ioUnit            !> field handler unit and ??
-INTEGER                              :: IndNum            !> Index Number
-CHARACTER(LEN=8)                     :: DefMsg            !> additional flag like "DEFAULT" or "*CUSTOM"
-!===================================================================================================================================
-IF(PRESENT(DelimiterSymbolIN))THEN
-  DelimiterSymbol=TRIM(ADJUSTL(DelimiterSymbolIN))
-ELSE
-  DelimiterSymbol='='
-END IF
-IF(PRESENT(CommentSymbolIN))THEN
-  CommentSymbol=TRIM(ADJUSTL(CommentSymbolIN))
-ELSE
-  CommentSymbol='!'
-END IF
-output=''
-! read from file
-INQUIRE(File=TRIM(FileName),EXIST=ExistFile)
-IF(ExistFile) THEN
-  OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS="OLD",IOSTAT=iSTATUS,ACTION='READ')
-  DO
-    READ(ioUnit,'(A)',iostat=iSTATUS)temp
-    IF(ADJUSTL(temp(1:LEN(TRIM(CommentSymbol)))).EQ.TRIM(CommentSymbol)) CYCLE  ! complete line is commented out
-    IF(iSTATUS.EQ.-1)EXIT                           ! end of file is reached
-    IF(LEN(trim(temp)).GT.1)THEN                    ! exclude empty lines
-      IndNum=INDEX(temp,TRIM(ParameterName))        ! e.g. 'timestep'
-      IF(IndNum.GT.0)THEN
-        IF(IndNum-1.GT.0)THEN                       ! check if the parameter name is contained within a substring of another
-          IF(temp(IndNum-1:IndNum-1).NE.' ')CYCLE   ! parameter, e.g., "timestep" within "fd_timestep" -> skip
-        END IF
-        temp2=TRIM(ADJUSTL(temp(IndNum+LEN(TRIM(ParameterName)):LEN(temp))))
-        IF(DelimiterSymbol.NE.'')THEN               ! demiliting symbol must not be empty
-          IndNum=INDEX(temp2,TRIM(DelimiterSymbol)) ! only use string FROM delimiting symbol +1
-          IF(IndNum.GT.0)THEN
-            temp3=TRIM(ADJUSTL(temp2(IndNum+1:LEN(temp2))))
-            temp2=temp3
-          END IF
-        ELSE
-          ! no nothing?
-        END IF
-        IndNum=INDEX(temp2,TRIM(CommentSymbol)) ! only use string UP TO commenting symbol
-        IF(IndNum.EQ.0)IndNum=LEN(TRIM(temp2))+1
-        output=TRIM(ADJUSTL(temp2(1:IndNum-1)))
-        DefMsg='GPFF'
-        SWRITE(UNIT_stdOut,'(a3,a30,a3,a33,a3,a7,a3)')' | ',TRIM(ParameterName),' | ', output,' | ',TRIM(DefMsg),' | '
-        EXIT ! found the parameter -> exit loop
-      END IF
-    END IF
-  END DO
-  CLOSE(ioUnit)
-  IF(output.EQ.'')THEN
-    IF(PRESENT(DoDisplayInfo))THEN
-      IF(DoDisplayInfo)THEN
-        SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: Parameter ['//TRIM(ParameterName)//'] not found.'
-      END IF
-    ELSE
-      SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: Parameter ['//TRIM(ParameterName)//'] not found.'
-    END IF
-    output='ParameterName does not exist'
-  END IF
-ELSE
-  IF(PRESENT(DoDisplayInfo))THEN
-    IF(DoDisplayInfo)THEN
-      SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: File ['//TRIM(FileName)//'] not found.'
-    END IF
-  ELSE
-    SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: File ['//TRIM(FileName)//'] not found.'
-  END IF
-  output='file does not exist'
-END IF
-END SUBROUTINE GetParameterFromFile
+! !==================================================================================================================================
+! !> read compile flags from a specified file
+! !> example line in "CMakeLists.txt": SET(FLEXI_EQNSYSNAME "navierstokes" CACHE STRING "Used equation system")
+! !> ParameterName: timestep
+! !> output: 0.1
+! !> Type of Msg: [G]et[P]arameter[F]rom[File] -> GPFF: not ordinary read-in tool
+! !==================================================================================================================================
+! SUBROUTINE GetParameterFromFile(FileName,ParameterName,output,DelimiterSymbolIN,CommentSymbolIN,DoDisplayInfo)
+! ! MODULES
+! ! IMPLICIT VARIABLE HANDLING
+! IMPLICIT NONE
+! !-----------------------------------------------------------------------------------------------------------------------------------
+! ! INPUT/OUTPUT VARIABLES
+! CHARACTER(LEN=*),INTENT(IN)          :: FileName          !< e.g. './../myfile'
+! CHARACTER(LEN=*),INTENT(IN)          :: ParameterName     !< e.g. 'timestep'
+! CHARACTER(LEN=*),OPTIONAL,INTENT(IN) :: DelimiterSymbolIN !< e.g. '=' (default is '=')
+! CHARACTER(LEN=*),OPTIONAL,INTENT(IN) :: CommentSymbolIN   !< e.g. '#' (default is '!')
+! CHARACTER(LEN=*),INTENT(INOUT)       :: output            !< e.g. '0.1'
+! LOGICAL,OPTIONAL,INTENT(IN)          :: DoDisplayInfo     !< default is: TRUE
+!                                                           !< display DefMsg or errors if the parameter or the file is not found
+! !-----------------------------------------------------------------------------------------------------------------------------------
+! ! LOCAL VARIABLES
+! LOGICAL                              :: ExistFile         !> file exists=.true., file does not exist=.false.
+! INTEGER                              :: iSTATUS           !> status
+! CHARACTER(LEN=255)                   :: temp,temp2,temp3  !> temp variables for read in of file lines
+! CHARACTER(LEN=255)                   :: DelimiterSymbol   !> symbol for commenting out code, e.g., "#" or "!"
+! CHARACTER(LEN=255)                   :: CommentSymbol     !> symbol for commenting out code, e.g., "#" or "!"
+! INTEGER                              :: ioUnit            !> field handler unit and ??
+! INTEGER                              :: IndNum            !> Index Number
+! CHARACTER(LEN=8)                     :: DefMsg            !> additional flag like "DEFAULT" or "*CUSTOM"
+! !===================================================================================================================================
+! IF(PRESENT(DelimiterSymbolIN))THEN
+!   DelimiterSymbol=TRIM(ADJUSTL(DelimiterSymbolIN))
+! ELSE
+!   DelimiterSymbol='='
+! END IF
+! IF(PRESENT(CommentSymbolIN))THEN
+!   CommentSymbol=TRIM(ADJUSTL(CommentSymbolIN))
+! ELSE
+!   CommentSymbol='!'
+! END IF
+! output=''
+! ! read from file
+! INQUIRE(File=TRIM(FileName),EXIST=ExistFile)
+! IF(ExistFile) THEN
+!   OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS="OLD",IOSTAT=iSTATUS,ACTION='READ')
+!   DO
+!     READ(ioUnit,'(A)',iostat=iSTATUS)temp
+!     IF(ADJUSTL(temp(1:LEN(TRIM(CommentSymbol)))).EQ.TRIM(CommentSymbol)) CYCLE  ! complete line is commented out
+!     IF(iSTATUS.EQ.-1)EXIT                           ! end of file is reached
+!     IF(LEN(trim(temp)).GT.1)THEN                    ! exclude empty lines
+!       IndNum=INDEX(temp,TRIM(ParameterName))        ! e.g. 'timestep'
+!       IF(IndNum.GT.0)THEN
+!         IF(IndNum-1.GT.0)THEN                       ! check if the parameter name is contained within a substring of another
+!           IF(temp(IndNum-1:IndNum-1).NE.' ')CYCLE   ! parameter, e.g., "timestep" within "fd_timestep" -> skip
+!         END IF
+!         temp2=TRIM(ADJUSTL(temp(IndNum+LEN(TRIM(ParameterName)):LEN(temp))))
+!         IF(DelimiterSymbol.NE.'')THEN               ! demiliting symbol must not be empty
+!           IndNum=INDEX(temp2,TRIM(DelimiterSymbol)) ! only use string FROM delimiting symbol +1
+!           IF(IndNum.GT.0)THEN
+!             temp3=TRIM(ADJUSTL(temp2(IndNum+1:LEN(temp2))))
+!             temp2=temp3
+!           END IF
+!         ELSE
+!           ! no nothing?
+!         END IF
+!         IndNum=INDEX(temp2,TRIM(CommentSymbol)) ! only use string UP TO commenting symbol
+!         IF(IndNum.EQ.0)IndNum=LEN(TRIM(temp2))+1
+!         output=TRIM(ADJUSTL(temp2(1:IndNum-1)))
+!         DefMsg='GPFF'
+!         SWRITE(UNIT_stdOut,'(a3,a30,a3,a33,a3,a7,a3)')' | ',TRIM(ParameterName),' | ', output,' | ',TRIM(DefMsg),' | '
+!         EXIT ! found the parameter -> exit loop
+!       END IF
+!     END IF
+!   END DO
+!   CLOSE(ioUnit)
+!   IF(output.EQ.'')THEN
+!     IF(PRESENT(DoDisplayInfo))THEN
+!       IF(DoDisplayInfo)THEN
+!         SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: Parameter ['//TRIM(ParameterName)//'] not found.'
+!       END IF
+!     ELSE
+!       SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: Parameter ['//TRIM(ParameterName)//'] not found.'
+!     END IF
+!     output='ParameterName does not exist'
+!   END IF
+! ELSE
+!   IF(PRESENT(DoDisplayInfo))THEN
+!     IF(DoDisplayInfo)THEN
+!       SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: File ['//TRIM(FileName)//'] not found.'
+!     END IF
+!   ELSE
+!     SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: File ['//TRIM(FileName)//'] not found.'
+!   END IF
+!   output='file does not exist'
+! END IF
+! END SUBROUTINE GetParameterFromFile
 
 
 !==================================================================================================================================
@@ -442,9 +442,9 @@ FUNCTION INTSTAMP(Nam,Num)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*)   :: Nam      !< Name
-INTEGER            :: Num      !< Number
-CHARACTER(LEN=200) :: IntStamp !< The stamp
+CHARACTER(LEN=*),INTENT(IN) :: Nam      !< Name
+INTEGER                     :: Num      !< Number
+CHARACTER(LEN=200)          :: IntStamp !< The stamp
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
@@ -461,10 +461,10 @@ FUNCTION TIMESTAMP(Filename,Time,Time2)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*)   :: Filename  !< (file)name
-REAL               :: Time      !< physical time
-REAL,OPTIONAL      :: Time2     !< physical time (in case of range)
-CHARACTER(LEN=255) :: TimeStamp !< the complete timestamp
+CHARACTER(LEN=*),INTENT(IN) :: Filename  !< (file)name
+REAL                        :: Time      !< physical time
+REAL,OPTIONAL               :: Time2     !< physical time (in case of range)
+CHARACTER(LEN=255)          :: TimeStamp !< the complete timestamp
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: i         ! loop variable

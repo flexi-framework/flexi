@@ -196,7 +196,7 @@ SUBROUTINE GetDataSize(Loc_ID,DSetName,nDims,Size)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*)                     :: DSetName !< name if dataset to be checked
+CHARACTER(LEN=*),INTENT(IN)          :: DSetName !< name if dataset to be checked
 INTEGER(HID_T),INTENT(IN)            :: Loc_ID   !< ID of dataset
 INTEGER,INTENT(OUT)                  :: nDims    !< found data size dimensions
 INTEGER(HSIZE_T),POINTER,INTENT(OUT) :: Size(:)  !< found data size
@@ -229,7 +229,7 @@ SUBROUTINE GetAttributeSize(Loc_ID,AttribName,nDims,Size)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*)                     :: AttribName !< name if attribute to be checked
+CHARACTER(LEN=*),INTENT(IN)          :: AttribName !< name if attribute to be checked
 INTEGER(HID_T),INTENT(IN)            :: Loc_ID   !< ID of dataset
 INTEGER,INTENT(OUT)                  :: nDims    !< found data size dimensions
 INTEGER(HSIZE_T),POINTER,INTENT(OUT) :: Size(:)  !< found data size
@@ -267,7 +267,7 @@ SUBROUTINE DatasetExists(Loc_ID,DSetName,Exists,attrib)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*)                     :: DSetName !< name if dataset to be checked
+CHARACTER(LEN=*),INTENT(IN)          :: DSetName !< name if dataset to be checked
 INTEGER(HID_T),INTENT(IN)            :: Loc_ID   !< ID of dataset
 LOGICAL,INTENT(IN),OPTIONAL          :: attrib   !< check dataset or attribute
 LOGICAL,INTENT(OUT)                  :: Exists   !< result: dataset exists
