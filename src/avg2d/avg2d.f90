@@ -23,17 +23,17 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
-PUBLIC :: DefineParametersAvg2D
-PUBLIC :: InitAvg2D
-PUBLIC :: Avg2DSlave
-PUBLIC :: Avg2DMaster
-PUBLIC :: FinalizeAvg2D
+PUBLIC:: DefineParametersAvg2D
+PUBLIC:: InitAvg2D
+PUBLIC:: Avg2DSlave
+PUBLIC:: Avg2DMaster
+PUBLIC:: FinalizeAvg2D
 #if USE_MPI
-PUBLIC :: SendAvg2DToMaster
-PUBLIC :: RecvAvg2DOfMaster
-PUBLIC :: SendAvg2DToSlave
+PUBLIC:: SendAvg2DToMaster
+PUBLIC:: RecvAvg2DOfMaster
+PUBLIC:: SendAvg2DToSlave
 #endif /* USE_MPI */
-PUBLIC :: RecvAvg2DOfSlave
+PUBLIC:: RecvAvg2DOfSlave
 !==================================================================================================================================
 
 CONTAINS

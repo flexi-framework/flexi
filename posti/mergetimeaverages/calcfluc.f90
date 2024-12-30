@@ -246,12 +246,12 @@ IF (iError.NE.MPI_SUCCESS) STOP 'MPI finalize error'
 
 CONTAINS
 
-
-
 !===================================================================================================================================
 !> Read in the mean and mean square data sets from the TimeAvg file
 !===================================================================================================================================
 SUBROUTINE Readin()
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !===================================================================================================================================
 SWRITE(UNIT_stdOut,'(A,A,A)') "Read from HDF5 file ", TRIM(InputFile), "..."
@@ -274,6 +274,5 @@ CALL CloseDataFile()
 
 SWRITE(UNIT_stdOut,'(A)') "DONE!"
 END SUBROUTINE
-
 
 END PROGRAM CalcFluc

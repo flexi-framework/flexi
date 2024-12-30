@@ -24,28 +24,12 @@ MODULE MOD_SwapMesh
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitSwapmesh
-  MODULE PROCEDURE InitSwapmesh
-END INTERFACE
-
-INTERFACE ReadOldStateFile
-  MODULE PROCEDURE ReadOldStateFile
-END INTERFACE
-
-INTERFACE WriteNewStateFile
-  MODULE PROCEDURE WriteNewStateFile
-END INTERFACE
-
-INTERFACE FinalizeSwapmesh
-  MODULE PROCEDURE FinalizeSwapmesh
-END INTERFACE
-
-PUBLIC:: InitSwapmesh,ReadOldStateFile,WriteNewStateFile,FinalizeSwapmesh
+PUBLIC:: InitSwapmesh
+PUBLIC:: ReadOldStateFile
+PUBLIC:: WriteNewStateFile
+PUBLIC:: FinalizeSwapmesh
+!===================================================================================================================================
 
 CONTAINS
 
@@ -55,8 +39,8 @@ CONTAINS
 !> of the new gauss points in the old mesh are found.
 !===================================================================================================================================
 SUBROUTINE InitSwapmesh()
-! MODULES                                                                                                                          !
-!----------------------------------------------------------------------------------------------------------------------------------!
+! MODULES
+!-----------------------------------------------------------------------------------------------------------------------------------
 USE MOD_Globals
 USE MOD_SwapMesh_Vars
 USE MOD_ReadInTools
@@ -75,8 +59,9 @@ USE MOD_Mesh_Vars,               ONLY: nElems,OffsetElem,nGlobalElems
 #if USE_OPENMP
 USE OMP_Lib,                     ONLY: OMP_GET_WTIME
 #endif
-!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -194,13 +179,14 @@ ALLOCATE(UOld(nVar_State,0:NState,0:NState,0:ZDIM(NState),nElemsOld))
 ALLOCATE(U   (nVar_State,0:NNew,  0:NNew,  0:ZDIM(NNew)  ,nElemsNew))
 END SUBROUTINE InitSwapmesh
 
+
 !===================================================================================================================================
 !> This routine will read in the specified mesh file, convert the equidistant mesh coordinates to CL points and return them.
 !> Additionally the number of elements in the mesh as well as NGeo will be returned.
 !> The user can specify if curved meshes should be used or not.
 !===================================================================================================================================
 SUBROUTINE ReadMeshCoords(MeshFile,useCurveds,NGeo,nElems,XCL,Elem_IJK,nElems_IJK)
-! MODULES                                                                                                                          !
+! MODULES
 USE MOD_Globals
 USE MOD_HDF5_Input
 USE MOD_Interpolation,         ONLY: GetVandermonde
@@ -208,8 +194,9 @@ USE MOD_Interpolation_Vars,    ONLY: NodeTypeVISU,NodeTypeCL
 USE MOD_IO_HDF5,               ONLY: File_ID
 USE MOD_ChangeBasisByDim,      ONLY: ChangeBasisVolume
 USE MOD_2D,                    ONLY: to2D_rank5
-!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN)  :: MeshFile       !< Mesh file to be read
 LOGICAL,INTENT(IN)             :: useCurveds     !< Switch curved interpretation of mesh on or off
@@ -422,7 +409,7 @@ END SUBROUTINE prepareVandermonde
 !> Open a state file, read the old state and store the information later needed to write a new state.
 !===================================================================================================================================
 SUBROUTINE ReadOldStateFile(StateFile)
-! MODULES                                                                                                                          !
+! MODULES
 USE MOD_Globals,       ONLY: Abort,PrintWarning
 USE MOD_StringTools,   ONLY: STRICMP
 USE MOD_HDF5_Input,    ONLY: OpenDataFile,CloseDataFile,ReadArray,ReadAttribute,GetDataSize,GetVarNames
@@ -435,14 +422,15 @@ USE MOD_Equation_Vars, ONLY: StrVarNames
 USE MOD_DG_Vars,       ONLY: U
 USE ISO_C_BINDING,     ONLY: C_NULL_CHAR
 USE MOD_2D
-!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN)      :: StateFile !< State file to be read
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                          :: userblockFound,VarNamesExist
-CHARACTER(LEN=255)               :: prmfile=".parameter.ini"
+CHARACTER(LEN=255),PARAMETER     :: prmfile=".parameter.ini"
 CHARACTER(LEN=255)               :: FileType
 CHARACTER(LEN=255),ALLOCATABLE   :: VarNames_TimeAvg( :)     !< List of varnames in TimeAvg-File
 CHARACTER(LEN=255),ALLOCATABLE   :: VarNames_ElemData(:)     !< List of varnames for element-wise data
@@ -549,8 +537,9 @@ USE MOD_IO_HDF5
 USE MOD_HDF5_Output,        ONLY: WriteState,WriteAttribute
 USE MOD_Output_Vars,        ONLY: ProjectName
 USE MOD_Swapmesh_Vars,      ONLY: Time_State,MeshFileNew,NodeTypeOut,NodeTypeState
-!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -577,10 +566,12 @@ END SUBROUTINE WriteNewStateFile
 !> Finalize swapmesh variables
 !===================================================================================================================================
 SUBROUTINE FinalizeSwapmesh()
-! MODULES                                                                                                                          !
+! MODULES
 USE MOD_Swapmesh_Vars
 USE MOD_DG_Vars,         ONLY: U
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

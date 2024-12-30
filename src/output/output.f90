@@ -255,8 +255,8 @@ REAL,INTENT(IN)             :: t      !< current simulation time
 REAL,INTENT(IN)             :: dt     !< current time step
 REAL,INTENT(IN)             :: tStart !< start time of simulation
 REAL,INTENT(IN)             :: tEnd   !< end time of simulation
-INTEGER(DP),INTENT(IN)      :: iter    !< current iteration
-INTEGER(DP),INTENT(IN)      :: maxIter !< end iteration of simulation
+INTEGER(KIND=DP),INTENT(IN) :: iter    !< current iteration
+INTEGER(KIND=DP),INTENT(IN) :: maxIter !< end iteration of simulation
 LOGICAL,INTENT(IN),OPTIONAL :: doETA !< flag to print ETA without carriage return
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -278,13 +278,13 @@ INTEGER,PARAMETER :: barWidth = 32
 INTEGER,PARAMETER :: barWidth = 51
 #endif
 #if FV_ENABLED == 1
-INTEGER(DP)       :: FVcounter
+INTEGER(KIND=DP)  :: FVcounter
 REAL              :: FV_percent
 #elif FV_ENABLED == 2 || FV_ENABLED == 3
 REAL              :: FV_alpha_range(2)
 #endif /*FV_ENABLED*/
 #if PP_LIMITER
-INTEGER(DP)       :: PPcounter
+INTEGER(KIND=DP)  :: PPcounter
 REAL              :: PP_percent
 #endif /*PP_LIMITER*/
 !==================================================================================================================================

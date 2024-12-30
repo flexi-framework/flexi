@@ -24,16 +24,16 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
-PUBLIC :: InitBC
-PUBLIC :: GetBoundaryFlux
-PUBLIC :: GetBoundaryState
+PUBLIC:: InitBC
+PUBLIC:: GetBoundaryFlux
+PUBLIC:: GetBoundaryState
 #if FV_ENABLED && FV_RECONSTRUCT
-PUBLIC :: GetBoundaryFVgradient
+PUBLIC:: GetBoundaryFVgradient
 #endif /*FV_ENABLED && FV_RECONSTRUCT*/
 #if PARABOLIC
-PUBLIC :: Lifting_GetBoundaryFlux
+PUBLIC:: Lifting_GetBoundaryFlux
 #endif /*PARABOLIC*/
-PUBLIC :: FinalizeBC
+PUBLIC:: FinalizeBC
 !==================================================================================================================================
 
 CONTAINS

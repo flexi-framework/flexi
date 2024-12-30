@@ -233,7 +233,7 @@ USE MOD_Analyze_Vars ,ONLY: FV_totalAlpha
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER(DP),INTENT(IN) :: iter !< number of iterations
+INTEGER(KIND=DP),INTENT(IN) :: iter !< number of iterations
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL              :: FV_alpha_range(3)

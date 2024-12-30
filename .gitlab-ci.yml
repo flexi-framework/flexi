@@ -150,7 +150,7 @@ build:
     - cmake .. -DLIBS_BUILD_HDF5=OFF
     - make -j 6
 
-reggie_checkin:
+checkin:
   <<: *defaults
   stage: reggie_checkin
   needs: [build]

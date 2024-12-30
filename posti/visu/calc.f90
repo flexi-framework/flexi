@@ -24,34 +24,16 @@ MODULE MOD_Posti_Calc
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
+!-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE CalcQuantities_DG
-  MODULE PROCEDURE CalcQuantities_DG
-END INTERFACE
 PUBLIC:: CalcQuantities_DG
-
-INTERFACE CalcSurfQuantities_DG
-  MODULE PROCEDURE CalcSurfQuantities_DG
-END INTERFACE
 PUBLIC:: CalcSurfQuantities_DG
-
+PUBLIC:: FillCopy
 #if FV_ENABLED
-INTERFACE CalcQuantities_FV
-  MODULE PROCEDURE CalcQuantities_FV
-END INTERFACE
 PUBLIC:: CalcQuantities_FV
-
-INTERFACE CalcSurfQuantities_FV
-  MODULE PROCEDURE CalcSurfQuantities_FV
-END INTERFACE
 PUBLIC:: CalcSurfQuantities_FV
 #endif
-
-INTERFACE FillCopy
-  MODULE PROCEDURE FillCopy
-END INTERFACE
-PUBLIC:: FillCopy
-
+!===================================================================================================================================
 
 CONTAINS
 
@@ -61,6 +43,7 @@ CONTAINS
 !> 2. Call CalcQuantities or CalcQuantitiesWithGradients from eos_posti.f90
 !===================================================================================================================================
 SUBROUTINE CalcQuantities_DG()
+! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars
@@ -74,6 +57,7 @@ USE MOD_Lifting_Vars       ,ONLY: gradUx,gradUy,gradUz
 USE MOD_Interpolation      ,ONLY: GetVandermonde
 USE MOD_Interpolation_Vars ,ONLY: NodeType
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -126,6 +110,7 @@ END SUBROUTINE CalcQuantities_DG
 !> on the surface and not prolonged so we don't get interpolation errors.
 !===================================================================================================================================
 SUBROUTINE CalcSurfQuantities_DG()
+! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars
@@ -136,6 +121,7 @@ USE MOD_StringTools        ,ONLY: STRICMP
 USE MOD_Interpolation      ,ONLY: GetVandermonde
 USE MOD_Interpolation_Vars ,ONLY: NodeType
 USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisSurf
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -219,6 +205,7 @@ SUBROUTINE ProlongToFace_independent(nVar,nSides_calc,nElems_calc,maskCalc,UIn,U
     ,gradUxFace,gradUyFace,gradUzFace &
 #endif
     )
+! MODULES
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Visu_Vars
@@ -239,6 +226,7 @@ USE MOD_ProlongToFace      ,ONLY: EvalElemFace
 USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisSurf
 USE MOD_Basis              ,ONLY: LagrangeInterpolationPolys
 USE MOD_Mappings           ,ONLY: BuildMappings
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -375,6 +363,7 @@ SDEALLOCATE(L_Minus_NCalc)
 SDEALLOCATE(L_Plus_NCalc)
 END SUBROUTINE ProlongToFace_independent
 
+
 #if FV_ENABLED
 !===================================================================================================================================
 !> Calc quantities for all FV elements.
@@ -395,6 +384,7 @@ END SUBROUTINE ProlongToFace_independent
 !> grid. Then 'CalcQuantities' is used to calculate gradient quantities only, which are afterwards converted to the FV visu grid.
 !===================================================================================================================================
 SUBROUTINE CalcQuantities_FV()
+! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars
@@ -412,7 +402,9 @@ USE MOD_Lifting_Vars        ,ONLY: gradUx,gradUy,gradUz
 #endif
 #endif
 USE MOD_StringTools         ,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -479,12 +471,14 @@ REAL,ALLOCATABLE             :: gradUx_calc(:,:,:,:,:),gradUy_calc(:,:,:,:,:),gr
 #endif /* FV_RECONSTRUCT */
 END SUBROUTINE CalcQuantities_FV
 
+
 !===================================================================================================================================
 !> Calc surface quantities for all FV elements.
 !> For this, the already calculated quantities as well as the gradients in the volume will simply be copied to to the side.
 !> Also the mesh quantities like normal vectors are prepared and then the CalcQuantities routine is called.
 !===================================================================================================================================
 SUBROUTINE CalcSurfQuantities_FV()
+! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars
@@ -497,6 +491,7 @@ USE MOD_Mesh_Vars          ,ONLY: S2V
 USE MOD_Lifting_Vars       ,ONLY: gradUx,gradUy,gradUz
 #endif
 USE MOD_Mappings           ,ONLY: buildMappings
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -605,12 +600,13 @@ END SUBROUTINE CalcSurfQuantities_FV
 !> Copies variable for given element range from source array to target array using VTK structure
 !==================================================================================================================================
 SUBROUTINE FillCopy(nVar,NlocIn,NLocOut,nElems,UIn,nElems_calc,indices,UOut,maskCalc)
+! MODULES
 USE MOD_Visu_Vars
 USE MOD_Interpolation_Vars,ONLY:NodeType
 USE MOD_StringTools,     ONLY: STRICMP
 USE MOD_Interpolation,   ONLY: GetVandermonde
 USE MOD_ChangeBasisByDim,ONLY: ChangeBasisVolume
-! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -648,6 +644,5 @@ DO iVarOut=1,nVarDep ! iterate over all out variables
   END DO
 END DO
 END SUBROUTINE FillCopy
-
 
 END MODULE MOD_Posti_Calc

@@ -13,6 +13,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+
 !===================================================================================================================================
 !> Module to handle the input of the recordpoints
 !===================================================================================================================================
@@ -21,21 +22,10 @@ MODULE MOD_RPData
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE ReadRPData
-  MODULE PROCEDURE ReadRPData
-END INTERFACE
 
-INTERFACE AssembleRPData
-  MODULE PROCEDURE AssembleRPData
-END INTERFACE
-
-INTERFACE FinalizeRPData
-  MODULE PROCEDURE FinalizeRPData
-END INTERFACE
-
-PUBLIC :: ReadRPData
-PUBLIC :: AssembleRPData
-PUBLIC :: FinalizeRPData
+PUBLIC:: ReadRPData
+PUBLIC:: AssembleRPData
+PUBLIC:: FinalizeRPData
 !===================================================================================================================================
 
 CONTAINS
@@ -52,6 +42,7 @@ USE MOD_RPSetVisu          ,ONLY: InitRPSet,ChangeRPSet
 USE MOD_RPSetVisuVisu_Vars ,ONLY: nRP_HDF5,RPOutMap
 USE MOD_ParametersVisu     ,ONLY: ProjectName
 USE MOD_ParametersVisu     ,ONLY: skip,RP_DefFile,RP_SET_defined
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -199,6 +190,7 @@ USE MOD_Globals
 USE MOD_RPData_Vars        ,ONLY: firstset,actualset,nSamples_global, RPData, RPTime,nVar_HDF5
 USE MOD_RPSetVisuVisu_Vars ,ONLY: nRP_global
 USE MOD_ParametersVisu     ,ONLY: skip
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -251,6 +243,7 @@ END SUBROUTINE AssembleRPData
 SUBROUTINE FinalizeRPData()
 ! MODULES
 USE MOD_RPData_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !===================================================================================================================================
 SDEALLOCATE(VarNames_HDF5)

@@ -490,8 +490,9 @@ CALL MPI_FINALIZE(iError)
 IF (iError.NE.MPI_SUCCESS) STOP 'MPI finalize error'
 #endif
 
-CONTAINS
+!===================================================================================================================================
 
+CONTAINS
 
 !===================================================================================================================================
 !> Retrieves relevant header and dataset parameters from Flexi files and stores them in a type

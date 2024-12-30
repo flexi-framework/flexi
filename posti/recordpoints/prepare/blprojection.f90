@@ -24,15 +24,9 @@ MODULE MOD_BLProjection
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE GetBLPlane
-  MODULE PROCEDURE GetBLPlane
-END INTERFACE
 
-INTERFACE GetBLBox
-  MODULE PROCEDURE GetBLBox
-END INTERFACE
-
-PUBLIC :: GetBLPlane,GetBLBox
+PUBLIC:: GetBLPlane
+PUBLIC:: GetBLBox
 !===================================================================================================================================
 
 CONTAINS
@@ -47,10 +41,11 @@ USE MOD_Globals
 USE MOD_RPSet_Vars,ONLY:tPlane,tRPlist
 USE MOD_RPSet_Vars,ONLY:GetNewRP
 USE MOD_Spline    ,ONLY:GetSpline,GetEquiPoints,EvalSpline,EvalSplineDeriv,EvalEquiError
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-TYPE(tPlane),POINTER            :: Plane
+TYPE(tPlane),POINTER,INTENT(IN) :: Plane
 INTEGER,INTENT(IN)              :: nCP
 REAL,INTENT(IN)                 :: height(nCP),fac
 REAL,INTENT(IN)                 :: xCP(3,nCP)
@@ -172,10 +167,11 @@ USE MOD_PreProc
 USE MOD_RPSet_Vars,ONLY:tBox,tRPlist
 USE MOD_RPSet_Vars,ONLY:GetNewRP
 USE MOD_Spline    ,ONLY:GetSpline,GetEquiPoints,EvalSpline,EvalSplineDeriv,EvalEquiError
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-TYPE(tBox),POINTER              :: Box
+TYPE(tBox),POINTER,INTENT(IN)   :: Box
 INTEGER,INTENT(IN)              :: nCP
 INTEGER,INTENT(IN)              :: nSP
 REAL,INTENT(IN)                 :: height(nCP,nSP),fac
@@ -361,11 +357,12 @@ USE MOD_Mesh_Vars,         ONLY: SideToElem,nBCSides,Face_xGP,NormVec,NGeo
 USE MOD_Basis,             ONLY: LagrangeInterpolationPolys,ChebyGaussLobNodesAndWeights,BarycentricWeights
 USE MOD_Basis,             ONLY: PolynomialDerivativeMatrix
 USE MOD_ChangeBasis,       ONLY: ChangeBasis2D
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)              :: nRP
-TYPE(tRPlist)                   :: RPlist_in(nRP)
+TYPE(tRPlist),INTENT(IN)        :: RPlist_in(nRP)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)                :: NormVecRP(3,nRP)
@@ -568,12 +565,12 @@ SWRITE(UNIT_stdOut,'(A,F15.8)')'  Max. distance: ',SQRT(MAXVAL(dist2RP))
 END SUBROUTINE ProjectRPtoBC
 
 
-
 !=================================================================================================================================
 !> Computes the inverse of a 2x2 matrix
 !=================================================================================================================================
 FUNCTION getInv2(Mat)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES

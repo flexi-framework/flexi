@@ -21,11 +21,8 @@ MODULE MOD_FilterRP
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE FilterRP
-  MODULE PROCEDURE FilterRP
-END INTERFACE
 
-PUBLIC :: FilterRP
+PUBLIC:: FilterRP
 !===================================================================================================================================
 
 CONTAINS
@@ -42,6 +39,7 @@ USE MOD_RPSetVisuVisu_Vars   ,ONLY: nRP_global
 USE MOD_RPInterpolation_Vars
 USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out,RPData_out
 USE MOD_ParametersVisu       ,ONLY: FilterWidth,nVarVisu,FilterMode
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

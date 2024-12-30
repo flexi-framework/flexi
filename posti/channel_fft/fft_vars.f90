@@ -17,6 +17,8 @@
 !> Global variables for the channel fft tool
 !===================================================================================================================================
 MODULE MOD_FFT_Vars
+! MODULES
+USE MOD_Globals, ONLY: DP
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PUBLIC
@@ -33,8 +35,8 @@ CHARACTER(LEN=255)      :: ProjectName       !< Name of project, read from state
 REAL                    :: Time              !< Timestamp of project, read from first state file
 
 ! FFT variables
-INTEGER(DP)             :: planI
-INTEGER(DP)             :: planK
+INTEGER(KIND=DP)        :: planI
+INTEGER(KIND=DP)        :: planK
 INTEGER                 :: N_FFT(3)
 INTEGER                 :: nSamplesI
 INTEGER                 :: nSamples_specI

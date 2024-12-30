@@ -24,12 +24,12 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
-PUBLIC :: GetMaskCons
-PUBLIC :: GetMaskPrim
-PUBLIC :: GetMaskGrad
-PUBLIC :: CalcQuantities
+PUBLIC:: GetMaskCons
+PUBLIC:: GetMaskPrim
+PUBLIC:: GetMaskGrad
+PUBLIC:: CalcQuantities
 #if FV_ENABLED && FV_RECONSTRUCT
-PUBLIC :: AppendNeededPrims
+PUBLIC:: AppendNeededPrims
 #endif
 !==================================================================================================================================
 

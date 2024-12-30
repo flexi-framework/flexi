@@ -19,44 +19,20 @@
 !===================================================================================================================================
 MODULE MOD_EquationRP
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE InitEquationRP
-  MODULE PROCEDURE InitEquationRP
-END INTERFACE
 
-INTERFACE CalcEquationRP
-  MODULE PROCEDURE CalcEquationRP
-END INTERFACE
-
-INTERFACE Plane_BLProps
-  MODULE PROCEDURE Plane_BLProps
-END INTERFACE
-
-INTERFACE Box_BLProps
-  MODULE PROCEDURE Box_BLProps
-END INTERFACE
-
-INTERFACE Line_TransformVel
-  MODULE PROCEDURE Line_TransformVel
-END INTERFACE
-
-INTERFACE Plane_TransformVel
-  MODULE PROCEDURE Plane_TransformVel
-END INTERFACE
-
-INTERFACE Box_TransformVel
-  MODULE PROCEDURE Box_TransformVel
-END INTERFACE
-
-INTERFACE FinalizeEquationRP
-  MODULE PROCEDURE FinalizeEquationRP
-END INTERFACE
-
-PUBLIC::InitEquationRP,CalcEquationRP,Plane_BLProps,Box_BLProps,Line_TransformVel,Plane_TransformVel,Box_TransformVel,FinalizeEquationRP
+PUBLIC:: InitEquationRP
+PUBLIC:: CalcEquationRP
+PUBLIC:: Plane_BLProps
+PUBLIC:: Box_BLProps
+PUBLIC:: Line_TransformVel
+PUBLIC:: Plane_TransformVel
+PUBLIC:: Box_TransformVel
+PUBLIC:: Build_mapCalc_mapVisu
+PUBLIC:: FinalizeEquationRP
 !===================================================================================================================================
 
 CONTAINS
@@ -74,6 +50,7 @@ USE MOD_EOS               ,ONLY:InitEOS
 USE MOD_EOS_Posti_Vars    ,ONLY:nVarDepEOS,DepTableEOS,DepNames
 USE MOD_Readintools       ,ONLY:CountOption,GETSTR
 USE MOD_StringTools       ,ONLY:STRICMP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -134,7 +111,6 @@ ELSE
   ! initialize EOS
   CALL InitEOS()
 END IF
-
 
 ! For local transforms, we need a mapping to all physical vector quantities
 ! with 3 available components to transform them
@@ -207,7 +183,6 @@ EquationRPInitIsDone=.TRUE.
 END SUBROUTINE InitEquationRP
 
 
-
 !===================================================================================================================================
 !> This routine computes the state on the visualization grid
 !===================================================================================================================================
@@ -223,6 +198,7 @@ USE MOD_ParametersVisu     ,ONLY: Line_LocalVel,Plane_LocalVel
 USE MOD_OutputRPVisu_Vars  ,ONLY: RPData_out
 USE MOD_EOS_Posti          ,ONLY: CalcQuantities
 USE MOD_StringTools        ,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -279,7 +255,6 @@ WRITE(UNIT_stdOut,'(A)')" CONVERT DERIVED QUANTITIES DONE!"
 END SUBROUTINE CalcEquationRP
 
 
-
 !===================================================================================================================================
 !> This routine transformes velocities to the line-local coordinate system
 !===================================================================================================================================
@@ -289,6 +264,7 @@ USE MOD_Globals
 USE MOD_ParametersVisu     ,ONLY: nVarVisu
 USE MOD_RPSetVisuVisu_Vars ,ONLY: nLines,Lines,tLine,nRP_global
 USE MOD_EquationRP_Vars    ,ONLY: nVecTrans,TransMap
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -326,6 +302,7 @@ USE MOD_Mathtools          ,ONLY:CROSS
 USE MOD_ParametersVisu     ,ONLY:nVarVisu
 USE MOD_RPSetVisuVisu_Vars ,ONLY:nPlanes,Planes,tPlane,nRP_global
 USE MOD_EquationRP_Vars    ,ONLY:nVecTrans,TransMap,is2D
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -385,6 +362,7 @@ USE MOD_Mathtools          ,ONLY:CROSS
 USE MOD_ParametersVisu     ,ONLY:nVarVisu
 USE MOD_RPSetVisuVisu_Vars ,ONLY:nBoxes,Boxes,tBox,nRP_global
 USE MOD_EquationRP_Vars    ,ONLY:nVecTrans,TransMap,is2D
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -436,6 +414,7 @@ WRITE(UNIT_stdOut,'(A)')" done!"
 
 END SUBROUTINE Box_TransformVel
 
+
 !===================================================================================================================================
 !> This routine calculates the boundary layer specific quantities on all boundary layer planes.
 !===================================================================================================================================
@@ -445,6 +424,7 @@ USE MOD_Globals
 USE MOD_RPSetVisuVisu_Vars ,ONLY: nPlanes,Planes,tPlane
 USE MOD_EquationRP_Vars    ,ONLY: nBLProps
 USE MOD_ParametersVisu     ,ONLY: Plane_BLvelScaling
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -478,6 +458,7 @@ WRITE(UNIT_stdOut,'(A)')" done!"
 
 END SUBROUTINE Plane_BLProps
 
+
 !===================================================================================================================================
 !> This routine calculates the boundary layer specific quantities on all boundary layer boxes.
 !===================================================================================================================================
@@ -487,6 +468,7 @@ USE MOD_Globals
 USE MOD_RPSetVisuVisu_Vars ,ONLY: nBoxes,Boxes,tBox
 USE MOD_EquationRP_Vars    ,ONLY: nBLProps
 USE MOD_ParametersVisu     ,ONLY: Box_BLvelScaling
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -522,19 +504,24 @@ WRITE(UNIT_stdOut,'(A)')" done!"
 
 END SUBROUTINE Box_BLProps
 
+
+!===================================================================================================================================
+!>
+!===================================================================================================================================
 SUBROUTINE Calc_BLProps(LocalCoord,IDlist,nRP,Scaling,BLProps)
 ! MODULES
 USE MOD_Globals
 USE MOD_OutputRPVisu_Vars  ,ONLY: RPDataTimeAvg_out
 USE MOD_EquationRP_Vars    ,ONLY: TransMap,pInf,uInf,rhoInf,iPressure,iVelocity,is2D,nBLProps
 USE MOD_ParametersVisu     ,ONLY: Mu0
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 REAL,INTENT(INOUT)        :: LocalCoord(2,nRP)
 INTEGER,INTENT(IN)        :: IDlist(nRP)
-INTEGER                   :: nRP
-INTEGER                   :: Scaling
+INTEGER,INTENT(IN)        :: nRP
+INTEGER,INTENT(IN)        :: Scaling
 REAL,INTENT(OUT)          :: BLProps(nBLProps)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -671,6 +658,7 @@ END SUBROUTINE Calc_BLProps
 FUNCTION GETMAPBYNAME(VarName,VarNameList,nVarList)
 ! MODULES
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -689,7 +677,88 @@ DO i=1,nVarList
   END IF
 END DO
 RETURN
-end function GETMAPBYNAME
+END FUNCTION GETMAPBYNAME
+
+
+!===================================================================================================================================
+!> This routine builds the mappings from the total number of variables available for visualization to number of calculation
+!> and visualization variables.
+!>  1. Read 'VarName' options from the parameter file. This are the quantities that will be visualized.
+!>  2. Initialize the dependecy table
+!>  3. check wether gradients are needed for any quantity. If this is the case, remove the conservative quantities from the
+!>     dependecies of the primitive quantities (the primitive quantities are available directly, since the DGTimeDerivative_weakForm
+!>     will be executed.
+!>  4. build the 'mapCalc' that holds for each quantity that will be calculated the index in 'UCalc' array (0 if not calculated)
+!>  5. build the 'mapVisu' that holds for each quantity that will be visualized the index in 'UVisu' array (0 if not visualized)
+!===================================================================================================================================
+SUBROUTINE Build_mapCalc_mapVisu()
+! MODULES
+USE MOD_ParametersVisu
+USE MOD_ReadInTools     ,ONLY: GETSTR,CountOption
+USE MOD_StringTools     ,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLESIABLES
+INTEGER             :: iVar,iVar2
+CHARACTER(LEN=20)   :: format
+!===================================================================================================================================
+! Read Varnames from parameter file and fill
+!   mapVisu = map, which stores at position x the position/index of the x.th quantity in the UVisu array
+!             if a quantity is not visualized it is zero
+ALLOCATE(mapVisu(1:nVarDep))
+mapVisu = 0
+! Compare varnames that should be visualized with availabe varnames
+DO iVar=1,nVarVisu
+  DO iVar2=1,nVarDep
+    IF (STRICMP(VarNameVisu(iVar), VarNamesAll(iVar2))) THEN
+      mapVisu(iVar2) = iVar
+    END IF
+  END DO
+END DO
+
+! Calculate all dependencies:
+! For each quantity copy from all quantities that this quantity depends on the dependencies.
+DO iVar=1,nVarDep
+  DepTable(iVar,iVar) = 1
+  DO iVar2=1,iVar-1
+    IF (DepTable(iVar,iVar2).EQ.1) &
+      DepTable(iVar,:) = MAX(DepTable(iVar,:), DepTable(iVar2,:))
+  END DO
+END DO
+
+! Build :
+!   mapCalc = map, which stores at position x the position/index of the x.th quantity in the UCalc array
+!             if a quantity is not calculated it is zero
+ALLOCATE(mapCalc(1:nVarDep))
+mapCalc = 0
+DO iVar=1,nVarDep
+  IF (mapVisu(iVar).GT.0) THEN
+    mapCalc = MAX(mapCalc,DepTable(iVar,1:nVarDep))
+  END IF
+END DO
+! enumerate mapCalc
+nVarCalc = 0
+DO iVar=1,nVarDep
+  IF (mapCalc(iVar).GT.0) THEN
+    nVarCalc = nVarCalc + 1
+    mapCalc(iVar) = nVarCalc
+  END IF
+END DO
+
+! print the dependecy table
+WRITE(format,'(I2)') SIZE(DepTable,2)
+DO iVar=1,nVarDep
+  WRITE (*,'('//format//'I2,A)') DepTable(iVar,:), " "//TRIM(VarNamesAll(iVar))
+END DO
+
+! print the mappings
+WRITE(format,'(I2)') nVarDep
+WRITE (*,'(A,'//format//'I3)') "mapCalc ",mapCalc
+WRITE (*,'(A,'//format//'I3)') "mapVisu ",mapVisu
+
+END SUBROUTINE Build_mapCalc_mapVisu
 
 
 !===================================================================================================================================
@@ -699,6 +768,7 @@ SUBROUTINE FinalizeEquationRP()
 ! MODULES
 USE MOD_Globals
 USE MOD_EquationRP_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

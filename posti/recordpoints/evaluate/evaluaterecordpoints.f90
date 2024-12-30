@@ -53,6 +53,7 @@ USE MOD_Timedisc_Vars,     ONLY:dt
 USE MOD_FV_Vars,           ONLY:FV_Elems
 USE MOD_Indicator_Vars,    ONLY:IndValue
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -246,7 +247,7 @@ DO iArg=start,nArgs
   END IF
 
   ! Evaluate the recordpoints
-  IF(RP_onProc) CALL RecordPoints(nVar,StrVarNames_loc,0_8,RestartTime,.TRUE.)
+  IF(RP_onProc) CALL RecordPoints(nVar,StrVarNames_loc,INT(0,KIND=DP),RestartTime,.TRUE.)
 
   IF (stateFileMode) CALL FinalizeRestart()
 END DO

@@ -22,11 +22,8 @@ MODULE MOD_EnsembleRP
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE EnsembleRP
-  MODULE PROCEDURE EnsembleRP
-END INTERFACE
 
-PUBLIC :: EnsembleRP
+PUBLIC:: EnsembleRP
 !===================================================================================================================================
 
 CONTAINS
@@ -148,6 +145,5 @@ WRITE(UNIT_stdOut,'(A,I8,A,I10)')   ' > Done turbulent average. Min. samples:  '
 DEALLOCATE(delta)
 
 END SUBROUTINE EnsembleRP
-
 
 END MODULE MOD_EnsembleRP

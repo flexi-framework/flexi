@@ -30,31 +30,12 @@ MODULE MOD_Visu_Avg2D
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
-
-INTERFACE InitAverage2D
-  MODULE PROCEDURE InitAverage2D
-END INTERFACE
-
-INTERFACE BuildVandermonds_Avg2D
-  MODULE PROCEDURE BuildVandermonds_Avg2D
-END INTERFACE
-
-INTERFACE Average2D
-  MODULE PROCEDURE Average2D
-END INTERFACE
-
-INTERFACE WriteAverageToHDF5
-  MODULE PROCEDURE WriteAverageToHDF5
-END INTERFACE
 
 PUBLIC:: WriteAverageToHDF5
 PUBLIC:: InitAverage2D
 PUBLIC:: BuildVandermonds_Avg2D
 PUBLIC:: Average2D
+!===================================================================================================================================
 
 CONTAINS
 
@@ -65,13 +46,16 @@ CONTAINS
 !> calculated and stored.
 !===================================================================================================================================
 SUBROUTINE InitAverage2D()
+! MODULES
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Visu_Vars
 USE MOD_HDF5_Input         ,ONLY: ISVALIDMESHFILE,ISVALIDHDF5FILE,GetArrayAndName
 USE MOD_HDF5_Input         ,ONLY: ReadAttribute,File_ID,OpenDataFile,GetDataProps,CloseDataFile,ReadArray,DatasetExists
 USE MOD_Mesh_Vars          ,ONLY: nElems,nGlobalElems,offsetElem
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -140,6 +124,7 @@ DO jj=1,nElems_IJK(2); DO ii=1,nElems_IJK(1)
 END DO; END DO ! ii,jj=1,nElems_IJK
 END SUBROUTINE InitAverage2D
 
+
 !===================================================================================================================================
 !> Builds Vandermonde matrizes thar are needed by the averaging routines. These matrizes are:
 !> * Vdm_DGToFV: Conversion of DG solution to FV solution on the calc polynomial degree
@@ -152,6 +137,7 @@ SUBROUTINE BuildVandermonds_Avg2D(NCalc_DG&
     ,NCalc_FV&
 #endif
     )
+! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars          ,ONLY: Vdm_DGToFV,Vdm_FVToDG,Vdm_DGToVisu,Vdm_FVToVisu,NodeTypeVisuPosti
@@ -161,7 +147,9 @@ USE MOD_Interpolation_Vars ,ONLY: NodeType
 #if FV_ENABLED
 USE MOD_FV_Basis           ,ONLY: FV_GetVandermonde
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: NCalc_DG
 #if FV_ENABLED
@@ -221,6 +209,7 @@ CALL GetVandermonde(NCalc_DG,NodeType,NVisu,NodeTypeVisuPosti,Vdm_DGToVisu,modal
 
 END SUBROUTINE BuildVandermonds_Avg2D
 
+
 !===================================================================================================================================
 !> Main routine to do the averaging.
 !===================================================================================================================================
@@ -229,6 +218,7 @@ SUBROUTINE Average2D(nVarCalc_DG,nVarCalc_FV,NCalc_DG,NCalc_FV,nElems_DG,nElems_
     Vdm_DGToFV,Vdm_FVToDG,Vdm_DGToVisu,Vdm_FVToVisu, &
     startIndexMapVarCalc,endIndexMapVarCalc,mapVarCalc, &
     UVisu_DG,UVisu_FV)
+! MODULES
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Visu_Vars          ,ONLY: Elem_IJK,FVAmountAvg2D,OutputFormat,OUTPUTFORMAT_HDF5
@@ -239,7 +229,9 @@ USE MOD_Interpolation      ,ONLY: GetVandermonde,GetNodesAndWeights
 USE MOD_Interpolation_Vars ,ONLY: NodeTypeVISUFVEqui,xGP
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis2D
 USE MOD_Mesh_Vars          ,ONLY: Elem_xGP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)            :: nVarCalc_DG,nVarCalc_FV,NCalc_DG,NCalc_FV,nElems_DG,nElems_FV
 CHARACTER(LEN=255),INTENT(IN) :: NodeTypeCalc_DG
@@ -408,13 +400,13 @@ IF (MPIRoot .OR. OutputFormat.EQ.OUTPUTFORMAT_HDF5) THEN
   END DO
 END IF
 
-
 ! clear local variables
 DEALLOCATE(Utmp)
 DEALLOCATE(Utmp2)
 DEALLOCATE(UAvg_DG)
 DEALLOCATE(UAvg_FV)
 END SUBROUTINE Average2D
+
 
 !===================================================================================================================================
 !> HDF5 output routine for 2D averaged data. The very simple idea is to use the 3D mesh (since creating a new 2D mesh would be
@@ -446,11 +438,12 @@ USE MOD_ChangeBasis,    ONLY: ChangeBasis2D
 USE MOD_FV_Vars,        ONLY: FV_Elems
 USE MOD_IO_HDF5,        ONLY: ElementOut
 #endif
-!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)             :: nVar,NVisu
-CHARACTER(LEN=255)             :: NodeType
+CHARACTER(LEN=255),INTENT(IN)  :: NodeType
 REAL,INTENT(IN)                :: OutputTime
 CHARACTER(LEN=255),INTENT(IN)  :: MeshFileName
 REAL,INTENT(IN)                :: UVisu_DG(0:NVisu   ,0:NVisu   ,0:0,nElemsAvg2D_DG,nVar)
@@ -528,7 +521,6 @@ DO iVar=1,nVarAll
     StrVarNames(iVarVisu) = VarnamesAll(iVar)
   END IF
 END DO ! iVar=1,nVarAll
-
 
 !================= Create and prepare HDF5 file =======================!
 FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_avg2D',OutputTime))//'.h5'

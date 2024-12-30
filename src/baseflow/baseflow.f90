@@ -25,10 +25,10 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
-PUBLIC :: DefineParametersBaseFlow
-PUBLIC :: InitBaseFlow
-PUBLIC :: UpdateBaseFlow
-PUBLIC :: FinalizeBaseFlow
+PUBLIC:: DefineParametersBaseFlow
+PUBLIC:: InitBaseFlow
+PUBLIC:: UpdateBaseFlow
+PUBLIC:: FinalizeBaseFlow
 !==================================================================================================================================
 
 CONTAINS

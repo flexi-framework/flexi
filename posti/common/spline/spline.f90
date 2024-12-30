@@ -22,27 +22,12 @@ MODULE MOD_Spline
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE GetSpline
-  MODULE PROCEDURE GetSpline
-END INTERFACE
 
-INTERFACE GetEquiPoints
-  MODULE PROCEDURE GetEquiPoints
-END INTERFACE
-
-INTERFACE EvalEquiError
-  MODULE PROCEDURE EvalEquiError
-END INTERFACE
-
-INTERFACE EvalSpline
-  MODULE PROCEDURE EvalSpline
-END INTERFACE
-
-INTERFACE EvalSplineDeriv
-  MODULE PROCEDURE EvalSplineDeriv
-END INTERFACE
-
-PUBLIC :: GetSpline,GetEquiPoints,EvalSpline,EvalSplineDeriv,EvalEquiError
+PUBLIC:: GetSpline
+PUBLIC:: GetEquiPoints
+PUBLIC:: EvalSpline
+PUBLIC:: EvalSplineDeriv
+PUBLIC:: EvalEquiError
 !===================================================================================================================================
 
 CONTAINS
@@ -54,6 +39,7 @@ CONTAINS
 !===================================================================================================================================
 SUBROUTINE GetSpline(ndim,nCP,xCP,coeff,s_out,s_in)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
@@ -139,7 +125,6 @@ END DO! dim=1,ndim
 END SUBROUTINE GetSpline
 
 
-
 !===================================================================================================================================
 !> Given a set of nP_in points xP_in in ndim dimension, return  the desired nP_out equidistant points over the arc length of
 !> the spline that connects the input points xP_in. t_equi contains the corresponding coordinates in the parameter space of the
@@ -148,6 +133,7 @@ END SUBROUTINE GetSpline
 SUBROUTINE GetEquiPoints(ndim,nP_in,nP_out,xP_in,xP_out,t_equi)
 ! MODULES
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
@@ -227,6 +213,7 @@ END SUBROUTINE GetEquiPoints
 !===================================================================================================================================
 SUBROUTINE EvalEquiError(ndim,nP_in,xP_in,EquiErr)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
@@ -279,6 +266,7 @@ END SUBROUTINE EvalEquiError
 !===================================================================================================================================
 SUBROUTINE EvalSpline(ndim,nCP,s_in,s,coeff,x_loc)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
@@ -315,6 +303,7 @@ END SUBROUTINE EvalSpline
 !===================================================================================================================================
 SUBROUTINE EvalSplineDeriv(ndim,nCP,s_in,s,coeff,dx_loc)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
@@ -357,6 +346,7 @@ END SUBROUTINE EvalSplineDeriv
 !===================================================================================================================================
 SUBROUTINE Thomas( m,a_,b_,c_,r,x )
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES

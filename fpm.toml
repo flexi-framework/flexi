@@ -50,7 +50,8 @@ ignore            = ["E001",  # E001: syntax-error   > disabled because of false
                      "S102",  # S102: incorrect-space-before-comment
                      "T003",  # T003: superfluous-implicit-none
                     ]
-per-file-ignores  = ["src/areas/areas.f90:T001",                                # False positive
+per-file-ignores  = [# FLEXI
+                     "src/areas/areas.f90:T001",                                # False positive
                      "src/areas/areas.f90:M001",                                # False positive
                      "src/equations/linearscalaradvection/exactfunc.f90:T001",  # False positive
                      "src/equations/navierstokes/jac_split.f90:T001",           # False positive
@@ -66,6 +67,10 @@ per-file-ignores  = ["src/areas/areas.f90:T001",                                
                      "src/readintools/isovaryingstring.f90:T042",               # ISO Varying String needs assumed size variables
                      "src/readintools/stringtools.f90:T042",                    # ISO Varying String needs assumed size variables
                      "src/testcase/*/testcase.f90:T041",                        # Test case needs assumed size variables
+                     # POSTI tools
+                     "posti/common/fftw/fftw.f90:T001",                         # FFTW needs interface definition
+                     "posti/mergetimeaverages/timeavg.f90:T001",                # False positive
                      "posti/visu/calc.f90:S021",                                # False positive
+                     "posti/visu/io_hdf5/visu_hdf5_output.f90:T001",            # False positive
                     ]
 

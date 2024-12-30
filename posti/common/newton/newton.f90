@@ -27,7 +27,7 @@ INTERFACE Newton
   MODULE PROCEDURE Newton_3D
 END INTERFACE
 
-PUBLIC :: Newton
+PUBLIC:: Newton
 !==================================================================================================================================
 
 CONTAINS

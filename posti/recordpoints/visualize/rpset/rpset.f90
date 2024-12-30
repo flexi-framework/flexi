@@ -22,21 +22,10 @@ MODULE MOD_RPSetVisu
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE InitRPSet
-  MODULE PROCEDURE InitRPSet
-END INTERFACE
 
-INTERFACE ChangeRPSet
-  MODULE PROCEDURE ChangeRPSet
-END INTERFACE
-
-INTERFACE FinalizeRPSet
-  MODULE PROCEDURE FinalizeRPSet
-END INTERFACE
-
-PUBLIC :: InitRPSet
-PUBLIC :: ChangeRPSet
-PUBLIC :: FinalizeRPSet
+PUBLIC:: InitRPSet
+PUBLIC:: ChangeRPSet
+PUBLIC:: FinalizeRPSet
 !===================================================================================================================================
 
 CONTAINS
@@ -52,6 +41,7 @@ USE MOD_HDF5_Input
 USE MOD_ParametersVisu   ,ONLY: Line_LocalCoords,Line_LocalVel,Plane_LocalCoords,Box_LocalCoords
 USE MOD_ParametersVisu   ,ONLY: nGroups_visu,GroupNames_visu
 USE MOD_RPSetVisuVisu_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -69,7 +59,7 @@ INTEGER                   :: nRP_output
 INTEGER                   :: nLines_tmp,nPlanes_tmp,nPoints_tmp,nBoxes_tmp
 LOGICAL                   :: DSexists
 LOGICAL                   :: found(nGroups_visu)
-LOGICAL                   :: LinesInFile=.FALSE.,PlanesInFile=.FALSE.,PointsInFile=.FALSE.,BoxesInFile=.FALSE.
+LOGICAL                   :: LinesInFile,PlanesInFile,PointsInFile,BoxesInFile
 REAL,ALLOCATABLE          :: xF_tmp(:,:)
 INTEGER,ALLOCATABLE       :: Points_IDlist_tmp(:),Points_GroupIDlist_tmp(:)
 CHARACTER(LEN=255)        :: tmp255,PlaneType,BoxType
@@ -78,6 +68,7 @@ IF(RPSetInitIsDone)THEN
    CALL CollectiveStop(__STAMP__, &
         'InitRPSet not ready to be called or already called.')
 END IF
+
 #if USE_MPI
  IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
       'This tool is designed only for single execution!',nProcessors)
@@ -127,6 +118,12 @@ CALL ReadArray('xF_RP',2,(/3,nRP_HDF5/),0,2,RealArray=xF_RP)
 
 ! Scale coordinates
 xF_RP = meshScale * xF_RP
+
+! Reset everything
+LinesInFile  = .FALSE.
+PlanesInFile = .FALSE.
+PointsInFile = .FALSE.
+BoxesInFile  = .FALSE.
 
 ! Readin Lines
 CALL DatasetExists(File_ID,'LineNames',DSexists)
@@ -381,7 +378,6 @@ WRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitRPSet
 
 
-
 !===================================================================================================================================
 !> Change the current RP set to the new from RP_DefFile_in.
 !> We check if the RPs from the old set are in the new one and generate the necessary mappings
@@ -391,6 +387,7 @@ SUBROUTINE ChangeRPSet(RP_DefFile_in)
 USE MOD_Globals
 USE MOD_HDF5_Input
 USE MOD_RPSetVisuVisu_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -452,7 +449,6 @@ WRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE ChangeRPSet
 
 
-
 !===================================================================================================================================
 !> Calculate the local coordinate from start to end point of the line for each RP on the line
 !===================================================================================================================================
@@ -461,6 +457,7 @@ SUBROUTINE CalcLine_LocalCoords()
 USE MOD_Globals
 USE MOD_Mathtools         ,ONLY:CROSS
 USE MOD_RPSetVisuVisu_Vars,ONLY: nLines,tLine,xF_RP, Lines
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -521,7 +518,6 @@ END DO !iLine
 END SUBROUTINE CalcLine_LocalCoords
 
 
-
 !===================================================================================================================================
 !> Calculate the local coordinate from start to end point of the line for each RP on the line
 !===================================================================================================================================
@@ -530,6 +526,7 @@ SUBROUTINE CalcLine_LocalVelTransform()
 USE MOD_Mathtools          ,ONLY:CROSS
 USE MOD_RPSetVisuVisu_Vars ,ONLY:nLines,tLine,xF_RP, Lines
 USE MOD_ParametersVisu     ,ONLY:Line_LocalVel_vec
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -554,7 +551,6 @@ END DO !iLine
 END SUBROUTINE CalcLine_LocalVelTransform
 
 
-
 !===================================================================================================================================
 !> Calculate the local coordinate for BLPlanes through a spline representation
 !===================================================================================================================================
@@ -563,6 +559,7 @@ SUBROUTINE CalcPlane_LocalCoords()
 USE MOD_Globals
 USE MOD_RPSetVisuVisu_Vars, ONLY: nPlanes,tPlane,xF_RP, Planes
 USE MOD_Spline,     ONLY: GetSpline
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -621,6 +618,7 @@ DO iPlane=1,nPlanes
 END DO !iPlane
 END SUBROUTINE CalcPlane_LocalCoords
 
+
 !===================================================================================================================================
 !> Calculate the local coordinate for BLBoxes through a spline representation
 !===================================================================================================================================
@@ -628,7 +626,8 @@ SUBROUTINE CalcBox_LocalCoords()
 ! MODULES
 USE MOD_Globals
 USE MOD_RPSetVisuVisu_Vars, ONLY: nBoxes,tBox,xF_RP,Boxes
-USE MOD_Spline,     ONLY: GetSpline
+USE MOD_Spline,             ONLY: GetSpline
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -699,12 +698,14 @@ DO iBox=1,nBoxes
 END DO !iBox
 END SUBROUTINE CalcBox_LocalCoords
 
+
 !===================================================================================================================================
 !> Deallocate global variable for Recordpoints
 !===================================================================================================================================
 SUBROUTINE FinalizeRPSet()
 ! MODULES
 USE MOD_RPSetVisuVisu_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

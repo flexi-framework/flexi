@@ -20,32 +20,13 @@ MODULE MOD_FFT
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitFFT
-  MODULE PROCEDURE InitFFT
-END INTERFACE
-
-INTERFACE FinalizeFFT
-  MODULE PROCEDURE FinalizeFFT
-END INTERFACE
-
-INTERFACE PerformFFT
-  MODULE PROCEDURE PerformFFT
-END INTERFACE
-
-INTERFACE FFTOutput
-  MODULE PROCEDURE FFTOutput
-END INTERFACE
-
-INTERFACE PrimStateAtFFTCoords
-  MODULE PROCEDURE PrimStateAtFFTCoords
-END INTERFACE
-
-PUBLIC:: InitFFT,FinalizeFFT,PerformFFT,FFTOutput,PrimStateAtFFTCoords
+PUBLIC:: InitFFT
+PUBLIC:: PerformFFT
+PUBLIC:: FFTOutput
+PUBLIC:: PrimStateAtFFTCoords
+PUBLIC:: FinalizeFFT
+!===================================================================================================================================
 
 CONTAINS
 
@@ -123,6 +104,7 @@ CALL FFTCoords()
 
 END SUBROUTINE InitFFT
 
+
 !===================================================================================================================================
 !> Interpolate the coordinates of the mesh to the FFT grid.
 !===================================================================================================================================
@@ -165,6 +147,7 @@ END DO
 
 DEALLOCATE(X_aux)
 END SUBROUTINE FFTCoords
+
 
 !===================================================================================================================================
 !> Interpolate the state to the FFT grid and convert solution to primite variables.
@@ -214,14 +197,15 @@ END DO
 DEALLOCATE(U_Aux)
 END SUBROUTINE PrimStateAtFFTCoords
 
+
 !===================================================================================================================================
 !> Calls the actual FFT routines, called for each statefile.
 !===================================================================================================================================
 SUBROUTINE PerformFFT()
-! MODULES                                                                                                                          !
+! MODULES
 USE FFTW3
 USE MOD_FFT_Vars
-!----------------------------------------------------------------------------------------------------------------------------------!
+!-----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -262,6 +246,7 @@ DO j=1,N_FFT(2)
 END DO
 
 END SUBROUTINE PerformFFT
+
 
 !===================================================================================================================================
 !> Low-level wrapper routine to DFFTW call.
@@ -311,14 +296,15 @@ END SUBROUTINE FFT
 !> Average the results and write the output files
 !===================================================================================================================================
 SUBROUTINE FFTOutput()
-! MODULES                                                                                                                          !
+! MODULES
 USE MOD_Globals
 USE MOD_FFT_Vars
 USE MOD_Commandline_Arguments
 USE MOD_IO_HDF5
 USE MOD_HDF5_Output
-!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -579,11 +565,12 @@ END SUBROUTINE FFTOutput
 !> Finalize FFT
 !===================================================================================================================================
 SUBROUTINE FinalizeFFT()
-! MODULES                                                                                                                          !
+! MODULES
 USE MOD_FFT_Vars
 USE MOD_DG_Vars,     ONLY: U
-!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

@@ -48,7 +48,7 @@ PRIVATE
 !================================================
 !> Link for linked List
 !================================================
-TYPE,PUBLIC :: LINK
+TYPE,PUBLIC:: LINK
   CLASS(OPTION), POINTER :: opt => null()
   CLASS(LINK), POINTER   :: next => null()
 END TYPE LINK
@@ -57,7 +57,7 @@ END TYPE LINK
 !> Class to store all options.
 !> This is basically a linked list of options.
 !==================================================================================================================================
-TYPE,PUBLIC :: Parameters
+TYPE,PUBLIC:: Parameters
   CLASS(LINK), POINTER :: firstLink => null() !< first option in the list
   CLASS(LINK), POINTER :: lastLink  => null() !< last option in the list
   INTEGER              :: maxNameLen          !< maximal string length of the name of an option in the list

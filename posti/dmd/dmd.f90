@@ -20,27 +20,11 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitDMD
-  MODULE PROCEDURE InitDMD
-END INTERFACE
-
-INTERFACE DefineParametersDMD
-  MODULE PROCEDURE DefineParametersDMD
-END INTERFACE
-
-INTERFACE performDMD
-  MODULE PROCEDURE performDMD
-END INTERFACE
-
-INTERFACE WriteDMDStateFile
-  MODULE PROCEDURE WriteDMDStateFile
-END INTERFACE
-
-INTERFACE FinalizeDMD
-  MODULE PROCEDURE FinalizeDMD
-END INTERFACE
-
-PUBLIC::InitDMD,DefineParametersDMD,performDMD,WriteDMDStateFile,FinalizeDMD
+PUBLIC:: InitDMD
+PUBLIC:: DefineParametersDMD
+PUBLIC:: performDMD
+PUBLIC:: WriteDMDStateFile
+PUBLIC:: FinalizeDMD
 !==================================================================================================================================
 
 CONTAINS
@@ -48,14 +32,14 @@ CONTAINS
 !==================================================================================================================================
 !==================================================================================================================================
 SUBROUTINE DefineParametersDMD()
-!----------------------------------------------------------------------------------------------------------------------------------!
+!----------------------------------------------------------------------------------------------------------------------------------
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_ReadInTools,             ONLY: prms
 USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension,INTTOSTR
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------!
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -77,7 +61,7 @@ END SUBROUTINE DefineParametersDMD
 !==================================================================================================================================
 !==================================================================================================================================
 SUBROUTINE InitDMD()
-!----------------------------------------------------------------------------------------------------------------------------------!
+!----------------------------------------------------------------------------------------------------------------------------------
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Commandline_Arguments
@@ -93,7 +77,7 @@ USE MOD_HDF5_Input,              ONLY: OpenDataFile,CloseDataFile,GetDataProps,R
 USE MOD_Mesh_Vars,               ONLY: OffsetElem,nGlobalElems,MeshFile
 USE MOD_EquationDMD,             ONLY: InitEquationDMD,CalcEquationDMD
 USE MOD_Interpolation_Vars,      ONLY: NodeType
-!----------------------------------------------------------------------------------------------------------------------------------!
+!----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -268,19 +252,16 @@ END SUBROUTINE InitDMD
 SUBROUTINE performDMD()
 ! MODULES                                                                                                                          !
 USE MOD_Globals
+USE MOD_PreProc,                 ONLY: PP_PI
 USE MOD_DMD_Vars,                ONLY: K,nDoFs,nFiles,Phi,lambda,freq,dt,alpha,sigmaSort,sortFreq,SvdThreshold,nModes,nVarDMD
+! External subroutines from LAPACK
+USE MOD_Lapack,                  ONLY: DGESDD,ZGEEV,ZGESV
 ! IMPLICIT VARIABLE HANDLING
-!----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-! External subroutines from LAPACK
-EXTERNAL         DGESDD
-EXTERNAL         ZGEEV
-EXTERNAL         ZGESV
-! Internal variables
 INTEGER                          :: i,M,N,LDA,LDU,LDVT,LWMAX,INFO,LWORK,nFilter
 INTEGER,ALLOCATABLE              :: IWORK(:),IPIV(:),filter(:)
 DOUBLE PRECISION,ALLOCATABLE     :: WORK(:)
@@ -292,7 +273,6 @@ DOUBLE PRECISION,ALLOCATABLE     :: KTmp(:,:),RGlobMat(:,:),Rglob,Rsnap1,Rsnap2
 COMPLEX,ALLOCATABLE              :: STilde(:,:),STildeWork(:,:),eigSTilde(:),VL(:,:),VR(:,:)
 COMPLEX,ALLOCATABLE              :: Vand(:,:),qTmp(:,:)
 COMPLEX,ALLOCATABLE              :: P(:,:),PhiTmp(:,:),alphaTmp(:)
-REAL                             :: pi = acos(-1.)
 !===================================================================================================================================
 M = nDoFs*nVarDMD
 N = nFiles-1
@@ -412,7 +392,7 @@ DEALLOCATE(qTmp)
 ALLOCATE(SortVar(N,2))
 ALLOCATE(sigmaSort(N))
 ALLOCATE(freq(N))
-freq   = aimag(log(eigSTilde)/dt)/(2*PI)
+freq   = aimag(log(eigSTilde)/dt)/(2*PP_PI)
 IF (sortFreq) THEN
   DO i = 1, N
     SortVar(i,1) = 1./freq(i)
@@ -444,7 +424,7 @@ DEALLOCATE(PhiTmp)
 
 ALLOCATE(lambda(N))
 lambda = log(sigmaSort)/dt
-freq   = aimag(lambda)/(2*PI)
+freq   = aimag(lambda)/(2*PP_PI)
 
 ALLOCATE(RGlobMat(M,nFiles-1))
 RglobMat = K(:,2:nFiles)-DBLE(MATMUL(MATMUL(MATMUL(USVD,STilde),SigmaMat),WSVD))
@@ -502,7 +482,7 @@ USE MOD_Mesh_Vars,          ONLY: offsetElem,MeshFile
 USE MOD_2D                 ,ONLY: ExpandArrayTo3D
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------!
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -695,10 +675,10 @@ END SUBROUTINE FinalizeDMD
 ! Quicksort algorithm: sorts a from first to last entry by the icolumn,
 !==================================================================================================================================
 RECURSIVE SUBROUTINE quicksort(a, first, last, icolumn, columns)
-! MODULES                                                                                                                          !
+! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------!
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)    :: first, last, icolumn,columns
 REAL,INTENT(INOUT)    :: a(:,:)

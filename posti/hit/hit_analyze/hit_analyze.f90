@@ -19,35 +19,12 @@ MODULE MOD_HIT_Analyze
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-INTERFACE ComputeSpectrum
-  MODULE PROCEDURE ComputeSpectrum
-END INTERFACE
 
-INTERFACE WriteSpectrum
-  MODULE PROCEDURE WriteSpectrum
-END INTERFACE
-
-INTERFACE WriteTurbulenceData
-  MODULE PROCEDURE WriteTurbulenceData
-END INTERFACE
-
-! Public Part ----------------------------------------------------------------------------------------------------------------------
-INTERFACE AnalyzeTGV
-  MODULE PROCEDURE AnalyzeTGV
-END INTERFACE
-
-INTERFACE ReadOldStateFile
-  MODULE PROCEDURE ReadOldStateFile
-END INTERFACE
-
-PUBLIC:: AnalyzeTGV, ReadOldStateFile
+PUBLIC:: AnalyzeTGV
+PUBLIC:: ReadOldStateFile
 !===================================================================================================================================
 
 CONTAINS
-
 
 !===================================================================================================================================
 ! Main Routine for Analysis of turbulence
@@ -59,6 +36,7 @@ USE MOD_PreProc
 USE MOD_HIT_Analyze_Vars,   ONLY: N_Filter,nElems_HDF5,N_HDF5,NodeType_HDF5,nVar_HDF5
 USE MOD_HIT_FFT,            ONLY: ComputeFFT_R2C,ComputeFFT_C2R,Interpolate_DG2FFT
 USE MOD_HIT_FFT_Vars,       ONLY: N_FFT,Endw,kmax,Nc,localk
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -114,6 +92,7 @@ PPURE SUBROUTINE ComputeSpectrum(nVar_In,U_In,E_k)
 ! MODULES
 USE MOD_HIT_Analyze_Vars,  ONLY: N_Filter
 USE MOD_HIT_FFT_Vars,      ONLY: endw,localk,Nc,kmax
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -144,6 +123,7 @@ SUBROUTINE WriteSpectrum(E_k)
 USE MOD_Globals
 USE MOD_HIT_Analyze_Vars,  ONLY: N_Filter,ProjectName_HDF5,Time_HDF5
 USE MOD_HIT_FFT_Vars,      ONLY: Nc,kmax
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -195,6 +175,7 @@ USE MOD_PreProc
 USE MOD_HIT_Analyze_Vars,  ONLY: ProjectName_HDF5,Time_HDF5,nVar_HDF5
 USE MOD_HIT_Analyze_Vars,  ONLY: N_Filter,mu0
 USE MOD_HIT_FFT_Vars,      ONLY: N_FFT,NCalc,Nc,kmax,Endw
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -316,6 +297,7 @@ USE MOD_Output,           ONLY: print_userblock
 USE MOD_Mesh_Vars,        ONLY: MeshFile
 USE MOD_StringTools,      ONLY: STRICMP,GetFileExtension
 USE ISO_C_BINDING,        ONLY: C_NULL_CHAR
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
@@ -323,7 +305,7 @@ CHARACTER(LEN=255),INTENT(IN)      :: StateFile !< State file to be read
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                          :: userblockFound
-CHARACTER(LEN=255)               :: prmfile=".parameter.ini"
+CHARACTER(LEN=255),PARAMETER     :: prmfile=".parameter.ini"
 !===================================================================================================================================
 SWRITE(UNIT_stdOut,('(3A)')) "READING SOLUTION FROM STATE FILE """,TRIM(StateFile), """"
 

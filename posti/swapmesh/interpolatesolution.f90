@@ -23,15 +23,8 @@ MODULE MOD_InterpolateSolution
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
-INTERFACE InterpolateSolution
-  MODULE PROCEDURE InterpolateSolution
-END INTERFACE
 
-PUBLIC :: InterpolateSolution
+PUBLIC:: InterpolateSolution
 !===================================================================================================================================
 
 CONTAINS
@@ -174,7 +167,7 @@ IF (ExtrudePeriodic) THEN
   DO iElemNew=1,nElemsNew
     IF (Elem_IJK(3,iElemNew).LE.nElemsOld_IJK(3)) CYCLE ! Skip the extrusion layer, already done
     ! Search for the corresponding element in the extrusion layer
-    iIter = REAL(Elem_IJK(3,iElemNew)-1)/REAL(nElemsOld_IJK(3))
+    iIter = INT(REAL(Elem_IJK(3,iElemNew)-1)/REAL(nElemsOld_IJK(3)))
     DO jElemNew = 1, nElemsNew
       IF (ALL(Elem_IJK(:,jElemNew).EQ.(/Elem_IJK(1,iElemNew),Elem_IJK(2,iElemNew), Elem_IJK(3,iElemNew) -iIter*nElemsOld_IJK(3)/))) THEN
         iElemExtrusion = jElemNew

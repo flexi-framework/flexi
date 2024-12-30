@@ -42,11 +42,11 @@ INTERFACE ChangeBasis1D
   MODULE PROCEDURE ChangeBasis1D_singleVar
 END INTERFACE
 
-PUBLIC :: ChangeBasis3D_XYZ
-PUBLIC :: ChangeBasis3D
-PUBLIC :: ChangeBasis2D_XYZ
-PUBLIC :: ChangeBasis2D
-PUBLIC :: ChangeBasis1D
+PUBLIC:: ChangeBasis3D_XYZ
+PUBLIC:: ChangeBasis3D
+PUBLIC:: ChangeBasis2D_XYZ
+PUBLIC:: ChangeBasis2D
+PUBLIC:: ChangeBasis1D
 !==================================================================================================================================
 
 CONTAINS
@@ -91,8 +91,8 @@ INTERFACE ChangeBasisSurf
 END INTERFACE
 #endif
 
-PUBLIC :: ChangeBasisVolume
-PUBLIC :: ChangeBasisSurf
+PUBLIC:: ChangeBasisVolume
+PUBLIC:: ChangeBasisSurf
 !==================================================================================================================================
 
 CONTAINS

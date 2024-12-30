@@ -50,12 +50,12 @@ REAL             :: DFLScale(0:FV_SIZE)                !< Viscous CFL number (on
 REAL             :: DFLScale_Readin(0:FV_SIZE)         !< Viscous CFL number (only if PARABOLIC, value from parameter file)
 REAL,ALLOCATABLE :: dtElem(:)                          !< Timestep for each element
 INTEGER          :: CurrentStage=1                     !< Current Runge-Kutta stage within timestep
-INTEGER(DP)      :: nDtLimited                         !< number of limited timesteps
+INTEGER(KIND=DP) :: nDtLimited                         !< number of limited timesteps
 INTEGER          :: nCalcTimeStep                      !< Counter for iterations since last timestep calculation
 INTEGER          :: nCalcTimeStepMax                   !< Compute dt at least after every Nth timestep
-INTEGER(DP)      :: iter                               !< Indicate actual number of timesteps
-INTEGER(DP)      :: iter_analyze                       !< Indicate number of timesteps since last analyze
-INTEGER(DP)      :: maxIter                            !< Maximum permitted number of timesteps
+INTEGER(KIND=DP) :: iter                               !< Indicate actual number of timesteps
+INTEGER(KIND=DP) :: iter_analyze                       !< Indicate number of timesteps since last analyze
+INTEGER(KIND=DP) :: maxIter                            !< Maximum permitted number of timesteps
 LOGICAL          :: fullBoundaryOrder=.FALSE.          !< temporal order degradation, occuring for
                                                        !< time-dependant BCs, can easily be fixed when
                                                        !< using 3 stage 3rd order RK schemes (no others!)

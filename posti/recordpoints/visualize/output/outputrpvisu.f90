@@ -22,21 +22,10 @@ MODULE MOD_OutputRPVisu
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE InitOutput
-  MODULE PROCEDURE InitOutput
-END INTERFACE
 
-INTERFACE OutputRP
-  MODULE PROCEDURE OutputRP
-END INTERFACE
-
-INTERFACE FinalizeOutput
-  MODULE PROCEDURE FinalizeOutput
-END INTERFACE
-
-PUBLIC:: InitOutput,OutputRP,FinalizeOutput
+PUBLIC:: InitOutput
+PUBLIC:: OutputRP
+PUBLIC:: FinalizeOutput
 !===================================================================================================================================
 
 CONTAINS

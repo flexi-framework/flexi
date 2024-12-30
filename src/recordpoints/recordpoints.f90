@@ -340,14 +340,14 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)             :: nVar                    !< Number of variables in U array
 CHARACTER(LEN=255),INTENT(IN)  :: StrVarNames(nVar)       !< String with the names of the variables
-INTEGER(DP),INTENT(IN)         :: iter                    !< current number of timesteps
+INTEGER(KIND=DP),INTENT(IN)    :: iter                    !< current number of timesteps
 REAL,INTENT(IN)                :: t                       !< current time t
 LOGICAL,INTENT(IN)             :: forceSampling           !< force sampling (e.g. at first/last timestep of computation)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                    :: U_RP(nVar,nRP)
 !----------------------------------------------------------------------------------------------------------------------------------
-IF(MOD(iter,INT(RP_SamplingOffset,DP)).NE.0 .AND. .NOT. forceSampling) RETURN
+IF(MOD(iter,INT(RP_SamplingOffset,KIND=DP)).NE.0 .AND. .NOT. forceSampling) RETURN
 
 IF(.NOT.ALLOCATED(RP_Data))THEN
   ! Compute required buffersize from timestep and add 20% tolerance

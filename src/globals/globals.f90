@@ -97,7 +97,7 @@ INTERFACE
   END SUBROUTINE setstacksizeunlimited
 END INTERFACE
 
-PUBLIC :: setstacksizeunlimited
+PUBLIC:: setstacksizeunlimited
 !==================================================================================================================================
 
 CONTAINS
