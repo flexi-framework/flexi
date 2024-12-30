@@ -28,23 +28,6 @@ USE MOD_TestCase_Vars
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-
-INTERFACE DefineParametersTestcase
-  MODULE PROCEDURE DO_NOTHING
-End INTERFACE
-
-INTERFACE InitTestcase
-  MODULE PROCEDURE InitTestcase
-END INTERFACE
-
-INTERFACE FinalizeTestcase
-  MODULE PROCEDURE DO_NOTHING
-END INTERFACE
-
-INTERFACE ExactFuncTestcase
-  MODULE PROCEDURE ExactFuncTestcase
-END INTERFACE
 
 INTERFACE CalcForcing
   MODULE PROCEDURE DO_NOTHING
@@ -52,18 +35,6 @@ END INTERFACE
 
 INTERFACE AnalyzeTestcase
   MODULE PROCEDURE DO_NOTHING_LOG
-END INTERFACE
-
-INTERFACE GetBoundaryFluxTestcase
-  MODULE PROCEDURE GetBoundaryFluxTestcase
-END INTERFACE
-
-INTERFACE GetBoundaryFVgradientTestcase
-  MODULE PROCEDURE GetBoundaryFVgradientTestcase
-END INTERFACE
-
-INTERFACE Lifting_GetBoundaryFluxTestcase
-  MODULE PROCEDURE Lifting_GetBoundaryFluxTestcase
 END INTERFACE
 
 PUBLIC:: DefineParametersTestcase
@@ -76,6 +47,7 @@ PUBLIC:: AnalyzeTestcase
 PUBLIC:: GetBoundaryFluxTestcase
 PUBLIC:: GetBoundaryFVgradientTestcase
 PUBLIC:: Lifting_GetBoundaryFluxTestcase
+!==================================================================================================================================
 
 CONTAINS
 
@@ -83,15 +55,28 @@ CONTAINS
 !> Empty placeholder routine
 !==================================================================================================================================
 SUBROUTINE DO_NOTHING(optionalREAL,optionalREAL2)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
 REAL,OPTIONAL,INTENT(IN)    :: optionalREAL,optionalREAL2
+!==================================================================================================================================
 END SUBROUTINE DO_NOTHING
 
 
+!==================================================================================================================================
+!> Empty placeholder routine
+!==================================================================================================================================
 SUBROUTINE DO_NOTHING_LOG(optionalREAL,optionalLOG)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
 REAL,OPTIONAL,INTENT(IN)    :: optionalREAL
 LOGICAL,OPTIONAL,INTENT(IN) :: optionalLOG
+!==================================================================================================================================
 END SUBROUTINE DO_NOTHING_LOG
 
 
@@ -104,6 +89,7 @@ USE MOD_Globals
 USE MOD_TestCase_Vars
 USE MOD_Equation_Vars ,ONLY: IniExactFunc
 USE MOD_Equation_Vars ,ONLY: RefStatePrim
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -146,83 +132,137 @@ SWRITE(UNIT_stdOut,'(A)')' INIT TESTCASE Riemann2D DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitTestcase
 
+
+!==================================================================================================================================
+!>
+!==================================================================================================================================
 FUNCTION GetPHI(rhoL, rhoR, pL, pR)
+! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa, KappaM1
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN) :: rhoL, rhoR, pL, pR
 REAL            :: GetPHI
 !===================================================================================================================================
-  GetPHI =  2.*SQRT(Kappa)/KappaM1 * (SQRT(pL/rhoL) - SQRT(pR/rhoR))
+GetPHI =  2.*SQRT(Kappa)/KappaM1 * (SQRT(pL/rhoL) - SQRT(pR/rhoR))
 END FUNCTION GetPHI
 
+
+!==================================================================================================================================
+!>
+!==================================================================================================================================
 FUNCTION GetPSI(rhoL,rhoR,pL,pR)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN) :: rhoL, rhoR, pL, pR
 REAL            :: GetPSI
 !===================================================================================================================================
-  GetPSI =  SQRT( ((pL-pR) * (rhoL-rhoR)) / &
-      (rhoL*rhoR) )
+GetPSI =  SQRT( ((pL-pR) * (rhoL-rhoR)) / &
+    (rhoL*rhoR) )
 END FUNCTION GetPSI
 
+
+!==================================================================================================================================
+!>
+!==================================================================================================================================
 FUNCTION GetPI(pL, pR)
-USE MOD_EOS_Vars      ,ONLY: KappaM1, KappaP1
+! MODULES
+USE MOD_EOS_Vars      ,ONLY: Kappa, KappaM1
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN) :: pL, pR
 REAL            :: GetPI
 !===================================================================================================================================
-  GetPI =  ( pL/pR + KappaM1/KappaP1 ) / &
-      ( 1. + KappaM1/KappaP1 * pL /  pR )
+GetPI =  ( pL/pR + KappaM1/KappaP1 ) / &
+    ( 1. + KappaM1/KappaP1 * pL /  pR )
 END FUNCTION GetPI
 
 
+!==================================================================================================================================
+!>
+!==================================================================================================================================
 FUNCTION GetRho_RankineHugoniot(rhoL, pL, pR)
+! MODULES
 USE MOD_EOS_Vars      ,ONLY: KappaM1, KappaP1
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN) :: rhoL, pL, pR
 REAL            :: GetRho_RankineHugoniot
 !===================================================================================================================================
-  GetRho_RankineHugoniot = rhoL * (pL*KappaM1 + pR*KappaP1) / (pL*KappaP1 + pR*KappaM1)
+GetRho_RankineHugoniot = rhoL * (pL*KappaM1 + pR*KappaP1) / (pL*KappaP1 + pR*KappaM1)
 END FUNCTION GetRho_RankineHugoniot
 
+
+!==================================================================================================================================
+!>
+!==================================================================================================================================
 FUNCTION GetRho_Rarefaction(rhoL, pL, pR)
+! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN) :: rhoL, pL, pR
 REAL            :: GetRho_Rarefaction
 !===================================================================================================================================
-  GetRho_Rarefaction = (pr/pL)**(1./Kappa) * rhoL
+GetRho_Rarefaction = (pr/pL)**(1./Kappa) * rhoL
 END FUNCTION GetRho_Rarefaction
 
+
+!==================================================================================================================================
+!>
+!==================================================================================================================================
 FUNCTION GetP_Rarefaction(rhoL, rhoR, pL)
+! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN) :: rhoL, rhoR, pL
 REAL            :: GetP_Rarefaction
 !===================================================================================================================================
-  GetP_Rarefaction = (rhoR/rhoL)**Kappa * pL
+GetP_Rarefaction = (rhoR/rhoL)**Kappa * pL
 END FUNCTION GetP_Rarefaction
 
+
+!==================================================================================================================================
+!>
+!==================================================================================================================================
 FUNCTION GetP_RankineHugoniot(rhoL, rhoR, pL)
+! MODULES
 USE MOD_EOS_Vars      ,ONLY: KappaM1, KappaP1
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN) :: rhoL, rhoR, pL
 REAL            :: GetP_RankineHugoniot
 !===================================================================================================================================
-  GetP_RankineHugoniot = pL* (KappaP1 - KappaM1*rhoL/rhoR) / (KappaP1*rhoL/rhoR - KappaM1)
+GetP_RankineHugoniot = pL* (KappaP1 - KappaM1*rhoL/rhoR) / (KappaP1*rhoL/rhoR - KappaM1)
 END FUNCTION GetP_RankineHugoniot
 
 
+!==================================================================================================================================
+!>
+!==================================================================================================================================
 SUBROUTINE Calc_p_rho_RankineHugoniot(rhoL, vL, vR, pL, rhoR, pR)
-USE MOD_EOS_Vars      ,ONLY: Kappa,KappaP1
+! MODULES
+USE MOD_EOS_Vars      ,ONLY: KappaM1, KappaP1
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN)  :: rhoL
 REAL,INTENT(IN)  :: vL
 REAL,INTENT(IN)  :: vR
@@ -233,24 +273,31 @@ REAL,INTENT(OUT) :: pR(2)
 ! LOCAL VARIABLES
 REAL :: z1,z2,z3
 !===================================================================================================================================
-  z1 = KappaP1*(vL-vR)*rhoL**2
-  z2 = sqrt(Kappa**2*(vL-vR)**2*rhoL + 2.*Kappa*(vL-vR)**2*rhoL + (vL-vR)**2 *rhoL + 16.*Kappa*pL)
-  z3 = (Kappa-3.)*(vL-vR)*rhoL
+z1 = KappaP1*(vL-vR)*rhoL**2
+z2 = sqrt(Kappa**2*(vL-vR)**2*rhoL + 2.*Kappa*(vL-vR)**2*rhoL + (vL-vR)**2 *rhoL + 16.*Kappa*pL)
+z3 = (Kappa-3.)*(vL-vR)*rhoL
 
-  rhoR(1)=(z1 - rhoL**1.5 * z2) / (z3 - sqrt(rhoL)*z2)
-  rhoR(2)=(z1 + rhoL**1.5 * z2) / (z3 + sqrt(rhoL)*z2)
+rhoR(1)=(z1 - rhoL**1.5 * z2) / (z3 - sqrt(rhoL)*z2)
+rhoR(2)=(z1 + rhoL**1.5 * z2) / (z3 + sqrt(rhoL)*z2)
 
-  z1 = 4.*pL+KappaP1*(vL-vR)**2*rhoL
-  z2 = (vL-vR)*sqrt((1.+2.*Kappa+Kappa**2)*(vL-vR)**2*rhoL**2.+16.*Kappa*pL*rhoL)
+z1 = 4.*pL+KappaP1*(vL-vR)**2*rhoL
+z2 = (vL-vR)*sqrt((1.+2.*Kappa+Kappa**2)*(vL-vR)**2*rhoL**2.+16.*Kappa*pL*rhoL)
 
-  pR(1) = (z1 - z2) / 4.
-  pR(2) = (z1 + z2) / 4.
+pR(1) = (z1 - z2) / 4.
+pR(2) = (z1 + z2) / 4.
 
 END SUBROUTINE Calc_p_rho_RankineHugoniot
 
+
+!==================================================================================================================================
+!>
+!==================================================================================================================================
 SUBROUTINE Calc_v_RankineHugoniot(rhoL, rhoR,  vL, pL, pR, vR)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN)  :: rhoL
 REAL,INTENT(IN)  :: rhoR
 REAL,INTENT(IN)  :: vL
@@ -260,12 +307,16 @@ REAL,INTENT(OUT) :: vR(2)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
-  vR(1) = -(sqrt((pR-pL)*rhoL*rhoR**2+(pL-pR)*rhoL**2*rhoR)-rhoL*rhoR*vL)/(rhoL*rhoR)
-  vR(2) =  (sqrt((pR-pL)*rhoL*rhoR**2+(pL-pR)*rhoL**2*rhoR)+rhoL*rhoR*vL)/(rhoL*rhoR)
+vR(1) = -(sqrt((pR-pL)*rhoL*rhoR**2+(pL-pR)*rhoL**2*rhoR)-rhoL*rhoR*vL)/(rhoL*rhoR)
+vR(2) =  (sqrt((pR-pL)*rhoL*rhoR**2+(pL-pR)*rhoL**2*rhoR)+rhoL*rhoR*vL)/(rhoL*rhoR)
 END SUBROUTINE Calc_v_RankineHugoniot
 
 
+!==================================================================================================================================
+!>
+!==================================================================================================================================
 SUBROUTINE CalcIniStates()
+! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_TestCase_Vars
@@ -273,8 +324,9 @@ USE MOD_Equation_Vars ,ONLY: IniExactFunc
 USE MOD_Equation_Vars ,ONLY: RefStatePrim,RefStateCons, nRefState
 USE MOD_EOS_Vars      ,ONLY: Kappa,R
 USE MOD_EOS           ,ONLY: PrimToCons
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
+! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL    :: p(4)
@@ -631,6 +683,7 @@ SUBROUTINE ExactFuncTestcase(tIn,x,Resu,Resu_t,Resu_tt)
 ! MODULES
 USE MOD_Globals       ,ONLY: Abort
 USE MOD_Equation_Vars ,ONLY: RefStateCons
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -659,6 +712,10 @@ Resu_tt=0.
 
 END SUBROUTINE ExactFuncTestcase
 
+
+!==================================================================================================================================
+!>
+!==================================================================================================================================
 SUBROUTINE GetBoundaryFluxTestcase(SideID,t,Nloc,Flux,UPrim_master,  &
 #if PARABOLIC
                            gradUx_master,gradUy_master,gradUz_master,&
@@ -672,6 +729,8 @@ USE MOD_Mesh_Vars     ,ONLY: BoundaryType,BC
 USE MOD_Riemann       ,ONLY: Riemann
 USE MOD_EOS           ,ONLY: PrimToCons
 USE MOD_Equation_Vars ,ONLY: RefStatePrim,RefStateCons
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)   :: SideID  !< ID of current side
@@ -745,8 +804,14 @@ CALL Riemann(Nloc,Flux,UCons_master,UCons_boundary,UPrim_master,UPrim_boundary,&
 END SUBROUTINE GetBoundaryFluxTestcase
 
 
+!==================================================================================================================================
+!>
+!==================================================================================================================================
 SUBROUTINE GetBoundaryFVgradientTestcase(SideID,t,gradU,UPrim_master)
+! MODULES
 USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: SideID                                   !< ID of current side
@@ -758,8 +823,14 @@ gradU = 0.
 END SUBROUTINE GetBoundaryFVgradientTestcase
 
 
+!==================================================================================================================================
+!>
+!==================================================================================================================================
 SUBROUTINE Lifting_GetBoundaryFluxTestcase(SideID,t,UPrim_master,Flux)
+! MODULES
 USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: SideID                                   !< ID of current side
@@ -770,11 +841,15 @@ REAL,INTENT(OUT)   :: Flux(     PP_nVarLifting,0:PP_N,0:PP_NZ) !< lifting bounda
 END SUBROUTINE Lifting_GetBoundaryFluxTestcase
 
 
+!==================================================================================================================================
+!>
+!==================================================================================================================================
 SUBROUTINE Riemann_Speeds(dir, wavetype, prim_L, prim_R, speeds)
 !=================================================================================================================================
 ! MODULES
 USE MOD_PreProc
 USE MOD_EOS_Vars, ONLY: Kappa,kappaM1,KappaP1
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
@@ -782,8 +857,6 @@ INTEGER,INTENT(IN)                 :: dir
 INTEGER,INTENT(IN)                 :: wavetype
 REAL,DIMENSION(PP_nVar),INTENT(IN) :: prim_L, prim_R
 REAL,DIMENSION(1:2),INTENT(OUT)    :: speeds
-!---------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES
 !---------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                  :: r1,r2,r3,r4
@@ -857,20 +930,27 @@ END IF
 
 END SUBROUTINE Riemann_Speeds
 
+
+!==================================================================================================================================
+!>
+!==================================================================================================================================
 SUBROUTINE exact_riemann(gamma,rhol,rhor,rho,ul,ur,u,pl,pr,p,al,ar)
-!-------------------------------------------------------
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-!-------------------------------------------------------
-REAL                                  :: rhol,rhor,ul,ur,pl,pr,al,ar,&
-    du, ducrit, p, p0, fr,             &
-    fl, frd, fld, cha, rho, u, pm, um, &
-    gamma, s
-REAL                                  :: G(1:9),tol
-INTEGER                               :: KK,nIter
-!-------------------------------------------------------
+!---------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
 INTENT(IN)                                          :: rhol,rhor,ul,ur,pl,pr,al,ar
 INTENT(OUT)                                         :: rho,u,p
-!-------------------------------------------------------
+!---------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                                  :: rhol,rhor,ul,ur,pl,pr,al,ar
+REAL                                  :: du, ducrit, p, p0, fr
+REAL                                  :: fl, frd, fld, cha, rho, u, pm, um
+REAL                                  :: gamma, s
+REAL                                  :: G(1:9),tol
+INTEGER                               :: KK,nIter
+!==================================================================================================================================
 s = 0.0
 G     = (/ (gamma-1.0)/(2.0*gamma), &
     (gamma+1.0)/(2.0*gamma), &
@@ -941,18 +1021,24 @@ CALL SAMPLE(G,s,p,u,rho,rhol,rhor,ul,ur,um,pl,pr,pm,al,ar)
 END SUBROUTINE exact_riemann
 
 
+!==================================================================================================================================
+!>
+!==================================================================================================================================
 SUBROUTINE STARTE(G,tol,p,rhol,rhor,ul,ur,pl,pr,al,ar)
-!-------------------------------------------------------
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-!-------------------------------------------------------
-REAL                                  :: G(1:9),tol,rhol,rhor,ul,ur,pl,pr,&
-    al, ar, p, pv, pmin,pmax,   &
-    pnu, pde, qmax,         &
-    qrat, gel, ger
-!-------------------------------------------------------
+!---------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
 INTENT(IN)                                          :: G,tol,rhol,rhor,ul,ur,pl,pr,al,ar
 INTENT(OUT)                                         :: p
-!-------------------------------------------------------
+!---------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                                  :: G(1:9),tol,rhol,rhor,ul,ur,pl,pr
+REAL                                  :: al, ar, p, pv, pmin,pmax
+REAL                                  :: pnu, pde, qmax
+REAL                                  :: qrat, gel, ger
+!==================================================================================================================================
 
 qmax = 2.0
 
@@ -978,15 +1064,24 @@ END IF
 END SUBROUTINE STARTE
 
 
+!==================================================================================================================================
+!>
+!==================================================================================================================================
 SUBROUTINE PREFUN(G,f,fd,p,rhok,pk,ck)
 !-------------------------------------------------------
 IMPLICIT NONE
-!-------------------------------------------------------
-REAL                                  :: G(1:9),f,fd,p,rhok,pk,ck,prat,ak,qrt,bk
-!-------------------------------------------------------
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!---------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
 INTENT(IN)                                          :: p,rhok,pk,ck
 INTENT(OUT)                                         :: f,fd
-!-------------------------------------------------------
+!---------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                                  :: G(1:9),f,fd,p,rhok,pk,ck,prat,ak,qrt,bk
+!==================================================================================================================================
+!
 IF (p.LE.pk) THEN
   prat = p/pk
   f    = G(4)*ck*(prat**G(1) - 1.0)
@@ -1000,17 +1095,27 @@ ELSE
 END IF
 END SUBROUTINE PREFUN
 
+
+!==================================================================================================================================
+!>
+!==================================================================================================================================
 SUBROUTINE SAMPLE(G,s,p,u,rho,rhol,rhor,ul,ur,um,pl,pr,pm,al,ar)
 !-------------------------------------------------------
 IMPLICIT NONE
-!-------------------------------------------------------
-REAL                                  :: G(1:9),s,p,u,rho,rhol,rhor,ul,ur,um,pl,pr,&
-    pm,al,ar,pml,pmr,str,stl,cmr,      &
-    cml,shr,shl,sr,sl,c
-!-------------------------------------------------------
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!---------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
 INTENT(IN)                                          :: G,s,rhol,rhor,ul,ur,um,pl,pr,pm,al,ar
 INTENT(OUT)                                         :: p,u,rho
-!-------------------------------------------------------
+!---------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                                  :: G(1:9),s,p,u,rho,rhol,rhor,ul,ur,um,pl,pr,&
+REAL                                  :: pm,al,ar,pml,pmr,str,stl,cmr,      &
+REAL                                  :: cml,shr,shl,sr,sl,c
+!==================================================================================================================================
+!
 IF(s.LE.um) THEN
   IF(pm.LE.pl) THEN
     shl=ul-al
@@ -1082,11 +1187,13 @@ ELSE
 END IF
 END SUBROUTINE SAMPLE
 
+
 !==================================================================================================================================
 !> Add testcases source term to solution time derivative
 !==================================================================================================================================
 SUBROUTINE TestcaseSource(Ut)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -1097,4 +1204,3 @@ REAL,DIMENSION(*),INTENT(IN) :: Ut                        !< solution time deriv
 END SUBROUTINE TestcaseSource
 
 END MODULE MOD_TestCase
-

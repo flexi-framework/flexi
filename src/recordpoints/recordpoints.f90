@@ -22,36 +22,13 @@ MODULE MOD_RecordPoints
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE DefineParametersRecordPoints
-  MODULE PROCEDURE DefineParametersRecordPoints
-END INTERFACE
 
-INTERFACE InitRecordPoints
-  MODULE PROCEDURE InitRecordPoints
-END INTERFACE
-
-INTERFACE RecordPoints
-  MODULE PROCEDURE RecordPoints
-END INTERFACE
-
-INTERFACE EvalRecordPoints
-  MODULE PROCEDURE EvalRecordPoints
-END INTERFACE
-
-INTERFACE WriteRP
-  MODULE PROCEDURE WriteRP
-END INTERFACE
-
-INTERFACE FinalizeRecordPoints
-  MODULE PROCEDURE FinalizeRecordPoints
-END INTERFACE
-
-PUBLIC :: DefineParametersRecordPoints
-PUBLIC :: InitRecordPoints
-PUBLIC :: RecordPoints
-PUBLIC :: EvalRecordPoints
-PUBLIC :: WriteRP
-PUBLIC :: FinalizeRecordPoints
+PUBLIC:: DefineParametersRecordPoints
+PUBLIC:: InitRecordPoints
+PUBLIC:: RecordPoints
+PUBLIC:: EvalRecordPoints
+PUBLIC:: WriteRP
+PUBLIC:: FinalizeRecordPoints
 !==================================================================================================================================
 
 CONTAINS
@@ -150,7 +127,7 @@ SUBROUTINE InitRPCommunicator()
 USE MOD_Globals
 USE MOD_RecordPoints_Vars   ,ONLY: RP_onProc,myRPrank,RP_COMM,nRP_Procs
 ! IMPLICIT VARIABLE HANDLING
- IMPLICIT NONE
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -601,6 +578,5 @@ IF(RP_COMM.NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(RP_COMM, iError)
 RecordPointsInitIsDone = .FALSE.
 
 END SUBROUTINE FinalizeRecordPoints
-
 
 END MODULE MOD_RecordPoints

@@ -30,26 +30,10 @@ IMPLICIT NONE
 PRIVATE
 SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE FillIni
-  MODULE PROCEDURE FillIni
-END INTERFACE
-
-INTERFACE InitDG
-  MODULE PROCEDURE InitDG
-END INTERFACE
-
-INTERFACE DGTimeDerivative_weakForm
-  MODULE PROCEDURE DGTimeDerivative_weakForm
-END INTERFACE
-
-INTERFACE FinalizeDG
-  MODULE PROCEDURE FinalizeDG
-END INTERFACE
-
-PUBLIC::InitDG,DGTimeDerivative_weakForm,FinalizeDG
+PUBLIC:: InitDG
+PUBLIC:: DGTimeDerivative_weakForm
+PUBLIC:: FinalizeDG
 !==================================================================================================================================
 
 CONTAINS

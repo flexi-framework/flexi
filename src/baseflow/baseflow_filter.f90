@@ -24,13 +24,6 @@ MODULE MOD_BaseFlow_Filter
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE InitBaseFlowFilter
-  MODULE PROCEDURE InitBaseFlowFilter
-END INTERFACE
-
-INTERFACE BaseFlowFilter
-  MODULE PROCEDURE BaseFlowFilter
-END INTERFACE
 
 PUBLIC :: InitBaseFlowFilter
 PUBLIC :: BaseFlowFilter
@@ -46,8 +39,9 @@ SUBROUTINE InitBaseFlowFilter()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_BaseFlow_Vars,      ONLY: doSelectiveFilter,SelectiveFilter,SelectiveFilterMatrix
-USE MOD_ReadInTools,        ONLY: GETINTARRAY
 USE MOD_Interpolation_Vars, ONLY: Vdm_Leg,sVdm_Leg
+USE MOD_ReadInTools,        ONLY: GETINTARRAY
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -81,6 +75,7 @@ IF (ANY(doSelectiveFilter)) THEN
     SelectiveFilterMatrix(i,:,:) = MATMUL(MATMUL(Vdm_Leg,SelectiveFilterMatrix(i,:,:)),sVdm_Leg)
   END DO
 END IF
+
 END SUBROUTINE InitBaseFlowFilter
 
 !==================================================================================================================================
@@ -90,9 +85,10 @@ SUBROUTINE BaseFlowFilter()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Mesh_Vars,          ONLY: nElems
 USE MOD_BaseFlow_Vars,      ONLY: doSelectiveFilter,SelectiveFilterMatrix,BaseFlowFiltered
 USE MOD_Filter,             ONLY: Filter_Selective
+USE MOD_Mesh_Vars,          ONLY: nElems
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -107,6 +103,7 @@ IF(ANY(doSelectiveFilter)) THEN
       END DO ! iElem
     END DO ! PP_dim
 END IF
+
 END SUBROUTINE BaseFlowFilter
 
 END MODULE MOD_BaseFlow_Filter

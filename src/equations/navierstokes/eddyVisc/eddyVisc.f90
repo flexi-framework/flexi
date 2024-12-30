@@ -22,6 +22,7 @@ MODULE MOD_EddyVisc
 ! MODULES
 IMPLICIT NONE
 PRIVATE
+!----------------------------------------------------------------------------------------------------------------------------------
 
 INTEGER,PARAMETER      :: EDDYVISCTYPE_NONE     = 0
 INTEGER,PARAMETER      :: EDDYVISCTYPE_SMAGO    = 1
@@ -29,10 +30,6 @@ INTEGER,PARAMETER      :: EDDYVISCTYPE_VREMAN   = 2
 INTEGER,PARAMETER      :: EDDYVISCTYPE_SIGMA    = 3
 INTEGER,PARAMETER      :: EDDYVISCTYPE_DYNSMAGO = 4
 INTEGER,PARAMETER      :: EDDYVISCTYPE_WALE     = 5
-
-INTERFACE DefineParametersEddyVisc
-  MODULE PROCEDURE DefineParametersEddyVisc
-END INTERFACE
 
 PUBLIC:: DefineParametersEddyVisc
 PUBLIC:: InitEddyVisc
@@ -47,6 +44,7 @@ CONTAINS
 SUBROUTINE DefineParametersEddyVisc()
 ! MODULES
 USE MOD_ReadInTools,        ONLY: prms,addStrListEntry
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -71,6 +69,7 @@ CALL prms%CreateLogicalOption(      'VanDriest',     'Van Driest damping, only f
 CALL prms%CreateStringOption(       'WallDistFile',  'File containing the distances to the nearest walls in the domain.')
 END SUBROUTINE DefineParametersEddyVisc
 
+
 !===================================================================================================================================
 !> Initialize eddy viscosity routines
 !===================================================================================================================================
@@ -88,6 +87,7 @@ USE MOD_Wale
 USE MOD_Mesh_Vars  ,ONLY: nElems,nSides
 USE MOD_ReadInTools,ONLY: GETINTFROMSTR, GETREAL
 USE MOD_IO_HDF5    ,ONLY: AddToFieldData,FieldOut
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -141,12 +141,14 @@ END SELECT
 CALL AddToFieldData(FieldOut,(/1,PP_N+1,PP_N+1,PP_NZ+1/),'muSGS',(/'muSGS'/),RealArray=muSGS)
 END SUBROUTINE
 
+
 !===================================================================================================================================
 !> Finalize eddy viscosity routines
 !===================================================================================================================================
 SUBROUTINE FinalizeEddyVisc()
 ! MODULES
 USE MOD_EddyVisc_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES

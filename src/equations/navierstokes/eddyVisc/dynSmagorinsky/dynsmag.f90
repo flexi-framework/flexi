@@ -24,21 +24,16 @@ MODULE MOD_DynSmagorinsky
 ! MODULES
 IMPLICIT NONE
 PRIVATE
-
-INTERFACE InitDynSmagorinsky
-  MODULE PROCEDURE InitDynSmagorinsky
-END INTERFACE
+!----------------------------------------------------------------------------------------------------------------------------------
 
 INTERFACE DynSmagorinsky
   MODULE PROCEDURE DynSmagorinsky_Point
   MODULE PROCEDURE DynSmagorinsky_Volume
 END INTERFACE
 
-!INTERFACE FinalizeDynSmagorinsky
-!   MODULE PROCEDURE FinalizeDynSmagorinsky
-!END INTERFACE
-
-PUBLIC::InitDynSmagorinsky, DynSmagorinsky_Volume, FinalizeDynSmagorinsky
+PUBLIC:: InitDynSmagorinsky
+PUBLIC:: DynSmagorinsky_Volume
+PUBLIC:: FinalizeDynSmagorinsky
 !===================================================================================================================================
 
 CONTAINS
@@ -64,6 +59,7 @@ USE MOD_Mesh_Vars          ,ONLY: dXCL_N
 USE MOD_Mesh_Vars          ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde
 USE MOD_Testcase_Vars      ,ONLY: testcase
 USE MOD_HDF5_input         ,ONLY: OpenDataFile,CloseDataFile,ReadArray
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -317,11 +313,13 @@ SWRITE(UNIT_stdOut,'(A)')' INIT Dynamic Smagorinsky DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitDynSmagorinsky
 
+
 !===================================================================================================================================
 !> Compute Dynamic Smagorinsky Eddy-Visosity
 !===================================================================================================================================
 PPURE SUBROUTINE DynSmagorinsky_Point(gradUx,gradUy,gradUz,dens,damp,muSGS)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -343,6 +341,7 @@ S_eN = SQRT ( 2.*(gradUx(LIFT_VEL1)**2 + gradUy(LIFT_VEL2)**2 + gradUz(LIFT_VEL3
 muSGS = damp * S_eN * dens
 END SUBROUTINE DynSmagorinsky_Point
 
+
 !===================================================================================================================================
 !> Compute Dynamic Smagorinsky Eddy-Visosity for the volume
 !===================================================================================================================================
@@ -354,6 +353,7 @@ USE MOD_EddyVisc_Vars,     ONLY: damp, muSGS, muSGS_limits
 USE MOD_Lifting_Vars,      ONLY: gradUx, gradUy, gradUz
 USE MOD_DG_Vars,           ONLY: U
 USE MOD_EOS_Vars,          ONLY: mu0
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -372,7 +372,7 @@ DO iElem = 1,nElems
     muSGS(1,i,j,k,iElem) = MIN(MAX(muSGS(1,i,j,k,iElem),mu0*muSGS_limits(1)),mu0*muSGS_limits(2))
   END DO; END DO; END DO ! i,j,k
 END DO
-!WRITE(*,*) MAXVAL(damp)
+
 END SUBROUTINE DynSmagorinsky_Volume
 
 !===============================================================================================================================
@@ -575,10 +575,14 @@ DO iElem=1,nElems
 END DO
 END SUBROUTINE Compute_Cd
 
+
 !===============================================================================================================================
 !> Is vector vec1 "more normal" to vec2 "than parallel"?
 !===============================================================================================================================
 FUNCTION ISNORMAL(vec1,vec2) RESULT(norm)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL, INTENT(IN) :: vec1(:), vec2(:) !< Two vectors that should be compared
@@ -601,12 +605,14 @@ norm = (normcomp .GE. ABS(parcomp))
 
 END FUNCTION ISNORMAL
 
+
 !===============================================================================================================================
 !> Filters a volume-sized array with a given filter matrix selectively in xi, eta and zeta direction depending on doFilterDir.
 !===============================================================================================================================
 SUBROUTINE Filter_Selective(NVar,FilterMat,U_in,doFilterDir)
 ! MODULES
 USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -666,6 +672,7 @@ END SUBROUTINE Filter_Selective
 SUBROUTINE FinalizeDynSmagorinsky()
 ! MODULES
 USE MOD_EddyVisc_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !===============================================================================================================================
 DynSmagorinskyInitIsDone = .FALSE.

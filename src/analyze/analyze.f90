@@ -22,25 +22,13 @@ MODULE MOD_Analyze
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE InitAnalyze
-  MODULE PROCEDURE InitAnalyze
-END INTERFACE
 
-INTERFACE Analyze
-  MODULE PROCEDURE Analyze
-END INTERFACE
-
-INTERFACE FinalizeAnalyze
-  MODULE PROCEDURE FinalizeAnalyze
-END INTERFACE
-
-
-PUBLIC:: Analyze, InitAnalyze, FinalizeAnalyze
+PUBLIC:: DefineParametersAnalyze
+PUBLIC:: InitAnalyze
+PUBLIC:: Analyze
+PUBLIC:: FinalizeAnalyze
 !==================================================================================================================================
 
-PUBLIC::DefineParametersAnalyze
 CONTAINS
 
 !==================================================================================================================================
@@ -50,6 +38,7 @@ SUBROUTINE DefineParametersAnalyze()
 ! MODULES
 USE MOD_ReadInTools,        ONLY: prms
 USE MOD_AnalyzeEquation,    ONLY: DefineParametersAnalyzeEquation
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Analyze")
@@ -75,7 +64,9 @@ CALL prms%CreateRealOption(   'PIDkill',         'Kill FLEXI if PID gets above t
 CALL prms%CreateIntOption(    'NCalcPID'         ,'Compute PID after every Nth timestep.',&
                                                   '1')
 CALL DefineParametersAnalyzeEquation()
+
 END SUBROUTINE DefineParametersAnalyze
+
 
 !==================================================================================================================================
 !> Initializes variables necessary for analyze subroutines
@@ -98,6 +89,7 @@ USE MOD_Output,             ONLY: InitOutputToFile
 USE MOD_Output_Vars,        ONLY: ProjectName
 USE MOD_Benchmarking,       ONLY: InitBenchmarking
 USE MOD_Timedisc_Vars,      ONLY: TEnd
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -109,9 +101,9 @@ LOGICAL                                    :: hasAnalyzeSides(nBCs)
 ! therefore, use implicit loop to call LEN_TRIM on each array entry, composing the integer array of string lengths on the fly
 CHARACTER(MAXVAL( (/( LEN_TRIM(StrVarNames(i)), i=1,SIZE(StrVarNames(:)) )/) )+5)  :: VarNames(2*PP_nVar+5)
 !==================================================================================================================================
-IF ((.NOT.InterpolationInitIsDone).OR.AnalyzeInitIsDone) THEN
+IF ((.NOT.InterpolationInitIsDone).OR.AnalyzeInitIsDone) &
   CALL CollectiveStop(__STAMP__,'InitAnalyse not ready to be called or already called.')
-END IF
+
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT ANALYZE...'
 
@@ -166,7 +158,6 @@ DO iElem=1,nElems
   END DO; END DO; END DO !i,j,k
 END DO ! iElem
 Vol=SUM(ElemVol)
-
 
 ! compute surface of each boundary
 ALLOCATE(Surf(nBCs))
@@ -243,6 +234,7 @@ USE MOD_Analyze_Vars,       ONLY: FV_Vdm_NAnalyze
 USE MOD_FV_Basis,           ONLY: FV_Build_X_w_BdryX
 USE MOD_FV_Vars,            ONLY: FV_CellType
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -409,6 +401,7 @@ USE MOD_Analyze_Vars,       ONLY: wGPVolAnalyze,Vol,AnalyzeExactFunc,AnalyzeRefS
 #if FV_ENABLED
 USE MOD_FV_Vars,            ONLY: FV_Elems,FV_Vdm,FV_w
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -505,6 +498,7 @@ USE MOD_Analyze_Vars,       ONLY: AnalyzeInitIsDone,wGPSurf,wGPVol,Surf,wGPVolAn
 #if FV_ENABLED == 1
 USE MOD_Analyze_Vars,       ONLY: FV_Vdm_NAnalyze
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

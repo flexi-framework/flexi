@@ -23,15 +23,11 @@ MODULE MOD_CalcBodyForces
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE CalcBodyForces
-  MODULE PROCEDURE CalcBodyForces
-END INTERFACE
 
 PUBLIC :: CalcBodyForces
 !==================================================================================================================================
 
 CONTAINS
-
 
 !==================================================================================================================================
 !> Control routine for CalcBodyforces
@@ -40,12 +36,13 @@ SUBROUTINE CalcBodyForces(BodyForce,Fp,Fv)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_DG_Vars,         ONLY:UPrim_master
-#if PARABOLIC
-USE MOD_Lifting_Vars,    ONLY:gradUx_master,gradUy_master,gradUz_master
-#endif
-USE MOD_Mesh_Vars,       ONLY:NormVec,SurfElem,nBCSides,BC,nBCs
 USE MOD_AnalyzeEquation_Vars,ONLY:isWall
+USE MOD_DG_Vars,             ONLY:UPrim_master
+USE MOD_Mesh_Vars,           ONLY:NormVec,SurfElem,nBCSides,BC,nBCs
+#if PARABOLIC
+USE MOD_Lifting_Vars,        ONLY:gradUx_master,gradUy_master,gradUz_master
+#endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -111,6 +108,7 @@ SUBROUTINE CalcPressureForce(Fp,p_Face,SurfElem,NormVec)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Analyze_Vars,      ONLY:wGPSurf
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -140,6 +138,7 @@ SUBROUTINE CalcViscousForce(Fv,UPrim_Face,gradUx_Face,gradUy_Face,gradUz_Face,Su
 USE MOD_PreProc
 USE MOD_Viscosity
 USE MOD_Analyze_Vars, ONLY:wGPSurf
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

@@ -26,22 +26,10 @@ MODULE MOD_ChangeBasis
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-
-! Public Part ----------------------------------------------------------------------------------------------------------------------
-INTERFACE ChangeBasis3D_XYZ
-  MODULE PROCEDURE ChangeBasis3D_XYZ
-END INTERFACE
 
 INTERFACE ChangeBasis3D
   MODULE PROCEDURE ChangeBasis3D
   MODULE PROCEDURE ChangeBasis3D_singleVar
-END INTERFACE
-
-INTERFACE ChangeBasis2D_XYZ
-  MODULE PROCEDURE ChangeBasis2D_XYZ
 END INTERFACE
 
 INTERFACE ChangeBasis2D
@@ -60,6 +48,7 @@ PUBLIC :: ChangeBasis2D_XYZ
 PUBLIC :: ChangeBasis2D
 PUBLIC :: ChangeBasis1D
 !==================================================================================================================================
+
 CONTAINS
 
 #define _ADD_DIM
@@ -105,6 +94,7 @@ END INTERFACE
 PUBLIC :: ChangeBasisVolume
 PUBLIC :: ChangeBasisSurf
 !==================================================================================================================================
+
 CONTAINS
 
 #if PP_dim == 2

@@ -22,12 +22,6 @@ MODULE MOD_DebugMesh
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES (PUBLIC)
-!----------------------------------------------------------------------------------------------------------------------------------
-
-INTERFACE WriteDebugMesh
-  MODULE PROCEDURE WriteDebugMesh
-END INTERFACE
 
 PUBLIC::WriteDebugMesh
 !==================================================================================================================================
@@ -47,8 +41,8 @@ USE MOD_Output_Vars,ONLY:NVisu,Vdm_GaussN_NVisu
 USE MOD_Mesh_Vars,  ONLY:nElems,Elem_xGP,ElemToSide,BC,nBCSides
 USE MOD_ChangeBasisByDim,ONLY:ChangeBasisVolume
 USE MOD_VTK,        ONLY:WriteDataToVTK
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN):: debugMesh !< file type to be used: 1-2: Tecplot format (deprecated), 3: Paraview format

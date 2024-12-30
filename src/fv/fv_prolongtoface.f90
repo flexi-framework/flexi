@@ -24,13 +24,9 @@ MODULE MOD_FV_ProlongToFace
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
-
-INTERFACE FV_ProlongToDGFace
-  MODULE PROCEDURE FV_ProlongToDGFace
-END INTERFACE
-
-PUBLIC::FV_ProlongToDGFace
 !----------------------------------------------------------------------------------------------------------------------------------
+
+PUBLIC:: FV_ProlongToDGFace
 !==================================================================================================================================
 
 CONTAINS

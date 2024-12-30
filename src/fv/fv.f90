@@ -28,37 +28,14 @@ MODULE MOD_FV
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
+!----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE DefineParametersFV
-  MODULE PROCEDURE DefineParametersFV
-END INTERFACE
-
-INTERFACE InitFV
-  MODULE PROCEDURE InitFV
-END INTERFACE
-
-INTERFACE FV_DGtoFV
-  MODULE PROCEDURE FV_DGtoFV
-END INTERFACE
-
-INTERFACE FV_PrimToCons
-  MODULE PROCEDURE FV_PrimToCons
-END INTERFACE
-
-INTERFACE FV_ConsToPrim
-  MODULE PROCEDURE FV_ConsToPrim
-END INTERFACE
-
-INTERFACE FinalizeFV
-  MODULE PROCEDURE FinalizeFV
-END INTERFACE
-
-PUBLIC::DefineParametersFV
-PUBLIC::InitFV
-PUBLIC::FV_DGtoFV
-PUBLIC::FV_PrimToCons
-PUBLIC::FV_ConsToPrim
-PUBLIC::FinalizeFV
+PUBLIC:: DefineParametersFV
+PUBLIC:: InitFV
+PUBLIC:: FV_DGtoFV
+PUBLIC:: FV_PrimToCons
+PUBLIC:: FV_ConsToPrim
+PUBLIC:: FinalizeFV
 !==================================================================================================================================
 
 CONTAINS
@@ -115,6 +92,7 @@ CALL DefineParametersFV_Limiter()
 #endif
 CALL DefineParametersFV_Basis()
 END SUBROUTINE DefineParametersFV
+
 
 !==================================================================================================================================
 !> Read in parameters needed for FV sub-cells (indicator min/max and type of limiter) and allocate several arrays.
@@ -372,6 +350,7 @@ SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitFV
 
+
 !==================================================================================================================================
 !> Interpolate face solution from DG representation to FV subcells.
 !> Interpolation is done either conservatively in reference space or non-conservatively in phyiscal space.
@@ -408,6 +387,7 @@ ELSE
 END IF
 END SUBROUTINE FV_InterpolateDG2FV_Face
 
+
 !==================================================================================================================================
 !> Switch DG solution at faces between a DG element and an FV sub-cells element to Finite Volume.
 !==================================================================================================================================
@@ -440,6 +420,7 @@ DO SideID=firstSideID,lastSideID
 END DO
 
 END SUBROUTINE FV_DGtoFV
+
 
 !==================================================================================================================================
 !> Prim to cons for FV
@@ -477,6 +458,7 @@ END DO
 
 END SUBROUTINE FV_PrimToCons
 
+
 !==================================================================================================================================
 !> Cons to prim for FV
 !==================================================================================================================================
@@ -512,6 +494,7 @@ DO SideID=firstSideID,lastSideID
 END DO
 
 END SUBROUTINE FV_ConsToPrim
+
 
 !==================================================================================================================================
 !> Finalizes global variables of the module.

@@ -26,40 +26,15 @@ MODULE MOD_Restart
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE DefineParametersRestart
-  MODULE PROCEDURE DefineParametersRestart
-END INTERFACE
 
-INTERFACE InitRestartFile
-  MODULE PROCEDURE InitRestartFile
-END INTERFACE
-
-INTERFACE InitRestart
-  MODULE PROCEDURE InitRestart
-END INTERFACE
-
-INTERFACE Restart
-  MODULE PROCEDURE Restart
-END INTERFACE
-
+PUBLIC:: DefineParametersRestart
+PUBLIC:: InitRestartFile
+PUBLIC:: InitRestart
+PUBLIC:: Restart
 #if FV_ENABLED
-INTERFACE SupersampleFVCell
-  MODULE PROCEDURE SupersampleFVCell
-END INTERFACE
+PUBLIC:: SupersampleFVCell
 #endif
-
-INTERFACE FinalizeRestart
-  MODULE PROCEDURE FinalizeRestart
-END INTERFACE
-
-PUBLIC :: DefineParametersRestart
-PUBLIC :: InitRestartFile
-PUBLIC :: InitRestart
-PUBLIC :: Restart
-#if FV_ENABLED
-PUBLIC :: SupersampleFVCell
-#endif
-PUBLIC :: FinalizeRestart
+PUBLIC:: FinalizeRestart
 !==================================================================================================================================
 
 CONTAINS

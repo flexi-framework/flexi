@@ -23,8 +23,10 @@ MODULE MOD_DefaultEddyVisc
 ! MODULES
 IMPLICIT NONE
 PRIVATE
+!----------------------------------------------------------------------------------------------------------------------------------
 
-PUBLIC::DefaultEddyVisc, FinalizeDefaultEddyViscosity
+PUBLIC:: DefaultEddyVisc
+PUBLIC:: FinalizeDefaultEddyViscosity
 !===================================================================================================================================
 
 CONTAINS

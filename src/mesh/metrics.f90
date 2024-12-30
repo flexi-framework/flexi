@@ -58,28 +58,11 @@ INTEGER,PARAMETER    :: Geo_NormVec(3)=(/2,3,4/)
 INTEGER,PARAMETER    :: Geo_TangVec1(3)=(/5,6,7/)
 INTEGER,PARAMETER    :: Geo_TangVec2(3)=(/8,9,10/)
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE BuildCoords
-  MODULE PROCEDURE BuildCoords
-END INTERFACE
 
-INTERFACE CalcMetrics
-  MODULE PROCEDURE CalcMetrics
-END INTERFACE
-
-INTERFACE CalcSurfMetrics
-  MODULE PROCEDURE CalcSurfMetrics
-END INTERFACE
-
-INTERFACE SurfMetricsFromJa
-  MODULE PROCEDURE SurfMetricsFromJa
-END INTERFACE
-
-PUBLIC::BuildCoords
-PUBLIC::CalcMetrics
-PUBLIC::CalcSurfMetrics
-PUBLIC::SurfMetricsFromJa
+PUBLIC:: BuildCoords
+PUBLIC:: CalcMetrics
+PUBLIC:: CalcSurfMetrics
+PUBLIC:: SurfMetricsFromJa
 !==================================================================================================================================
 
 CONTAINS
@@ -104,7 +87,7 @@ USE MOD_ChangeBasis        ,ONLY: ChangeBasis2D_XYZ
 #endif
 USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume
 USE MOD_Basis              ,ONLY: LagrangeInterpolationPolys
-!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -210,7 +193,7 @@ USE MOD_Mesh_Vars          ,ONLY: firstMPISide_MINE,firstMPISide_YOUR,lastMPISid
 USE MOD_MPI_Vars           ,ONLY: nNbProcs
 USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
 #endif /*USE_MPI*/
-!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -610,7 +593,6 @@ sJ_master(:,:,:,:,0) = 1./sJ_master(:,:,:,:,0)
 END SUBROUTINE CalcMetrics
 
 
-
 !==================================================================================================================================
 !> Prepares computation of the faces' normal, tangential vectors, surface area and Gauss points from volume metrics.
 !> Input is JaCL_N, the 3D element metrics on Cebychev-Lobatto points.
@@ -628,7 +610,7 @@ USE MOD_Mappings         ,ONLY: SideToVol2
 USE MOD_ChangeBasis      ,ONLY: ChangeBasis2D
 USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisSurf
 USE MOD_Mortar_Metrics   ,ONLY: Mortar_CalcSurfMetrics
-!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -762,13 +744,14 @@ IF (meshHasMortars) DEALLOCATE(Mortar_Ja)
 
 END SUBROUTINE CalcSurfMetrics
 
+
 !==================================================================================================================================
 !> Computes surface normal and tangential vectors and surface area from surface metrics Ja_Face.
 !==================================================================================================================================
 SUBROUTINE SurfMetricsFromJa(Nloc,NormalDir,TangDir,NormalSign,Ja_Face,NormVec,TangVec1,TangVec2,SurfElem)
 ! MODULES
 USE MOD_Mathtools,   ONLY: CROSS
-!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

@@ -24,49 +24,13 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE ISVALIDHDF5FILE
-  MODULE PROCEDURE ISVALIDHDF5FILE
-END INTERFACE
-
-INTERFACE ISVALIDMESHFILE
-  MODULE PROCEDURE ISVALIDMESHFILE
-END INTERFACE
-
-INTERFACE GetNextFileName
-  MODULE PROCEDURE GetNextFileName
-END INTERFACE
-
-INTERFACE DatasetExists
-  MODULE PROCEDURE DatasetExists
-END INTERFACE
-
-INTERFACE GetDataSize
-  MODULE PROCEDURE GetDataSize
-END INTERFACE
-
-INTERFACE GetAttributeSize
-  MODULE PROCEDURE GetAttributeSize
-END INTERFACE
-
-INTERFACE GetDataProps
-  MODULE PROCEDURE GetDataProps
-END INTERFACE
-
-INTERFACE ReadAttribute
-  MODULE PROCEDURE ReadAttribute
-END INTERFACE
-
-INTERFACE GetVarnames
-  MODULE PROCEDURE GetVarnames
-END INTERFACE
-
-PUBLIC :: Plist_File_ID,File_ID,HSize,nDims        ! Variables from MOD_IO_HDF5 that need to be public
-PUBLIC :: OpenDataFile,CloseDataFile               ! Subroutines from MOD_IO_HDF5 that need to be public
-PUBLIC :: ISVALIDHDF5FILE,ISVALIDMESHFILE,GetDataSize,GetAttributeSize,GetDataProps,GetNextFileName
-PUBLIC :: ReadArray,ReadAttribute
-PUBLIC :: GetArrayAndName
-PUBLIC :: GetVarnames
-PUBLIC :: DatasetExists
+PUBLIC:: Plist_File_ID,File_ID,HSize,nDims        ! Variables from MOD_IO_HDF5 that need to be public
+PUBLIC:: OpenDataFile,CloseDataFile               ! Subroutines from MOD_IO_HDF5 that need to be public
+PUBLIC:: ISVALIDHDF5FILE,ISVALIDMESHFILE,GetDataSize,GetAttributeSize,GetDataProps,GetNextFileName
+PUBLIC:: ReadArray,ReadAttribute
+PUBLIC:: GetArrayAndName
+PUBLIC:: GetVarnames
+PUBLIC:: DatasetExists
 !==================================================================================================================================
 
 CONTAINS
@@ -255,6 +219,7 @@ CALL H5DCLOSE_F(DSet_ID, iError)
 DEALLOCATE(SizeMax)
 END SUBROUTINE GetDataSize
 
+
 !==================================================================================================================================
 !> Subroutine to determine HDF5 size of attribute
 !==================================================================================================================================
@@ -405,6 +370,7 @@ END SUBROUTINE GetDataProps
 !
 !===================================================================================================================================
 SUBROUTINE GetVarNames(AttribName,VarNames,AttribExists)
+! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -489,6 +455,7 @@ SUBROUTINE ReadArray(ArrayName,Rank,nVal,Offset_in,Offset_dim,RealArray,IntArray
 ! MODULES
 USE MOD_Globals
 USE,INTRINSIC :: ISO_C_BINDING
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -569,6 +536,7 @@ SUBROUTINE ReadAttribute(Loc_ID_in,AttribName,nVal,DatasetName,RealScalar,IntSca
 ! MODULES
 USE MOD_Globals
 USE,INTRINSIC :: ISO_C_BINDING
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -650,13 +618,13 @@ LOGWRITE(*,*)'...DONE!'
 END SUBROUTINE ReadAttribute
 
 
-
 !==================================================================================================================================
 !> Subroutine to determine filename of next HDF5 file for FlushFiles
 !==================================================================================================================================
 SUBROUTINE GetNextFileName(FileName,NextFileName_HDF5,single)
 ! MODULES
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

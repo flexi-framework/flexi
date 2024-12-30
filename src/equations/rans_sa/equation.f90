@@ -23,26 +23,12 @@ MODULE MOD_Equation
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE InitEquation
-  MODULE PROCEDURE InitEquation
-END INTERFACE
 
-INTERFACE GetPrimitiveStateSurface
-  MODULE PROCEDURE GetPrimitiveStateSurface
-END INTERFACE
-
-INTERFACE GetConservativeStateSurface
-  MODULE PROCEDURE GetConservativeStateSurface
-END INTERFACE
-
-INTERFACE FinalizeEquation
-  MODULE PROCEDURE FinalizeEquation
-END INTERFACE
-
-PUBLIC:: DefineParametersEquation,InitEquation,FinalizeEquation
-PUBLIC:: GetPrimitiveStateSurface,GetConservativeStateSurface
+PUBLIC:: DefineParametersEquation
+PUBLIC:: InitEquation
+PUBLIC:: GetPrimitiveStateSurface
+PUBLIC:: GetConservativeStateSurface
+PUBLIC:: FinalizeEquation
 !==================================================================================================================================
 
 CONTAINS
@@ -68,6 +54,7 @@ CALL prms%CreateLogicalOption(  'DebugSA',      "Switch on to include debug outp
 
 CALL DefineParametersRiemann()
 END SUBROUTINE DefineParametersEquation
+
 
 !==================================================================================================================================
 !> Set parameters needed by equation modules and initialize equations as well as boundary conditions and testcases
@@ -104,7 +91,7 @@ USE MOD_MPI
 #endif
 USE MOD_IO_HDF5          ,ONLY:AddToFieldData,FieldOut
 ! IMPLICIT VARIABLE HANDLING
- IMPLICIT NONE
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -342,6 +329,7 @@ END DO
 !CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U) !Send YOUR - receive MINE
 !#endif /*USE_MPI*/
 END SUBROUTINE GetPrimitiveStateSurface
+
 
 !==================================================================================================================================
 !> Converts primitive variables to conservative solution vector at surfaces.

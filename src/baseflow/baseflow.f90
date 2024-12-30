@@ -24,21 +24,6 @@ MODULE MOD_BaseFlow
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE DefineParametersBaseFlow
-  MODULE PROCEDURE DefineParametersBaseFlow
-END INTERFACE
-
-INTERFACE InitBaseFlow
-  MODULE PROCEDURE InitBaseFlow
-END INTERFACE
-
-INTERFACE UpdateBaseFlow
-  MODULE PROCEDURE UpdateBaseFlow
-END INTERFACE
-
-INTERFACE FinalizeBaseFlow
-  MODULE PROCEDURE FinalizeBaseFlow
-END INTERFACE
 
 PUBLIC :: DefineParametersBaseFlow
 PUBLIC :: InitBaseFlow

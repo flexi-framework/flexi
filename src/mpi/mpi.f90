@@ -23,62 +23,22 @@ MODULE MOD_MPI
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE InitMPI
-  MODULE PROCEDURE InitMPI
-END INTERFACE
 
-PUBLIC::InitMPI
-
+PUBLIC:: DefineParametersMPI
+PUBLIC:: InitMPI
 #if USE_MPI
-INTERFACE InitMPIVars
-  MODULE PROCEDURE InitMPIVars
-END INTERFACE
-
-!INTERFACE StartReceiveMPIData
-!  MODULE PROCEDURE StartReceiveMPIData
-!END INTERFACE
-!
-!INTERFACE StartSendMPIData
-!  MODULE PROCEDURE StartSendMPIData
-!END INTERFACE
-
-!INTERFACE FinishExchangeMPIData
-!  MODULE PROCEDURE FinishExchangeMPIData
-!END INTERFACE
-
+PUBLIC:: InitMPIvars
+PUBLIC:: StartReceiveMPIData
+PUBLIC:: StartSendMPIData
 #if FV_ENABLED
-INTERFACE StartExchange_FV_Elems
-  MODULE PROCEDURE StartExchange_FV_Elems
-END INTERFACE
-#endif
-
+PUBLIC:: StartExchange_FV_Elems
+#endif /*FV_ENABLED*/
 #if FV_ENABLED == 2
-INTERFACE StartExchange_FV_alpha
-  MODULE PROCEDURE StartExchange_FV_alpha
-END INTERFACE
-#endif
-
-INTERFACE FinalizeMPI
-  MODULE PROCEDURE FinalizeMPI
-END INTERFACE
+PUBLIC:: StartExchange_FV_alpha
+#endif /*FV_ENABLED == 2*/
+PUBLIC:: FinishExchangeMPIData
+PUBLIC:: FinalizeMPI
 #endif /*USE_MPI*/
-
-PUBLIC::DefineParametersMPI
-#if USE_MPI
-PUBLIC::InitMPIvars
-PUBLIC::StartReceiveMPIData
-PUBLIC::StartSendMPIData
-#if FV_ENABLED
-PUBLIC::StartExchange_FV_Elems
-#endif
-#if FV_ENABLED == 2
-PUBLIC::StartExchange_FV_alpha
-#endif
-PUBLIC::FinishExchangeMPIData
-PUBLIC::FinalizeMPI
-#endif
 !==================================================================================================================================
 
 CONTAINS
@@ -89,6 +49,7 @@ CONTAINS
 SUBROUTINE DefineParametersMPI()
 ! MODULES
 USE MOD_ReadInTools,              ONLY: prms
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -109,6 +70,7 @@ END SUBROUTINE DefineParametersMPI
 SUBROUTINE InitMPI(mpi_comm_IN)
 ! MODULES
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -266,6 +228,7 @@ SUBROUTINE StartReceiveMPIData(FaceData,DataSize,LowerBound,UpperBound,MPIReques
 ! MODULES
 USE MOD_Globals
 USE MOD_MPI_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -303,6 +266,7 @@ SUBROUTINE StartSendMPIData(FaceData,DataSize,LowerBound,UpperBound,MPIRequest,S
 ! MODULES
 USE MOD_Globals
 USE MOD_MPI_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -330,6 +294,7 @@ DO iNbProc=1,nNbProcs
   END IF
 END DO !iProc=1,nNBProcs
 END SUBROUTINE StartSendMPIData
+
 
 #if FV_ENABLED
 !==================================================================================================================================
@@ -380,6 +345,7 @@ DO iNbProc=1,nNbProcs
 END DO !iProc=1,nNBProcs
 END SUBROUTINE StartExchange_FV_Elems
 #endif
+
 
 #if FV_ENABLED == 2
 !==================================================================================================================================
@@ -432,13 +398,13 @@ END SUBROUTINE StartExchange_FV_alpha
 #endif /*FV_ENABLED == 2*/
 
 
-
 !==================================================================================================================================
 !> We have to complete our non-blocking communication operations before we can (re)use the send / receive buffers
 !==================================================================================================================================
 SUBROUTINE FinishExchangeMPIData(nRequests,MPIRequest)
 ! MODULES
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -450,6 +416,7 @@ INTEGER,INTENT(INOUT)       :: MPIRequest(nRequests) !< communication handles
 CALL MPI_WaitAll(nRequests,MPIRequest,MPI_STATUSES_IGNORE,iError)
 END SUBROUTINE FinishExchangeMPIData
 
+
 !==================================================================================================================================
 !> Deallocate MPI arrays
 !==================================================================================================================================
@@ -457,6 +424,7 @@ SUBROUTINE FinalizeMPI()
 ! MODULES
 USE MOD_Globals
 USE MOD_MPI_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 SDEALLOCATE(MPIRequest_U)

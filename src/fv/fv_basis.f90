@@ -29,43 +29,15 @@ INTEGER,PARAMETER      :: FV_NODETYPE_EQUIDISTANT       = 0
 INTEGER,PARAMETER      :: FV_NODETYPE_LEGENDRE_GAUSS    = 1
 INTEGER,PARAMETER      :: FV_NODETYPE_LEGENDRE_LOBATTO  = 2
 INTEGER,PARAMETER      :: FV_NODETYPE_CHEBYSHEV_LOBATTO = 3
+!----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE DefineParametersFV_Basis
-  MODULE PROCEDURE DefineParametersFV_Basis
-END INTERFACE
-
-INTERFACE InitFV_Basis
-  MODULE PROCEDURE InitFV_Basis
-END INTERFACE
-
-INTERFACE FV_Build_X_w_BdryX
-  MODULE PROCEDURE FV_Build_X_w_BdryX
-END INTERFACE
-
-INTERFACE FV_Build_VisuVdm
-  MODULE PROCEDURE FV_Build_VisuVdm
-END INTERFACE
-
-INTERFACE FV_Build_Vdm_Gauss_FVboundary
-  MODULE PROCEDURE FV_Build_Vdm_Gauss_FVboundary
-END INTERFACE
-
-INTERFACE FV_GetVandermonde
-  MODULE PROCEDURE FV_GetVandermonde
-END INTERFACE
-
-INTERFACE FinalizeFV_Basis
-  MODULE PROCEDURE FinalizeFV_Basis
-END INTERFACE
-
-
-PUBLIC::DefineParametersFV_Basis
-PUBLIC::InitFV_Basis
-PUBLIC::FV_Build_X_w_BdryX
-PUBLIC::FV_Build_VisuVdm
-PUBLIC::FV_Build_Vdm_Gauss_FVboundary
-PUBLIC::FV_GetVandermonde
-PUBLIC::FinalizeFV_Basis
+PUBLIC:: DefineParametersFV_Basis
+PUBLIC:: InitFV_Basis
+PUBLIC:: FV_Build_X_w_BdryX
+PUBLIC:: FV_Build_VisuVdm
+PUBLIC:: FV_Build_Vdm_Gauss_FVboundary
+PUBLIC:: FV_GetVandermonde
+PUBLIC:: FinalizeFV_Basis
 !==================================================================================================================================
 
 CONTAINS
@@ -94,6 +66,7 @@ CALL addStrListEntry('FV_CellType','legendre_lobatto',  FV_NODETYPE_LEGENDRE_LOB
 CALL addStrListEntry('FV_CellType','chebyshev_lobatto', FV_NODETYPE_CHEBYSHEV_LOBATTO)
 END SUBROUTINE DefineParametersFV_Basis
 
+
 !==================================================================================================================================
 !> Initialize sub-cells width/points/distances/... Vandermondes to switch between DG and FV ...
 !==================================================================================================================================
@@ -103,7 +76,9 @@ USE MOD_PreProc
 USE MOD_FV_Vars
 USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone,NodeType
 USE MOD_ReadInTools        ,ONLY: GETINTFROMSTR
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -173,6 +148,7 @@ USE MOD_Interpolation ,ONLY: GetVandermonde,GetNodesAndWeights
 USE MOD_Basis         ,ONLY: InitializeVandermonde
 USE MOD_Mathtools     ,ONLY: INVERSE
 USE MOD_FV_Vars       ,ONLY: FV_CellType
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -242,6 +218,7 @@ IF (PRESENT(FV_sVdm)) THEN
 END IF
 END SUBROUTINE FV_GetVandermonde
 
+
 !==================================================================================================================================
 !> Build positions FV_X, widths, and boundary positions
 !==================================================================================================================================
@@ -290,6 +267,7 @@ DO i=1,N+1
 END DO
 END SUBROUTINE FV_Build_X_w_BdryX
 
+
 !==================================================================================================================================
 !> Build Vandermonde to convert solution from Gauss points (poly degree N) to left and right face of each subcells
 !> (inner element faces are doubled).
@@ -330,6 +308,7 @@ END DO
 CALL InitializeVandermonde(N,(N+1)*2-1,wBary,xGP,X,Vdm)
 END SUBROUTINE FV_Build_VisuVdm
 
+
 !==================================================================================================================================
 !> Build Vandermonde to convert solution from Gauss points (poly degree N) to FV_BdryX points.
 !==================================================================================================================================
@@ -358,12 +337,15 @@ CALL FV_Build_X_w_BdryX(N, FV_X, FV_w, FV_BdryX, FV_CellType)
 CALL InitializeVandermonde(N,N+1,wBary,xGP,FV_BdryX,Vdm)
 END SUBROUTINE FV_Build_Vdm_Gauss_FVboundary
 
+
 !==================================================================================================================================
 !> Finalizes global variables of the module.
 !> Deallocate allocatable arrays, nullify pointers, set *InitIsDone = .FALSE.
 !==================================================================================================================================
 SUBROUTINE FinalizeFV_Basis()
+! MODULES
 USE MOD_FV_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 SDEALLOCATE(FV_BdryX)
@@ -374,7 +356,6 @@ SDEALLOCATE(FV_Vdm)
 SDEALLOCATE(FV_sVdm)
 FVInitBasisIsDone=.FALSE.
 END SUBROUTINE FinalizeFV_Basis
-
 
 END MODULE MOD_FV_Basis
 #endif /* FV_ENABLED */

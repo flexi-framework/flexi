@@ -21,44 +21,7 @@ MODULE MOD_Avg2D
 ! MODULES
 IMPLICIT NONE
 PRIVATE
-
-INTERFACE DefineParametersAvg2D
-  MODULE PROCEDURE DefineParametersAvg2D
-END INTERFACE
-
-INTERFACE InitAvg2D
-  MODULE PROCEDURE InitAvg2D
-END INTERFACE
-
-INTERFACE Avg2DSlave
-  MODULE PROCEDURE Avg2DSlave
-END INTERFACE
-
-INTERFACE Avg2DMaster
-  MODULE PROCEDURE Avg2DMaster
-END INTERFACE
-
-INTERFACE FinalizeAvg2D
-  MODULE PROCEDURE FinalizeAvg2D
-END INTERFACE
-
-#if USE_MPI
-INTERFACE SendAvg2DToMaster
-  MODULE PROCEDURE SendAvg2DToMaster
-END INTERFACE
-
-INTERFACE RecvAvg2DOfMaster
-  MODULE PROCEDURE RecvAvg2DOfMaster
-END INTERFACE
-
-INTERFACE SendAvg2DToSlave
-  MODULE PROCEDURE SendAvg2DToSlave
-END INTERFACE
-#endif /* USE_MPI */
-
-INTERFACE RecvAvg2DOfSlave
-  MODULE PROCEDURE RecvAvg2DOfSlave
-END INTERFACE
+!----------------------------------------------------------------------------------------------------------------------------------
 
 PUBLIC :: DefineParametersAvg2D
 PUBLIC :: InitAvg2D
@@ -81,6 +44,7 @@ CONTAINS
 SUBROUTINE DefineParametersAvg2D()
 ! MODULES
 USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -92,6 +56,7 @@ CALL prms%CreateLogicalOption(   'doAvg2D',      "Turn-On to average the baseflo
 CALL prms%CreateIntOption(       'Avg2DDir',     "Direction in which the averaging is performed","3")
 
 END SUBROUTINE DefineParametersAvg2D
+
 
 !==================================================================================================================================
 !> Initialize all necessary information to perform averaging in z Direction
@@ -110,6 +75,7 @@ USE MOD_Mesh_Vars          ,ONLY:nGlobalElems
 USE MOD_MPI_Vars           ,ONLY:MPIRequest_Avg2DSend,MPIRequest_Avg2DRecv
 USE MOD_MPI_Vars           ,ONLY:offsetElemMPI
 #endif /* USE_MPI */
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -429,6 +395,7 @@ SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitAvg2D
 
+
 !==================================================================================================================================
 !> Each processor averages its own elements in z-Direction
 !==================================================================================================================================
@@ -440,6 +407,7 @@ USE MOD_Avg2D_Vars
 USE MOD_Mesh_Readin        ,ONLY:ReadIJKSorting
 USE MOD_Mesh_Vars          ,ONLY:nElems,Elem_xGP
 USE MOD_Interpolation_Vars ,ONLY:xGP,wGP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -458,7 +426,9 @@ DO iElem=1,nElems
     UAvg2DLocal(:,:,:,i) = UAvg2DLocal(:,:,:,i) + wGP(k)*0.5*dx * UIn(:,:,:,k,iElem)
   END DO
 END DO
+
 END SUBROUTINE Avg2DSlave
+
 
 #if USE_MPI
 !==================================================================================================================================
@@ -470,6 +440,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Avg2D_Vars
 USE MOD_MPI_Vars           ,ONLY:MPIRequest_Avg2DSend,MPIRequest_Avg2DRecv
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -499,7 +470,9 @@ DO iDiffSendProc = 1,nSendProcs
   CALL MPI_IRecv(RecvBufferAvg2D(:,:,:,1:nElemsToRecv(SendProcs(iDiffSendProc)),iDiffSendProc),nRecvVal,MPI_DOUBLE_PRECISION,  &
                  iProc,0,MPI_COMM_FLEXI,MPIRequest_Avg2DRecv(iDiffSendProc),iError)
 END DO
+
 END SUBROUTINE SendAvg2DToMaster
+
 
 !==================================================================================================================================
 !> Each master processor receives its i,j data to average 2d global
@@ -510,6 +483,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Avg2D_Vars
 USE MOD_MPI_Vars           ,ONLY:MPIRequest_Avg2DSend,MPIRequest_Avg2DRecv
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -521,6 +495,7 @@ CALL MPI_WAITALL(nSendProcs,MPIRequest_Avg2DRecv(1:nSendProcs),MPI_STATUSES_IGNO
 END SUBROUTINE RecvAvg2DOfMaster
 #endif /* USE_MPI */
 
+
 !==================================================================================================================================
 !> Each master processor sorts in the received data and performs averaging
 !==================================================================================================================================
@@ -530,6 +505,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Avg2D_Vars
 USE MOD_Mesh_Readin        ,ONLY:ReadIJKSorting
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -550,6 +526,7 @@ DO iDiffSendProc = 1,nSendProcs
   END DO
 END DO
 UAvg2DGlobal(:,:,:,:)=UAvg2DGlobal(:,:,:,:)*spanWidth
+
 END SUBROUTINE Avg2DMaster
 
 #if USE_MPI
@@ -562,6 +539,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Avg2D_Vars
 USE MOD_MPI_Vars           ,ONLY:MPIRequest_Avg2DSend,MPIRequest_Avg2DRecv
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -594,8 +572,10 @@ DO iDiffSendProc = 1,nSendProcs
   CALL MPI_ISend(RecvBufferAvg2D(:,:,:,1:nElemsToRecv(SendProcs(iDiffSendProc)),iDiffSendProc),nRecvVal,MPI_DOUBLE_PRECISION,  &
                  iProc,0,MPI_COMM_FLEXI,MPIRequest_Avg2DRecv(iDiffSendProc),iError)
 END DO
+
 END SUBROUTINE SendAvg2DToSlave
 #endif /* USE_MPI */
+
 
 !==================================================================================================================================
 !> Each slave processor receives its i,j data which is globally averaged and sorts it into its elements
@@ -609,6 +589,7 @@ USE MOD_Avg2D_Vars
 USE MOD_MPI_Vars           ,ONLY:MPIRequest_Avg2DSend,MPIRequest_Avg2DRecv
 #endif /* USE_MPI */
 USE MOD_Mesh_Vars          ,ONLY:Elem_IJK,nElems
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -649,7 +630,9 @@ DO iDiffRecvProc = 1,nRecvProcs
   END DO
 END DO
 UOut = UAvg2D
+
 END SUBROUTINE RecvAvg2DOfSlave
+
 
 !==================================================================================================================================
 !> Deallocate Avg2D arrays
@@ -660,6 +643,7 @@ USE MOD_Avg2D_Vars
 #if USE_MPI
 USE MOD_MPI_Vars           ,ONLY:MPIRequest_Avg2DSend,MPIRequest_Avg2DRecv
 #endif /* USE_MPI */
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 #if USE_MPI

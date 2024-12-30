@@ -23,25 +23,13 @@ MODULE MOD_AnalyzeEquation
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE InitAnalyzeEquation
-  MODULE PROCEDURE InitAnalyzeEquation
-END INTERFACE
 
-INTERFACE AnalyzeEquation
-  MODULE PROCEDURE AnalyzeEquation
-END INTERFACE
-
-INTERFACE FinalizeAnalyzeEquation
-  MODULE PROCEDURE FinalizeAnalyzeEquation
-END INTERFACE
-
-
-PUBLIC:: AnalyzeEquation, InitAnalyzeEquation, FinalizeAnalyzeEquation
+PUBLIC:: DefineParametersAnalyzeEquation
+PUBLIC:: AnalyzeEquation
+PUBLIC:: InitAnalyzeEquation
+PUBLIC:: FinalizeAnalyzeEquation
 !==================================================================================================================================
 
-PUBLIC::DefineParametersAnalyzeEquation
 CONTAINS
 
 !==================================================================================================================================

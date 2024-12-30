@@ -23,26 +23,12 @@ MODULE MOD_Equation
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE InitEquation
-  MODULE PROCEDURE InitEquation
-END INTERFACE
 
-INTERFACE GetPrimitiveStateSurface
-  MODULE PROCEDURE GetPrimitiveStateSurface
-END INTERFACE
-
-INTERFACE GetConservativeStateSurface
-  MODULE PROCEDURE GetConservativeStateSurface
-END INTERFACE
-
-INTERFACE FinalizeEquation
-  MODULE PROCEDURE FinalizeEquation
-END INTERFACE
-
-PUBLIC:: DefineParametersEquation,InitEquation,FinalizeEquation
-PUBLIC:: GetPrimitiveStateSurface,GetConservativeStateSurface
+PUBLIC:: DefineParametersEquation
+PUBLIC:: InitEquation
+PUBLIC:: GetConservativeStateSurface
+PUBLIC:: GetPrimitiveStateSurface
+PUBLIC:: FinalizeEquation
 !==================================================================================================================================
 
 CONTAINS
@@ -77,6 +63,7 @@ CALL DefineParametersSplitDG()
 CALL DefineParametersEddyVisc()
 #endif /*EDDYVISCOSITY*/
 END SUBROUTINE DefineParametersEquation
+
 
 !==================================================================================================================================
 !> Set parameters needed by equation modules and initialize equations as well as boundary conditions and testcases
@@ -246,6 +233,7 @@ END DO
 !CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U) !Send YOUR - receive MINE
 !#endif /*USE_MPI*/
 END SUBROUTINE GetPrimitiveStateSurface
+
 
 !==================================================================================================================================
 !> Converts primitive variables to conservative solution vector at surfaces.

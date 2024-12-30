@@ -23,6 +23,7 @@ USE MOD_ReadInTools
 USE ISO_C_BINDING
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 
 INTERFACE
   SUBROUTINE print_userblock(filename,inifilename) BIND(C)
@@ -31,10 +32,6 @@ INTERFACE
       CHARACTER(KIND=C_CHAR) :: inifilename(*)
   END SUBROUTINE print_userblock
 END INTERFACE
-
-!----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
 
 ! Output format for state visualization
 INTEGER,PARAMETER :: OUTPUTFORMAT_NONE         = 0
@@ -45,38 +42,6 @@ INTEGER,PARAMETER :: OUTPUTFORMAT_PARAVIEW     = 3
 ! Output format for ASCII data files
 INTEGER,PARAMETER :: ASCIIOUTPUTFORMAT_CSV     = 0
 ! INTEGER,PARAMETER :: ASCIIOUTPUTFORMAT_TECPLOT = 1
-
-INTERFACE DefineParametersOutput
-  MODULE PROCEDURE DefineParametersOutput
-END INTERFACE
-
-INTERFACE InitOutput
-  MODULE PROCEDURE InitOutput
-END INTERFACE
-
-INTERFACE PrintPercentage
-  MODULE PROCEDURE PrintPercentage
-END INTERFACE
-
-INTERFACE PrintStatusLine
-  MODULE PROCEDURE PrintStatusLine
-END INTERFACE
-
-INTERFACE Visualize
-  MODULE PROCEDURE Visualize
-END INTERFACE
-
-INTERFACE InitOutputToFile
-  MODULE PROCEDURE InitOutputToFile
-END INTERFACE
-
-INTERFACE OutputToFile
-  MODULE PROCEDURE OutputToFile
-END INTERFACE
-
-INTERFACE FinalizeOutput
-  MODULE PROCEDURE FinalizeOutput
-END INTERFACE
 
 PUBLIC:: DefineParametersOutput
 PUBLIC:: InitOutput

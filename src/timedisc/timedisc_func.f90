@@ -22,41 +22,14 @@ MODULE MOD_TimeDisc_Functions
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE DefineParametersTimeDisc
-  MODULE PROCEDURE DefineParametersTimeDisc
-END INTERFACE
 
-INTERFACE InitTimeDisc
-  MODULE PROCEDURE InitTimeDisc
-END INTERFACE
-
-INTERFACE InitTimeStep
-  MODULE PROCEDURE InitTimeStep
-END INTERFACE
-
-INTERFACE UpdateTimeStep
-  MODULE PROCEDURE UpdateTimeStep
-END INTERFACE
-
-INTERFACE AnalyzeTimeStep
-  MODULE PROCEDURE AnalyzeTimeStep
-END INTERFACE
-
-INTERFACE TimeDisc_Info
-  MODULE PROCEDURE TimeDisc_Info
-END INTERFACE
-
-INTERFACE FinalizeTimeDisc
-  MODULE PROCEDURE FinalizeTimeDisc
-END INTERFACE
-
-PUBLIC :: DefineParametersTimeDisc
-PUBLIC :: InitTimeDisc
-PUBLIC :: InitTimeStep
-PUBLIC :: UpdateTimeStep
-PUBLIC :: AnalyzeTimeStep
-PUBLIC :: TimeDisc_Info
-PUBLIC :: FinalizeTimeDisc
+PUBLIC:: DefineParametersTimeDisc
+PUBLIC:: InitTimeDisc
+PUBLIC:: InitTimeStep
+PUBLIC:: UpdateTimeStep
+PUBLIC:: AnalyzeTimeStep
+PUBLIC:: TimeDisc_Info
+PUBLIC:: FinalizeTimeDisc
 !==================================================================================================================================
 
 CONTAINS

@@ -24,29 +24,16 @@ MODULE MOD_Jacobian
 IMPLICIT NONE
 PRIVATE
 SAVE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE dConsdPrimTemp
-  MODULE PROCEDURE dConsdPrimTemp
-END INTERFACE
-
-INTERFACE dPrimTempdCons
-  MODULE PROCEDURE dPrimTempdCons
-END INTERFACE
-
-INTERFACE EvalAdvFluxJacobianPoint
-  MODULE PROCEDURE EvalAdvFluxJacobianPoint
-END INTERFACE
-
-PUBLIC::EvalAdvFluxJacobian,EvalAdvFluxJacobianPoint
+PUBLIC:: EvalAdvFluxJacobian
+PUBLIC:: EvalAdvFluxJacobianPoint
 #if PARABOLIC
-PUBLIC::EvalDiffFluxJacobian
-PUBLIC::EvalFluxGradJacobian
+PUBLIC:: EvalDiffFluxJacobian
+PUBLIC:: EvalFluxGradJacobian
 #endif
-PUBLIC::dConsdPrimTemp,dPrimTempdCons
+PUBLIC:: dConsdPrimTemp
+PUBLIC:: dPrimTempdCons
 !===================================================================================================================================
 
 CONTAINS
@@ -59,6 +46,7 @@ SUBROUTINE EvalAdvFluxJacobian(U,UPrim,fJac,gJac,hJac)
 ! MODULES
 USE MOD_PreProc
 USE MOD_DG_Vars           ,ONLY:nDOFElem
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -75,6 +63,7 @@ DO i=1,nDOFElem
 END DO !i
 END SUBROUTINE EvalAdvFluxJacobian
 
+
 !===================================================================================================================================
 !> Navier-Stokes-Problem:
 !> The Jacobian of the advective Flux with respect to the conservative variables U
@@ -82,6 +71,7 @@ END SUBROUTINE EvalAdvFluxJacobian
 PPURE SUBROUTINE EvalAdvFluxJacobianPoint(U,UPrim,fJac,gJac,hJac)
 ! MODULES
 USE MOD_EOS_Vars          ,ONLY:Kappa,KappaM1
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -158,6 +148,7 @@ hJac(:,:)=0.
 #endif
 END SUBROUTINE EvalAdvFluxJacobianPoint
 
+
 #if PARABOLIC
 !===================================================================================================================================
 !> The Jacobian of the diffusion flux with respect to the conservative variables U
@@ -171,6 +162,7 @@ SUBROUTINE EvalDiffFluxJacobian(nDOF_loc,U,UPrim,gradUx,gradUy,gradUz,fJac,gJac,
 USE MOD_PreProc
 USE MOD_Equation_Vars     ,ONLY:s23,s43
 USE MOD_Viscosity
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -271,6 +263,7 @@ DO i=1,nDOF_loc
 END DO
 
 END SUBROUTINE EvalDiffFluxJacobian
+
 
 !===================================================================================================================================
 !> Computes the volume derivative of the analytical diffusive flux with respect to the gradient of U: d(F^v)/dQ, Q=grad U
@@ -413,6 +406,7 @@ END DO
 END SUBROUTINE EvalFluxGradJacobian
 #endif /*PARABOLIC*/
 
+
 !===================================================================================================================================
 !> The Jacobian of the transformation from primitive to conservative variables
 !===================================================================================================================================
@@ -457,6 +451,7 @@ Jac(5,1:5)= (/  dedrho, UE(EXT_DENS)*UE(EXT_VEL1), UE(EXT_DENS)*UE(EXT_VEL2),   
 
 END SUBROUTINE dConsdPrim
 
+
 !===================================================================================================================================
 !> The Jacobian of the transformation from primitive (including temperature) to conservative variables
 !===================================================================================================================================
@@ -478,6 +473,7 @@ REAL,DIMENSION(PP_nVar,PP_nVarPrim),INTENT(OUT) :: Jac      !< cons to prim Jaco
 CALL dConsdPrim(UPrim,Jac(1:5,1:5))
 Jac(1:5,6) = 0.
 END SUBROUTINE dConsdPrimTemp
+
 
 !===================================================================================================================================
 !> The Jacobian of the transformation from conservative to primitive variables
@@ -512,6 +508,7 @@ Jac(4,1:5)= 0.
 Jac(5,1:5)= (/KappaM1*0.5*SUM(UE(EXT_VELV)*UE(EXT_VELV)), -UE(EXT_VEL1)*KappaM1, -UE(EXT_VEL2)*KappaM1,                    0., KappaM1 /)
 #endif
 END SUBROUTINE dPrimdCons
+
 
 !===================================================================================================================================
 !> The Jacobian of the transformation from conservative to primitive (including temperature) variables

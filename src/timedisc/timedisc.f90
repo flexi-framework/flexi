@@ -22,11 +22,8 @@ MODULE MOD_TimeDisc
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE TimeDisc
-  MODULE PROCEDURE TimeDisc
-END INTERFACE
 
-PUBLIC :: TimeDisc
+PUBLIC:: TimeDisc
 !==================================================================================================================================
 
 CONTAINS

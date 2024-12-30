@@ -65,66 +65,27 @@ USE MOD_Globals
 USE MOD_ISO_VARYING_STRING
 IMPLICIT NONE
 PRIVATE
+!----------------------------------------------------------------------------------------------------------------------------------
 
 INTERFACE LowCase
   MODULE PROCEDURE LowCase
   MODULE PROCEDURE LowCase_overwrite
 END INTERFACE
 
-INTERFACE STRICMP
-  MODULE PROCEDURE STRICMP
-END INTERFACE
+LOGICAL:: use_escape_codes = .TRUE.  !< If set to .FALSE., output will consist only of standard text, allowing the
+                                     !< escape characters to be switched off in environments which don't support them.
 
-INTERFACE StripSpaces
-  MODULE PROCEDURE StripSpaces
-END INTERFACE
-
-INTERFACE INTTOSTR
-  MODULE PROCEDURE INTTOSTR
-END INTERFACE
-
-INTERFACE REALTOSTR
-  MODULE PROCEDURE REALTOSTR
-END INTERFACE
-
-INTERFACE ISINT
-  MODULE PROCEDURE ISINT
-END INTERFACE
-
-INTERFACE set_formatting
-  MODULE PROCEDURE set_formatting
-END INTERFACE
-
-INTERFACE clear_formatting
-  MODULE PROCEDURE clear_formatting
-END INTERFACE
-
-INTERFACE GetFileExtension
-  MODULE PROCEDURE GetFileExtension
-END INTERFACE
-
-INTERFACE KEYVALUE
-  MODULE PROCEDURE KEYVALUE
-END INTERFACE
-
-INTERFACE split_string
-  MODULE PROCEDURE split_string
-END INTERFACE
-
-PUBLIC :: LowCase
-PUBLIC :: STRICMP
-PUBLIC :: StripSpaces
-PUBLIC :: INTTOSTR,REALTOSTR
-PUBLIC :: ISINT
-PUBLIC :: set_formatting
-PUBLIC :: clear_formatting
-PUBLIC :: GetFileExtension
-PUBLIC :: KEYVALUE
-PUBLIC::  split_string
-
-LOGICAL :: use_escape_codes = .TRUE.  !< If set to .FALSE., output will consist only of standard text, allowing the
-                                      !< escape characters to be switched off in environments which don't support them.
-PUBLIC :: use_escape_codes
+PUBLIC:: LowCase
+PUBLIC:: STRICMP
+PUBLIC:: StripSpaces
+PUBLIC:: INTTOSTR,REALTOSTR
+PUBLIC:: ISINT
+PUBLIC:: set_formatting
+PUBLIC:: clear_formatting
+PUBLIC:: GetFileExtension
+PUBLIC:: KEYVALUE
+PUBLIC:: split_string
+PUBLIC:: use_escape_codes
 !==================================================================================================================================
 
 CONTAINS
@@ -134,6 +95,7 @@ CONTAINS
 !==================================================================================================================================
 PURE SUBROUTINE LowCase_overwrite(Str1)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -157,11 +119,13 @@ DO iLen=1,nLen
 END DO
 END SUBROUTINE LowCase_overwrite
 
+
 !==================================================================================================================================
 !> Transform upper case letters in "Str1" into lower case letters, result is "Str2"
 !==================================================================================================================================
 PURE SUBROUTINE LowCase(Str1,Str2)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -190,6 +154,7 @@ END SUBROUTINE LowCase
 !==================================================================================================================================
 PURE FUNCTION STRICMP(a, b)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -206,12 +171,15 @@ CALL LowCase(b, blow)
 STRICMP = (TRIM(alow).EQ.TRIM(blow))
 END FUNCTION STRICMP
 
+
 !==================================================================================================================================
 !> Removes ALL whitespace from a string
 !==================================================================================================================================
 PURE SUBROUTINE StripSpaces(string)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(INOUT) :: string  !< input string
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -239,6 +207,11 @@ END SUBROUTINE
 !> Converts integer to string
 !==================================================================================================================================
 PURE FUNCTION INTTOSTR(value)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)  :: value !< input integer
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -247,10 +220,16 @@ CHARACTER(LEN=255)  :: INTTOSTR
 WRITE(INTTOSTR,"(I20)") value
 END FUNCTION INTTOSTR
 
+
 !==================================================================================================================================
 !> Converts real to string
 !==================================================================================================================================
 PURE FUNCTION REALTOSTR(value)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
 REAL,INTENT(IN)  :: value !< input integer
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -263,6 +242,11 @@ END FUNCTION REALTOSTR
 !> Checks if a string is an integer
 !==================================================================================================================================
 PURE FUNCTION ISINT(value)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN)  :: value !< input string
 LOGICAL                        :: ISINT
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -280,7 +264,9 @@ END FUNCTION ISINT
 !==================================================================================================================================
 PURE SUBROUTINE split_string(string, delimiter, substrings, substring_count)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER (LEN = *), INTENT(IN)  :: string          !< Variable-length character string that is to be split
 CHARACTER,           INTENT(IN)  :: delimiter       !< Character along which to split
@@ -307,6 +293,7 @@ DO
 END DO
 END SUBROUTINE split_string
 
+
 !==================================================================================================================================
 !> Generates an ANSI escape sequence from the supplied style string.
 !> This function is copied from the fortran output library (foul). For the full version of this library see:
@@ -314,7 +301,9 @@ END SUBROUTINE split_string
 !==================================================================================================================================
 PURE SUBROUTINE get_escape_sequence(style_string, escape_sequence)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)   :: style_string    !< String describing which styles to set (separated by space)
                                                  !< see source code for supported styles
@@ -385,6 +374,7 @@ END DO
 escape_sequence = TRIM(escape_sequence) // 'm'
 END SUBROUTINE get_escape_sequence
 
+
 !==================================================================================================================================
 !> Sets output formatting to the supplied styles.
 !> This function is copied from the fortran output library (foul). For the full version of this library see:
@@ -392,7 +382,9 @@ END SUBROUTINE get_escape_sequence
 !==================================================================================================================================
 SUBROUTINE set_formatting(style_string)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER (LEN = *), INTENT(IN) :: style_string !< String describing which styles to set (separated by space).
                                                 !< See get_escape_sequence for supported styles.
@@ -415,12 +407,15 @@ IF (use_escape_codes) THEN
 END IF
 END SUBROUTINE set_formatting
 
+
 !==================================================================================================================================
 !> Resets output formatting to normal.
 !> This function is copied from the fortran output library (foul). For the full version of this library see:
 !>   http://foul.sourceforge.net
 !==================================================================================================================================
 SUBROUTINE clear_formatting()
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 IF (use_escape_codes) THEN
@@ -429,12 +424,16 @@ IF (use_escape_codes) THEN
 END IF
 END SUBROUTINE clear_formatting
 
+
 !==================================================================================================================================
 !> Returns the file extension (everything behind last .)
 !==================================================================================================================================
 FUNCTION GetFileExtension(filename)
-! INPUT / OUTPUT VARIABLES
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)  :: filename         !< file to extract its file extension
 CHARACTER(LEN=:),ALLOCATABLE :: GetFileExtension
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -447,10 +446,15 @@ ALLOCATE(CHARACTER(fileExtensionLenght) :: GetFileExtension)
 GetFileExtension = filename(iExt+1:LEN_TRIM(filename))
 END FUNCTION GetFileExtension
 
+
 !==================================================================================================================================
 !> Retrieves value from key-value pairs stored as arrays
 !==================================================================================================================================
 FUNCTION KEYVALUE(keys,values,key)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN) :: keys(:)   !< array containing keys of key-value pairs
 CHARACTER(LEN=*),INTENT(IN)   :: key       !< key to search for in key-value pairs

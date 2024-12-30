@@ -22,19 +22,7 @@ MODULE MOD_Overintegration
 ! MODULES
 IMPLICIT NONE
 PRIVATE
-
 !----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE InitOverintegration
-  MODULE PROCEDURE InitOverintegration
-END INTERFACE
-
-INTERFACE Overintegration
-  MODULE PROCEDURE Overintegration
-END INTERFACE
-
-INTERFACE FinalizeOverintegration
-  MODULE PROCEDURE FinalizeOverintegration
-END INTERFACE
 
 PUBLIC :: InitOverintegration
 PUBLIC :: Overintegration
@@ -51,6 +39,7 @@ SUBROUTINE DefineParametersOverintegration()
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
 USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -80,6 +69,7 @@ USE MOD_Interpolation_Vars  ,ONLY:InterpolationInitIsDone,Vdm_Leg,sVdm_Leg,NodeT
 USE MOD_ChangeBasisByDim    ,ONLY:ChangeBasisVolume
 USE MOD_ReadInTools         ,ONLY:GETINT,GETINTFROMSTR
 USE MOD_Mesh_Vars           ,ONLY:DetJac_Ref,NGeoRef,nElems
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -177,6 +167,7 @@ USE MOD_Globals
 USE MOD_Mesh_Vars            ,ONLY: nElems
 USE MOD_Overintegration_Vars ,ONLY: OverintegrationType,OverintegrationMat
 USE MOD_Filter               ,ONLY: Filter_Pointer
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -195,8 +186,8 @@ CASE DEFAULT
 END SELECT
 END SUBROUTINE Overintegration
 
-! TODO Implement 2d
 
+! TODO: Implement optimization for 2D
 !==================================================================================================================================
 !> Modal cutoff filter conserving both JU and U
 !> project JU_t down from degree N to NUnder, then divide by Jacobian built on NUnder, interpolate resulting U up to N again
@@ -214,6 +205,7 @@ USE MOD_Mesh_Vars,             ONLY: nElems
 #if FV_ENABLED
 USE MOD_FV_Vars,               ONLY: FV_Elems
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -338,6 +330,7 @@ SUBROUTINE FinalizeOverintegration()
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
 USE MOD_Overintegration_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 SDEALLOCATE(OverintegrationMat)

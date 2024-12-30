@@ -43,6 +43,7 @@ USE MOD_StringTools
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
+!----------------------------------------------------------------------------------------------------------------------------------
 
 !================================================
 !> Link for linked List
@@ -81,103 +82,31 @@ CONTAINS
   PROCEDURE :: read_option                !< routine that parses a single line from the parameter file.
 END TYPE Parameters
 
-INTERFACE IgnoredParameters
-  MODULE PROCEDURE IgnoredParameters
-END INTERFACE
+PUBLIC:: IgnoredParameters
+PUBLIC:: PrintDefaultParameterFile
+PUBLIC:: CountOption
+PUBLIC:: GETINT
+PUBLIC:: GETLOGICAL
+PUBLIC:: GETREAL
+PUBLIC:: GETSTR
+PUBLIC:: GETINTARRAY
+PUBLIC:: GETLOGICALARRAY
+PUBLIC:: GETREALARRAY
+PUBLIC:: GETSTRARRAY
+PUBLIC:: GETDESCRIPTION
+PUBLIC:: GETINTFROMSTR
+PUBLIC:: addStrListEntry
+PUBLIC:: FinalizeParameters
+PUBLIC:: ExtractParameterFile
+PUBLIC:: ModifyParameterFile
+PUBLIC:: CompareParameterFile
 
-INTERFACE PrintDefaultParameterFile
-  MODULE PROCEDURE PrintDefaultParameterFile
-END INTERFACE
+TYPE(Parameters):: prms
+PUBLIC:: prms
 
-INTERFACE CountOption
-  MODULE PROCEDURE CountOption
-END INTERFACE
-
-INTERFACE GETINT
-  MODULE PROCEDURE GETINT
-END INTERFACE
-
-INTERFACE GETLOGICAL
-  MODULE PROCEDURE GETLOGICAL
-END INTERFACE
-
-INTERFACE GETREAL
-  MODULE PROCEDURE GETREAL
-END INTERFACE
-
-INTERFACE GETSTR
-  MODULE PROCEDURE GETSTR
-END INTERFACE
-
-INTERFACE GETINTARRAY
-  MODULE PROCEDURE GETINTARRAY
-END INTERFACE
-
-INTERFACE GETLOGICALARRAY
-  MODULE PROCEDURE GETLOGICALARRAY
-END INTERFACE
-
-INTERFACE GETREALARRAY
-  MODULE PROCEDURE GETREALARRAY
-END INTERFACE
-
-INTERFACE GETSTRARRAY
-  MODULE PROCEDURE GETSTRARRAY
-END INTERFACE
-
-INTERFACE GETINTFROMSTR
-  MODULE PROCEDURE GETINTFROMSTR
-END INTERFACE
-
-INTERFACE GETDESCRIPTION
-  MODULE PROCEDURE GETDESCRIPTION
-END INTERFACE
-
-INTERFACE addStrListEntry
-  MODULE PROCEDURE addStrListEntry
-END INTERFACE
-
-INTERFACE ExtractParameterFile
-  MODULE PROCEDURE ExtractParameterFile
-END INTERFACE
-
-INTERFACE ModifyParameterFile
-  MODULE PROCEDURE ModifyParameterFile
-END INTERFACE
-
-INTERFACE CompareParameterFile
-  MODULE PROCEDURE CompareParameterFile
-END INTERFACE
-
-INTERFACE FinalizeParameters
-  MODULE PROCEDURE FinalizeParameters
-END INTERFACE
-
-PUBLIC :: IgnoredParameters
-PUBLIC :: PrintDefaultParameterFile
-PUBLIC :: CountOption
-PUBLIC :: GETINT
-PUBLIC :: GETLOGICAL
-PUBLIC :: GETREAL
-PUBLIC :: GETSTR
-PUBLIC :: GETINTARRAY
-PUBLIC :: GETLOGICALARRAY
-PUBLIC :: GETREALARRAY
-PUBLIC :: GETSTRARRAY
-PUBLIC :: GETDESCRIPTION
-PUBLIC :: GETINTFROMSTR
-PUBLIC :: addStrListEntry
-PUBLIC :: FinalizeParameters
-PUBLIC :: ExtractParameterFile
-PUBLIC :: ModifyParameterFile
-PUBLIC :: CompareParameterFile
-
-TYPE(Parameters) :: prms
-PUBLIC :: prms
-
-TYPE, PUBLIC :: STR255
+TYPE, PUBLIC:: STR255
    PRIVATE
-   CHARACTER(LEN=255) :: chars
+   CHARACTER(LEN=255):: chars
 END TYPE STR255
 !==================================================================================================================================
 
@@ -251,6 +180,7 @@ ELSE
 END IF
 END SUBROUTINE CreateOption
 
+
 !==================================================================================================================================
 !> Create a new integer option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
@@ -272,6 +202,7 @@ CLASS(IntOption),ALLOCATABLE,TARGET :: intopt
 ALLOCATE(intopt)
 CALL this%CreateOption(intopt, name, description, value=value, multiple=multiple)
 END SUBROUTINE CreateIntOption
+
 
 !==================================================================================================================================
 !> Create a new integer option with a optional string representation. Only calls the general prms\%createoption routine.
@@ -295,6 +226,7 @@ ALLOCATE(intfromstropt)
 CALL this%CreateOption(intfromstropt, name, description, value=value, multiple=multiple)
 END SUBROUTINE CreateIntFromStringOption
 
+
 !==================================================================================================================================
 !> Create a new logical option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
@@ -316,6 +248,7 @@ CLASS(LogicalOption),ALLOCATABLE,TARGET :: logicalopt
 ALLOCATE(logicalopt)
 CALL this%CreateOption(logicalopt, name, description, value=value, multiple=multiple)
 END SUBROUTINE CreateLogicalOption
+
 
 !==================================================================================================================================
 !> Create a new real option. Only calls the general prms\%createoption routine.
@@ -339,6 +272,7 @@ ALLOCATE(realopt)
 CALL this%CreateOption(realopt, name, description, value=value, multiple=multiple)
 END SUBROUTINE CreateRealOption
 
+
 !==================================================================================================================================
 !> Create a new string option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
@@ -360,6 +294,7 @@ CLASS(StringOption),ALLOCATABLE,TARGET :: stringopt
 ALLOCATE(stringopt)
 CALL this%CreateOption(stringopt, name, description, value=value, multiple=multiple)
 END SUBROUTINE CreateStringOption
+
 
 !==================================================================================================================================
 !> Create a new integer array option. Only calls the general prms\%createoption routine.
@@ -383,6 +318,7 @@ ALLOCATE(intopt)
 CALL this%CreateOption(intopt, name, description, value=value, multiple=multiple)
 END SUBROUTINE CreateIntArrayOption
 
+
 !==================================================================================================================================
 !> Create a new logical array option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
@@ -404,6 +340,7 @@ CLASS(LogicalArrayOption),ALLOCATABLE,TARGET :: logicalopt
 ALLOCATE(logicalopt)
 CALL this%CreateOption(logicalopt, name, description, value=value, multiple=multiple)
 END SUBROUTINE CreateLogicalArrayOption
+
 
 !==================================================================================================================================
 !> Create a new real array option. Only calls the general prms\%createoption routine.
@@ -427,6 +364,7 @@ ALLOCATE(realopt)
 CALL this%CreateOption(realopt, name, description, value=value, multiple=multiple)
 END SUBROUTINE CreateRealArrayOption
 
+
 !==================================================================================================================================
 !> Create a new string array option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
@@ -448,6 +386,7 @@ END SUBROUTINE CreateRealArrayOption
 !ALLOCATE(stringopt)
 !CALL this%CreateOption(stringopt, name, description, value=value, multiple=multiple)
 !END SUBROUTINE CreateStringArrayOption
+
 
 !==================================================================================================================================
 !> Count number of occurrence of option with given name.
@@ -637,6 +576,7 @@ END DO
 use_escape_codes = GETLOGICAL("ColoredOutput")
 END SUBROUTINE read_options
 
+
 !==================================================================================================================================
 !> Parses one line of parameter file and sets the value of the specific option in the 'prms' linked list.
 !> Therefore it iterate over all entries of the linked list and compares the names.
@@ -702,6 +642,7 @@ DO WHILE (ASSOCIATED(current))
 END DO
 END FUNCTION read_option
 
+
 !==================================================================================================================================
 !> Output all parameters, which are defined but NOT set in the parameter file.
 !==================================================================================================================================
@@ -727,6 +668,7 @@ END DO
 SWRITE(UNIT_stdOut,'(100("!"))')
 CALL clear_formatting()
 END SUBROUTINE IgnoredParameters
+
 
 !==================================================================================================================================
 !> Print a default parameter file. The command line argument --help prints it in the format, that is used for reading the parameter

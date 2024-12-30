@@ -33,8 +33,6 @@ MODULE MOD_Flux
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
 
 INTERFACE EvalFlux3D
   MODULE PROCEDURE EvalFlux3D_Point
@@ -60,9 +58,11 @@ INTERFACE EvalDiffFlux3D
 END INTERFACE
 #endif /*PARABOLIC*/
 
-PUBLIC::EvalFlux3D, EvalEulerFlux1D, EvalEulerFlux1D_fast
+PUBLIC:: EvalFlux3D
+PUBLIC:: EvalEulerFlux1D
+PUBLIC:: EvalEulerFlux1D_fast
 #if PARABOLIC
-PUBLIC::EvalDiffFlux3D
+PUBLIC:: EvalDiffFlux3D
 #endif /*PARABOLIC*/
 !==================================================================================================================================
 
@@ -284,6 +284,7 @@ NO_OP(iElem)
 #endif /*!EDDYVISCOSITY*/
 END SUBROUTINE EvalDiffFlux3D_Volume
 
+
 #if FV_ENABLED
 !==================================================================================================================================
 !> Wrapper routine to compute the diffusive part of the Navier-Stokes fluxes for a single volume cell
@@ -324,6 +325,7 @@ NO_OP(iElem)
 #endif /*!EDDYVISCOSITY*/
 END SUBROUTINE EvalDiffFlux3D_Volume_FV
 #endif /*FV_ENABLED*/
+
 
 !==================================================================================================================================
 !> Wrapper routine to compute the diffusive part of the Navier-Stokes fluxes for a single side

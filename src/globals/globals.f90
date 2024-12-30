@@ -78,66 +78,14 @@ INTERFACE MPI_WIN_SHARED_QUERY
 END INTERFACE
 #endif /*LIBS_MPICH_FIX_SHM_INTERFACE*/
 
-INTERFACE Abort
-  MODULE PROCEDURE Abort
-END INTERFACE Abort
-
-INTERFACE CollectiveStop
-  MODULE PROCEDURE CollectiveStop
-END INTERFACE CollectiveStop
-
-INTERFACE PrintWarning
-  MODULE PROCEDURE PrintWarning
-END INTERFACE PrintWarning
-
-INTERFACE FILEEXISTS
-  MODULE PROCEDURE FILEEXISTS
-END INTERFACE FILEEXISTS
-
-INTERFACE INTSTAMP
-  MODULE PROCEDURE INTSTAMP
-END INTERFACE INTSTAMP
-
-INTERFACE TIMESTAMP
-  MODULE PROCEDURE TIMESTAMP
-END INTERFACE
-
-INTERFACE FLEXITIME
-  MODULE PROCEDURE FLEXITIME
-END INTERFACE
-
-INTERFACE DisplaySimulationTime
-  MODULE PROCEDURE DisplaySimulationTime
-END INTERFACE
-
-INTERFACE CreateErrFile
-  MODULE PROCEDURE CreateErrFile
-END INTERFACE CreateErrFile
-
 INTERFACE
   SUBROUTINE setstacksizeunlimited() BIND(C)
   END SUBROUTINE setstacksizeunlimited
 END INTERFACE
 
-INTERFACE str2real
-  MODULE PROCEDURE str2real
-END INTERFACE
-
-INTERFACE str2int
-  MODULE PROCEDURE str2int
-END INTERFACE
-
-INTERFACE str2logical
-  MODULE PROCEDURE str2logical
-END INTERFACE
-
-INTERFACE GetParameterFromFile
-  MODULE PROCEDURE GetParameterFromFile
-END INTERFACE
-
 PUBLIC :: setstacksizeunlimited
-
 !==================================================================================================================================
+
 CONTAINS
 
 !==================================================================================================================================
@@ -160,6 +108,7 @@ CONTAINS
 !==================================================================================================================================
 SUBROUTINE CollectiveStop(SourceFile,SourceLine,CompDate,CompTime,ErrorMessage,IntInfo,RealInfo)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -207,18 +156,19 @@ END SUBROUTINE CollectiveStop
 !==================================================================================================================================
 SUBROUTINE Abort(SourceFile,SourceLine,CompDate,CompTime,ErrorMessage,IntInfo,RealInfo,ErrorCode)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*)                  :: SourceFile      !< Source file where error has occurred
-INTEGER                           :: SourceLine      !< Line in source file
-CHARACTER(LEN=*)                  :: CompDate        !< Compilation date
-CHARACTER(LEN=*)                  :: CompTime        !< Compilation time
-CHARACTER(LEN=*)                  :: ErrorMessage    !< Error message
-INTEGER,OPTIONAL                  :: IntInfo         !< Error info (integer)
-REAL,OPTIONAL                     :: RealInfo        !< Error info (real)
-INTEGER,OPTIONAL                  :: ErrorCode       !< MPI Error info (integer)
-!   There is no way back!
+CHARACTER(LEN=*),INTENT(IN)       :: SourceFile      !< Source file where error has occurred
+INTEGER,INTENT(IN)                :: SourceLine      !< Line in source file
+CHARACTER(LEN=*),INTENT(IN)       :: CompDate        !< Compilation date
+CHARACTER(LEN=*),INTENT(IN)       :: CompTime        !< Compilation time
+CHARACTER(LEN=*),INTENT(IN)       :: ErrorMessage    !< Error message
+INTEGER,OPTIONAL,INTENT(IN)       :: IntInfo         !< Error info (integer)
+REAL,OPTIONAL,INTENT(IN)          :: RealInfo        !< Error info (real)
+INTEGER,OPTIONAL,INTENT(IN)       :: ErrorCode       !< MPI Error info (integer)
+! There is no way back!
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=50)                 :: IntString,RealString
@@ -257,6 +207,7 @@ SUBROUTINE PrintWarning(msg)
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*) :: msg  !< output message
 !===================================================================================================================================
@@ -423,11 +374,13 @@ ELSE
 END IF
 END SUBROUTINE GetParameterFromFile
 
+
 !==================================================================================================================================
 !> Open file for error output
 !==================================================================================================================================
 SUBROUTINE CreateErrFile()
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -453,6 +406,7 @@ END SUBROUTINE CreateErrFile
 !==================================================================================================================================
 FUNCTION FILEEXISTS(filename)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -464,11 +418,13 @@ LOGICAL                     :: FILEEXISTS !< logical indicating if file with cur
 INQUIRE(FILE=TRIM(filename), EXIST=FILEEXISTS)
 END FUNCTION FILEEXISTS
 
+
 !==================================================================================================================================
 !> Creates an integer stamp that will afterwards be given to the SOUBRUTINE timestamp
 !==================================================================================================================================
 FUNCTION INTSTAMP(Nam,Num)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -487,6 +443,7 @@ END FUNCTION INTSTAMP
 !==================================================================================================================================
 FUNCTION TIMESTAMP(Filename,Time,Time2)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -634,6 +591,7 @@ END SUBROUTINE DisplayMessageAndTime
 !==================================================================================================================================
 FUNCTION FLEXITIME(Comm)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -651,6 +609,5 @@ END IF
 #endif
 GETTIME(FlexiTime)
 END FUNCTION FLEXITIME
-
 
 END MODULE MOD_Globals

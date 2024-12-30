@@ -29,17 +29,14 @@ USE MOD_EOS_Vars,     ONLY:R
 #elif PP_VISC == 2
 USE MOD_EOS_Vars,     ONLY:mu0,R,ExpoSuth
 #endif
-
 IMPLICIT NONE
-
+PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
+PUBLIC:: mu0
 #if PP_VISC == 1
-INTERFACE muSuth
-  MODULE PROCEDURE muSuth
-END INTERFACE
+PUBLIC:: muSuth
 #endif
-
 !==================================================================================================================================
 
 CONTAINS
@@ -65,6 +62,7 @@ CONTAINS
 ELEMENTAL FUNCTION muSuth(T)
 ! MODULES
 USE MOD_EOS_Vars, ONLY: mu0,Tref,Ts,ExpoSuth,cSuth
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

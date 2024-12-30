@@ -41,53 +41,20 @@ MODULE MOD_GetBoundaryFlux
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitBC
-  MODULE PROCEDURE InitBC
-END INTERFACE
-
-INTERFACE GetBoundaryFlux
-  MODULE PROCEDURE GetBoundaryFlux
-END INTERFACE
-
-INTERFACE GetBoundaryState
-  MODULE PROCEDURE GetBoundaryState
-END INTERFACE
-
-INTERFACE FinalizeBC
-  MODULE PROCEDURE FinalizeBC
-END INTERFACE
-
-#if FV_ENABLED
-#if FV_RECONSTRUCT
-INTERFACE GetBoundaryFVgradient
-  MODULE PROCEDURE GetBoundaryFVgradient
-END INTERFACE
-#endif
-#endif
-
+PUBLIC:: InitBC
+PUBLIC:: GetBoundaryFlux
+PUBLIC:: GetBoundaryState
+PUBLIC:: FinalizeBC
+#if FV_ENABLED && FV_RECONSTRUCT
+PUBLIC:: GetBoundaryFVgradient
+#endif /*FV_ENABLED && FV_RECONSTRUCT*/
 #if PARABOLIC
-INTERFACE Lifting_GetBoundaryFlux
-  MODULE PROCEDURE Lifting_GetBoundaryFlux
-END INTERFACE
-PUBLIC :: Lifting_GetBoundaryFlux
+PUBLIC:: Lifting_GetBoundaryFlux
 #endif /*PARABOLIC*/
-
-PUBLIC :: InitBC
-PUBLIC :: GetBoundaryFlux
-PUBLIC :: GetBoundaryState
-PUBLIC :: FinalizeBC
-#if FV_ENABLED
-#if FV_RECONSTRUCT
-PUBLIC :: GetBoundaryFVgradient
-#endif
-#endif
 !==================================================================================================================================
 
 CONTAINS
-
 
 !==================================================================================================================================
 !> Initialize boundary conditions. Read parameters and sort boundary conditions by types.
@@ -109,6 +76,7 @@ USE MOD_Exactfunc_Vars    ,ONLY: delta99_in,x_in,BlasiusInitDone
 #endif
 USE MOD_EOS               ,ONLY: ConsToPrim
 USE MOD_ExactFunc         ,ONLY: ExactFunc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -251,7 +219,6 @@ END SUBROUTINE InitBC
 !> Computes the boundary state for the different boundary conditions.
 !==================================================================================================================================
 SUBROUTINE GetBoundaryState(SideID,t,Nloc,UPrim_boundary,UPrim_master,NormVec,TangVec1,TangVec2,Face_xGP)
-!----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals      ,ONLY: Abort
@@ -261,10 +228,9 @@ USE MOD_EOS          ,ONLY: PRESSURE_RIEMANN
 USE MOD_EOS_Vars     ,ONLY: sKappaM1,Kappa,KappaM1,R
 USE MOD_ExactFunc    ,ONLY: ExactFunc
 USE MOD_Equation_Vars,ONLY: IniExactFunc,BCDataPrim,RefStatePrim,nRefState
-!----------------------------------------------------------------------------------------------------------------------------------
-! insert modules here
-!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)      :: SideID                                   !< ID of current side
 REAL,INTENT(IN)         :: t                                        !< current time (provided by time integration scheme)
@@ -275,8 +241,6 @@ REAL,INTENT(IN)         :: TangVec1(         3,0:Nloc,0:ZDIM(Nloc)) !< tangent s
 REAL,INTENT(IN)         :: TangVec2(         3,0:Nloc,0:ZDIM(Nloc)) !< tangent surface vectors 2
 REAL,INTENT(IN)         :: Face_xGP(         3,0:Nloc,0:ZDIM(Nloc)) !< positions of surface flux points
 REAL,INTENT(OUT)        :: UPrim_boundary(PRIM,0:Nloc,0:ZDIM(Nloc)) !< resulting boundary state
-
-! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: p,q
@@ -493,6 +457,7 @@ END SELECT ! BCType
 
 END SUBROUTINE GetBoundaryState
 
+
 !==================================================================================================================================
 !> Computes the boundary fluxes for a given Cartesian mesh face (defined by SideID).
 !> Calls GetBoundaryState an directly uses the returned vales for all Riemann-type BCs.
@@ -516,6 +481,8 @@ USE MOD_Riemann      ,ONLY: ViscousFlux
 USE MOD_Riemann      ,ONLY: Riemann
 USE MOD_TestCase     ,ONLY: GetBoundaryFluxTestcase
 USE MOD_DG_Vars      ,ONLY: UPrim_Boundary
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)   :: SideID                                         !< ID of current side
@@ -793,8 +760,8 @@ ELSE
 END IF ! BCType < 0
 END SUBROUTINE GetBoundaryFlux
 
-#if FV_ENABLED
-#if FV_RECONSTRUCT
+
+#if FV_ENABLED && FV_RECONSTRUCT
 !==================================================================================================================================
 !> Computes the gradient at a boundary for FV subcells.
 !==================================================================================================================================
@@ -805,6 +772,7 @@ USE MOD_Globals       ,ONLY: Abort
 USE MOD_Mesh_Vars     ,ONLY: BoundaryType,BC
 USE MOD_TestCase      ,ONLY: GetBoundaryFVgradientTestcase
 USE MOD_DG_Vars       ,ONLY: UPrim_Boundary
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -843,8 +811,8 @@ ELSE
 END IF ! BCType < 0
 
 END SUBROUTINE GetBoundaryFVgradient
-#endif
-#endif
+#endif /*FV_ENABLED && FV_RECONSTRUCT*/
+
 
 #if PARABOLIC
 !==================================================================================================================================
@@ -858,6 +826,7 @@ USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
 USE MOD_Lifting_Vars ,ONLY: doWeakLifting
 USE MOD_TestCase     ,ONLY: Lifting_GetBoundaryFluxTestcase
 USE MOD_DG_Vars      ,ONLY: UPrim_Boundary
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -921,7 +890,6 @@ END SUBROUTINE Lifting_GetBoundaryFlux
 #endif /*PARABOLIC*/
 
 
-
 !==================================================================================================================================
 !> Read in a HDF5 file containing the state for a boundary. Used in BC Type 12.
 !==================================================================================================================================
@@ -940,7 +908,8 @@ USE MOD_Interpolation_Vars,ONLY:L_minus,L_plus
 #endif
 USE MOD_ChangeBasisByDim  ,ONLY:ChangeBasisVolume
 USE MOD_EOS               ,ONLY:ConsToPrim
- IMPLICIT NONE
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN) :: FileName       !< name of file BC data is read from
@@ -1013,14 +982,13 @@ DEALLOCATE(U_local)
 SWRITE(UNIT_stdOut,'(A)')'  done initializing BC state!'
 END SUBROUTINE ReadBCFlow
 
-
-
 !==================================================================================================================================
 !> Finalize arrays used for boundary conditions.
 !==================================================================================================================================
 SUBROUTINE FinalizeBC()
 ! MODULES
 USE MOD_Equation_Vars,ONLY: BCData,BCDataPrim,nBCByType,BCSideID
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES

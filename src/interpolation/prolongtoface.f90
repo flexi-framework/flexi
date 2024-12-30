@@ -23,16 +23,13 @@ IMPLICIT NONE
 PRIVATE
 #define WITHnVar 1
 
-INTERFACE ProlongToFace
-  MODULE PROCEDURE ProlongToFace
-END INTERFACE
-
 INTERFACE EvalElemFace
   MODULE PROCEDURE EvalElemFaceG
   MODULE PROCEDURE EvalElemFaceGL
 END INTERFACE
 
-PUBLIC::ProlongToFace,EvalElemFace
+PUBLIC:: ProlongToFace
+PUBLIC:: EvalElemFace
 
 CONTAINS
 #include "prolongtoface.t90"
@@ -52,7 +49,7 @@ INTERFACE ProlongToFaceCons
   MODULE PROCEDURE ProlongToFace
 END INTERFACE
 
-PUBLIC::ProlongToFaceCons
+PUBLIC:: ProlongToFaceCons
 
 CONTAINS
 #include "prolongtoface.t90"
@@ -71,7 +68,7 @@ INTERFACE ProlongToFacePrim
   MODULE PROCEDURE ProlongToFace
 END INTERFACE
 
-PUBLIC::ProlongToFacePrim
+PUBLIC:: ProlongToFacePrim
 
 CONTAINS
 #include "prolongtoface.t90"
@@ -90,7 +87,7 @@ INTERFACE ProlongToFaceLifting
   MODULE PROCEDURE ProlongToFace
 END INTERFACE
 
-PUBLIC::ProlongToFaceLifting
+PUBLIC:: ProlongToFaceLifting
 
 CONTAINS
 #include "prolongtoface.t90"
@@ -110,11 +107,10 @@ INTERFACE ProlongToFace1
   MODULE PROCEDURE ProlongToFace
 END INTERFACE
 
-PUBLIC::ProlongToFace1
+PUBLIC:: ProlongToFace1
 
 CONTAINS
 #include "prolongtoface.t90"
 END MODULE MOD_ProlongToFace1
 
 !==================================================================================================================================
-

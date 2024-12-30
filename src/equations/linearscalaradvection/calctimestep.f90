@@ -22,10 +22,6 @@ MODULE MOD_CalcTimeStep
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE CALCTIMESTEP
-  MODULE PROCEDURE CALCTIMESTEP
-END INTERFACE
-
 
 PUBLIC :: CALCTIMESTEP
 !==================================================================================================================================
@@ -56,6 +52,7 @@ USE MOD_TimeDisc_Vars,      ONLY:DFLScale
 #if FV_ENABLED
 USE MOD_FV_Vars, ONLY:FV_Elems
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

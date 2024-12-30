@@ -25,30 +25,12 @@ MODULE MOD_Implicit
 IMPLICIT NONE
 PRIVATE
 SAVE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------------------------------------------------
 
-! Public Part ----------------------------------------------------------------------------------------------------------------------
-
-INTERFACE DefineParametersImplicit
-  MODULE PROCEDURE DefineParametersImplicit
-END INTERFACE
-
-INTERFACE InitImplicit
-  MODULE PROCEDURE InitImplicit
-END INTERFACE
-
-INTERFACE Newton
-  MODULE PROCEDURE Newton
-END INTERFACE
-
-INTERFACE FinalizeImplicit
-  MODULE PROCEDURE FinalizeImplicit
-END INTERFACE
-
-PUBLIC::InitImplicit,Newton,FinalizeImplicit,DefineParametersImplicit
+PUBLIC:: DefineParametersImplicit
+PUBLIC:: InitImplicit
+PUBLIC:: Newton
+PUBLIC:: FinalizeImplicit
 !===================================================================================================================================
 
 CONTAINS

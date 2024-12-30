@@ -25,30 +25,16 @@ IMPLICIT NONE
 PRIVATE
 SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
 
 INTEGER,PARAMETER :: SPONGEBASEFLOW_CONSTANT  = 1
 INTEGER,PARAMETER :: SPONGEBASEFLOW_EXACTFUNC = 2
 INTEGER,PARAMETER :: SPONGEBASEFLOW_FILE      = 3
 INTEGER,PARAMETER :: SPONGEBASEFLOW_PRUETT    = 4
 
-INTERFACE InitSponge
-  MODULE PROCEDURE InitSponge
-END INTERFACE
-
-INTERFACE Sponge
-  MODULE PROCEDURE Sponge
-END INTERFACE
-
-INTERFACE FinalizeSponge
-  MODULE PROCEDURE FinalizeSponge
-END INTERFACE
-
-PUBLIC::DefineParametersSponge
-PUBLIC::InitSponge
-PUBLIC::Sponge
-PUBLIC::FinalizeSponge
+PUBLIC:: DefineParametersSponge
+PUBLIC:: InitSponge
+PUBLIC:: Sponge
+PUBLIC:: FinalizeSponge
 !==================================================================================================================================
 
 CONTAINS
@@ -140,7 +126,7 @@ USE MOD_ReadInTools       ,ONLY: GETLOGICAL,GETINT,GETINTFROMSTR,GETREAL,GETSTR
 USE MOD_Restart_Vars      ,ONLY: DoRestart,RestartTime,RestartFile
 USE MOD_Sponge_Vars
 ! IMPLICIT VARIABLE HANDLING
- IMPLICIT NONE
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -560,7 +546,7 @@ USE MOD_IO_HDF5,           ONLY: File_ID
 USE MOD_Mesh_Vars,         ONLY: offsetElem,nGlobalElems,nElems
 USE MOD_Sponge_Vars
 ! IMPLICIT VARIABLE HANDLING
- IMPLICIT NONE
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN) :: FileName                 !< HDF5 filename

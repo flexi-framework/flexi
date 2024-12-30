@@ -42,49 +42,20 @@ MODULE MOD_GetBoundaryFlux
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitBC
-  MODULE PROCEDURE InitBC
-END INTERFACE
-
-INTERFACE GetBoundaryFlux
-  MODULE PROCEDURE GetBoundaryFlux
-END INTERFACE
-
-INTERFACE GetBoundaryState
-  MODULE PROCEDURE GetBoundaryState
-END INTERFACE
-
-INTERFACE FinalizeBC
-  MODULE PROCEDURE FinalizeBC
-END INTERFACE
-
+PUBLIC:: InitBC
+PUBLIC:: GetBoundaryFlux
+PUBLIC:: GetBoundaryState
 #if FV_ENABLED && FV_RECONSTRUCT
-INTERFACE GetBoundaryFVgradient
-  MODULE PROCEDURE GetBoundaryFVgradient
-END INTERFACE
-#endif
-
+PUBLIC:: GetBoundaryFVgradient
+#endif /*FV_ENABLED && FV_RECONSTRUCT*/
 #if PARABOLIC
-INTERFACE Lifting_GetBoundaryFlux
-  MODULE PROCEDURE Lifting_GetBoundaryFlux
-END INTERFACE
-PUBLIC :: Lifting_GetBoundaryFlux
+PUBLIC:: Lifting_GetBoundaryFlux
 #endif /*PARABOLIC*/
-
-PUBLIC :: InitBC
-PUBLIC :: GetBoundaryFlux
-PUBLIC :: FinalizeBC
-PUBLIC :: GetBoundaryState
-#if FV_ENABLED && FV_RECONSTRUCT
-PUBLIC :: GetBoundaryFVgradient
-#endif
+PUBLIC:: FinalizeBC
 !==================================================================================================================================
 
 CONTAINS
-
 
 !==================================================================================================================================
 !> Initialize boundary conditions. Read parameters and sort boundary conditions by types.
@@ -832,6 +803,7 @@ USE MOD_Globals       ,ONLY: Abort
 USE MOD_Mesh_Vars     ,ONLY: BoundaryType,BC
 USE MOD_TestCase      ,ONLY: GetBoundaryFVgradientTestcase
 USE MOD_DG_Vars       ,ONLY: UPrim_Boundary
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -976,7 +948,7 @@ USE MOD_Interpolation_Vars,ONLY:L_minus,L_plus
 USE MOD_ChangeBasisByDim  ,ONLY:ChangeBasisVolume
 USE MOD_EOS               ,ONLY:ConsToPrim
 ! IMPLICIT VARIABLE HANDLING
- IMPLICIT NONE
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN) :: FileName       !< name of file BC data is read from
@@ -1056,6 +1028,7 @@ END SUBROUTINE ReadBCFlow
 SUBROUTINE FinalizeBC()
 ! MODULES
 USE MOD_Equation_Vars,ONLY: BCData,BCDataPrim,nBCByType,BCSideID
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES

@@ -31,21 +31,6 @@ IMPLICIT NONE
 PRIVATE
 SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE InitPPLimiter
-  MODULE PROCEDURE InitPPLimiter
-END INTERFACE
-
-INTERFACE PPLimiter
-  MODULE PROCEDURE PPLimiter
-END INTERFACE
-
-INTERFACE FinalizePPLimiter
-  MODULE PROCEDURE FinalizePPLimiter
-END INTERFACE
-
-INTERFACE PPLimiter_Info
-  MODULE PROCEDURE PPLimiter_Info
-END INTERFACE
 
 PUBLIC:: DefineParametersPPLimiter
 PUBLIC:: InitPPLimiter
@@ -62,6 +47,7 @@ CONTAINS
 SUBROUTINE DefineParametersPPLimiter()
 ! MODULES
 USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -73,6 +59,7 @@ CALL prms%CreateLogicalOption('DoPPLimiter',       "Toggles if positivity preser
 CALL prms%CreateRealOption(   'PPThresholdFactor', "Factor for PP limiter thresholds relative to PPRefState", "1.E-10")
 CALL prms%CreateIntOption(    'PPRefState',        "Index of reference state for PP limiter threshold",       "1")
 END SUBROUTINE DefineParametersPPLimiter
+
 
 !==================================================================================================================================
 !> Initialize  information and  operators
@@ -90,6 +77,7 @@ USE MOD_Interpolation_Vars ,ONLY: wGP
 #if FV_ENABLED
 USE MOD_FV_Vars            ,ONLY: FV_w
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -157,6 +145,7 @@ SWRITE(UNIT_stdOut,'(A)')' INIT POSITIVITY-PRESERVING LIMITER DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitPPLimiter
 
+
 !==================================================================================================================================
 !> Hyperbolicity Preserving Limiter, limits polynomial towards admissible cellmean
 !==================================================================================================================================
@@ -174,6 +163,7 @@ USE MOD_Filter_Vars         ,ONLY: IntegrationWeight
 #if FV_ENABLED
 USE MOD_FV_Vars             ,ONLY: FV_Elems
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -251,6 +241,7 @@ PP_Switch_counter = PP_Switch_counter + 1
 PP_Elems_Amount   = REAL(PP_Elems_Counter)/PP_Switch_counter
 END SUBROUTINE PPLimiter
 
+
 !==================================================================================================================================
 !> Computes t, such that t*U+(1-t)*Umean is admissible (i.e. has p>eps)
 !==================================================================================================================================
@@ -259,6 +250,7 @@ PPURE FUNCTION CalcT(ULoc,UMean) RESULT (tLoc)
 USE MOD_PreProc
 USE MOD_EOS_Vars      ,ONLY: KappaM1
 USE MOD_Filter_Vars   ,ONLY: PPepsPres
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -306,6 +298,7 @@ IF(ISNAN(tLoc).OR.(tLoc.GT.1.).OR.(tLoc.LT.0.)) tLoc=0.
 
 END FUNCTION CalcT
 
+
 !==================================================================================================================================
 !> Print information on the amount of PP subcells
 !==================================================================================================================================
@@ -334,12 +327,14 @@ SWRITE(UNIT_stdOut,'(A,F8.3,A,I0,A)')' PP amount  : ',REAL(totalPP_nElems)/REAL(
 totalPP_nElems = 0
 END SUBROUTINE PPLimiter_Info
 
+
 !==================================================================================================================================
 !> Deallocate filter arrays
 !==================================================================================================================================
 SUBROUTINE FinalizePPLimiter()
 ! MODULES
 USE MOD_Filter_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 SDEALLOCATE(PP_Elems)

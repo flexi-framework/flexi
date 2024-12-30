@@ -24,21 +24,16 @@ MODULE MOD_Vreman
 ! MODULES
 IMPLICIT NONE
 PRIVATE
-
-INTERFACE InitVreman
-  MODULE PROCEDURE InitVreman
-END INTERFACE
+!----------------------------------------------------------------------------------------------------------------------------------
 
 INTERFACE Vreman
   MODULE PROCEDURE Vreman_Point
   MODULE PROCEDURE Vreman_Volume
 END INTERFACE
 
-!INTERFACE FinalizeVreman
-!   MODULE PROCEDURE FinalizeVreman
-!END INTERFACE
-
-PUBLIC::InitVreman, Vreman_Volume, FinalizeVreman
+PUBLIC:: InitVreman
+PUBLIC:: Vreman_Volume
+PUBLIC:: FinalizeVreman
 !===================================================================================================================================
 
 CONTAINS
@@ -54,6 +49,7 @@ USE MOD_EddyVisc_Vars
 USE MOD_ReadInTools        ,ONLY: GETREAL,GETLOGICAL
 USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone,wGP
 USE MOD_Mesh_Vars          ,ONLY: MeshInitIsDone,nElems,sJ
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -99,6 +95,7 @@ END SUBROUTINE InitVreman
 !===================================================================================================================================
 PPURE SUBROUTINE Vreman_Point(gradUx,gradUy,gradUz,dens,CSdeltaS2,muSGS)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -152,6 +149,7 @@ USE MOD_Mesh_Vars,         ONLY: nElems
 USE MOD_EddyVisc_Vars,     ONLY: CSdeltaS2, muSGS
 USE MOD_Lifting_Vars,      ONLY: gradUx, gradUy, gradUz
 USE MOD_DG_Vars,           ONLY: U
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -174,6 +172,7 @@ END SUBROUTINE Vreman_Volume
 SUBROUTINE FinalizeVreman()
 ! MODULES
 USE MOD_EddyVisc_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

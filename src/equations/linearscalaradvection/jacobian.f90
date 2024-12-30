@@ -4,7 +4,7 @@
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -23,33 +23,17 @@ MODULE MOD_Jacobian
 IMPLICIT NONE
 PRIVATE
 SAVE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE dConsdPrim
-  MODULE PROCEDURE dConsdPrim
-END INTERFACE
-
-INTERFACE dPrimdCons
-  MODULE PROCEDURE dPrimdCons
-END INTERFACE
-
-INTERFACE dConsdPrimTemp
-  MODULE PROCEDURE dConsdPrim
-END INTERFACE
-
-INTERFACE dPrimTempdCons
-  MODULE PROCEDURE dPrimdCons
-END INTERFACE
-
-PUBLIC::EvalAdvFluxJacobian
+PUBLIC:: EvalAdvFluxJacobian
 #if PARABOLIC
-PUBLIC::EvalDiffFluxJacobian
-PUBLIC::EvalFluxGradJacobian
+PUBLIC:: EvalDiffFluxJacobian
+PUBLIC:: EvalFluxGradJacobian
 #endif
-PUBLIC::dConsdPrim,dPrimdCons,dConsdPrimTemp,dPrimTempdCons
+PUBLIC:: dConsdPrim
+PUBLIC:: dPrimdCons
+PUBLIC:: dConsdPrimTemp
+PUBLIC:: dPrimTempdCons
 !===================================================================================================================================
 
 CONTAINS
@@ -95,11 +79,12 @@ SUBROUTINE EvalDiffFluxJacobian(nDOF_loc,U,UPrim,gradUx,gradUy,gradUz,fJac,gJac,
                                 )
 ! MODULES
 USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------  
-!----------------------------------------------------------------------------------------------------------------------------------  
+!----------------------------------------------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------------------------------------------------
 INTEGER,INTENT(IN)                                   :: nDOF_loc             !< number of degrees of freedom
 REAL,DIMENSION(PP_nVar        ,nDOF_loc),INTENT(IN)  :: U                    !< solution in conservative variables
 REAL,DIMENSION(PP_nVarPrim    ,nDOF_loc),INTENT(IN)  :: UPrim                !< solution in primitive variables
@@ -115,6 +100,7 @@ fJac = 0.
 gJac = 0.
 hJac = 0.
 END SUBROUTINE EvalDiffFluxJacobian
+
 
 !===================================================================================================================================
 !> Computes the volume derivative of the analytical diffusive flux with respect to the gradient of U: d(F^v)/dQ, Q=grad U
@@ -160,6 +146,7 @@ hJacQz = -DiffC
 END SUBROUTINE EvalFluxGradJacobian
 #endif /*PARABOLIC*/
 
+
 !===================================================================================================================================
 !> The Jacobian of the transformation from conservative to primitive variables
 !===================================================================================================================================
@@ -178,6 +165,7 @@ REAL,DIMENSION(PP_nVar,PP_nVar),INTENT(OUT)     :: Jac      !< cons to prim Jaco
 !===================================================================================================================================
 Jac = 1.
 END SUBROUTINE dConsdPrim
+
 
 !===================================================================================================================================
 !> The Jacobian of the transformation from conservative to primitive variables

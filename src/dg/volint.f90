@@ -29,6 +29,7 @@ MODULE MOD_VolInt
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
+
 INTERFACE VolInt
 #ifndef SPLIT_DG
   MODULE PROCEDURE VolInt_weakForm

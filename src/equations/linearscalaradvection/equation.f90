@@ -22,29 +22,12 @@ MODULE MOD_Equation
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitEquation
-  MODULE PROCEDURE InitEquation
-END INTERFACE
-
-INTERFACE GetPrimitiveStateSurface
-  MODULE PROCEDURE GetPrimitiveStateSurface
-END INTERFACE
-
-INTERFACE GetConservativeStateSurface
-  MODULE PROCEDURE GetConservativeStateSurface
-END INTERFACE
-
-INTERFACE FinalizeEquation
-  MODULE PROCEDURE FinalizeEquation
-END INTERFACE
-
-
-PUBLIC::InitEquation,FinalizeEquation
-PUBLIC:: GetPrimitiveStateSurface,GetConservativeStateSurface
-PUBLIC::DefineParametersEquation
+PUBLIC:: DefineParametersEquation
+PUBLIC:: InitEquation
+PUBLIC:: GetPrimitiveStateSurface
+PUBLIC:: GetConservativeStateSurface
+PUBLIC:: FinalizeEquation
 !==================================================================================================================================
 
 CONTAINS
@@ -55,12 +38,14 @@ CONTAINS
 SUBROUTINE DefineParametersEquation()
 ! MODULES
 USE MOD_ReadInTools ,ONLY: prms
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Equation")
 CALL prms%CreateRealArrayOption('AdvVel',       "Advection velocity for advection part of LinAdv-Diff.")
 CALL prms%CreateRealOption(     'DiffC',        "Diffusion constant for diffusion part of LinAdv-Diff.",'0.')
 END SUBROUTINE DefineParametersEquation
+
 
 !==================================================================================================================================
 !> Read equation parameters (advection velocity, diffusion coeff, exact function)  from the ini file
@@ -72,7 +57,8 @@ USE MOD_ReadInTools,        ONLY:GETREALARRAY,GETREAL
 USE MOD_Interpolation_Vars, ONLY:InterpolationInitIsDone
 USE MOD_Exactfunc          ,ONLY:InitExactFunc
 USE MOD_Equation_Vars
- IMPLICIT NONE
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -117,6 +103,7 @@ SUBROUTINE GetPrimitiveStateSurface(U_master,U_slave,UPrim_master,UPrim_slave)
 ! MODULES
 USE MOD_Preproc
 USE MOD_Mesh_Vars,ONLY:nSides
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -140,7 +127,7 @@ SUBROUTINE GetConservativeStateSurface(UPrim_master,UPrim_slave,U_master,U_slave
 ! MODULES
 USE MOD_Preproc
 USE MOD_Mesh_Vars,ONLY: nSides
-! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -159,16 +146,17 @@ U_master = UPrim_master
 U_slave  = UPrim_slave
 END SUBROUTINE GetConservativeStateSurface
 
+
 !==================================================================================================================================
 !> Finalizes the equation
 !==================================================================================================================================
 SUBROUTINE FinalizeEquation()
 ! MODULES
 USE MOD_Equation_Vars,ONLY:EquationInitIsDone
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 EquationInitIsDone = .FALSE.
 END SUBROUTINE FinalizeEquation
 
 END MODULE MOD_Equation
-

@@ -24,36 +24,17 @@ MODULE MOD_EOS_Posti
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-
-INTERFACE GetMaskCons
-  MODULE PROCEDURE GetMaskCons
-END INTERFACE
-
-INTERFACE GetMaskPrim
-  MODULE PROCEDURE GetMaskPrim
-END INTERFACE
-
-INTERFACE GetMaskGrad
-  MODULE PROCEDURE GetMaskGrad
-END INTERFACE
-
-#if FV_ENABLED && FV_RECONSTRUCT
-INTERFACE AppendNeededPrims
-  MODULE PROCEDURE AppendNeededPrims
-END INTERFACE
-PUBLIC :: AppendNeededPrims
-#endif
 
 PUBLIC :: GetMaskCons
 PUBLIC :: GetMaskPrim
 PUBLIC :: GetMaskGrad
 PUBLIC :: CalcQuantities
+#if FV_ENABLED && FV_RECONSTRUCT
+PUBLIC :: AppendNeededPrims
+#endif
 !==================================================================================================================================
 
 CONTAINS
-
 
 #if FV_ENABLED && FV_RECONSTRUCT
 !==================================================================================================================================
@@ -569,6 +550,7 @@ DO i=1,PRODUCT(nVal)
 END DO
 END FUNCTION FillQcriterion
 
+
 !==================================================================================================================================
 !> Calculate the wall friction in direction dir.
 !==================================================================================================================================
@@ -613,6 +595,7 @@ DO i=1,PRODUCT(nVal)
 END DO
 END FUNCTION FillWallFriction
 
+
 !==================================================================================================================================
 !> Calculate the wall heat transfer normal to the wall.
 !==================================================================================================================================
@@ -648,6 +631,7 @@ DO i=1,PRODUCT(nVal)
   WallHeatTransfer(i) = -1.*mu*Kappa*sKappaM1*R/Pr*gradTn
 END DO
 END FUNCTION FillWallHeatTransfer
+
 
 !==================================================================================================================================
 !> Calculate the non dimensional grid spacing. This is a special case since we need information about the mesh. Thus

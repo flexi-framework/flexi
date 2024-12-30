@@ -23,7 +23,8 @@ MODULE MOD_Lifting
 IMPLICIT NONE
 PRIVATE
 SAVE
-!==================================================================================================================================
+!----------------------------------------------------------------------------------------------------------------------------------
+
 INTERFACE Lifting
 #if PP_Lifting==1
   MODULE PROCEDURE Lifting_BR1
@@ -37,21 +38,14 @@ INTERFACE Lifting_VolInt
   MODULE PROCEDURE Lifting_VolInt_Nonconservative
 END INTERFACE
 !==================================================================================================================================
-
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitLifting
-  MODULE PROCEDURE InitLifting
-END INTERFACE
-
-INTERFACE FinalizeLifting
-  MODULE PROCEDURE FinalizeLifting
-END INTERFACE
-
-PUBLIC::DefineParametersLifting,InitLifting,FinalizeLifting
-PUBLIC::Lifting
+PUBLIC:: DefineParametersLifting
+PUBLIC:: InitLifting
+PUBLIC:: Lifting
+PUBLIC:: FinalizeLifting
 !==================================================================================================================================
 
 CONTAINS
@@ -70,6 +64,7 @@ CONTAINS
 SUBROUTINE DefineParametersLifting()
 ! MODULES
 USE MOD_ReadInTools ,ONLY: prms
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -89,6 +84,7 @@ CALL prms%CreateRealOption(   'etaBR2_wall',           "Lifting penalty for BR2 
                                                        "to decrease wall velocities.", '-1')
 #endif
 END SUBROUTINE DefineParametersLifting
+
 
 !==================================================================================================================================
 !> \brief Initialize the BR1 and BR2 lifting: get parameters and allocate the arrays required for the BR1/BR2 lifting procedure.
@@ -121,6 +117,7 @@ USE MOD_ReadInTools,          ONLY: GETREAL,GETLOGICAL
 #if USE_MPI
 USE MOD_MPI_Vars
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -193,7 +190,9 @@ diffFluxZ_R=0.
 LiftingInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT LIFTING DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
+
 END SUBROUTINE InitLifting
+
 
 !==================================================================================================================================
 !> FinalizeLifting
@@ -201,6 +200,7 @@ END SUBROUTINE InitLifting
 SUBROUTINE FinalizeLifting()
 ! MODULES
 USE MOD_Lifting_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 SDEALLOCATE(gradUx_slave)
@@ -224,6 +224,7 @@ SDEALLOCATE(diffFluxY_R)
 SDEALLOCATE(diffFluxZ_L)
 SDEALLOCATE(diffFluxZ_R)
 LiftingInitIsDone = .FALSE.
+
 END SUBROUTINE FinalizeLifting
 
 END MODULE MOD_Lifting

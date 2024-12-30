@@ -22,28 +22,12 @@ MODULE MOD_SparseILU
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
-INTERFACE InitSparseILU
-  MODULE PROCEDURE InitSparseILU
-END INTERFACE
+!----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE FinalizeSparseILU
-  MODULE PROCEDURE FinalizeSparseILU
-END INTERFACE
-
-INTERFACE BuildILU0
-  MODULE PROCEDURE BuildILU0
-END INTERFACE
-
-INTERFACE ApplyILU
-  MODULE PROCEDURE ApplyILU
-END INTERFACE
-
-PUBLIC:: InitSparseILU,FinalizeSparseILU,BuildILU0,ApplyILU
+PUBLIC:: InitSparseILU
+PUBLIC:: FinalizeSparseILU
+PUBLIC:: BuildILU
+PUBLIC:: ApplyILU
 !===================================================================================================================================
 
 CONTAINS
@@ -89,6 +73,7 @@ epsZero=EPSILON(0.0d0)
 SWRITE(UNIT_stdOut,'(A)')' INIT ILU0 DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitSparseILU
+
 
 !===================================================================================================================================
 !> Build the ILU0 per Block in the csr format
@@ -255,6 +240,7 @@ IL(iElem)%iEntry(nDOFVarElem)=IL(iElem)%iEntry(1)+nLNonZeros(iElem)
 
 END SUBROUTINE BuildILU0
 
+
 !==================================================================================================================================
 !> Application of block ILU0 preconditioner
 !==================================================================================================================================
@@ -303,6 +289,7 @@ DO iElem=1,nElems
 END DO
 
 END SUBROUTINE ApplyILU
+
 
 !===================================================================================================================================
 !> Finalize Sparse ILU

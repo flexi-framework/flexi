@@ -23,12 +23,6 @@ MODULE MOD_EOS
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-
-INTERFACE InitEOS
-  MODULE PROCEDURE InitEOS
-END INTERFACE
 
 INTERFACE ConsToPrim
   MODULE PROCEDURE ConsToPrim
@@ -54,17 +48,13 @@ INTERFACE EntropyToCons
   MODULE PROCEDURE EntropyToCons_Side
 END INTERFACE
 
-INTERFACE PRESSURE_RIEMANN
-  MODULE PROCEDURE PRESSURE_RIEMANN
-END INTERFACE
-
-PUBLIC::InitEos
-PUBLIC::ConsToPrim
-PUBLIC::PrimToCons
-PUBLIC::ConsToEntropy
-PUBLIC::EntropyToCons
-PUBLIC::PRESSURE_RIEMANN
-PUBLIC::DefineParametersEos
+PUBLIC:: DefineParametersEos
+PUBLIC:: InitEos
+PUBLIC:: ConsToPrim
+PUBLIC:: PrimToCons
+PUBLIC:: ConsToEntropy
+PUBLIC:: EntropyToCons
+PUBLIC:: PRESSURE_RIEMANN
 !==================================================================================================================================
 
 CONTAINS
@@ -98,6 +88,7 @@ CALL prms%CreateRealOption(     'ExpoSuth',     "Sutherland's law for variable v
 
 END SUBROUTINE DefineParametersEos
 
+
 !==================================================================================================================================
 !> Initialize variables needed by the ideal gas equation of state.
 !==================================================================================================================================
@@ -117,7 +108,6 @@ USE MOD_EOS_Vars      ,ONLY: Ts,cSuth
 USE MOD_EOS_Vars      ,ONLY: Tref,ExpoSuth
 #endif
 #endif /*PARABOLIC*/
-
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -195,12 +185,14 @@ SWRITE(UNIT_stdOut,'(A)')' INIT IDEAL-GAS DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitEos
 
+
 !==================================================================================================================================
 !> Transformation from conservative variables to primitive variables for a single state
 !==================================================================================================================================
 PPURE SUBROUTINE ConsToPrim(prim,cons)
 ! MODULES
 USE MOD_EOS_Vars,ONLY:KappaM1,R
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -226,11 +218,13 @@ prim(PRES)=KappaM1*(cons(ENER)-0.5*SUM(cons(MOMV)*prim(VELV)))
 prim(TEMP) = prim(PRES)*sRho / R
 END SUBROUTINE ConsToPrim
 
+
 !==================================================================================================================================
 !> Transformation from conservative variables to primitive variables on a single side
 !==================================================================================================================================
 PPURE SUBROUTINE ConsToPrim_Side(Nloc,prim,cons)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -246,11 +240,13 @@ DO q=0,ZDIM(Nloc); DO p=0,Nloc
 END DO; END DO
 END SUBROUTINE ConsToPrim_Side
 
+
 !==================================================================================================================================
 !> Transformation from conservative variables to primitive variables in the whole volume
 !==================================================================================================================================
 PPURE SUBROUTINE ConsToPrim_Elem(Nloc,prim,cons)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -266,12 +262,14 @@ DO k=0,ZDIM(Nloc); DO j=0,Nloc; DO i=0,Nloc
 END DO; END DO; END DO! i,j,k=0,Nloc
 END SUBROUTINE ConsToPrim_Elem
 
+
 !==================================================================================================================================
 !> Transformation from conservative variables to primitive variables in the whole volume
 !==================================================================================================================================
 PPURE SUBROUTINE ConsToPrim_Volume(Nloc,prim,cons)
 ! MODULES
 USE MOD_Mesh_Vars,ONLY:nElems
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -289,12 +287,14 @@ DO iElem=1,nElems
 END DO ! iElem
 END SUBROUTINE ConsToPrim_Volume
 
+
 !==================================================================================================================================
 !> Transformation from primitive to conservative variables for a single state
 !==================================================================================================================================
 PPURE SUBROUTINE PrimToCons(prim,cons)
 ! MODULES
 USE MOD_EOS_Vars,ONLY:sKappaM1
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -316,11 +316,13 @@ cons(MOM3)=0.
 cons(ENER)=sKappaM1*prim(PRES)+0.5*SUM(cons(MOMV)*prim(VELV))
 END SUBROUTINE PrimToCons
 
+
 !==================================================================================================================================
 !> Transformation from primitive to conservative variables on a single side
 !==================================================================================================================================
 PPURE SUBROUTINE PrimToCons_Side(Nloc,prim,cons)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -336,11 +338,13 @@ DO q=0,ZDIM(Nloc); DO p=0,Nloc
 END DO; END DO ! p,q=0,Nloc
 END SUBROUTINE PrimToCons_Side
 
+
 !==================================================================================================================================
 !> Transformation from primitive to conservative variables in the whole volume
 !==================================================================================================================================
 PPURE SUBROUTINE PrimToCons_Elem(Nloc,prim,cons)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -356,12 +360,14 @@ DO k=0,ZDIM(Nloc); DO j=0,Nloc; DO i=0,Nloc
 END DO; END DO; END DO
 END SUBROUTINE PrimToCons_Elem
 
+
 !==================================================================================================================================
 !> Transformation from primitive to conservative variables in the whole volume
 !==================================================================================================================================
 PPURE SUBROUTINE PrimToCons_Volume(Nloc,prim,cons)
 ! MODULES
 USE MOD_Mesh_Vars,ONLY:nElems
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -378,6 +384,7 @@ DO iElem=1,nElems
   END DO; END DO; END DO
 END DO
 END SUBROUTINE PrimToCons_Volume
+
 
 !==================================================================================================================================
 !> Transformation from conservative variables U to entropy vector, dS/dU, S = -rho*s/(kappa-1), s=ln(p)-kappa*ln(rho)
@@ -415,6 +422,7 @@ entropy(ENER)      = - rho_p          ! -ρ / p
 
 END SUBROUTINE ConsToEntropy
 
+
 !==================================================================================================================================
 !> Transformation from entropy to conservative variables U, dS/dU, S = -rho*s/(kappa-1), s=ln(p)-kappa*ln(rho)
 !==================================================================================================================================
@@ -446,6 +454,7 @@ cons(ENER) = rhoe * (1 - SUM(entropy2(MOMV)**2) * 0.5/ entropy2(ENER)) !sKappaM1
 
 END SUBROUTINE EntropyToCons
 
+
 !==================================================================================================================================
 !> Transformation from primitive to conservative variables in the whole volume
 !==================================================================================================================================
@@ -469,10 +478,12 @@ DO iElem=1,nElems
 END DO
 END SUBROUTINE ConsToEntropy_Volume
 
+
 !> Transformation from primitive to conservative variables on a single side
 !==================================================================================================================================
 PPURE SUBROUTINE EntropyToCons_Side(Nloc,entropy,cons)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -487,6 +498,7 @@ DO q=0,ZDIM(Nloc); DO p=0,Nloc
   CALL EntropyToCons(entropy(:,p,q),cons(:,p,q))
 END DO; END DO ! p,q=0,Nloc
 END SUBROUTINE EntropyToCons_Side
+
 
 !==================================================================================================================================
 !> Riemann solver function to get pressure at BCs
@@ -515,6 +527,5 @@ ELSE ! shock
 END IF
 PRESSURE_RIEMANN=P_RP
 END FUNCTION PRESSURE_RIEMANN
-
 
 END MODULE MOD_EOS

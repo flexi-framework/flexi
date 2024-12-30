@@ -22,34 +22,21 @@ MODULE MOD_TimeAverage
 USE MOD_Analyze_Vars
 IMPLICIT NONE
 PRIVATE
-
-!----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitCalcTimeAverage
-  MODULE PROCEDURE InitCalcTimeAverage
-END INTERFACE
-
-INTERFACE FinalizeTimeAverage
-  MODULE PROCEDURE FinalizeTimeAverage
-END INTERFACE
-
-INTERFACE CalcTimeAverage
-  MODULE PROCEDURE CalcTimeAverage
-END INTERFACE
-
-PUBLIC::InitCalcTimeAverage, FinalizeTimeAverage, CalcTimeAverage
+PUBLIC:: InitCalcTimeAverage
+PUBLIC:: CalcTimeAverage
+PUBLIC:: FinalizeTimeAverage
 !==================================================================================================================================
+
 CONTAINS
-
-
 
 !==================================================================================================================================
 !> Initializes the time averaging variable
 !==================================================================================================================================
 SUBROUTINE InitCalcTimeAverage()
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -64,6 +51,7 @@ END SUBROUTINE InitCalcTimeAverage
 !==================================================================================================================================
 SUBROUTINE CalcTimeAverage(Finalize,dt,t)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -76,12 +64,12 @@ REAL,INTENT(IN),OPTIONAL        :: t
 END SUBROUTINE CalcTimeAverage
 
 
-
 !==================================================================================================================================
 !> Finalizes the time averaging routines
 !==================================================================================================================================
 SUBROUTINE FinalizeTimeAverage()
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

@@ -26,33 +26,14 @@ MODULE MOD_Predictor
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
+PRIVATE
+!----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitPredictor
-  MODULE PROCEDURE InitPredictor
-END INTERFACE
-
-INTERFACE FillInitPredictor
-  MODULE PROCEDURE FillInitPredictor
-END INTERFACE
-
-INTERFACE Predictor
-  MODULE PROCEDURE Predictor
-END INTERFACE
-
-INTERFACE PredictorStoreValues
-  MODULE PROCEDURE PredictorStoreValues
-END INTERFACE
-
-INTERFACE FinalizePredictor
-  MODULE PROCEDURE FinalizePredictor
-END INTERFACE
-
-PUBLIC:: InitPredictor,FillInitPredictor,Predictor,PredictorStoreValues,FinalizePredictor
+PUBLIC:: InitPredictor
+PUBLIC:: FillInitPredictor
+PUBLIC:: Predictor
+PUBLIC:: PredictorStoreValues
+PUBLIC:: FinalizePredictor
 !===================================================================================================================================
 
 CONTAINS
@@ -113,6 +94,7 @@ IF(TimeDiscType.EQ.'ESDIRK')THEN
 END IF
 END SUBROUTINE InitPredictor
 
+
 !===================================================================================================================================
 !> Initially fills stage values so that the predictor works also at first timestep
 !===================================================================================================================================
@@ -148,6 +130,7 @@ CASE(3)
 END SELECT
 
 END SUBROUTINE FillInitPredictor
+
 
 !===================================================================================================================================
 !> Predicts the new stage-value to decrease computational time
@@ -221,6 +204,7 @@ END SELECT
 
 END SUBROUTINE Predictor
 
+
 !===================================================================================================================================
 !> Stores information of old stages required for extrapolation, get's called after a stage is finished.
 !===================================================================================================================================
@@ -265,6 +249,7 @@ CASE(3)
 END SELECT
 
 END SUBROUTINE PredictorStoreValues
+
 
 !===================================================================================================================================
 !> Deallocate global variables required for predictor

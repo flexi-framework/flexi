@@ -25,8 +25,7 @@ MODULE MOD_Riemann
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
+
 ABSTRACT INTERFACE
   PPURE SUBROUTINE RiemannInt(F_L,F_R,U_LL,U_RR,F)
     REAL,DIMENSION(PP_2Var),INTENT(IN) :: U_LL,U_RR
@@ -53,10 +52,6 @@ INTEGER,PARAMETER      :: PRM_RIEMANN_CH                  = 7
 INTEGER,PARAMETER      :: PRM_RIEMANN_Average             = 0
 #endif
 
-INTERFACE InitRiemann
-  MODULE PROCEDURE InitRiemann
-END INTERFACE
-
 INTERFACE Riemann
   MODULE PROCEDURE Riemann_Point
   MODULE PROCEDURE Riemann_Side
@@ -69,16 +64,12 @@ INTERFACE ViscousFlux
 END INTERFACE
 #endif
 
-INTERFACE FinalizeRiemann
-  MODULE PROCEDURE FinalizeRiemann
-END INTERFACE
-
-PUBLIC::DefineParametersRiemann
-PUBLIC::InitRiemann
-PUBLIC::Riemann
-PUBLIC::FinalizeRiemann
+PUBLIC:: DefineParametersRiemann
+PUBLIC:: InitRiemann
+PUBLIC:: Riemann
+PUBLIC:: FinalizeRiemann
 #if PARABOLIC
-PUBLIC::ViscousFlux
+PUBLIC:: ViscousFlux
 #endif
 !==================================================================================================================================
 
@@ -143,7 +134,7 @@ SUBROUTINE InitRiemann()
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadInTools ,ONLY: GETINTFROMSTR, GETREAL
-!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -867,6 +858,7 @@ USE MOD_EOS_Vars  ,ONLY: Kappa,KappaM1
 #ifdef SPLIT_DG
 USE MOD_SplitFlux ,ONLY: SplitDGSurface_pointer
 #endif /*SPLIT_DG*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -972,6 +964,7 @@ F= F - 0.5*(Alpha(1)*a(1)*r1 + &
             Alpha(5)*a(5)*r5)
 #endif /*SPLIT_DG*/
 END SUBROUTINE Riemann_RoeEntropyGShockFix
+
 
 !=================================================================================================================================
 !> low mach number Roe's approximate Riemann solver according to Oßwald(2015)

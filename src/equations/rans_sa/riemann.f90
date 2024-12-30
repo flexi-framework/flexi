@@ -21,8 +21,7 @@ MODULE MOD_Riemann
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
+
 ABSTRACT INTERFACE
   PPURE SUBROUTINE RiemannInt(F_L,F_R,U_LL,U_RR,F)
     REAL,DIMENSION(PP_2Var),INTENT(IN) :: U_LL,U_RR
@@ -38,10 +37,6 @@ INTEGER,PARAMETER      :: PRM_RIEMANN_SAME          = -1
 INTEGER,PARAMETER      :: PRM_RIEMANN_LF            = 1
 INTEGER,PARAMETER      :: PRM_RIEMANN_ROEENTROPYFIX = 33
 
-INTERFACE InitRiemann
-  MODULE PROCEDURE InitRiemann
-END INTERFACE
-
 INTERFACE Riemann
   MODULE PROCEDURE Riemann_Point
   MODULE PROCEDURE Riemann_Side
@@ -54,16 +49,12 @@ INTERFACE ViscousFlux
 END INTERFACE
 #endif
 
-INTERFACE FinalizeRiemann
-  MODULE PROCEDURE FinalizeRiemann
-END INTERFACE
-
-PUBLIC::DefineParametersRiemann
-PUBLIC::InitRiemann
-PUBLIC::Riemann
-PUBLIC::FinalizeRiemann
+PUBLIC:: DefineParametersRiemann
+PUBLIC:: InitRiemann
+PUBLIC:: Riemann
+PUBLIC:: FinalizeRiemann
 #if PARABOLIC
-PUBLIC::ViscousFlux
+PUBLIC:: ViscousFlux
 #endif
 !==================================================================================================================================
 
@@ -101,8 +92,9 @@ SUBROUTINE InitRiemann()
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadInTools ,ONLY: GETINTFROMSTR
-!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -143,6 +135,7 @@ END SUBROUTINE InitRiemann
 SUBROUTINE Riemann_Side(Nloc,FOut,U_L,U_R,UPrim_L,UPrim_R,nv,t1,t2,doBC)
 ! MODULES
 USE MOD_Flux         ,ONLY:EvalEulerFlux1D_fast
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -327,6 +320,7 @@ SUBROUTINE ViscousFlux_Side(Nloc,F,UPrim_L,UPrim_R, &
 USE MOD_Flux         ,ONLY: EvalDiffFlux3D
 USE MOD_Lifting_Vars ,ONLY: diffFluxX_L,diffFluxY_L,diffFluxZ_L
 USE MOD_Lifting_Vars ,ONLY: diffFluxX_R,diffFluxY_R,diffFluxZ_R
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -357,6 +351,7 @@ DO q=0,ZDIM(Nloc); DO p=0,Nloc
 END DO; END DO
 END SUBROUTINE ViscousFlux_Side
 
+
 !==================================================================================================================================
 !> Computes the viscous NSE diffusion fluxes in all directions to approximate the numerical flux
 !> Actually not a Riemann solver, only here for coding reasons
@@ -365,6 +360,7 @@ SUBROUTINE ViscousFlux_Point(F,UPrim_L,UPrim_R, &
                              gradUx_L,gradUy_L,gradUz_L,gradUx_R,gradUy_R,gradUz_R,nv)
 ! MODULES
 USE MOD_Flux         ,ONLY: EvalDiffFlux3D
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -401,6 +397,7 @@ END SUBROUTINE ViscousFlux_Point
 PPURE SUBROUTINE Riemann_LF(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -431,6 +428,7 @@ USE MOD_EOS_Vars      ,ONLY: Kappa,KappaM1
 #ifdef SPLIT_DG
 USE MOD_SplitFlux ,ONLY: SplitDGSurface_pointer
 #endif /*SPLIT_DG*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -530,6 +528,7 @@ END SUBROUTINE Riemann_RoeEntropyFix
 !==================================================================================================================================
 SUBROUTINE FinalizeRiemann()
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES

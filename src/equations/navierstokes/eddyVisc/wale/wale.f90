@@ -24,21 +24,16 @@ MODULE MOD_WALE
 ! MODULES
 IMPLICIT NONE
 PRIVATE
-
-INTERFACE InitWALE
-  MODULE PROCEDURE InitWALE
-END INTERFACE
+!----------------------------------------------------------------------------------------------------------------------------------
 
 INTERFACE WALE
   MODULE PROCEDURE WALE_Point
   MODULE PROCEDURE WALE_Volume
 END INTERFACE
 
-INTERFACE FinalizeWALE
-  MODULE PROCEDURE FinalizeWALE
-END INTERFACE
-
-PUBLIC::InitWALE, WALE_Volume, FinalizeWALE
+PUBLIC:: InitWALE
+PUBLIC:: WALE_Volume
+PUBLIC:: FinalizeWALE
 !===================================================================================================================================
 
 CONTAINS
@@ -54,6 +49,7 @@ USE MOD_EddyVisc_Vars
 USE MOD_ReadInTools        ,ONLY: GETREAL,GETLOGICAL
 USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone,wGP
 USE MOD_Mesh_Vars          ,ONLY: MeshInitIsDone,nElems,sJ
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -98,6 +94,7 @@ END SUBROUTINE InitWALE
 !===================================================================================================================================
 PPURE SUBROUTINE WALE_Point(gradUx,gradUy,gradUz,dens,CsDeltaS2,muSGS)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -157,6 +154,7 @@ USE MOD_Mesh_Vars,         ONLY: nElems
 USE MOD_EddyVisc_Vars,     ONLY: CsDeltaS2, muSGS
 USE MOD_Lifting_Vars,      ONLY: gradUx, gradUy, gradUz
 USE MOD_DG_Vars,           ONLY: U
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -179,6 +177,7 @@ END SUBROUTINE WALE_Volume
 SUBROUTINE FinalizeWALE()
 ! MODULES
 USE MOD_EddyVisc_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

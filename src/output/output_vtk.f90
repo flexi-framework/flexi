@@ -23,54 +23,30 @@ USE ISO_C_BINDING
 ! MODULES
 IMPLICIT NONE
 PRIVATE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------------------------------------------------
+
 TYPE, BIND(C) :: CARRAY
   INTEGER (C_INT) :: len
   INTEGER (C_INT) :: dim
   TYPE (C_PTR)    :: data
 END TYPE CARRAY
 
-INTERFACE WriteDataToVTK
-  MODULE PROCEDURE WriteDataToVTK
-END INTERFACE
-
-INTERFACE WriteVTKMultiBlockDataSet
-  MODULE PROCEDURE WriteVTKMultiBlockDataSet
-END INTERFACE
-
-INTERFACE WriteCoordsToVTK_array
-  MODULE PROCEDURE WriteCoordsToVTK_array
-END INTERFACE
-
-INTERFACE WriteDataToVTK_array
-  MODULE PROCEDURE WriteDataToVTK_array
-END INTERFACE
-
-INTERFACE WriteVarnamesToVTK_array
-  MODULE PROCEDURE WriteVarnamesToVTK_array
-END INTERFACE
-
+PUBLIC:: WriteDataToVTK
+PUBLIC:: WriteVTKMultiBlockDataSet
+PUBLIC:: WriteCoordsToVTK_array
+PUBLIC:: WriteDataToVTK_array
+PUBLIC:: WriteVarnamesToVTK_array
 #if USE_MPI
-INTERFACE WriteParallelVTK
-  MODULE PROCEDURE WriteParallelVTK
-END INTERFACE
+PUBLIC:: WriteParallelVTK
 #endif /*USE_MPI*/
-
-PUBLIC::WriteDataToVTK
-PUBLIC::WriteVTKMultiBlockDataSet
-PUBLIC::WriteCoordsToVTK_array
-PUBLIC::WriteDataToVTK_array
-PUBLIC::WriteVarnamesToVTK_array
-#if USE_MPI
-PUBLIC::WriteParallelVTK
-#endif /*USE_MPI*/
-PUBLIC::CARRAY
+PUBLIC:: CARRAY
 !===================================================================================================================================
 
 CONTAINS
 
+!===================================================================================================================================
+! >
+!===================================================================================================================================
 SUBROUTINE CreateConnectivity(NVisu,nElems,nodeids,dim,DGFV,HighOrder)
 ! MODULES
 USE ISO_C_BINDING
@@ -269,6 +245,7 @@ ELSE
 END IF
 
 END SUBROUTINE CreateConnectivity
+
 
 !===================================================================================================================================
 !> Subroutine to write 2D or 3D point data to VTK format
@@ -631,12 +608,14 @@ ENDIF
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
 END SUBROUTINE WriteDataToVTK
 
+
 !===================================================================================================================================
 !> Links DG and FV VTK files together
 !===================================================================================================================================
 SUBROUTINE WriteVTKMultiBlockDataSet(FileString,FileString_DG,FileString_FV,OutputDirectory)
 ! MODULES
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -688,6 +667,7 @@ IF (MPIRoot) THEN
   ENDIF
 ENDIF
 END SUBROUTINE WriteVTKMultiBlockDataSet
+
 
 #if USE_MPI
 !===================================================================================================================================
@@ -767,12 +747,13 @@ ENDIF
 END SUBROUTINE WriteParallelVTK
 #endif /*USE_MPI*/
 
+
 !===================================================================================================================================
 !> Subroutine to write 2D or 3D coordinates to VTK format
 !===================================================================================================================================
 SUBROUTINE WriteCoordsToVTK_array(NVisu,nElems,coords_out,nodeids_out,coords,nodeids,dim,DGFV,HighOrder)
-USE ISO_C_BINDING
 ! MODULES
+! USE ISO_C_BINDING
 USE MOD_Globals
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -824,12 +805,13 @@ SWRITE(UNIT_stdOut,'(A)')" Done!"
 
 END SUBROUTINE WriteCoordsToVTK_array
 
+
 !===================================================================================================================================
 !> Subroutine to write actual 2D or 3D point data to VTK format
 !===================================================================================================================================
 SUBROUTINE WriteDataToVTK_array(nVal,NVisu,nElems,Values_out,values,dim)
-USE ISO_C_BINDING
 ! MODULES
+! USE ISO_C_BINDING
 USE MOD_Globals
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -865,12 +847,13 @@ END IF
 SWRITE(UNIT_stdOut,'(A)')" Done!"
 END SUBROUTINE WriteDataToVTK_array
 
+
 !===================================================================================================================================
 !> Subroutine to write variable names to VTK format
 !===================================================================================================================================
 SUBROUTINE WriteVarnamesToVTK_array(nVarTotal,mapVisu,varnames_out,VarNamesTotal,nVarVisu)
-USE ISO_C_BINDING
 ! MODULES
+! USE ISO_C_BINDING
 USE MOD_Globals
 USE MOD_StringTools    ,ONLY: STRICMP
 ! IMPLICIT VARIABLE HANDLING

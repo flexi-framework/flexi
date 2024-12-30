@@ -21,11 +21,6 @@ MODULE MOD_TimeDisc_Vars
 IMPLICIT NONE
 PUBLIC
 SAVE
-
-INTERFACE SetTimeDiscCoefs
-  MODULE PROCEDURE SetTimeDiscCoefs
-END INTERFACE
-
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -103,7 +98,6 @@ REAL                :: RelativeDFL          !< scaling factor for DFL defined by
 #endif /*PARABOLIC*/
 REAL                :: b2,b2hat,b3hat,safety,ESDIRK_gamma
 REAL,ALLOCATABLE    :: RKA_implicit(:,:),RKc_implicit(:),RKb_implicit(:),RKb_embedded(:),RKb_denseout(:,:)
-
 
 CONTAINS
 

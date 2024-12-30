@@ -22,32 +22,13 @@ MODULE MOD_Mathtools
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE INVERSE
-   MODULE PROCEDURE INVERSE
-END INTERFACE
 
-INTERFACE INVERSE_LU
-  MODULE PROCEDURE INVERSE_LU
-END INTERFACE
-
-INTERFACE CROSS
-  MODULE PROCEDURE CROSS
-END INTERFACE CROSS
-
+PUBLIC:: INVERSE
+PUBLIC:: INVERSE_LU
+PUBLIC:: CROSS
+PUBLIC:: GlobalVectorDotProduct
 #if !VDM_ANALYTICAL
-INTERFACE GetSPDInverse
-   MODULE PROCEDURE GetSPDInverse
-END INTERFACE
-#endif /*!VDM_ANALYTICAL*/
-
-PUBLIC::INVERSE
-PUBLIC::INVERSE_LU
-PUBLIC::CROSS
-PUBLIC::GlobalVectorDotProduct
-#if !VDM_ANALYTICAL
-PUBLIC::GetSPDInverse
+PUBLIC:: GetSPDInverse
 #endif /*!VDM_ANALYTICAL*/
 !==================================================================================================================================
 
@@ -363,6 +344,7 @@ REAL            :: CROSS(3) !< cross product of vectors
 CROSS=(/v1(2)*v2(3)-v1(3)*v2(2),v1(3)*v2(1)-v1(1)*v2(3),v1(1)*v2(2)-v1(2)*v2(1)/)
 END FUNCTION CROSS
 
+
 !===================================================================================================================================
 !> Computes the global dot Product for vectors a and b: resu=a.b. Each processor computes the local dot product, then an allreduce
 !> is called.
@@ -395,6 +377,7 @@ CALL MPI_ALLREDUCE(MPI_IN_PLACE,Resu,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLE
 #endif
 
 END SUBROUTINE GlobalVectorDotProduct
+
 
 #if !VDM_ANALYTICAL
 FUNCTION GetSPDInverse(dim1,A) RESULT(Ainv)
