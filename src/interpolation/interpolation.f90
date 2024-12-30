@@ -25,9 +25,9 @@
 MODULE MOD_Interpolation
 ! MODULES
 USE MOD_Basis
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
-SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 
 PUBLIC:: DefineParametersInterpolation

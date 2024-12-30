@@ -25,7 +25,6 @@ MODULE MOD_Jac_Split
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
-SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 
 PUBLIC:: Jac_Split

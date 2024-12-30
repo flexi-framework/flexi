@@ -22,42 +22,16 @@ MODULE MOD_Jac_Ex_Vol
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
-SAVE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-! Public Part ----------------------------------------------------------------------------------------------------------------------
-INTERFACE DGVolIntJac
-  MODULE PROCEDURE DGVolIntJac
-END INTERFACE
-
+PUBLIC:: DGVolIntJac
 #if FV_ENABLED
-INTERFACE FVVolIntJac
-  MODULE PROCEDURE FVVolIntJac
-END INTERFACE
-#endif
-
-#if PARABOLIC
-INTERFACE DGVolIntGradJac
-  MODULE PROCEDURE DGVolIntGradJac
-END INTERFACE
-
-#if FV_RECONSTRUCT
-INTERFACE FVVolIntGradJac
-  MODULE PROCEDURE FVVolIntGradJac
-END INTERFACE
-#endif
-#endif
-
-PUBLIC::DGVolIntJac
-#if FV_ENABLED
-PUBLIC::FVVolIntJac
+PUBLIC:: FVVolIntJac
 #endif
 #if PARABOLIC
-PUBLIC::DGVolIntGradJac
+PUBLIC:: DGVolIntGradJac
 #if FV_RECONSTRUCT
-PUBLIC::FVVolIntGradJac
+PUBLIC:: FVVolIntGradJac
 #endif
 #endif
 !===================================================================================================================================

@@ -29,29 +29,13 @@ MODULE MOD_Jac_Ex_br2
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
-SAVE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-! Public Part ----------------------------------------------------------------------------------------------------------------------
-INTERFACE FillJacLiftingFlux
-  MODULE PROCEDURE FillJacLiftingFlux
-END INTERFACE
-
-INTERFACE JacLifting_VolGrad
-  MODULE PROCEDURE JacLifting_VolGrad
-END INTERFACE
-
-INTERFACE dQOuter
-  MODULE PROCEDURE dQOuter
-END INTERFACE
-
-INTERFACE dQInner
-  MODULE PROCEDURE dQInner
-END INTERFACE
-
-PUBLIC::FillJacLiftingFlux,JacLifting_VolGrad,Build_BR2_SurfTerms,dQOuter,dQInner
+PUBLIC:: FillJacLiftingFlux
+PUBLIC:: JacLifting_VolGrad
+PUBLIC:: Build_BR2_SurfTerms
+PUBLIC:: dQOuter
+PUBLIC:: dQInner
 !===================================================================================================================================
 
 CONTAINS

@@ -22,7 +22,6 @@ MODULE MOD_Jacobian
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
-SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 
 PUBLIC:: EvalAdvFluxJacobian

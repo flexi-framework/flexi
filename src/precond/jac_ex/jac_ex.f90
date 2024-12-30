@@ -23,26 +23,11 @@ MODULE MOD_Jac_Ex
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
-SAVE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-! Public Part ----------------------------------------------------------------------------------------------------------------------
-INTERFACE InitJac_Ex
-  MODULE PROCEDURE InitJac_Ex
-END INTERFACE
-
-INTERFACE Jac_Ex
-  MODULE PROCEDURE Jac_Ex
-END INTERFACE
-
-INTERFACE FinalizeJac_Ex
-  MODULE PROCEDURE FinalizeJac_Ex
-END INTERFACE
-
-
-PUBLIC::InitJac_Ex,Jac_Ex,FinalizeJac_Ex
+PUBLIC:: InitJac_Ex
+PUBLIC:: Jac_Ex
+PUBLIC:: FinalizeJac_Ex
 !===================================================================================================================================
 
 CONTAINS

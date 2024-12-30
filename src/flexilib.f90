@@ -16,20 +16,14 @@
 #include "commit.h"
 
 MODULE MOD_Flexi
-
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
-SAVE
+!-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitFlexi
-   MODULE PROCEDURE InitFlexi
-END INTERFACE
-
-INTERFACE FinalizeFlexi
-   MODULE PROCEDURE FinalizeFlexi
-END INTERFACE
-
-PUBLIC::InitFlexi,FinalizeFlexi
+PUBLIC:: InitFlexi
+PUBLIC:: FinalizeFlexi
 
 CONTAINS
 

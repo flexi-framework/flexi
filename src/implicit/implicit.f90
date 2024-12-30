@@ -24,7 +24,6 @@ MODULE MOD_Implicit
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
-SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 
 PUBLIC:: DefineParametersImplicit
