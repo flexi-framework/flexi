@@ -85,7 +85,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)            :: nArgs_In
-CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: Args_In(*)
+CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: Args_In(:)
 INTEGER,INTENT(IN),OPTIONAL   :: mpi_comm_loc
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
