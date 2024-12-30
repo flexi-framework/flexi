@@ -328,6 +328,7 @@ END SUBROUTINE InitRPBasis
 !==================================================================================================================================
 SUBROUTINE RecordPoints(nVar,StrVarNames,iter,t,forceSampling)
 ! MODULES
+USE MOD_Globals
 USE MOD_Analyze_Vars,     ONLY: WriteData_dt,tWriteData
 USE MOD_RecordPoints_Vars,ONLY: RP_Data
 USE MOD_RecordPoints_Vars,ONLY: RP_Buffersize,RP_MaxBufferSize,RP_SamplingOffset,iSample
@@ -339,14 +340,14 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)             :: nVar                    !< Number of variables in U array
 CHARACTER(LEN=255),INTENT(IN)  :: StrVarNames(nVar)       !< String with the names of the variables
-INTEGER(KIND=8),INTENT(IN)     :: iter                    !< current number of timesteps
+INTEGER(DP),INTENT(IN)         :: iter                    !< current number of timesteps
 REAL,INTENT(IN)                :: t                       !< current time t
 LOGICAL,INTENT(IN)             :: forceSampling           !< force sampling (e.g. at first/last timestep of computation)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                    :: U_RP(nVar,nRP)
 !----------------------------------------------------------------------------------------------------------------------------------
-IF(MOD(iter,INT(RP_SamplingOffset,KIND=8)).NE.0 .AND. .NOT. forceSampling) RETURN
+IF(MOD(iter,INT(RP_SamplingOffset,DP)).NE.0 .AND. .NOT. forceSampling) RETURN
 
 IF(.NOT.ALLOCATED(RP_Data))THEN
   ! Compute required buffersize from timestep and add 20% tolerance

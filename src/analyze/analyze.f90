@@ -301,7 +301,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN)                 :: Time                   !< current simulation time
-INTEGER(KIND=8),INTENT(IN)      :: iter                   !< current iteration
+INTEGER(DP),INTENT(IN)          :: iter                   !< current iteration
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=40)               :: formatStr

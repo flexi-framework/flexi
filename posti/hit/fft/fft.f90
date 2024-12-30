@@ -155,7 +155,7 @@ COMPLEX,INTENT(OUT)   :: U_FFT(   nVar_In,1:Endw(1),1:Endw(2),1:Endw(3)) !< Comp
 LOGICAL,INTENT(IN),OPTIONAL :: doPrintTime                               !< Print execution time to standard output
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER(KIND=8)  :: plan
+INTEGER(DP)      :: plan
 INTEGER          :: iVar
 REAL             :: Time
 REAL             :: U_r(1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) ! Real global DG solution per variable
@@ -210,7 +210,7 @@ REAL,INTENT(OUT)      :: U_Global(nVar_In,1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) !< Comp
 LOGICAL,INTENT(IN),OPTIONAL :: doPrintTime                               !< Print execution time to standard output
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER(KIND=8) :: plan
+INTEGER(DP)     :: plan
 INTEGER         :: iVar
 REAL            :: Time
 REAL            :: U_r(1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) ! Real global DG solution per variable

@@ -131,7 +131,7 @@ IMPLICIT NONE
 INTEGER                         :: iSample,iVar,iRP,iStart,iEnd
 REAL                            :: df
 COMPLEX,ALLOCATABLE             :: in(:),out(:)
-INTEGER(KIND=8)                 :: plan
+INTEGER(DP)                     :: plan
 REAL                            :: Time,StartTime
 REAL                            :: Time_Block
 REAL,ALLOCATABLE                :: RPData_tmp(:)

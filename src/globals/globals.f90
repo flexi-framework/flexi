@@ -19,6 +19,9 @@
 !==================================================================================================================================
 MODULE MOD_Globals
 USE ISO_C_BINDING
+USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: SP => REAL32, &
+                                         DP => REAL64, &
+                                         QP => REAL128
 ! MODULES
 #if USE_MPI
 USE mpi

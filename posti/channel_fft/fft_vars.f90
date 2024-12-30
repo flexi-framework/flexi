@@ -33,8 +33,8 @@ CHARACTER(LEN=255)      :: ProjectName       !< Name of project, read from state
 REAL                    :: Time              !< Timestamp of project, read from first state file
 
 ! FFT variables
-INTEGER(KIND=8)         :: planI
-INTEGER(KIND=8)         :: planK
+INTEGER(DP)             :: planI
+INTEGER(DP)             :: planK
 INTEGER                 :: N_FFT(3)
 INTEGER                 :: nSamplesI
 INTEGER                 :: nSamples_specI

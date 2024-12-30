@@ -18,6 +18,7 @@
 !===================================================================================================================================
 MODULE MOD_Precond_Vars
 ! MODULES
+USE MOD_Globals
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PUBLIC
@@ -29,7 +30,7 @@ REAL,ALLOCATABLE        :: Ploc(:,:)         !< Non-inverted preconditioner matr
 REAL,ALLOCATABLE        :: Ploc1(:,:)        !< Additional non-inverted matrix for comparision between AD and FD
 REAL,ALLOCATABLE,TARGET :: invP(:,:,:)       !< inverse of block Jacobian for each element (1:nDOF_elem,1:nDOFelem,1:nElems)
 INTEGER                 :: PrecondType       !< Type of preconditioner, 0: non, 1: analytical, 2: finite difference, 3: compare
-INTEGER(KIND=8)         :: PrecondIter       !< Defines how often preconditioner is built
+INTEGER(DP)             :: PrecondIter       !< Defines how often preconditioner is built
 INTEGER                 :: DebugMatrix       !< Set to >0 to get output of preconditioner matrix
 LOGICAL                 :: HyperbolicPrecond !< Set TRUE to use the preconditioner of the hyperbolic system, even for
                                              !< parabolic computations

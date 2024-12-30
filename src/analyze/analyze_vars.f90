@@ -30,12 +30,12 @@ REAL                 :: WriteData_dt                      !< time intervall at w
 REAL                 :: tWriteData                        !< actual time at which next solution IO will be performed
 ! precomputed variables
 #if FV_ENABLED == 1
-INTEGER(KIND=8)      :: totalFV_nElems=0                  !< total number of FV elements in domain
+INTEGER(DP)          :: totalFV_nElems=0                  !< total number of FV elements in domain
 #elif FV_ENABLED == 2 || FV_ENABLED == 3
 REAL                 :: FV_totalAlpha=0.                  !< average of blending coefficient in domain
 #endif
 #if PP_LIMITER
-INTEGER(KIND=8)      :: totalPP_nElems=0                  !< number of elements limited with positiy-preserving limiter
+INTEGER(DP)          :: totalPP_nElems=0                  !< number of elements limited with positiy-preserving limiter
 #endif
 REAL,ALLOCATABLE     :: wGPSurf(:,:)                      !< wGPSurf(i,j)=wGP(i)*wGP(j)
 REAL,ALLOCATABLE     :: wGPVol(:,:,:)                     !< wGPVol(i,j,k)=wGP(i)*wGP(j)*wGP(k)
