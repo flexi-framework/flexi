@@ -41,6 +41,8 @@ CONTAINS
 FUNCTION INVERSE(A) RESULT(AINV)
 ! MODULES
 USE MOD_Globals, ONLY: Abort
+! External procedures defined in LAPACK
+USE MOD_Lapack,  ONLY: DGETRF,DGETRI
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -48,9 +50,6 @@ IMPLICIT NONE
 REAL,INTENT(IN)  :: A(:,:)                      !< input matrix
 REAL             :: AINV(SIZE(A,1),SIZE(A,2))   !< result: inverse of A
 !----------------------------------------------------------------------------------------------------------------------------------
-! External procedures defined in LAPACK
-EXTERNAL DGETRF
-EXTERNAL DGETRI
 ! LOCAL VARIABLES
 REAL    :: sdet
 REAL    :: work(SIZE(A,1))  ! work array for LAPACK

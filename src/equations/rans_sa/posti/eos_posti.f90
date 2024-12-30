@@ -486,6 +486,8 @@ END FUNCTION FillVorticity
 !==================================================================================================================================
 FUNCTION FillLambda2(nVal,gradUx,gradUy,gradUz) RESULT(Lambda2)
 ! MODULES
+! External procedures defined in LAPACK
+USE MOD_Lapack, ONLY: DSYEV
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -495,7 +497,6 @@ REAL,DIMENSION(PP_nVarLifting,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
 REAL               :: Lambda2(PRODUCT(nVal))
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-EXTERNAL              DSYEV
 INTEGER            :: i
 REAL               :: gradUmat(3,3)
 INTEGER            :: INFO

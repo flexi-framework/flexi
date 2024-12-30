@@ -92,6 +92,8 @@ END SUBROUTINE InitSigmaModel
 !===================================================================================================================================
 SUBROUTINE SigmaModel_Point(gradUx,gradUy,gradUz,dens,CSdeltaS2,muSGS)
 ! MODULES
+! External procedures defined in LAPACK
+USE MOD_Lapack, ONLY: DSYEV
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -101,8 +103,6 @@ REAL                          ,INTENT(IN)  :: dens       !> pointwise density
 REAL                          ,INTENT(IN)  :: CSdeltaS2  !> filter width
 REAL                          ,INTENT(OUT) :: muSGS      !> pointwise eddyviscosity
 !-----------------------------------------------------------------------------------------------------------------------------------
-! External procedures defined in LAPACK
-EXTERNAL DSYEV
 ! LOCAL VARIABLES
 INTEGER            :: info
 REAL               :: d_model
