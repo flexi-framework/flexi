@@ -29,7 +29,7 @@ ABSTRACT INTERFACE
     USE MOD_Mesh_Vars,ONLY: nElems
     REAL,INTENT(INOUT) :: U_in(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)
     REAL,INTENT(IN)    :: FilterMat(   0:PP_N,0:PP_N)
-  END SUBROUTINE
+  END SUBROUTINE FilterInt
 END INTERFACE
 
 PROCEDURE(FilterInt),POINTER :: Filter_pointer     !< Point to the filter routine to be used

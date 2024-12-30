@@ -139,7 +139,7 @@ SELECT CASE(eddyViscType)
       'Eddy Viscosity Type not specified!')
 END SELECT
 CALL AddToFieldData(FieldOut,(/1,PP_N+1,PP_N+1,PP_NZ+1/),'muSGS',(/'muSGS'/),RealArray=muSGS)
-END SUBROUTINE
+END SUBROUTINE InitEddyVisc
 
 
 !===================================================================================================================================
@@ -161,6 +161,6 @@ SDEALLOCATE(muSGS)
 SDEALLOCATE(muSGS_master)
 SDEALLOCATE(muSGS_slave)
 IF (ASSOCIATED(FinalizeEddyViscosity)) CALL FinalizeEddyViscosity()
-END SUBROUTINE
+END SUBROUTINE FinalizeEddyVisc
 
 END MODULE MOD_EddyVisc

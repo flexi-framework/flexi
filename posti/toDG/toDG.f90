@@ -282,6 +282,6 @@ END SELECT
 CALL CloseDataFile()
 
 SWRITE(UNIT_stdOut,'(A)') "DONE!"
-END SUBROUTINE
+end subroutine Readin
 
 END PROGRAM toDG

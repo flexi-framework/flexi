@@ -80,7 +80,7 @@ DO FVE=0,FV_SIZE
 END DO
 #endif /*PARABOLIC*/
 
-END SUBROUTINE
+END SUBROUTINE InitCalctimestep
 
 
 !==================================================================================================================================
@@ -224,6 +224,6 @@ SDEALLOCATE(MetricsAdv)
 #if PARABOLIC
 SDEALLOCATE(MetricsVisc)
 #endif
-END SUBROUTINE
+END SUBROUTINE FinalizeCalctimestep
 
 END MODULE MOD_CalcTimeStep

@@ -556,7 +556,7 @@ IF(MPIroot) THEN
   SDEALLOCATE(writeBuf)
 END IF
 SDEALLOCATE(HIT_RMS)
-END SUBROUTINE
+END SUBROUTINE FinalizeTestcase
 
 
 !==================================================================================================================================

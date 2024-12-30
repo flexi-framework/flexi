@@ -37,7 +37,7 @@ ABSTRACT INTERFACE
   PPURE SUBROUTINE LimiterInt(sL, sR, s)
     REAL,INTENT(IN)  :: sL(PP_nVarPrim),sR(PP_nVarPrim)
     REAL,INTENT(OUT) :: s(PP_nVarPrim)
-  END SUBROUTINE
+  END SUBROUTINE LimiterInt
 END INTERFACE
 
 PROCEDURE(LimiterInt),POINTER :: FV_Limiter !< limiting function (see: fv_limiter.f90)

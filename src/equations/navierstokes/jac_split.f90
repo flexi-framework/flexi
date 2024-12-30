@@ -325,7 +325,7 @@ DO jVar=1,PP_nVar
   END DO ! iVar
   UTilde = U
 END DO
-END SUBROUTINE
+END SUBROUTINE Jac_Split_FD
 
 #endif /*SPLIT_DG*/
 END MODULE MOD_Jac_Split

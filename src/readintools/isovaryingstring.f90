@@ -67,7 +67,7 @@ USE,INTRINSIC :: iso_c_binding
   type, public :: varying_string
      private
      character(LEN=1), dimension(:), allocatable :: chars
-  end type varying_string
+  END TYPE varying_string
 
 ! Interface blocks
 
@@ -423,7 +423,7 @@ contains
 
     return
 
-  end subroutine op_assign_CH_VS
+  END SUBROUTINE op_assign_CH_VS
 
 !****
 
@@ -440,7 +440,7 @@ contains
 
     return
 
-  end subroutine op_assign_VS_CH
+  END SUBROUTINE op_assign_VS_CH
 
 !****
 
@@ -465,7 +465,7 @@ contains
 
     return
 
-  end function op_concat_VS_VS
+  END FUNCTION op_concat_VS_VS
 
 !****
 
@@ -484,7 +484,7 @@ contains
 
     return
 
-  end function op_concat_CH_VS
+  END FUNCTION op_concat_CH_VS
 
 !****
 
@@ -503,7 +503,7 @@ contains
 
     return
 
-  end function op_concat_VS_CH
+  END FUNCTION op_concat_VS_CH
 
 !****
 
@@ -521,7 +521,7 @@ contains
 
     return
 
-  end function op_eq_VS_VS
+  END FUNCTION op_eq_VS_VS
 
 !****
 
@@ -540,7 +540,7 @@ contains
 
     return
 
-  end function op_eq_CH_VS
+  END FUNCTION op_eq_CH_VS
 
 !****
 
@@ -559,7 +559,7 @@ contains
 
     return
 
-  end function op_eq_VS_CH
+  END FUNCTION op_eq_VS_CH
 
 !****
 
@@ -577,7 +577,7 @@ contains
 
     return
 
-  end function op_ne_VS_VS
+  END FUNCTION op_ne_VS_VS
 
 !****
 
@@ -596,7 +596,7 @@ contains
 
     return
 
-  end function op_ne_CH_VS
+  END FUNCTION op_ne_CH_VS
 
 !****
 
@@ -615,7 +615,7 @@ contains
 
     return
 
-  end function op_ne_VS_CH
+  END FUNCTION op_ne_VS_CH
 
 !****
 
@@ -633,7 +633,7 @@ contains
 
     return
 
-  end function op_lt_VS_VS
+  END FUNCTION op_lt_VS_VS
 
 !****
 
@@ -652,7 +652,7 @@ contains
 
     return
 
-  end function op_lt_CH_VS
+  END FUNCTION op_lt_CH_VS
 
 !****
 
@@ -671,7 +671,7 @@ contains
 
     return
 
-  end function op_lt_VS_CH
+  END FUNCTION op_lt_VS_CH
 
 !****
 
@@ -689,7 +689,7 @@ contains
 
     return
 
-  end function op_le_VS_VS
+  END FUNCTION op_le_VS_VS
 
 !****
 
@@ -708,7 +708,7 @@ contains
 
     return
 
-  end function op_le_CH_VS
+  END FUNCTION op_le_CH_VS
 
 !****
 
@@ -727,7 +727,7 @@ contains
 
     return
 
-  end function op_le_VS_CH
+  END FUNCTION op_le_VS_CH
 
 !****
 
@@ -745,7 +745,7 @@ contains
 
     return
 
-  end function op_ge_VS_VS
+  END FUNCTION op_ge_VS_VS
 
 !****
 
@@ -764,7 +764,7 @@ contains
 
     return
 
-  end function op_ge_CH_VS
+  END FUNCTION op_ge_CH_VS
 
 !****
 
@@ -783,7 +783,7 @@ contains
 
     return
 
-  end function op_ge_VS_CH
+  END FUNCTION op_ge_VS_CH
 
 !****
 
@@ -801,7 +801,7 @@ contains
 
     return
 
-  end function op_gt_VS_VS
+  END FUNCTION op_gt_VS_VS
 
 !****
 
@@ -820,7 +820,7 @@ contains
 
     return
 
-  end function op_gt_CH_VS
+  END FUNCTION op_gt_CH_VS
 
 !****
 
@@ -839,7 +839,7 @@ contains
 
     return
 
-  end function op_gt_VS_CH
+  END FUNCTION op_gt_VS_CH
 
 !****
 
@@ -856,7 +856,7 @@ contains
 
     return
 
-  end function adjustl_
+  END FUNCTION adjustl_
 
 !****
 
@@ -873,7 +873,7 @@ contains
 
     return
 
-  end function adjustr_
+  END FUNCTION adjustr_
 
 !****
 
@@ -894,7 +894,7 @@ contains
 
     return
 
-  end function len_
+  END FUNCTION len_
 
 !****
 
@@ -915,7 +915,7 @@ contains
 
     return
 
-  end function len_trim_
+  END FUNCTION len_trim_
 
 !****
 
@@ -937,7 +937,7 @@ contains
 
     return
 
-  end function char_auto
+  END FUNCTION char_auto
 
 !****
 
@@ -956,7 +956,7 @@ contains
 
     return
 
-  end function char_fixed
+  END FUNCTION char_fixed
 
 !****
 
@@ -974,7 +974,7 @@ contains
 
     return
 
-  end function iachar_
+  END FUNCTION iachar_
 
 !****
 
@@ -992,7 +992,7 @@ contains
 
     return
 
-  end function ichar_
+  END FUNCTION ichar_
 
 !****
 
@@ -1012,7 +1012,7 @@ contains
 
     return
 
-  end function index_VS_VS
+  END FUNCTION index_VS_VS
 
 !****
 
@@ -1032,7 +1032,7 @@ contains
 
     return
 
-  end function index_CH_VS
+  END FUNCTION index_CH_VS
 
 !****
 
@@ -1052,7 +1052,7 @@ contains
 
     return
 
-  end function index_VS_CH
+  END FUNCTION index_VS_CH
 
 !****
 
@@ -1070,7 +1070,7 @@ contains
 
     return
 
-  end function lge_VS_VS
+  END FUNCTION lge_VS_VS
 
 !****
 
@@ -1089,7 +1089,7 @@ contains
 
     return
 
-  end function lge_CH_VS
+  END FUNCTION lge_CH_VS
 
 !****
 
@@ -1108,7 +1108,7 @@ contains
 
     return
 
-  end function lge_VS_CH
+  END FUNCTION lge_VS_CH
 
 !****
 
@@ -1126,7 +1126,7 @@ contains
 
     return
 
-  end function lgt_VS_VS
+  END FUNCTION lgt_VS_VS
 
 !****
 
@@ -1145,7 +1145,7 @@ contains
 
     return
 
-  end function lgt_CH_VS
+  END FUNCTION lgt_CH_VS
 
 !****
 
@@ -1164,7 +1164,7 @@ contains
 
     return
 
-  end function lgt_VS_CH
+  END FUNCTION lgt_VS_CH
 
 !****
 
@@ -1182,7 +1182,7 @@ contains
 
     return
 
-  end function lle_VS_VS
+  END FUNCTION lle_VS_VS
 
 !****
 
@@ -1201,7 +1201,7 @@ contains
 
     return
 
-  end function lle_CH_VS
+  END FUNCTION lle_CH_VS
 
 !****
 
@@ -1220,7 +1220,7 @@ contains
 
     return
 
-  end function lle_VS_CH
+  END FUNCTION lle_VS_CH
 
 !****
 
@@ -1238,7 +1238,7 @@ contains
 
     return
 
-  end function llt_VS_VS
+  END FUNCTION llt_VS_VS
 
 !****
 
@@ -1257,7 +1257,7 @@ contains
 
     return
 
-  end function llt_CH_VS
+  END FUNCTION llt_CH_VS
 
 !****
 
@@ -1276,7 +1276,7 @@ contains
 
     return
 
-  end function llt_VS_CH
+  END FUNCTION llt_VS_CH
 
 !****
 
@@ -1294,7 +1294,7 @@ contains
 
     return
 
-  end function repeat_
+  END FUNCTION repeat_
 
 !****
 
@@ -1314,7 +1314,7 @@ contains
 
     return
 
-  end function scan_VS_VS
+  END FUNCTION scan_VS_VS
 
 !****
 
@@ -1334,7 +1334,7 @@ contains
 
     return
 
-  end function scan_CH_VS
+  END FUNCTION scan_CH_VS
 
 !****
 
@@ -1354,7 +1354,7 @@ contains
 
     return
 
-  end function scan_VS_CH
+  END FUNCTION scan_VS_CH
 
 !****
 
@@ -1371,7 +1371,7 @@ contains
 
     return
 
-  end function trim_
+  END FUNCTION trim_
 
 !****
 
@@ -1391,7 +1391,7 @@ contains
 
     return
 
-  end function verify_VS_VS
+  END FUNCTION verify_VS_VS
 
 !****
 
@@ -1411,7 +1411,7 @@ contains
 
     return
 
-  end function verify_CH_VS
+  END FUNCTION verify_CH_VS
 
 !****
 
@@ -1431,7 +1431,7 @@ contains
 
     return
 
-  end function verify_VS_CH
+  END FUNCTION verify_VS_CH
 
 !****
 
@@ -1458,7 +1458,7 @@ contains
 
     return
 
-  end function var_str_
+  END FUNCTION var_str_
 
 !****
 
@@ -1494,7 +1494,7 @@ contains
 
     return
 
-  end function var_str_c_ptr
+  END FUNCTION var_str_c_ptr
 
 !****
 
@@ -1547,7 +1547,7 @@ contains
 
     return
 
-  end subroutine get_
+  END SUBROUTINE get_
 
 !****
 
@@ -1601,7 +1601,7 @@ contains
 
     return
 
-  end subroutine get_unit
+  END SUBROUTINE get_unit
 
 !****
 
@@ -1622,7 +1622,7 @@ contains
 
     return
 
-  end subroutine get_set_VS
+  END SUBROUTINE get_set_VS
 
 !****
 
@@ -1680,7 +1680,7 @@ contains
 
     return
 
-  end subroutine get_set_CH
+  END SUBROUTINE get_set_CH
 
 !****
 
@@ -1702,7 +1702,7 @@ contains
 
     return
 
-  end subroutine get_unit_set_VS
+  END SUBROUTINE get_unit_set_VS
 
 !****
 
@@ -1761,7 +1761,7 @@ contains
 
     return
 
-  end subroutine get_unit_set_CH
+  END SUBROUTINE get_unit_set_CH
 
 !****
 
@@ -1777,7 +1777,7 @@ contains
 
 ! Finish
 
-  end subroutine put_VS
+  END SUBROUTINE put_VS
 
 !****
 
@@ -1797,7 +1797,7 @@ contains
 
 ! Finish
 
-  end subroutine put_CH
+  END SUBROUTINE put_CH
 
 !****
 
@@ -1816,7 +1816,7 @@ contains
 
     return
 
-  end subroutine put_unit_VS
+  END SUBROUTINE put_unit_VS
 
 !****
 
@@ -1839,7 +1839,7 @@ contains
 
     return
 
-  end subroutine put_unit_CH
+  END SUBROUTINE put_unit_CH
 
 !****
 
@@ -1857,7 +1857,7 @@ contains
 
     return
 
-  end subroutine put_line_VS
+  END SUBROUTINE put_line_VS
 
 !****
 
@@ -1879,7 +1879,7 @@ contains
 
     return
 
-  end subroutine put_line_CH
+  END SUBROUTINE put_line_CH
 
 !****
 
@@ -1898,7 +1898,7 @@ contains
 
     return
 
-  end subroutine put_line_unit_VS
+  END SUBROUTINE put_line_unit_VS
 
 !****
 
@@ -1921,7 +1921,7 @@ contains
 
     return
 
-  end subroutine put_line_unit_CH
+  END SUBROUTINE put_line_unit_CH
 
 !****
 
@@ -1940,7 +1940,7 @@ contains
 
     return
 
-  end function extract_VS
+  END FUNCTION extract_VS
 
 !****
 
@@ -1974,7 +1974,7 @@ contains
 
     return
 
-  end function extract_CH
+  END FUNCTION extract_CH
 
 !****
 
@@ -1993,7 +1993,7 @@ contains
 
     return
 
-  end function insert_VS_VS
+  END FUNCTION insert_VS_VS
 
 !****
 
@@ -2012,7 +2012,7 @@ contains
 
     return
 
-  end function insert_CH_VS
+  END FUNCTION insert_CH_VS
 
 !****
 
@@ -2031,7 +2031,7 @@ contains
 
     return
 
-  end function insert_VS_CH
+  END FUNCTION insert_VS_CH
 
 !****
 
@@ -2055,7 +2055,7 @@ contains
 
     return
 
-  end function insert_CH_CH
+  END FUNCTION insert_CH_CH
 
 !****
 
@@ -2074,7 +2074,7 @@ contains
 
     return
 
-  end function remove_VS
+  END FUNCTION remove_VS
 
 !****
 
@@ -2112,7 +2112,7 @@ contains
 
     return
 
-  end function remove_CH
+  END FUNCTION remove_CH
 
 !****
 
@@ -2132,7 +2132,7 @@ contains
 
     return
 
-  end function replace_VS_VS_auto
+  END FUNCTION replace_VS_VS_auto
 
 !****
 
@@ -2152,7 +2152,7 @@ contains
 
     return
 
-  end function replace_CH_VS_auto
+  END FUNCTION replace_CH_VS_auto
 
 !****
 
@@ -2172,7 +2172,7 @@ contains
 
     return
 
-  end function replace_VS_CH_auto
+  END FUNCTION replace_VS_CH_auto
 
 !****
 
@@ -2192,7 +2192,7 @@ contains
 
     return
 
-  end function replace_CH_CH_auto
+  END FUNCTION replace_CH_CH_auto
 
 !****
 
@@ -2213,7 +2213,7 @@ contains
 
     return
 
-  end function replace_VS_VS_fixed
+  END FUNCTION replace_VS_VS_fixed
 
 !****
 
@@ -2236,7 +2236,7 @@ contains
 
     return
 
-  end function replace_CH_VS_fixed
+  END FUNCTION replace_CH_VS_fixed
 
 !****
 
@@ -2257,7 +2257,7 @@ contains
 
     return
 
-  end function replace_VS_CH_fixed
+  END FUNCTION replace_VS_CH_fixed
 
 !****
 
@@ -2288,7 +2288,7 @@ contains
 
     return
 
-  end function replace_CH_CH_fixed
+  END FUNCTION replace_CH_CH_fixed
 
 !****
 
@@ -2311,7 +2311,7 @@ contains
 
     return
 
-  end function replace_VS_VS_VS_target
+  END FUNCTION replace_VS_VS_VS_target
 
 !****
 
@@ -2334,7 +2334,7 @@ contains
 
     return
 
-  end function replace_CH_VS_VS_target
+  END FUNCTION replace_CH_VS_VS_target
 
 !****
 
@@ -2357,7 +2357,7 @@ contains
 
     return
 
-  end function replace_VS_CH_VS_target
+  END FUNCTION replace_VS_CH_VS_target
 
 !****
 
@@ -2380,7 +2380,7 @@ contains
 
     return
 
-  end function replace_CH_CH_VS_target
+  END FUNCTION replace_CH_CH_VS_target
 
 !****
 
@@ -2403,7 +2403,7 @@ contains
 
     return
 
-  end function replace_VS_VS_CH_target
+  END FUNCTION replace_VS_VS_CH_target
 
 !****
 
@@ -2426,7 +2426,7 @@ contains
 
     return
 
-  end function replace_CH_VS_CH_target
+  END FUNCTION replace_CH_VS_CH_target
 
 !****
 
@@ -2449,7 +2449,7 @@ contains
 
     return
 
-  end function replace_VS_CH_CH_target
+  END FUNCTION replace_VS_CH_CH_target
 
 !****
 
@@ -2533,7 +2533,7 @@ contains
 
     return
 
-  end function replace_CH_CH_CH_target
+  END FUNCTION replace_CH_CH_CH_target
 
 !****
 
@@ -2553,7 +2553,7 @@ contains
 
     return
 
-  end subroutine split_VS
+  END SUBROUTINE split_VS
 
 !****
 
@@ -2602,7 +2602,7 @@ contains
 
     return
 
-  end subroutine split_CH
+  END SUBROUTINE split_CH
 
 
   FUNCTION c_ptr_new_VS(string) RESULT(c_ptr_new)

@@ -39,14 +39,14 @@ ABSTRACT INTERFACE
     REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef,UPrim
     REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef,M
     REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux
-  END SUBROUTINE
+  END SUBROUTINE VolumeFlux
 END INTERFACE
 
 ABSTRACT INTERFACE
   PPURE SUBROUTINE SurfaceFlux(U_LL,U_RR,F)
     REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL,U_RR
     REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F
-  END SUBROUTINE
+  END SUBROUTINE SurfaceFlux
 END INTERFACE
 
 PROCEDURE(VolumeFlux) ,POINTER   :: SplitDGVolume_pointer    !< pointer defining the SpliDG formulation beeing used

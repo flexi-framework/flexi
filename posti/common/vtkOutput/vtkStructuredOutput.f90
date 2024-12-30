@@ -31,27 +31,27 @@ TYPE RPBox
   INTEGER                 :: nRPs(3)
   REAL,ALLOCATABLE        :: Coords(:,:,:,:)
   REAL,ALLOCATABLE        :: Val(:,:,:,:)
-END TYPE
+END TYPE RPBox
 
   TYPE RPPlane
   CHARACTER(LEN=255)      :: name
   INTEGER                 :: nRPs(2)
   REAL,ALLOCATABLE        :: Coords(:,:,:)
   REAL,ALLOCATABLE        :: Val(:,:,:)
-END TYPE
+END TYPE RPPlane
 
 TYPE RPLine
   CHARACTER(LEN=255)      :: name
   INTEGER                 :: nRPs
   REAL,ALLOCATABLE        :: Coords(:,:)
   REAL,ALLOCATABLE        :: Val(:,:)
-END TYPE
+END TYPE RPLine
 
 TYPE RPPoint
   INTEGER                 :: nRPs
   REAL,ALLOCATABLE        :: Coords(:,:)
   REAL,ALLOCATABLE        :: Val(:,:)
-END TYPE
+END TYPE RPPoint
 
 INTERFACE WriteStructuredDataToVTK
   MODULE PROCEDURE WriteStructuredDataToVTK

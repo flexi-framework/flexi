@@ -29,13 +29,13 @@ ABSTRACT INTERFACE
   SUBROUTINE EvalElemInt(ElemData)
   USE MOD_Mesh_Vars,ONLY:nElems
   REAL,INTENT(OUT) :: ElemData(nElems)
-  END SUBROUTINE
+  END SUBROUTINE EvalElemInt
 END INTERFACE
 
 ABSTRACT INTERFACE
   SUBROUTINE EvalFieldInt(FieldData)
   REAL,INTENT(OUT) :: FieldData(:,:,:,:,:)
-  END SUBROUTINE
+  END SUBROUTINE EvalFieldInt
 END INTERFACE
 
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -63,7 +63,7 @@ TYPE tElementOut
   INTEGER,POINTER                       :: IntScalar    => NULL()
   PROCEDURE(EvalElemInt),POINTER,NOPASS :: eval         => NULL()
   TYPE(tElementOut),POINTER             :: next         => NULL()     !< next list item
-END TYPE
+END TYPE tElementOut
 
 !> Type containing pointers to nodal data to be written to HDF5 in a per node fashion.
 !> Alternatively a function pointer can be specified providing the desired data.
@@ -77,7 +77,7 @@ TYPE tFieldOut
   LOGICAL                                :: doSeparateOutput               !< If set, array will be written as seperate dataset,
                                                                            !< regardless of N
   TYPE(tFieldOut),POINTER                :: next                 => NULL() !< next list item
-END TYPE
+END TYPE tFieldOut
 
 TYPE(tElementOut),POINTER    :: ElementOut   => NULL() !< linked list of output pointers
 TYPE(tFieldOut),POINTER      :: FieldOut     => NULL() !< linked list of output pointers

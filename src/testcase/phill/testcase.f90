@@ -348,7 +348,7 @@ IMPLICIT NONE
 IF(MPIRoot) THEN
   SDEALLOCATE(writeBuf)
 END IF
-END SUBROUTINE
+END SUBROUTINE FinalizeTestcase
 
 
 !==================================================================================================================================

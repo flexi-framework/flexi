@@ -24,12 +24,12 @@ SAVE
 
 ABSTRACT INTERFACE
   SUBROUTINE EddyViscInt()
-  END SUBROUTINE
+  END SUBROUTINE EddyViscInt
 END INTERFACE
 
 ABSTRACT INTERFACE
   SUBROUTINE FinalizeEddyViscosityInt()
-  END SUBROUTINE
+  END SUBROUTINE FinalizeEddyViscosityInt
 END INTERFACE
 
 !-----------------------------------------------------------------------------------------------------------------------------------

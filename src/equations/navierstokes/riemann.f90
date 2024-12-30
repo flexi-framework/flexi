@@ -31,7 +31,7 @@ ABSTRACT INTERFACE
     REAL,DIMENSION(PP_2Var),INTENT(IN) :: U_LL,U_RR
     REAL,DIMENSION(PP_nVar),INTENT(IN) :: F_L,F_R
     REAL,DIMENSION(PP_nVar),INTENT(OUT):: F
-  END SUBROUTINE
+  END SUBROUTINE RiemannInt
 END INTERFACE
 
 PROCEDURE(RiemannInt),POINTER :: Riemann_pointer    !< pointer defining the standard inner Riemann solver

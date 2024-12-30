@@ -201,7 +201,7 @@ DO WHILE (actual < stringLen)
         actual = last
   ENDIF
 END DO
-END SUBROUTINE
+END SUBROUTINE StripSpaces
 
 !==================================================================================================================================
 !> Converts integer to string

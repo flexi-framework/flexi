@@ -27,7 +27,7 @@ PRIVATE
 ABSTRACT INTERFACE
   SUBROUTINE TimeIntegrator(t)
     REAL,INTENT(INOUT) :: t
-  END SUBROUTINE
+  END SUBROUTINE TimeIntegrator
 END INTERFACE
 
 PROCEDURE(TimeIntegrator),POINTER :: TimeStep !< pointer to timestepping routine, depends on td

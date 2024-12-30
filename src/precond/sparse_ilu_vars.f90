@@ -34,7 +34,7 @@ REAL,ALLOCATABLE,DIMENSION(:,:)             :: Dinv
 TYPE tILU                                                                     !< ILU for each element
  REAL,ALLOCATABLE,DIMENSION(:)              :: Entry
  INTEGER,ALLOCATABLE,DIMENSION(:)           :: IEntry,JEntry
-END TYPE
+END TYPE tILU
 TYPE(tILU), ALLOCATABLE                     :: IL(:)                          !< Incomplete Lower matrix
 TYPE(tILU), ALLOCATABLE                     :: IU(:)                          !< Incomplete Upper matrix
 !===================================================================================================================================

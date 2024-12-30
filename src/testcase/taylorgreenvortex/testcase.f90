@@ -506,7 +506,7 @@ IF(MPIRoot)THEN
   SDEALLOCATE(Time)
   SDEALLOCATE(writeBuf)
 END IF
-END SUBROUTINE
+END SUBROUTINE FinalizeTestcase
 
 
 !==================================================================================================================================
