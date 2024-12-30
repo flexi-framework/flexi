@@ -175,10 +175,10 @@ CALL InitTimeStep()
 IF(RP_onProc) CALL RecordPoints(PP_nVar,StrVarNames,iter,t,.TRUE.)
 
 #if FV_ENABLED
-CALL FV_Info(1_8)
+CALL FV_Info(INT(1, DP))
 #endif /*FV_ENABLED*/
 #if PP_LIMITER
-CALL PPLimiter_Info(1_8)
+CALL PPLimiter_Info(INT(1, DP))
 #endif /*PP_LIMITER*/
 
 SWRITE(UNIT_stdOut,'(A)') ' CALCULATION RUNNING...'
