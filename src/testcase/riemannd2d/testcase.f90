@@ -940,14 +940,13 @@ SUBROUTINE exact_riemann(gamma,rhol,rhor,rho,ul,ur,u,pl,pr,p,al,ar)
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTENT(IN)                                          :: rhol,rhor,ul,ur,pl,pr,al,ar
-INTENT(OUT)                                         :: rho,u,p
+REAL,INTENT(IN)                       :: gamma, rhol,rhor,ul,ur,pl,pr,al,ar
+REAL,INTENT(OUT)                      :: rho,u,p
 !---------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                                  :: rhol,rhor,ul,ur,pl,pr,al,ar
-REAL                                  :: du, ducrit, p, p0, fr
-REAL                                  :: fl, frd, fld, cha, rho, u, pm, um
-REAL                                  :: gamma, s
+REAL                                  :: du, ducrit
+REAL                                  :: fl, frd, fld, cha, pm, um
+REAL                                  :: s
 REAL                                  :: G(1:9),tol
 INTEGER                               :: KK,nIter
 !==================================================================================================================================
@@ -1030,12 +1029,11 @@ SUBROUTINE STARTE(G,tol,p,rhol,rhor,ul,ur,pl,pr,al,ar)
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTENT(IN)                                          :: G,tol,rhol,rhor,ul,ur,pl,pr,al,ar
-INTENT(OUT)                                         :: p
+REAL,INTENT(IN)                       :: G(1:9),tol,rhol,rhor,ul,ur,pl,pr,al,ar
+REAL,INTENT(OUT)                      :: p
 !---------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                                  :: G(1:9),tol,rhol,rhor,ul,ur,pl,pr
-REAL                                  :: al, ar, p, pv, pmin,pmax
+REAL                                  :: pv, pmin,pmax
 REAL                                  :: pnu, pde, qmax
 REAL                                  :: qrat, gel, ger
 !==================================================================================================================================
@@ -1075,11 +1073,11 @@ IMPLICIT NONE
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTENT(IN)                                          :: p,rhok,pk,ck
-INTENT(OUT)                                         :: f,fd
+REAL,INTENT(IN)                       :: G(1:9),p,rhok,pk,ck
+REAL,INTENT(OUT)                      :: f,fd
 !---------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                                  :: G(1:9),f,fd,p,rhok,pk,ck,prat,ak,qrt,bk
+REAL                                  :: prat,ak,qrt,bk
 !==================================================================================================================================
 !
 IF (p.LE.pk) THEN
@@ -1107,12 +1105,11 @@ IMPLICIT NONE
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTENT(IN)                                          :: G,s,rhol,rhor,ul,ur,um,pl,pr,pm,al,ar
-INTENT(OUT)                                         :: p,u,rho
+REAL,INTENT(IN)                       :: G(1:9),s,rhol,rhor,ul,ur,um,pl,pr,pm,al,ar
+REAL,INTENT(OUT)                      :: p,u,rho
 !---------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                                  :: G(1:9),s,p,u,rho,rhol,rhor,ul,ur,um,pl,pr,&
-REAL                                  :: pm,al,ar,pml,pmr,str,stl,cmr,      &
+REAL                                  :: pml,pmr,str,stl,cmr
 REAL                                  :: cml,shr,shl,sr,sl,c
 !==================================================================================================================================
 !

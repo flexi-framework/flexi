@@ -68,9 +68,9 @@ INTERFACE MPI_WIN_ALLOCATE_SHARED
     ! IMPLICIT VARIABLE HANDLING
     IMPLICIT NONE
     ! INPUT / OUTPUT VARIABLES
-    INTEGER        ::  DISP_UNIT, INFO, COMM, WIN, IERROR
-    INTEGER(KIND=MPI_ADDRESS_KIND) ::  SIZE
-    TYPE(C_PTR)    ::  BASEPTR
+    INTEGER,INTENT(IN)     ::  DISP_UNIT, INFO, COMM, WIN, IERROR
+    INTEGER(KIND=MPI_ADDRESS_KIND),INTENT(IN) :: SIZE
+    TYPE(C_PTR),INTENT(IN) ::  BASEPTR
   END SUBROUTINE PMPI_WIN_ALLOCATE_SHARED
 END INTERFACE
 
@@ -82,9 +82,9 @@ INTERFACE MPI_WIN_SHARED_QUERY
     ! IMPLICIT VARIABLE HANDLING
     IMPLICIT NONE
     ! INPUT / OUTPUT VARIABLES
-    INTEGER        :: WIN, RANK, DISP_UNIT, IERROR
-    INTEGER(KIND=MPI_ADDRESS_KIND) :: SIZE
-    TYPE(C_PTR)    :: BASEPTR
+    INTEGER,INTENT(IN)     :: WIN, RANK, DISP_UNIT, IERROR
+    INTEGER(KIND=MPI_ADDRESS_KIND),INTENT(IN) :: SIZE
+    TYPE(C_PTR),INTENT(IN) ::  BASEPTR
   END SUBROUTINE PMPI_WIN_SHARED_QUERY
 END INTERFACE
 #endif /*LIBS_MPICH_FIX_SHM_INTERFACE*/
@@ -127,12 +127,12 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)       :: SourceFile      !< Source file where error has occurred
-INTEGER                           :: SourceLine      !< Line in source file
+INTEGER,INTENT(IN)                :: SourceLine      !< Line in source file
 CHARACTER(LEN=*),INTENT(IN)       :: CompDate        !< Compilation date
 CHARACTER(LEN=*),INTENT(IN)       :: CompTime        !< Compilation time
 CHARACTER(LEN=*),INTENT(IN)       :: ErrorMessage    !< Error message
-INTEGER,OPTIONAL                  :: IntInfo         !< Error info (integer)
-REAL,OPTIONAL                     :: RealInfo        !< Error info (real)
+INTEGER,OPTIONAL,INTENT(IN)       :: IntInfo         !< Error info (integer)
+REAL,OPTIONAL,INTENT(IN)          :: RealInfo        !< Error info (real)
 !   There is no way back!
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -443,7 +443,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN) :: Nam      !< Name
-INTEGER                     :: Num      !< Number
+INTEGER,INTENT(IN)          :: Num      !< Number
 CHARACTER(LEN=200)          :: IntStamp !< The stamp
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -462,8 +462,8 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN) :: Filename  !< (file)name
-REAL                        :: Time      !< physical time
-REAL,OPTIONAL               :: Time2     !< physical time (in case of range)
+REAL,INTENT(IN)             :: Time      !< physical time
+REAL,OPTIONAL,INTENT(IN)    :: Time2     !< physical time (in case of range)
 CHARACTER(LEN=255)          :: TimeStamp !< the complete timestamp
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

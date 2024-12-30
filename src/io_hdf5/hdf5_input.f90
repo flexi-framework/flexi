@@ -459,10 +459,10 @@ USE,INTRINSIC :: ISO_C_BINDING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER                        :: Rank                  !< number of dimensions of the array
-INTEGER                        :: offset_in             !< offset =0, start at beginning of the array
-INTEGER                        :: offset_dim            !< which dimension is the offset (only one dimension possible here)
-INTEGER                        :: nVal(Rank)            !< local size of array to read
+INTEGER,INTENT(IN)             :: Rank                  !< number of dimensions of the array
+INTEGER,INTENT(IN)             :: offset_in             !< offset =0, start at beginning of the array
+INTEGER,INTENT(IN)             :: offset_dim            !< which dimension is the offset (only one dimension possible here)
+INTEGER,INTENT(IN)             :: nVal(Rank)            !< local size of array to read
 CHARACTER(LEN=*),INTENT(IN)    :: ArrayName             !< name of array to be read
 REAL              ,DIMENSION(PRODUCT(nVal)),OPTIONAL,INTENT(OUT),TARGET :: RealArray    !< only if real array shall be read
 INTEGER           ,DIMENSION(PRODUCT(nVal)),OPTIONAL,INTENT(OUT),TARGET :: IntArray     !< only if integer array shall be read
