@@ -6,14 +6,14 @@ before_script:
   - ulimit -s unlimited
   - module list || true
   - python3 -V  || true
-  - python2 -V  || true
   - unset CMAKE_GENERATOR
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stages
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 stages:
-  - build
+  - lint
+  - setup
   - reggie_checkin
   - reggie_nightly
   - reggie_weekly
@@ -106,7 +106,18 @@ stages:
     - if: '$DO_NIGHTLY'
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
-# Stage "build": Build on check-in
+# Stage "lint": Run the Fortitude Fortran linter
+# ----------------------------------------------------------------------------------------------------------------------------------------------------
+fortitude:
+  tags: [dockertag]
+  stage: lint
+  image: registry.iag.uni-stuttgart.de/flexi/flexi/nrg-fedora_41-x86_64
+  script:
+    - fortitude --version
+    - fortitude check --output-format=grouped src
+
+# ----------------------------------------------------------------------------------------------------------------------------------------------------
+# Stage "setup": Setup the reggie environment
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 reggie_download:
   extends: .default_build_param
@@ -116,10 +127,13 @@ reggie_download:
     key: "reggie"
     paths: [reggie]
     policy: push
-  stage: build
+  stage: setup
   script:
     - git clone https://github.com/piclas-framework/reggie2.0.git reggie
 
+# ----------------------------------------------------------------------------------------------------------------------------------------------------
+# Stage "reggie_checkin": Run most simple reggie with previous builds on check-in
+# ----------------------------------------------------------------------------------------------------------------------------------------------------
 build:
   extends: .default_build_param
   needs: [reggie_download]
@@ -129,19 +143,17 @@ build:
     key: "${CI_COMMIT_REF_SLUG}"
     paths: [build]
     policy: push
-  stage: build
+  stage: reggie_checkin
   script:
     - mkdir -p build
     - cd build
     - cmake .. -DLIBS_BUILD_HDF5=OFF
     - make -j 6
 
-# ----------------------------------------------------------------------------------------------------------------------------------------------------
-# Stage "reggie_checkin": Run most simple reggie with previous builds on check-in
-# ----------------------------------------------------------------------------------------------------------------------------------------------------
-run_basic:
+reggie_checkin:
   <<: *defaults
   stage: reggie_checkin
+  needs: [build]
   script:
     - cd build
     - python ../reggie/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -j 6 -e ./bin/flexi
