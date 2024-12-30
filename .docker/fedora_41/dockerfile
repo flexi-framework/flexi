@@ -16,6 +16,9 @@ ARG ARCH
 # Setup uv
 ENV UV_LINK_MODE=copy
 
+# Setup Ruff
+RUN dnf install -y ruff
+
 # Setup Fortitude
 RUN dnf install -y cargo
 RUN uv tool install git+https://github.com/PlasmaFAIR/fortitude
