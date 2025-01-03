@@ -84,7 +84,7 @@ CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: VarNames(nVal)    !< Names of variables 
 ! LOCAL VARIABLES
 INTEGER,PARAMETER           :: ivtk=44
 INTEGER                     :: nBytes,Offset
-REAL(SP)                    :: FLOATdummy
+REAL(KIND=SP)               :: FLOATdummy
 INTEGER                     :: INTdummy
 CHARACTER(LEN=35)           :: StrOffset,TempStr1,TempStr2
 CHARACTER(LEN=200)          :: Buffer

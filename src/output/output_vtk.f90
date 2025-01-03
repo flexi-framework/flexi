@@ -280,7 +280,7 @@ INTEGER                     :: NVisu_elem,nVTKPoints,nVTKCells
 INTEGER                     :: nTotalElems
 INTEGER                     :: nBytes,Offset
 INTEGER                     :: INTdummy
-REAL(SP)                    :: FLOATdummy
+REAL(KIND=SP)               :: FLOATdummy
 CHARACTER(LEN=35)           :: StrOffset,TempStr1,TempStr2
 CHARACTER(LEN=200)          :: Buffer
 CHARACTER(LEN=1)            :: lf

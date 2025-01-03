@@ -48,7 +48,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                         :: iSample , iVar,iRP
 INTEGER                         :: nSamples_spec
-INTEGER(DP)                     :: plan
+INTEGER(KIND=DP)                :: plan
 COMPLEX                         :: in(nSamples_out),out(nSamples_out)
 REAL                            :: dt_equi , PI , df
 REAL,ALLOCATABLE                :: vel_spec(:,:,:),velPrim(:,:,:)

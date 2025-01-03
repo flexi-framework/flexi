@@ -261,7 +261,7 @@ USE FFTW3
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER(DP),INTENT(IN)           ::plan
+INTEGER(KIND=DP),INTENT(IN)      ::plan
 INTEGER,INTENT(IN)               ::nSamples
 INTEGER,INTENT(IN)               ::nSamples_spec
 COMPLEX,INTENT(INOUT)            ::in(nSamples)
