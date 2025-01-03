@@ -23,7 +23,8 @@ MODULE MOD_FV_Mortar
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-
+#if FV_ENABLED
+#if FV_ENABLED == 2
 PUBLIC:: FV_alpha_Mortar
 #endif /*FV_ENABLED == 2*/
 PUBLIC:: FV_Elems_Mortar
@@ -175,6 +176,6 @@ DO MortarSideID=firstMortarSideID,lastMortarSideID
 END DO
 
 END SUBROUTINE FV_gradU_mortar
-#endif
+#endif /*FV_ENABLED*/
 
 END MODULE MOD_FV_Mortar
