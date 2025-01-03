@@ -31,8 +31,6 @@ PUBLIC:: EvalFluxGradJacobian
 #endif
 PUBLIC:: dConsdPrim
 PUBLIC:: dPrimdCons
-PUBLIC:: dConsdPrimTemp
-PUBLIC:: dPrimTempdCons
 !===================================================================================================================================
 
 CONTAINS

@@ -145,6 +145,7 @@ END SUBROUTINE CalcQuantities
 SUBROUTINE CalcDerivedQuantity(iVarCalc,DepName,nVarCalc,nVal,iElems,mapDepToCalc,UCalc,gradUx,gradUy,gradUz)
 !==================================================================================================================================
 ! MODULES
+USE MOD_Globals
 USE MOD_EOS_Posti_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
