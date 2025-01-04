@@ -41,6 +41,7 @@ USE MOD_MPI,                     ONLY: InitMPI,DefineParametersMPI
 USE MOD_MPI,                     ONLY: InitMPIvars,FinalizeMPI
 #endif
 USE FFTW3
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

@@ -23,52 +23,20 @@ MODULE MOD_GetBoundaryFlux
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE InitBC
-  MODULE PROCEDURE InitBC
-END INTERFACE
 
-INTERFACE GetBoundaryFlux
-  MODULE PROCEDURE GetBoundaryFlux
-END INTERFACE
-
-INTERFACE GetBoundaryState
-  MODULE PROCEDURE GetBoundaryState
-END INTERFACE
-
-#if FV_ENABLED
-#if FV_RECONSTRUCT
-INTERFACE GetBoundaryFVgradient
-  MODULE PROCEDURE GetBoundaryFVgradient
-END INTERFACE
-#endif
-#endif
-
-INTERFACE FinalizeBC
-  MODULE PROCEDURE FinalizeBC
-END INTERFACE
-
+PUBLIC:: InitBC
+PUBLIC:: GetBoundaryFlux
+PUBLIC:: GetBoundaryState
+#if FV_ENABLED && FV_RECONSTRUCT
+PUBLIC:: GetBoundaryFVgradient
+#endif /*FV_ENABLED && FV_RECONSTRUCT*/
 #if PARABOLIC
-INTERFACE Lifting_GetBoundaryFlux
-  MODULE PROCEDURE Lifting_GetBoundaryFlux
-END INTERFACE
-PUBLIC :: Lifting_GetBoundaryFlux
+PUBLIC:: Lifting_GetBoundaryFlux
 #endif /*PARABOLIC*/
-
-PUBLIC :: InitBC
-PUBLIC :: GetBoundaryFlux
-PUBLIC :: GetBoundaryState
-#if FV_ENABLED
-#if FV_RECONSTRUCT
-PUBLIC :: GetBoundaryFVgradient
-#endif
-#endif
-PUBLIC :: FinalizeBC
+PUBLIC:: FinalizeBC
 !==================================================================================================================================
 
 CONTAINS
-
 
 !==================================================================================================================================
 !> Initialize boundary conditions. Read parameters and sort boundary conditions by types.
@@ -82,6 +50,7 @@ USE MOD_Equation_Vars     ,ONLY: EquationInitIsDone
 USE MOD_Equation_Vars     ,ONLY: BCData,nBCByType,BCSideID
 USE MOD_Interpolation_Vars,ONLY: InterpolationInitIsDone
 USE MOD_Mesh_Vars         ,ONLY: MeshInitIsDone,nBCSides,BC,BoundaryType,nBCs
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -138,6 +107,7 @@ END DO
 
 END SUBROUTINE InitBC
 
+
 !==================================================================================================================================
 !> Computes the boundary state for the different boundary conditions.
 !==================================================================================================================================
@@ -149,8 +119,9 @@ USE MOD_Globals      ,ONLY: Abort
 USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
 USE MOD_ExactFunc    ,ONLY: ExactFunc
 USE MOD_Equation_Vars,ONLY: IniExactFunc
-!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)      :: SideID                                          !< ID of current side
 REAL,INTENT(IN)         :: t       !< current time (provided by time integration scheme)
@@ -162,7 +133,7 @@ REAL,INTENT(IN)         :: TangVec2(                3,0:Nloc,0:ZDIM(Nloc)) !< ta
 REAL,INTENT(IN)         :: Face_xGP(                3,0:Nloc,0:ZDIM(Nloc)) !< positions of surface flux points
 REAL,INTENT(OUT)        :: UPrim_boundary(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< resulting boundary state
 
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: p,q
@@ -198,6 +169,8 @@ USE MOD_PreProc
 USE MOD_Globals      ,ONLY: Abort
 USE MOD_Mesh_Vars    ,ONLY: BC,BoundaryType
 USE MOD_Riemann      ,ONLY: GetFlux
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                   :: SideID
@@ -237,8 +210,8 @@ END SELECT ! BCType
 
 END SUBROUTINE GetBoundaryFlux
 
-#if FV_ENABLED
-#if FV_RECONSTRUCT
+
+#if FV_ENABLED && FV_RECONSTRUCT
 !==================================================================================================================================
 !> Computes the gradient at a boundary for FV subcells.
 !==================================================================================================================================
@@ -250,6 +223,7 @@ USE MOD_Mesh_Vars     ,ONLY: BoundaryType,BC
 USE MOD_TestCase      ,ONLY: GetBoundaryFVgradientTestcase
 USE MOD_Exactfunc     ,ONLY: ExactFunc
 USE MOD_Equation_Vars ,ONLY: IniExactFunc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -289,8 +263,7 @@ ELSE
   END SELECT ! BCType
 END IF
 END SUBROUTINE GetBoundaryFVgradient
-#endif
-#endif
+#endif /*FV_ENABLED && FV_RECONSTRUCT*/
 
 
 #if PARABOLIC
@@ -306,6 +279,7 @@ USE MOD_Lifting_Vars ,ONLY: doWeakLifting
 USE MOD_TestCase     ,ONLY: Lifting_GetBoundaryFluxTestcase
 USE MOD_Exactfunc    ,ONLY: ExactFunc
 USE MOD_Equation_Vars,ONLY: IniExactFunc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -354,13 +328,13 @@ END SUBROUTINE Lifting_GetBoundaryFlux
 #endif /*PARABOLIC*/
 
 
-
 !==================================================================================================================================
 !> Finalize boundary conditions
 !==================================================================================================================================
 SUBROUTINE FinalizeBC()
 ! MODULES
 USE MOD_Equation_Vars,ONLY: BCData,BCSideID,nBCByType
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES

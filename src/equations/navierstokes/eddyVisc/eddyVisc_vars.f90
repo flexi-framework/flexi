@@ -24,12 +24,18 @@ SAVE
 
 ABSTRACT INTERFACE
   SUBROUTINE EddyViscInt()
-  END SUBROUTINE
+    ! MODULES
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+  END SUBROUTINE EddyViscInt
 END INTERFACE
 
 ABSTRACT INTERFACE
   SUBROUTINE FinalizeEddyViscosityInt()
-  END SUBROUTINE
+    ! MODULES
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+  END SUBROUTINE FinalizeEddyViscosityInt
 END INTERFACE
 
 !-----------------------------------------------------------------------------------------------------------------------------------

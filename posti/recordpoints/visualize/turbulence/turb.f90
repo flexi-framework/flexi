@@ -21,11 +21,8 @@ MODULE MOD_Turbulence
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE Turbulence
-  MODULE PROCEDURE Turbulence
-END INTERFACE
 
-PUBLIC :: Turbulence
+PUBLIC:: Turbulence
 !===================================================================================================================================
 
 CONTAINS
@@ -43,6 +40,7 @@ USE MOD_RPData_Vars            ,ONLY: RPTime,RPData
 USE MOD_RPSetVisuVisu_Vars     ,ONLY: nRP_global
 USE MOD_Turbulence_Vars
 USE FFTW3
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -50,14 +48,13 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                         :: iSample , iVar,iRP
 INTEGER                         :: nSamples_spec
-INTEGER(KIND=8)                 :: plan
+INTEGER(KIND=DP)                :: plan
 COMPLEX                         :: in(nSamples_out),out(nSamples_out)
 REAL                            :: dt_equi , PI , df
 REAL,ALLOCATABLE                :: vel_spec(:,:,:),velPrim(:,:,:)
 REAL,ALLOCATABLE                :: velAbs(:,:),velAbs_avg(:),density_avg(:)
 REAL,ALLOCATABLE                :: nu0(:)
 !===================================================================================================================================
-
 
 PI=ATAN(1.)*4.
 ALLOCATE(velPrim(1:3,nRP_global,nSamples_out))
@@ -98,7 +95,6 @@ DO iRP=1,nRP_global
   END DO ! iVar
 END DO   ! iRP
 
-
 ALLOCATE(velAbs(nRP_global,nSamples_out))
 ALLOCATE(kk(nRP_global,nSamples_spec))
 ALLOCATE(E_kineticSpec(nRP_global,nSamples_spec))
@@ -111,7 +107,6 @@ ALLOCATE(nu0(nRP_global))
 ALLOCATE(eta(nRP_global))
 
 E_kineticSpec = 0.5*(vel_spec(1,:,:)**2 + vel_spec(2,:,:)**2 + vel_spec(3,:,:)**2 )
-!write(*,*)'E_kin',E_kineticSpec
 !RPData_spec(Prim%IndGlobal(13),:,:)=E_kineticSpec(:,:)
 !uAvg=(RPDataTimeAvg_out(Prim%IndGlobal(1))**2+RPDataTimeAvg_out(Prim%IndGlobal(2))+RPDataTimeAvg_out(Prim%IndGlobal(3)))
 

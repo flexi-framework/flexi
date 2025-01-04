@@ -24,49 +24,13 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE ISVALIDHDF5FILE
-  MODULE PROCEDURE ISVALIDHDF5FILE
-END INTERFACE
-
-INTERFACE ISVALIDMESHFILE
-  MODULE PROCEDURE ISVALIDMESHFILE
-END INTERFACE
-
-INTERFACE GetNextFileName
-  MODULE PROCEDURE GetNextFileName
-END INTERFACE
-
-INTERFACE DatasetExists
-  MODULE PROCEDURE DatasetExists
-END INTERFACE
-
-INTERFACE GetDataSize
-  MODULE PROCEDURE GetDataSize
-END INTERFACE
-
-INTERFACE GetAttributeSize
-  MODULE PROCEDURE GetAttributeSize
-END INTERFACE
-
-INTERFACE GetDataProps
-  MODULE PROCEDURE GetDataProps
-END INTERFACE
-
-INTERFACE ReadAttribute
-  MODULE PROCEDURE ReadAttribute
-END INTERFACE
-
-INTERFACE GetVarnames
-  MODULE PROCEDURE GetVarnames
-END INTERFACE
-
-PUBLIC :: Plist_File_ID,File_ID,HSize,nDims        ! Variables from MOD_IO_HDF5 that need to be public
-PUBLIC :: OpenDataFile,CloseDataFile               ! Subroutines from MOD_IO_HDF5 that need to be public
-PUBLIC :: ISVALIDHDF5FILE,ISVALIDMESHFILE,GetDataSize,GetAttributeSize,GetDataProps,GetNextFileName
-PUBLIC :: ReadArray,ReadAttribute
-PUBLIC :: GetArrayAndName
-PUBLIC :: GetVarnames
-PUBLIC :: DatasetExists
+PUBLIC:: Plist_File_ID,File_ID,HSize,nDims        ! Variables from MOD_IO_HDF5 that need to be public
+PUBLIC:: OpenDataFile,CloseDataFile               ! Subroutines from MOD_IO_HDF5 that need to be public
+PUBLIC:: ISVALIDHDF5FILE,ISVALIDMESHFILE,GetDataSize,GetAttributeSize,GetDataProps,GetNextFileName
+PUBLIC:: ReadArray,ReadAttribute
+PUBLIC:: GetArrayAndName
+PUBLIC:: GetVarnames
+PUBLIC:: DatasetExists
 !==================================================================================================================================
 
 CONTAINS
@@ -232,7 +196,7 @@ SUBROUTINE GetDataSize(Loc_ID,DSetName,nDims,Size)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*)                     :: DSetName !< name if dataset to be checked
+CHARACTER(LEN=*),INTENT(IN)          :: DSetName !< name if dataset to be checked
 INTEGER(HID_T),INTENT(IN)            :: Loc_ID   !< ID of dataset
 INTEGER,INTENT(OUT)                  :: nDims    !< found data size dimensions
 INTEGER(HSIZE_T),POINTER,INTENT(OUT) :: Size(:)  !< found data size
@@ -255,6 +219,7 @@ CALL H5DCLOSE_F(DSet_ID, iError)
 DEALLOCATE(SizeMax)
 END SUBROUTINE GetDataSize
 
+
 !==================================================================================================================================
 !> Subroutine to determine HDF5 size of attribute
 !==================================================================================================================================
@@ -264,7 +229,7 @@ SUBROUTINE GetAttributeSize(Loc_ID,AttribName,nDims,Size)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*)                     :: AttribName !< name if attribute to be checked
+CHARACTER(LEN=*),INTENT(IN)          :: AttribName !< name if attribute to be checked
 INTEGER(HID_T),INTENT(IN)            :: Loc_ID   !< ID of dataset
 INTEGER,INTENT(OUT)                  :: nDims    !< found data size dimensions
 INTEGER(HSIZE_T),POINTER,INTENT(OUT) :: Size(:)  !< found data size
@@ -302,7 +267,7 @@ SUBROUTINE DatasetExists(Loc_ID,DSetName,Exists,attrib)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*)                     :: DSetName !< name if dataset to be checked
+CHARACTER(LEN=*),INTENT(IN)          :: DSetName !< name if dataset to be checked
 INTEGER(HID_T),INTENT(IN)            :: Loc_ID   !< ID of dataset
 LOGICAL,INTENT(IN),OPTIONAL          :: attrib   !< check dataset or attribute
 LOGICAL,INTENT(OUT)                  :: Exists   !< result: dataset exists
@@ -405,6 +370,7 @@ END SUBROUTINE GetDataProps
 !
 !===================================================================================================================================
 SUBROUTINE GetVarNames(AttribName,VarNames,AttribExists)
+! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -489,13 +455,14 @@ SUBROUTINE ReadArray(ArrayName,Rank,nVal,Offset_in,Offset_dim,RealArray,IntArray
 ! MODULES
 USE MOD_Globals
 USE,INTRINSIC :: ISO_C_BINDING
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER                        :: Rank                  !< number of dimensions of the array
-INTEGER                        :: offset_in             !< offset =0, start at beginning of the array
-INTEGER                        :: offset_dim            !< which dimension is the offset (only one dimension possible here)
-INTEGER                        :: nVal(Rank)            !< local size of array to read
+INTEGER,INTENT(IN)             :: Rank                  !< number of dimensions of the array
+INTEGER,INTENT(IN)             :: offset_in             !< offset =0, start at beginning of the array
+INTEGER,INTENT(IN)             :: offset_dim            !< which dimension is the offset (only one dimension possible here)
+INTEGER,INTENT(IN)             :: nVal(Rank)            !< local size of array to read
 CHARACTER(LEN=*),INTENT(IN)    :: ArrayName             !< name of array to be read
 REAL              ,DIMENSION(PRODUCT(nVal)),OPTIONAL,INTENT(OUT),TARGET :: RealArray    !< only if real array shall be read
 INTEGER           ,DIMENSION(PRODUCT(nVal)),OPTIONAL,INTENT(OUT),TARGET :: IntArray     !< only if integer array shall be read
@@ -569,6 +536,7 @@ SUBROUTINE ReadAttribute(Loc_ID_in,AttribName,nVal,DatasetName,RealScalar,IntSca
 ! MODULES
 USE MOD_Globals
 USE,INTRINSIC :: ISO_C_BINDING
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -650,13 +618,13 @@ LOGWRITE(*,*)'...DONE!'
 END SUBROUTINE ReadAttribute
 
 
-
 !==================================================================================================================================
 !> Subroutine to determine filename of next HDF5 file for FlushFiles
 !==================================================================================================================================
 SUBROUTINE GetNextFileName(FileName,NextFileName_HDF5,single)
 ! MODULES
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

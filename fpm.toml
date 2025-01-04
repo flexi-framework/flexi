@@ -1,0 +1,76 @@
+# General information
+name        = "FLEXI"
+version     = "22.03"
+licence     = "GPL-3.0"
+description = "FLEXI: A high-order numerical framework for solving PDE"
+homepage    = "https://www.flexi-project.org"
+
+# Author and copyright information
+author      = "Numerics Research Group"
+maintainer  = "numerics@iag.uni-stuttgart.de"
+copyright   = "2010-2022 Prof. Claus-Dieter Munz, 2022-2024 Prof. Andrea Beck"
+
+# Library configuration
+source-dir  = "src"
+
+# Dependencies
+[dependencies]
+blas        = "*"
+lapack      = "*"
+mpi         = "*"
+
+# External libraries
+[build]
+link        = ["blas", "lapack"]
+
+# Automatic target discovery
+auto-executables  = false
+auto-examples     = false
+auto-tests        = false
+
+# Fortran features
+[fortran]
+implicit-external = false
+implicit-typing   = false
+source-form       = "free"
+
+# Preprocessor configuration
+[preprocess]
+[preprocess.cpp]
+suffixes          = ["f90", "t90"]
+
+# Linting
+[extra.fortitude.check]
+select            = ["E", "F", "M", "S", "T"]
+ignore            = ["E001",  # E001: syntax-error   > disabled because of false positives with PreProcessor
+                     "M011",  # M011: use-all
+                     "S001",  # S001: line-too-long
+                     "S041",  # S041: old-style-array-literal
+                     "S051",  # S051: deprecated-relational-operator
+                     "S102",  # S102: incorrect-space-before-comment
+                     "T003",  # T003: superfluous-implicit-none
+                    ]
+per-file-ignores  = [# FLEXI
+                     "src/areas/areas.f90:T001",                                # False positive
+                     "src/areas/areas.f90:M001",                                # False positive
+                     "src/equations/linearscalaradvection/exactfunc.f90:T001",  # False positive
+                     "src/equations/navierstokes/jac_split.f90:T001",           # False positive
+                     "src/fv/fv_prolongtoface.f90:T001",                        # False positive
+                     "src/filter/pplimiter.f90:T001",                           # False positive
+                     "src/globals/lapack.f90:T041",                             # LAPACK needs assumed size variables
+                     "src/indicator/indicator.f90:T012",                        # False positive
+                     "src/io_hdf5/hdf5_output.f90:T041",                        # Userblock needs assumed size variables
+                     "src/mesh/metrics.f90:T001",                               # False positive
+                     "src/mpi/mpi_vars.f90:T001",                               # False positive
+                     "src/output/output.f90:T041",                              # Userblock needs assumed size variables
+                     "src/precond/jac_ex/jac_ex_mortar.f90:T001",               # False positive
+                     "src/readintools/isovaryingstring.f90:T042",               # ISO Varying String needs assumed size variables
+                     "src/readintools/stringtools.f90:T042",                    # ISO Varying String needs assumed size variables
+                     "src/testcase/*/testcase.f90:T041",                        # Test case needs assumed size variables
+                     # POSTI tools
+                     "posti/common/fftw/fftw.f90:T001",                         # FFTW needs interface definition
+                     "posti/mergetimeaverages/timeavg.f90:T001",                # False positive
+                     "posti/visu/calc.f90:S021",                                # False positive
+                     "posti/visu/io_hdf5/visu_hdf5_output.f90:T001",            # False positive
+                    ]
+

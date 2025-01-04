@@ -243,7 +243,7 @@ ELSE
   STilde = S + (S*((cv2**2)*S+cv3*SBar))/((cv3-2*cv2)*S-SBar)
 END IF
 
-END FUNCTION
+END FUNCTION STilde
 #endif /*PARABOLIC*/
 
 END MODULE MOD_Equation_Vars

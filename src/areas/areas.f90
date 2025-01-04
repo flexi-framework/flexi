@@ -21,20 +21,11 @@ MODULE MOD_Areas
 ! MODULES
 IMPLICIT NONE
 PRIVATE
-SAVE
-!----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitArea
-  MODULE PROCEDURE InitArea
-END INTERFACE
-
-INTERFACE FinalizeArea
-  MODULE PROCEDURE FinalizeArea
-END INTERFACE
-
-PUBLIC::InitArea,FinalizeArea,PointInPoly
+PUBLIC:: InitArea
+PUBLIC:: FinalizeArea
+PUBLIC:: PointInPoly
 !==================================================================================================================================
 
 CONTAINS
@@ -257,6 +248,7 @@ SWRITE(UNIT_stdOut,'(A)')' Building '//TRIM(AreaStr)//' area done!'
 
 END SUBROUTINE InitArea
 
+
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! Check if a point is inside a polygon(PolyX,PolyY)
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -336,6 +328,7 @@ END DO
 IF (InOrOut .GE. 0) Inside = .TRUE.
 
 END SUBROUTINE PointInPoly
+
 
 !===================================================================================================================================
 !> \brief Finalize the area

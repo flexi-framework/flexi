@@ -26,56 +26,29 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE WriteState
-  MODULE PROCEDURE WriteState
-END INTERFACE
-
-INTERFACE WriteTimeAverage
-  MODULE PROCEDURE WriteTimeAverage
-END INTERFACE
-
-INTERFACE WriteBaseFlow
-  MODULE PROCEDURE WriteBaseFlow
-END INTERFACE
-
-INTERFACE FlushFiles
-  MODULE PROCEDURE FlushFiles
-END INTERFACE
-
-INTERFACE WriteHeader
-  MODULE PROCEDURE WriteHeader
-END INTERFACE
-
-!INTERFACE WriteArray
-!  MODULE PROCEDURE WriteArray
-!END INTERFACE
-
-INTERFACE WriteAttribute
-  MODULE PROCEDURE WriteAttribute
-END INTERFACE
-
-INTERFACE MarkWriteSuccessful
-  MODULE PROCEDURE MarkWriteSuccessful
-END INTERFACE
-
-INTERFACE WriteAdditionalElemData
-  MODULE PROCEDURE WriteAdditionalElemData
-END INTERFACE
-
 INTERFACE
   SUBROUTINE copy_userblock(outfilename,infilename) BIND(C)
-      USE ISO_C_BINDING, ONLY: C_CHAR
-      CHARACTER(KIND=C_CHAR) :: outfilename(*)
-      CHARACTER(KIND=C_CHAR) :: infilename(*)
+    ! MODULES
+    USE ISO_C_BINDING, ONLY: C_CHAR
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+    ! INPUT / OUTPUT VARIABLES
+    CHARACTER(KIND=C_CHAR),INTENT(IN) :: outfilename(*)
+    CHARACTER(KIND=C_CHAR),INTENT(IN) :: infilename(*)
   END SUBROUTINE copy_userblock
 END INTERFACE
 
-INTERFACE GenerateFileSkeleton
-  MODULE PROCEDURE GenerateFileSkeleton
-END INTERFACE
-
-PUBLIC :: WriteState,FlushFiles,WriteHeader,WriteTimeAverage,WriteBaseFlow,GenerateFileSkeleton
-PUBLIC :: WriteArray,WriteAttribute,GatheredWriteArray,WriteAdditionalElemData,MarkWriteSuccessful
+PUBLIC:: WriteState
+PUBLIC:: FlushFiles
+PUBLIC:: WriteHeader
+PUBLIC:: WriteTimeAverage
+PUBLIC:: WriteBaseFlow
+PUBLIC:: GenerateFileSkeleton
+PUBLIC:: WriteArray
+PUBLIC:: WriteAttribute
+PUBLIC:: GatheredWriteArray
+PUBLIC:: WriteAdditionalElemData
+PUBLIC:: MarkWriteSuccessful
 !==================================================================================================================================
 
 CONTAINS
@@ -96,6 +69,7 @@ USE MOD_Equation_Vars     ,ONLY: StrVarNames
 #if PP_dim == 2
 USE MOD_2D                ,ONLY: ExpandArrayTo3D
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -542,7 +516,6 @@ USE MOD_BaseFlow_Vars,ONLY: BaseFlow,TimeFilterWidthBaseFlow
 USE MOD_Equation_Vars,ONLY: StrVarNames
 USE MOD_Mesh_Vars    ,ONLY: offsetElem,nGlobalElems,nElems
 USE MOD_Output_Vars  ,ONLY: WriteStateFiles
-USE MOD_Sponge_Vars  ,ONLY: SpRefState
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

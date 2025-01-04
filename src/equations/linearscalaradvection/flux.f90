@@ -24,13 +24,6 @@ MODULE MOD_Flux
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
-INTERFACE EvalFlux3D
-  MODULE PROCEDURE EvalFlux3D
-END INTERFACE
 
 #if PARABOLIC
 INTERFACE EvalDiffFlux3D
@@ -45,9 +38,9 @@ INTERFACE EvalDiffFlux3D
 END INTERFACE
 #endif
 
-PUBLIC::EvalFlux3D
+PUBLIC:: EvalFlux3D
 #if PARABOLIC
-PUBLIC::EvalDiffFlux3D
+PUBLIC:: EvalDiffFlux3D
 #endif
 !==================================================================================================================================
 
@@ -60,6 +53,7 @@ SUBROUTINE EvalFlux3D(Nloc,ULoc,dummy,f,g,h)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Equation_Vars,ONLY:AdvVel
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -79,6 +73,7 @@ h = AdvVel(3)*Uloc(:,:,:,:)
 #endif
 END SUBROUTINE EvalFlux3D
 
+
 #if PARABOLIC
 !==================================================================================================================================
 !> Compute diffusive fluxes with diffusion coefficient DiffC using the conservative variables for a single side with a
@@ -88,6 +83,7 @@ SUBROUTINE EvalDiffFlux2D_Point(f,g,h,U_Face,gradUx_Face,gradUy_Face,gradUz_Face
 ! MODULES
 USE MOD_PreProc
 USE MOD_Equation_Vars,ONLY:DiffC
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -110,6 +106,7 @@ h = 0.
 #endif
 END SUBROUTINE EvalDiffFlux2D_Point
 
+
 !==================================================================================================================================
 !> Compute diffusive fluxes with diffusion coefficient DiffC using the conservative variables for a single side with a
 !> variable polynomial degree.
@@ -118,6 +115,7 @@ SUBROUTINE EvalDiffFlux2D_Side(Nloc,f,g,h,U_Face,gradUx_Face,gradUy_Face,gradUz_
 ! MODULES
 USE MOD_PreProc
 USE MOD_Equation_Vars,ONLY:DiffC
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -141,6 +139,7 @@ h = 0.
 #endif
 END SUBROUTINE EvalDiffFlux2D_Side
 
+
 !==================================================================================================================================
 !> Compute diffusive fluxes with diffusion coefficient DiffC using the conservative variables for a single side, input will
 !> be overwritten.
@@ -149,6 +148,7 @@ SUBROUTINE EvalDiffFlux2D_overwrite(U_Face,gradUx_Face,gradUy_Face,gradUz_Face)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Equation_Vars,ONLY:DiffC
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -168,6 +168,7 @@ gradUz_Face = 0.
 #endif
 END SUBROUTINE EvalDiffFlux2D_overwrite
 
+
 !==================================================================================================================================
 !> Compute linear scalar diffusion fluxes with diffusion coefficient DiffC using the conservative
 !> variables for a single volume element.
@@ -176,6 +177,7 @@ SUBROUTINE EvalDiffFlux3D(U,gradUx,gradUy,gradUz,f,g,h,iElem)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Equation_Vars,ONLY:DiffC
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -199,6 +201,7 @@ h = 0.
 #endif
 END SUBROUTINE EvalDiffFlux3D
 
+
 !==================================================================================================================================
 !> Compute linear scalar diffusion fluxes with diffusion coefficient DiffC using the conservative
 !> variables for a single volume element, input will be overwritten.
@@ -207,6 +210,7 @@ SUBROUTINE EvalDiffFlux3D_overwrite(ULoc,gradUx,gradUy,gradUz)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Equation_Vars,ONLY:DiffC
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -226,6 +230,7 @@ gradUz = 0.
 #endif
 END SUBROUTINE EvalDiffFlux3D_overwrite
 
+
 #if FV_ENABLED
 !==================================================================================================================================
 !> Wrapper routine to compute the diffusive part of the Navier-Stokes fluxes for a single volume cell
@@ -234,6 +239,7 @@ SUBROUTINE EvalDiffFlux3D_Volume_FV(UPrim,gradUx,gradUy,gradUz,f,g,h,iElem,PP_N_
 ! MODULES
 USE MOD_PreProc
 USE MOD_Equation_Vars,ONLY:DiffC
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -258,7 +264,6 @@ h = 0.
 #endif
 END SUBROUTINE EvalDiffFlux3D_Volume_FV
 #endif /*FV_ENABLED*/
-
 #endif /*PARABOLIC*/
 
 END MODULE MOD_Flux

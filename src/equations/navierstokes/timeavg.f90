@@ -25,29 +25,15 @@ MODULE MOD_TimeAverage
 ! MODULES
 IMPLICIT NONE
 PRIVATE
-
-INTEGER                        :: nMaxVarAvg,nMaxVarFluc
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
+INTEGER:: nMaxVarAvg,nMaxVarFluc
 
-INTERFACE InitCalcTimeAverage
-  MODULE PROCEDURE InitCalcTimeAverage
-END INTERFACE
-
-INTERFACE FinalizeTimeAverage
-  MODULE PROCEDURE FinalizeTimeAverage
-END INTERFACE
-
-INTERFACE CalcTimeAverage
-  MODULE PROCEDURE CalcTimeAverage
-END INTERFACE
-
-PUBLIC::InitCalcTimeAverage, FinalizeTimeAverage, CalcTimeAverage
+PUBLIC:: InitCalcTimeAverage
+PUBLIC:: CalcTimeAverage
+PUBLIC:: FinalizeTimeAverage
 !==================================================================================================================================
+
 CONTAINS
-
-
 
 !==================================================================================================================================
 !> Initializes the time averaging variables and builds map from fluctuation quantities to required time averaged variables
@@ -306,8 +292,7 @@ DO i=1,nVarList
     RETURN
   END IF
 END DO
-END FUNCTION
-
+END FUNCTION GETMAPBYNAME
 
 
 !==================================================================================================================================
@@ -346,7 +331,7 @@ REAL                            :: tFuture
 REAL                            :: dtStep
 REAL                            :: vel(3), Mach
 REAL                            :: tmpVars(nVarAvg,0:PP_N,0:PP_N,0:PP_NZ)
-LOGICAL                         :: getPrims=.FALSE.
+LOGICAL                         :: getPrims
 REAL                            :: prim(PRIM,0:PP_N,0:PP_N,0:PP_NZ),UE(PP_2Var)
 #if PARABOLIC
 INTEGER                         :: p,q
@@ -362,6 +347,7 @@ dtStep = (dtOld+dt)*0.5
 IF(Finalize) dtStep = dt*0.5
 dtAvg  = dtAvg+dtStep
 dtOld  = dt
+getPrims=.FALSE.
 IF(ANY(CalcAvg(6:nMaxVarAvg))) getPrims=.TRUE.
 
 DO iElem=1,nElems
@@ -521,7 +507,6 @@ IF(Finalize)THEN
 END IF
 
 END SUBROUTINE CalcTimeAverage
-
 
 
 !==================================================================================================================================

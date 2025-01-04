@@ -22,36 +22,13 @@ MODULE MOD_RecordPoints
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE DefineParametersRecordPoints
-  MODULE PROCEDURE DefineParametersRecordPoints
-END INTERFACE
 
-INTERFACE InitRecordPoints
-  MODULE PROCEDURE InitRecordPoints
-END INTERFACE
-
-INTERFACE RecordPoints
-  MODULE PROCEDURE RecordPoints
-END INTERFACE
-
-INTERFACE EvalRecordPoints
-  MODULE PROCEDURE EvalRecordPoints
-END INTERFACE
-
-INTERFACE WriteRP
-  MODULE PROCEDURE WriteRP
-END INTERFACE
-
-INTERFACE FinalizeRecordPoints
-  MODULE PROCEDURE FinalizeRecordPoints
-END INTERFACE
-
-PUBLIC :: DefineParametersRecordPoints
-PUBLIC :: InitRecordPoints
-PUBLIC :: RecordPoints
-PUBLIC :: EvalRecordPoints
-PUBLIC :: WriteRP
-PUBLIC :: FinalizeRecordPoints
+PUBLIC:: DefineParametersRecordPoints
+PUBLIC:: InitRecordPoints
+PUBLIC:: RecordPoints
+PUBLIC:: EvalRecordPoints
+PUBLIC:: WriteRP
+PUBLIC:: FinalizeRecordPoints
 !==================================================================================================================================
 
 CONTAINS
@@ -150,7 +127,7 @@ SUBROUTINE InitRPCommunicator()
 USE MOD_Globals
 USE MOD_RecordPoints_Vars   ,ONLY: RP_onProc,myRPrank,RP_COMM,nRP_Procs
 ! IMPLICIT VARIABLE HANDLING
- IMPLICIT NONE
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -351,6 +328,7 @@ END SUBROUTINE InitRPBasis
 !==================================================================================================================================
 SUBROUTINE RecordPoints(nVar,StrVarNames,iter,t,forceSampling)
 ! MODULES
+USE MOD_Globals
 USE MOD_Analyze_Vars,     ONLY: WriteData_dt,tWriteData
 USE MOD_RecordPoints_Vars,ONLY: RP_Data
 USE MOD_RecordPoints_Vars,ONLY: RP_Buffersize,RP_MaxBufferSize,RP_SamplingOffset,iSample
@@ -362,14 +340,14 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)             :: nVar                    !< Number of variables in U array
 CHARACTER(LEN=255),INTENT(IN)  :: StrVarNames(nVar)       !< String with the names of the variables
-INTEGER(KIND=8),INTENT(IN)     :: iter                    !< current number of timesteps
+INTEGER(KIND=DP),INTENT(IN)    :: iter                    !< current number of timesteps
 REAL,INTENT(IN)                :: t                       !< current time t
 LOGICAL,INTENT(IN)             :: forceSampling           !< force sampling (e.g. at first/last timestep of computation)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                    :: U_RP(nVar,nRP)
 !----------------------------------------------------------------------------------------------------------------------------------
-IF(MOD(iter,INT(RP_SamplingOffset,KIND=8)).NE.0 .AND. .NOT. forceSampling) RETURN
+IF(MOD(iter,INT(RP_SamplingOffset,KIND=DP)).NE.0 .AND. .NOT. forceSampling) RETURN
 
 IF(.NOT.ALLOCATED(RP_Data))THEN
   ! Compute required buffersize from timestep and add 20% tolerance
@@ -601,6 +579,5 @@ IF(RP_COMM.NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(RP_COMM, iError)
 RecordPointsInitIsDone = .FALSE.
 
 END SUBROUTINE FinalizeRecordPoints
-
 
 END MODULE MOD_RecordPoints

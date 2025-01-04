@@ -19,77 +19,24 @@
 !==================================================================================================================================
 MODULE MOD_Basis
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
-SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE BuildLegendreVdm
-   MODULE PROCEDURE BuildLegendreVdm
-END INTERFACE
 
-INTERFACE InitializeVandermonde
-   MODULE PROCEDURE InitializeVandermonde
-END INTERFACE
-
-INTERFACE ChebyshevGaussNodesAndWeights
-   MODULE PROCEDURE ChebyshevGaussNodesAndWeights
-END INTERFACE
-
-INTERFACE ChebyGaussLobNodesAndWeights
-   MODULE PROCEDURE ChebyGaussLobNodesAndWeights
-END INTERFACE
-
-INTERFACE ClenshawCurtisNodesAndWeights
-   MODULE PROCEDURE ClenshawCurtisNodesAndWeights
-END INTERFACE
-
-INTERFACE LegendreGaussNodesAndWeights
-   MODULE PROCEDURE LegendreGaussNodesAndWeights
-END INTERFACE
-
-INTERFACE LegGaussLobNodesAndWeights
-   MODULE PROCEDURE LegGaussLobNodesAndWeights
-END INTERFACE
-
-INTERFACE LegGaussRadauNodesAndWeights
-   MODULE PROCEDURE LegGaussRadauNodesAndWeights
-END INTERFACE
-
-INTERFACE LegendrePolynomialAndDerivative
-   MODULE PROCEDURE LegendrePolynomialAndDerivative
-END INTERFACE
-
-INTERFACE PolynomialDerivativeMatrix
-   MODULE PROCEDURE PolynomialDerivativeMatrix
-END INTERFACE
-
-INTERFACE BarycentricWeights
-   MODULE PROCEDURE BarycentricWeights
-END INTERFACE
-
-INTERFACE LagrangeInterpolationPolys
-   MODULE PROCEDURE LagrangeInterpolationPolys
-END INTERFACE
-
-INTERFACE PolynomialMassMatrix
-   MODULE PROCEDURE PolynomialMassMatrix
-END INTERFACE
-
-PUBLIC::BuildLegendreVdm
-PUBLIC::InitializeVandermonde
-PUBLIC::LegGaussLobNodesAndWeights
-PUBLIC::LegGaussRadauNodesAndWeights
-PUBLIC::LegendreGaussNodesAndWeights
-PUBLIC::ChebyshevGaussNodesAndWeights
-PUBLIC::ChebyGaussLobNodesAndWeights
-PUBLIC::ClenshawCurtisNodesAndWeights
-PUBLIC::LegendrePolynomialAndDerivative
-PUBLIC::PolynomialDerivativeMatrix
-PUBLIC::BarycentricWeights
-PUBLIC::LagrangeInterpolationPolys
-PUBLIC::PolynomialMassMatrix
+PUBLIC:: BuildLegendreVdm
+PUBLIC:: InitializeVandermonde
+PUBLIC:: LegGaussLobNodesAndWeights
+PUBLIC:: LegGaussRadauNodesAndWeights
+PUBLIC:: LegendreGaussNodesAndWeights
+PUBLIC:: ChebyshevGaussNodesAndWeights
+PUBLIC:: ChebyGaussLobNodesAndWeights
+PUBLIC:: ClenshawCurtisNodesAndWeights
+PUBLIC:: LegendrePolynomialAndDerivative
+PUBLIC:: PolynomialDerivativeMatrix
+PUBLIC:: BarycentricWeights
+PUBLIC:: LagrangeInterpolationPolys
+PUBLIC:: PolynomialMassMatrix
 !==================================================================================================================================
 
 CONTAINS
@@ -161,7 +108,6 @@ IF(dummy.GT.10.*PP_RealTolerance) CALL Abort(__STAMP__,&
 END SUBROUTINE buildLegendreVdm
 
 
-
 !===================================================================================================================================
 !> Build a 1D Vandermonde matrix using the Lagrange basis functions of degree
 !> N_In, evaluated at the interpolation points xi_Out
@@ -186,7 +132,6 @@ DO iXi=0,N_Out
   CALL LagrangeInterpolationPolys(xi_Out(iXi),N_In,xi_In,wBary_In,Vdm(iXi,:)) !l(0:N_In)
 END DO
 END SUBROUTINE InitializeVandermonde
-
 
 
 !===================================================================================================================================
@@ -238,8 +183,6 @@ Lder=Lder*SQRT(REAL(N_in)+0.5)
 END SUBROUTINE LegendrePolynomialAndDerivative
 
 
-
-
 !==================================================================================================================================
 !> Compute Chebychev-Gauss nodes and integration weights (algorithm 27, Kopriva book)
 !==================================================================================================================================
@@ -266,7 +209,6 @@ IF(PRESENT(wGP))THEN
   END DO
 END IF
 END SUBROUTINE ChebyshevGaussNodesAndWeights
-
 
 
 !==================================================================================================================================
@@ -356,6 +298,7 @@ SUBROUTINE LegGaussRadauNodesAndWeights(N_in,xGP,wGP)
 !MODULES
 USE MOD_Preproc
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -364,8 +307,8 @@ REAL,INTENT(OUT)          :: xGP(0:N_in)       !< Gauss point positions for the 
 REAL,INTENT(OUT),OPTIONAL :: wGP(0:N_in)       !< Gauss point weights
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                   :: nIter = 10        ! max. number of newton iterations
-REAL                      :: Tol   = 1.E-15    ! tolerance for Newton iteration: TODO: use variable tolerance here!
+INTEGER,PARAMETER         :: nIter = 10        ! max. number of newton iterations
+REAL,PARAMETER            :: Tol   = 1.E-15    ! tolerance for Newton iteration: TODO: use variable tolerance here!
 INTEGER                   :: iGP,iter
 REAL                      :: q,qder,L          ! \f$ q=L_{N_in+1}-L_{N_in-1} \f$ ,qder is derivative, \f$ L=L_{N_in} \f$
 REAL                      :: dx                ! Newton step
@@ -436,8 +379,8 @@ REAL,INTENT(OUT)          :: xGP(0:N_in)       !< Gauss point positions for the 
 REAL,INTENT(OUT),OPTIONAL :: wGP(0:N_in)       !< Gauss point weights
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                   :: nIter = 10        ! max. number of newton iterations
-REAL                      :: Tol   = 1.E-15    ! tolerance for Newton iteration: TODO: use variable tolerance here!
+INTEGER,PARAMETER         :: nIter = 10        ! max. number of newton iterations
+REAL,PARAMETER            :: Tol   = 1.E-15    ! tolerance for Newton iteration: TODO: use variable tolerance here!
 INTEGER                   :: iGP,iter
 REAL                      :: L_Np1,Lder_Np1    ! L_{N_in+1},Lder_{N_in+1}
 REAL                      :: dx                ! Newton step
@@ -493,7 +436,6 @@ IF(mod(N_in,2) .EQ. 0) THEN
   IF(PRESENT(wGP))wGP(N_in/2)=(2.*N_in+3)/(Lder_Np1*Lder_Np1)
 END IF ! (mod(N_in,2) .EQ. 0)
 END SUBROUTINE LegendreGaussNodesAndWeights
-
 
 
 !==================================================================================================================================
@@ -570,7 +512,6 @@ qder = REAL(2*N_in+1)*L                         !Lder_{N_in+1}-Lder_{N_in-1} = (
 END SUBROUTINE qAndLEvaluation
 
 
-
 !==================================================================================================================================
 !> Starting with initial guess by Parter Relation, a Newton method is used to find the roots
 !> of the Legendre Polynomial Lder_(N_in), which are the positions of Gauss-Lobatto points.
@@ -590,8 +531,8 @@ REAL,INTENT(OUT)          :: xGP(0:N_in)      !< Gauss point positions for the r
 REAL,INTENT(OUT),OPTIONAL :: wGP(0:N_in)      !< Gauss point weights
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                   :: nIter = 10       ! max. number of newton iterations
-REAL                      :: Tol   = 1.E-15   ! tolerance for Newton iteration : TODO: use variable tolerance here!
+INTEGER,PARAMETER         :: nIter = 10       ! max. number of newton iterations
+REAL,PARAMETER            :: Tol   = 1.E-15   ! tolerance for Newton iteration : TODO: use variable tolerance here!
 INTEGER                   :: iGP,iter
 REAL                      :: q,qder,L         ! \f$ q=L_{N_in+1}-L_{N_in-1} \f$ ,qder is derivative, \f$ L=L_{N_in} \f$
 REAL                      :: dx               ! Newton step
@@ -774,11 +715,14 @@ DO iGP=0,N_in
 END DO
 END SUBROUTINE LagrangeInterpolationPolys
 
+
 !============================================================================================================================
 !> Computes the exact mass matrix for Gauss and Gauss-Lobatto nodes
 !> For details see paper 'Short note on the mass matrix for Gauss–Lobatto grid points' by Saul A.Teukolsky (JCP 2015)
 !============================================================================================================================
 SUBROUTINE PolynomialMassMatrix(N_in,xGP,wGP,M,Minv)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

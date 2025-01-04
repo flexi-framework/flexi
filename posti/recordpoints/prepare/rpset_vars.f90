@@ -91,17 +91,12 @@ TYPE tRP_Ptr                                                        !< Data stru
 END TYPE tRP_Ptr
 
 
-
 TYPE(tGroup),POINTER            :: Groups(:)                        !< Array of pointers to all groups
 TYPE(tPoint),POINTER            :: Points(:)                        !< Array of pointers to all single points (not all recordpoints)
 TYPE(tLine),POINTER             :: Lines(:)                         !< Array of pointers to all lines
 TYPE(tPlane),POINTER            :: Planes(:)                        !< Array of pointers to all planes
 TYPE(tBox),POINTER              :: Boxes(:)                         !< Array of pointers to all planes
 TYPE(tRPlist),POINTER           :: RPlist(:)                        !< Array of pointers to all record points
-
-INTERFACE GetNewRP
-  MODULE PROCEDURE GetNewRP
-END INTERFACE
 
 PUBLIC:: GetNewRP
 !===================================================================================================================================
@@ -117,9 +112,9 @@ SUBROUTINE GetNewRP(RP,GroupID,x)
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-TYPE(tRP),POINTER ::  RP
-INTEGER           ::  GroupID
-REAL              ::  x(3)
+TYPE(tRP),POINTER,INTENT(INOUT) ::  RP
+INTEGER,INTENT(IN)              ::  GroupID
+REAL,INTENT(IN)                 ::  x(3)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------

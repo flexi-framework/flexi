@@ -26,18 +26,20 @@
 MODULE MOD_FillMortar
 IMPLICIT NONE
 PRIVATE
+!----------------------------------------------------------------------------------------------------------------------------------
 
 #define WITHnVar 1
 
-INTERFACE U_Mortar
-  MODULE PROCEDURE U_Mortar
-END INTERFACE
+! INTERFACE U_Mortar
+!   MODULE PROCEDURE U_Mortar
+! END INTERFACE
+!
+! INTERFACE Flux_Mortar
+!   MODULE PROCEDURE Flux_Mortar
+! END INTERFACE
 
-INTERFACE Flux_Mortar
-  MODULE PROCEDURE Flux_Mortar
-END INTERFACE
-
-PUBLIC::U_Mortar,Flux_Mortar
+PUBLIC:: U_Mortar
+PUBLIC:: Flux_Mortar
 
 CONTAINS
 #include "fillmortar.t90"
@@ -61,7 +63,8 @@ INTERFACE Flux_MortarCons
   MODULE PROCEDURE Flux_Mortar
 END INTERFACE
 
-PUBLIC::U_MortarCons,Flux_MortarCons
+PUBLIC:: U_MortarCons
+PUBLIC:: Flux_MortarCons
 
 CONTAINS
 #include "fillmortar.t90"
@@ -85,7 +88,8 @@ INTERFACE Flux_MortarPrim
   MODULE PROCEDURE Flux_Mortar
 END INTERFACE
 
-PUBLIC::U_MortarPrim,Flux_MortarPrim
+PUBLIC:: U_MortarPrim
+PUBLIC:: Flux_MortarPrim
 
 CONTAINS
 #include "fillmortar.t90"
@@ -109,7 +113,8 @@ INTERFACE Flux_MortarLifting
   MODULE PROCEDURE Flux_Mortar
 END INTERFACE
 
-PUBLIC::U_MortarLifting,Flux_MortarLifting
+PUBLIC:: U_MortarLifting
+PUBLIC:: Flux_MortarLifting
 
 CONTAINS
 #include "fillmortar.t90"
@@ -132,7 +137,8 @@ INTERFACE Flux_Mortar1
   MODULE PROCEDURE Flux_Mortar
 END INTERFACE
 
-PUBLIC::U_Mortar1,Flux_Mortar1
+PUBLIC:: U_Mortar1
+PUBLIC:: Flux_Mortar1
 
 CONTAINS
 #include "fillmortar.t90"

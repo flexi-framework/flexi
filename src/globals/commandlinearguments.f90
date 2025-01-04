@@ -19,16 +19,14 @@
 !=================================================================================================================================
 MODULE MOD_Commandline_Arguments
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 
 ! Global variables for command line argument parsing
 INTEGER                              :: nArgs              !< number of command line argumens
 CHARACTER(LEN=255),ALLOCATABLE       :: Args(:)            !< command line arguments
 
-INTERFACE ParseCommandlineArguments
-  MODULE PROCEDURE ParseCommandlineArguments
-END INTERFACE ParseCommandlineArguments
-
 !==================================================================================================================================
+
 CONTAINS
 
 !==================================================================================================================================
@@ -38,6 +36,7 @@ SUBROUTINE ParseCommandlineArguments(Args_In)
 ! MODULES
 USE MOD_Globals
 USE MOD_StringTools     ,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -104,10 +103,13 @@ END DO
 DEALLOCATE(alreadyRead)
 END SUBROUTINE ParseCommandlineArguments
 
+
 !==================================================================================================================================
 !> Finalizes commandline arguments
 !==================================================================================================================================
 SUBROUTINE FinalizeCommandlineArguments()
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !===================================================================================================================================
 SDEALLOCATE(Args)

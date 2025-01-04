@@ -25,50 +25,19 @@
 MODULE MOD_Interpolation
 ! MODULES
 USE MOD_Basis
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
-SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-! Private Part
-! ----------------------------------------------------------------------------------------------------------------------------------
-! Public Part
-! ----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE InitInterpolation
-   MODULE PROCEDURE InitInterpolation
-END INTERFACE
 
-INTERFACE InitInterpolationBasis
-   MODULE PROCEDURE InitInterpolationBasis
-END INTERFACE
-
-INTERFACE GetNodesAndWeights
-   MODULE PROCEDURE GetNodesAndWeights
-END INTERFACE
-
-INTERFACE GetVandermonde
-   MODULE PROCEDURE GetVandermonde
-END INTERFACE
-
-INTERFACE GetDerivativeMatrix
-   MODULE PROCEDURE GetDerivativeMatrix
-END INTERFACE
-
-INTERFACE FinalizeInterpolation
-   MODULE PROCEDURE FinalizeInterpolation
-END INTERFACE
-
-PUBLIC::InitInterpolation
-PUBLIC::InitInterpolationBasis
-PUBLIC::GetNodesAndWeights
-PUBLIC::GetVandermonde
-PUBLIC::GetDerivativeMatrix
-PUBLIC::FinalizeInterpolation
+PUBLIC:: DefineParametersInterpolation
+PUBLIC:: InitInterpolation
+PUBLIC:: InitInterpolationBasis
+PUBLIC:: GetNodesAndWeights
+PUBLIC:: GetVandermonde
+PUBLIC:: GetDerivativeMatrix
+PUBLIC:: FinalizeInterpolation
 !==================================================================================================================================
-
-
-PUBLIC::DefineParametersInterpolation
 
 CONTAINS
 
@@ -101,6 +70,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Interpolation_Vars
 USE MOD_ReadInTools,        ONLY:GETINT,CountOption
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -158,6 +128,7 @@ SUBROUTINE InitInterpolationBasis(N_in,xGP,wGP,wBary,L_Minus,L_Plus,Vdm_Leg,sVdm
 ! MODULES
 USE MOD_Interpolation_Vars,      ONLY:NodeType
 USE MOD_Basis,                   ONLY:LagrangeInterpolationPolys,buildLegendreVdm
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -198,6 +169,7 @@ USE MOD_Globals
 USE MOD_StringTools, ONLY: LowCase
 USE MOD_Basis,       ONLY: LegendreGaussNodesAndWeights,LegGaussLobNodesAndWeights,LegGaussRadauNodesAndWeights
 USE MOD_Basis,       ONLY: ChebyGaussLobNodesAndWeights,BarycentricWeights
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -324,6 +296,7 @@ USE MOD_Preproc
 USE MOD_StringTools,       ONLY:STRICMP
 USE MOD_Basis,             ONLY:BarycentricWeights,InitializeVandermonde
 USE MOD_Interpolation_Vars,ONLY:NodeType
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -399,6 +372,7 @@ END SUBROUTINE GetVandermonde
 SUBROUTINE GetDerivativeMatrix(N_in,NodeType_in,D)
 ! MODULES
 USE MOD_Basis,             ONLY:PolynomialDerivativeMatrix
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -421,6 +395,7 @@ END SUBROUTINE GetDerivativeMatrix
 SUBROUTINE FinalizeInterpolation()
 ! MODULES
 USE MOD_Interpolation_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------
 !input parameters

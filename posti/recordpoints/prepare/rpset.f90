@@ -23,15 +23,9 @@ MODULE MOD_RPSet
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE DefineParametersRPSet
-  MODULE PROCEDURE DefineParametersRPSet
-END INTERFACE
 
-INTERFACE InitRPSet
-  MODULE PROCEDURE InitRPSet
-END INTERFACE
-
-PUBLIC :: DefineParametersRPSet,InitRPSet
+PUBLIC:: DefineParametersRPSet
+PUBLIC:: InitRPSet
 !===================================================================================================================================
 
 CONTAINS

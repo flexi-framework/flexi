@@ -24,17 +24,10 @@ MODULE MOD_Riemann
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
+
 INTERFACE Riemann
   MODULE PROCEDURE Riemann_Point
   MODULE PROCEDURE Riemann_Side
-END INTERFACE
-
-INTERFACE GetFlux
-  MODULE PROCEDURE GetFlux
 END INTERFACE
 
 #if PARABOLIC
@@ -44,20 +37,15 @@ INTERFACE ViscousFlux
 END INTERFACE
 #endif
 
-INTERFACE FinalizeRiemann
-  MODULE PROCEDURE FinalizeRiemann
-END INTERFACE
-
-PUBLIC::Riemann
-PUBLIC::GetFlux
-PUBLIC::FinalizeRiemann
+PUBLIC:: Riemann
+PUBLIC:: GetFlux
+PUBLIC:: FinalizeRiemann
 #if PARABOLIC
-PUBLIC::ViscousFlux
+PUBLIC:: ViscousFlux
 #endif
 !==================================================================================================================================
 
 CONTAINS
-
 
 !==================================================================================================================================
 !> Computes sum of numerical and viscous flux
@@ -68,6 +56,7 @@ SUBROUTINE GetFlux(Nloc,F,U_L,U_R, &
 #endif /* PARABOLIC */
                    nv,t1,t2,doBC)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -88,8 +77,6 @@ REAL,INTENT(IN)                                          :: t2(3,0:Nloc,0:ZDIM(N
 LOGICAL,INTENT(IN)                                       :: doBC                         !< Switch to do BC sides or not
 REAL,INTENT(OUT)                                         :: F(PP_nVar,0:Nloc,0:ZDIM(Nloc)) !< Flux
 !----------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                             :: Fv(PP_nVar,0:Nloc,0:ZDIM(Nloc))
 !==================================================================================================================================
@@ -101,12 +88,14 @@ F=F+Fv
 
 END SUBROUTINE GetFlux
 
+
 !==================================================================================================================================
 !> Computes the numerical flux
 !> Conservative States are rotated into normal direction in this routine and are NOT backrotated: don't use it after this routine!!
 !==================================================================================================================================
 SUBROUTINE Riemann_Side(Nloc,FOut,U_L,U_R,UPrim_L,UPrim_R,nv,t1,t2,doBC)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -127,6 +116,7 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
 END DO; END DO
 END SUBROUTINE Riemann_Side
 
+
 !==================================================================================================================================
 !> Computes the numerical flux
 !> Conservative States are rotated into normal direction in this routine and are NOT backrotatet: don't use it after this routine!!
@@ -135,6 +125,7 @@ SUBROUTINE Riemann_Point(F,U_L,U_R,dummy_L,dummy_R,nv,t1,t2,doBC)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Equation_Vars,ONLY:AdvVel
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -145,8 +136,6 @@ REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: dummy_R    !< primitive solution at r
 REAL,DIMENSION(3          ),INTENT(IN)  :: nv,t1,t2   !< normal vector and tangential vectors at side
 REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: F          !< advective flux
 LOGICAL,INTENT(IN)                      :: doBC       !< marker whether side is a BC side
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                    :: LambdaMax
@@ -166,6 +155,7 @@ SUBROUTINE ViscousFlux_Side(Nloc,F,UPrim_L,UPrim_R, &
                             gradUx_L,gradUy_L,gradUz_L,gradUx_R,gradUy_R,gradUz_R,nv)
 ! MODULES
 USE MOD_Flux ,ONLY: EvalDiffFlux3D
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -176,8 +166,6 @@ REAL,DIMENSION(PP_nVarPrim   ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_L,UPrim_
 REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
 REAL,DIMENSION(3             ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv  !< normal vector
 REAL,DIMENSION(PP_nVar       ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: F   !< viscous flux
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc))  ::  f_L, f_R, g_L, g_R, h_L, h_R
@@ -194,6 +182,7 @@ F(1,:,:)=0.5*( nv(1,:,:)*(f_L(1,:,:)+f_R(1,:,:)) &
               +nv(2,:,:)*(g_L(1,:,:)+g_R(1,:,:)))
 END SUBROUTINE ViscousFlux_Side
 
+
 !==================================================================================================================================
 !> Computes the viscous diffusion fluxes in all directions to approximate the numerical flux
 !> Actually not a Riemann solver, only here for coding reasons
@@ -202,17 +191,15 @@ SUBROUTINE ViscousFlux_Point(F,UPrim_L,UPrim_R, &
                              gradUx_L,gradUy_L,gradUz_L,gradUx_R,gradUy_R,gradUz_R,nv)
 ! MODULES
 USE MOD_Flux ,ONLY: EvalDiffFlux3D
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-                                           !> solution in primitive variables at left/right side of interface
 REAL,DIMENSION(PP_nVarPrim   ),INTENT(IN)  :: UPrim_L,UPrim_R
                                            !> solution gradients in x/y/z-direction left/right of interface
 REAL,DIMENSION(PP_nVarLifting),INTENT(IN)  :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
 REAL,DIMENSION(3             ),INTENT(IN)  :: nv !< normal vector
 REAL,DIMENSION(PP_nVar       ),INTENT(OUT) :: F  !< viscous flux
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,DIMENSION(PP_nVar)  ::  f_L, f_R, g_L, g_R, h_L, h_R

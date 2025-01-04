@@ -23,45 +23,41 @@
 !===================================================================================================================================
 MODULE MOD_VTKStructuredOutput
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
+
 TYPE RPBox
   CHARACTER(LEN=255)      :: name
   INTEGER                 :: nRPs(3)
   REAL,ALLOCATABLE        :: Coords(:,:,:,:)
   REAL,ALLOCATABLE        :: Val(:,:,:,:)
-END TYPE
+END TYPE RPBox
 
-  TYPE RPPlane
+TYPE RPPlane
   CHARACTER(LEN=255)      :: name
   INTEGER                 :: nRPs(2)
   REAL,ALLOCATABLE        :: Coords(:,:,:)
   REAL,ALLOCATABLE        :: Val(:,:,:)
-END TYPE
+END TYPE RPPlane
 
 TYPE RPLine
   CHARACTER(LEN=255)      :: name
   INTEGER                 :: nRPs
   REAL,ALLOCATABLE        :: Coords(:,:)
   REAL,ALLOCATABLE        :: Val(:,:)
-END TYPE
+END TYPE RPLine
 
 TYPE RPPoint
   INTEGER                 :: nRPs
   REAL,ALLOCATABLE        :: Coords(:,:)
   REAL,ALLOCATABLE        :: Val(:,:)
-END TYPE
-
-INTERFACE WriteStructuredDataToVTK
-  MODULE PROCEDURE WriteStructuredDataToVTK
-END INTERFACE
+END TYPE RPPoint
 
 PUBLIC:: WriteStructuredDataToVTK
 !===================================================================================================================================
 
 CONTAINS
-
 
 !===================================================================================================================================
 !> Subroutine to write 2D or 3D point data to VTK format
@@ -69,6 +65,7 @@ CONTAINS
 SUBROUTINE WriteStructuredDataToVTK(ProjectName,nLines,nPlanes,nBoxes,RPPoints,RPLines,RPPlanes,RPBoxes,withData,nVal,VarNames)
 ! MODULES
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -85,9 +82,9 @@ INTEGER,INTENT(IN)                   :: nVal              !< Number of variables
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: VarNames(nVal)    !< Names of variables to visualize
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                     :: ivtk=44
+INTEGER,PARAMETER           :: ivtk=44
 INTEGER                     :: nBytes,Offset
-REAL(KIND=4)                :: FLOATdummy
+REAL(KIND=SP)               :: FLOATdummy
 INTEGER                     :: INTdummy
 CHARACTER(LEN=35)           :: StrOffset,TempStr1,TempStr2
 CHARACTER(LEN=200)          :: Buffer
@@ -431,13 +428,13 @@ SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
 END SUBROUTINE WriteStructuredDataToVTK
 
 
-
 !===================================================================================================================================
 !> Links structured VTK data files together
 !===================================================================================================================================
 SUBROUTINE WriteVTKMultiBlockDataSetRP(ProjectName,nSets,FileNamesVTS,ZoneNames)
 ! MODULES
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -447,7 +444,7 @@ CHARACTER(LEN=*),INTENT(IN) :: FileNamesVTS(nSets)  !< Filenames of structured d
 CHARACTER(LEN=*),INTENT(IN) :: ZoneNames(nSets)     !< Zone names of structured datasets
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: ivtk=44
+INTEGER,PARAMETER  :: ivtk=44
 INTEGER            :: iSet
 CHARACTER(LEN=200) :: Buffer
 CHARACTER(LEN=1)   :: lf

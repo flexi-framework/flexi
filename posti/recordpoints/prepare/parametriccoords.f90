@@ -23,11 +23,8 @@ MODULE MOD_RPParametricCoords
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE GetRecordPoints
-  MODULE PROCEDURE GetRecordPoints
-END INTERFACE
 
-PUBLIC :: GetRecordPoints
+PUBLIC:: GetRecordPoints
 !===================================================================================================================================
 
 CONTAINS
@@ -63,7 +60,6 @@ CALL SortRP()
 SWRITE(UNIT_stdOut,'(A)')' FINDING RECORDPOINTS DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE GetRecordPoints
-
 
 
 !===================================================================================================================================
@@ -435,4 +431,3 @@ END DO !iElem
 END SUBROUTINE SortRP
 
 END MODULE MOD_RPParametricCoords
-

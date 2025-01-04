@@ -25,39 +25,18 @@ MODULE MOD_Posti_ConvertToVisu
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE ConvertToVisu_DG
-  MODULE PROCEDURE ConvertToVisu_DG
-END INTERFACE
+
 PUBLIC:: ConvertToVisu_DG
-
-INTERFACE ConvertToSurfVisu_DG
-  MODULE PROCEDURE ConvertToSurfVisu_DG
-END INTERFACE
 PUBLIC:: ConvertToSurfVisu_DG
-
-INTERFACE ConvertToVisu_GenericData
-  MODULE PROCEDURE ConvertToVisu_GenericData
-END INTERFACE
 PUBLIC:: ConvertToVisu_GenericData
-
 #if FV_ENABLED
-INTERFACE ConvertToVisu_FV
-  MODULE PROCEDURE ConvertToVisu_FV
-END INTERFACE
 PUBLIC:: ConvertToVisu_FV
-
-INTERFACE ConvertToSurfVisu_FV
-  MODULE PROCEDURE ConvertToSurfVisu_FV
-END INTERFACE
 PUBLIC:: ConvertToSurfVisu_FV
-
 #if FV_RECONSTRUCT
-INTERFACE ConvertToVisu_FV_Reconstruct
-  MODULE PROCEDURE ConvertToVisu_FV_Reconstruct
-END INTERFACE
 PUBLIC:: ConvertToVisu_FV_Reconstruct
 #endif /* FV_RECONSTRUCT */
 #endif /* FV_ENABLED */
+!===================================================================================================================================
 
 CONTAINS
 
@@ -65,6 +44,7 @@ CONTAINS
 !> Perform a ChangeBasis of the calculated volume DG quantities to the visualization grid.
 !===================================================================================================================================
 SUBROUTINE ConvertToVisu_DG()
+! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars          ,ONLY: nVarVisu,NodeTypeVisuPosti,nVarDep,NVisu,NCalc
@@ -73,7 +53,9 @@ USE MOD_Visu_Vars          ,ONLY: nElems_DG,UCalc_DG,UVisu_DG
 USE MOD_Interpolation      ,ONLY: GetVandermonde
 USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume
 USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -107,13 +89,16 @@ END SUBROUTINE ConvertToVisu_DG
 !> Perform a ChangeBasis of the calculated surface DG quantities to the visualization grid.
 !===================================================================================================================================
 SUBROUTINE ConvertToSurfVisu_DG()
+! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars
 USE MOD_Interpolation      ,ONLY: GetVandermonde
 USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisSurf
 USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -148,12 +133,15 @@ END SUBROUTINE ConvertToSurfVisu_DG
 !> Convert the calculated FV quantities to the visualization grid.
 !===================================================================================================================================
 SUBROUTINE ConvertToVisu_FV()
+! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars         ,ONLY: nVarDep,VarnamesAll,mapDepToCalc_FV
 USE MOD_Visu_Vars         ,ONLY: mapAllVarsToVisuVars,nVarVisu,NVisu_FV
 USE MOD_Visu_Vars         ,ONLY: nElems_FV,UCalc_FV,UVisu_FV
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -193,6 +181,7 @@ END SUBROUTINE ConvertToVisu_FV
 !> Convert the calculated surface FV quantities to the visualization grid.
 !===================================================================================================================================
 SUBROUTINE ConvertToSurfVisu_FV()
+! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars         ,ONLY: nVarDep,VarnamesAll,mapDepToCalc_FV
@@ -200,7 +189,9 @@ USE MOD_Visu_Vars         ,ONLY: mapAllVarsToSurfVisuVars,USurfVisu_FV,USurfCalc
 #if !(FV_RECONSTRUCT)
 USE MOD_Visu_Vars         ,ONLY: nBCSidesVisu_FV
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -241,6 +232,7 @@ SUBROUTINE ConvertToVisu_FV_Reconstruct(&
     gradUx_calc,gradUy_calc,gradUz_calc &
 #endif
         )
+! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars
@@ -261,7 +253,9 @@ USE MOD_EOS_Posti          ,ONLY: GetMaskPrim
 #if PARABOLIC
 USE MOD_Lifting_Vars       ,ONLY: gradUx, gradUy, gradUz
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 #if PARABOLIC

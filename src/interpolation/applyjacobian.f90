@@ -34,7 +34,7 @@ INTERFACE ApplyJacobian
    MODULE PROCEDURE ApplyJacobian_select
 END INTERFACE
 
-PUBLIC::ApplyJacobian
+PUBLIC:: ApplyJacobian
 
 CONTAINS
 #include "applyjacobian.t90"
@@ -60,7 +60,7 @@ INTERFACE ApplyJacobianCons
    MODULE PROCEDURE ApplyJacobian_select
 END INTERFACE
 
-PUBLIC::ApplyJacobianCons
+PUBLIC:: ApplyJacobianCons
 
 CONTAINS
 #include "applyjacobian.t90"
@@ -86,7 +86,7 @@ INTERFACE ApplyJacobianPrim
    MODULE PROCEDURE ApplyJacobian_select
 END INTERFACE
 
-PUBLIC::ApplyJacobianPrim
+PUBLIC:: ApplyJacobianPrim
 
 CONTAINS
 #include "applyjacobian.t90"
@@ -112,7 +112,7 @@ INTERFACE ApplyJacobianLifting
    MODULE PROCEDURE ApplyJacobian_select
 END INTERFACE
 
-PUBLIC::ApplyJacobianLifting
+PUBLIC:: ApplyJacobianLifting
 
 CONTAINS
 #include "applyjacobian.t90"

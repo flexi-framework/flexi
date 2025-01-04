@@ -24,22 +24,10 @@ MODULE MOD_OutputRPVisu_VTK
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE WriteDataToVTK
-  MODULE PROCEDURE WriteDataToVTK
-END INTERFACE
-
-INTERFACE WriteTimeAvgDataToVTK
-  MODULE PROCEDURE WriteTimeAvgDataToVTK
-END INTERFACE
-
-INTERFACE WriteBLPropsToVTK
-  MODULE PROCEDURE WriteBLPropsToVTK
-END INTERFACE
-
-PUBLIC::WriteDataToVTK,WriteTimeAvgDataToVTK,WriteBLPropsToVTK
+PUBLIC:: WriteDataToVTK
+PUBLIC:: WriteTimeAvgDataToVTK
+PUBLIC:: WriteBLPropsToVTK
 !===================================================================================================================================
 
 CONTAINS
@@ -64,6 +52,7 @@ USE MOD_RPSetVisuVisu_Vars  ,ONLY:nPlanes,Planes,tPlane
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:nBoxes,Boxes,tBox
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:xF_RP
 USE MOD_VTKStructuredOutput
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -77,6 +66,7 @@ CHARACTER(LEN=255),INTENT(IN) :: FileName                      !< First part of 
 !-----------------------------------------------------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER,PARAMETER         :: ivtk=44
 INTEGER                   :: iSample
 INTEGER                   :: iPoint,iLine,iPlane,iBox,i,j,k
 INTEGER                   :: GroupID
@@ -97,7 +87,6 @@ INTEGER                   :: nPointsOutput,nLinesOutput,nPlanesOutput,nBoxesOutp
 INTEGER                   :: iPointsOutput,iLinesOutput,iPlanesOutput,iBoxesOutput
 CHARACTER(LEN=255)        :: FileNamePVD
 CHARACTER(LEN=255)        :: TimestepString
-INTEGER                   :: ivtk=44
 CHARACTER(LEN=1)          :: lf
 CHARACTER(LEN=200)        :: Buffer
 !===================================================================================================================================
@@ -438,6 +427,7 @@ END IF
 WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
 END SUBROUTINE WriteDataToVTK
 
+
 !===================================================================================================================================
 !> Subroutine to write time-averaged data to VTK file. This routine will loop over all points, lines and planes and collect the ones
 !> that should be visualized in the respective data types. The average will be written to .vts files by calling the structured
@@ -456,6 +446,7 @@ USE MOD_RPSetVisuVisu_Vars  ,ONLY:nPlanes,Planes,tPlane
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:nBoxes,Boxes,tBox
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:xF_RP
 USE MOD_VTKStructuredOutput
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -718,6 +709,7 @@ CALL WriteStructuredDataToVTK(FileName,nLinesOutput,nPlanesOutput,nBoxesOutput,R
 WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')" DONE"
 END SUBROUTINE WriteTimeAvgDataToVTK
 
+
 !===================================================================================================================================
 !> Subroutine to write the boundary layer properties to the VTK format.
 !> The boundary layer properties are calculated for the boundary layer planes, and the output is done on single line - the one
@@ -734,6 +726,7 @@ USE MOD_RPSetVisuVisu_Vars ,ONLY: nPlanes,Planes,tPlane
 USE MOD_RPSetVisuVisu_Vars ,ONLY: nBoxes,Boxes,tBox
 USE MOD_RPSetVisuVisu_Vars ,ONLY: OutputGroup
 USE MOD_RPSetVisuVisu_Vars ,ONLY: xF_RP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

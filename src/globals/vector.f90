@@ -20,7 +20,13 @@
 MODULE MOD_Vector
 ! MODULES
 IMPLICIT NONE
+PRIVATE
+!----------------------------------------------------------------------------------------------------------------------------------
 
+PUBLIC:: VNullify
+PUBLIC:: VSetConst
+PUBLIC:: VCopy
+PUBLIC:: VAXPBY
 !==================================================================================================================================
 
 CONTAINS
@@ -30,6 +36,7 @@ CONTAINS
 !==================================================================================================================================
 PURE SUBROUTINE VNullify(nTotal,Vec)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -47,6 +54,7 @@ END SUBROUTINE VNullify
 !==================================================================================================================================
 PURE SUBROUTINE VSetConst(nTotal,Vec,Const)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -65,6 +73,7 @@ END SUBROUTINE VSetConst
 !==================================================================================================================================
 PURE SUBROUTINE VCopy(nTotal,VecOut,VecIn)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -83,6 +92,7 @@ END SUBROUTINE VCopy
 !==================================================================================================================================
 PURE SUBROUTINE VAXPBY(nTotal,VecOut,VecIn,ConstOut,ConstIn)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -113,6 +123,5 @@ ELSE
   END DO
 END IF
 END SUBROUTINE VAXPBY
-
 
 END MODULE MOD_Vector

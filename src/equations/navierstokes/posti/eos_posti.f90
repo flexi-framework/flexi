@@ -24,36 +24,17 @@ MODULE MOD_EOS_Posti
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE GetMaskCons
-  MODULE PROCEDURE GetMaskCons
-END INTERFACE
-
-INTERFACE GetMaskPrim
-  MODULE PROCEDURE GetMaskPrim
-END INTERFACE
-
-INTERFACE GetMaskGrad
-  MODULE PROCEDURE GetMaskGrad
-END INTERFACE
-
+PUBLIC:: GetMaskCons
+PUBLIC:: GetMaskPrim
+PUBLIC:: GetMaskGrad
+PUBLIC:: CalcQuantities
 #if FV_ENABLED && FV_RECONSTRUCT
-INTERFACE AppendNeededPrims
-  MODULE PROCEDURE AppendNeededPrims
-END INTERFACE
-PUBLIC :: AppendNeededPrims
-#endif
-
-PUBLIC :: GetMaskCons
-PUBLIC :: GetMaskPrim
-PUBLIC :: GetMaskGrad
-PUBLIC :: CalcQuantities
+PUBLIC:: AppendNeededPrims
+#endif /*FV_ENABLED && FV_RECONSTRUCT*/
 !==================================================================================================================================
 
 CONTAINS
-
 
 #if FV_ENABLED && FV_RECONSTRUCT
 !==================================================================================================================================
@@ -90,7 +71,7 @@ DO iVar=1,nVarDepEOS
   END IF
 END DO
 END SUBROUTINE AppendNeededPrims
-#endif
+#endif /*FV_ENABLED && FV_RECONSTRUCT*/
 
 
 !==================================================================================================================================
@@ -500,6 +481,8 @@ END FUNCTION FillVorticity
 !==================================================================================================================================
 FUNCTION FillLambda2(nVal,gradUx,gradUy,gradUz) RESULT(Lambda2)
 ! MODULES
+! External procedures defined in LAPACK
+USE MOD_Lapack, ONLY: DSYEV
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -509,7 +492,6 @@ REAL,DIMENSION(PP_nVarLifting,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
 REAL               :: Lambda2(PRODUCT(nVal))
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-EXTERNAL              DSYEV
 INTEGER            :: i
 REAL               :: gradUmat(3,3)
 INTEGER            :: INFO
@@ -608,6 +590,7 @@ DO i=1,PRODUCT(nVal)
 END DO
 END FUNCTION FillWallFriction
 
+
 !==================================================================================================================================
 !> Calculate the wall heat transfer normal to the wall.
 !==================================================================================================================================
@@ -643,6 +626,7 @@ DO i=1,PRODUCT(nVal)
   WallHeatTransfer(i) = -1.*mu*Kappa*sKappaM1*R/Pr*gradTn
 END DO
 END FUNCTION FillWallHeatTransfer
+
 
 !==================================================================================================================================
 !> Calculate the non dimensional grid spacing. This is a special case since we need information about the mesh. Thus
@@ -763,6 +747,6 @@ DO iSide=1,nBCSides
 END DO ! iSide = 1,nBCSides
 
 END SUBROUTINE FillNonDimensionalGridSpacing
-#endif
+#endif /*PARABOLIC*/
 
 END MODULE MOD_EOS_Posti

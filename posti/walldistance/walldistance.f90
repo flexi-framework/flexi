@@ -24,24 +24,11 @@ MODULE MOD_Walldistance
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitWalldistance
-  MODULE PROCEDURE InitWalldistance
-END INTERFACE
-
-INTERFACE CalcWalldistance
-  MODULE PROCEDURE CalcWalldistance
-END INTERFACE
-
-INTERFACE FinalizeWalldistance
-  MODULE PROCEDURE FinalizeWalldistance
-END INTERFACE
-
-PUBLIC:: InitWalldistance,CalcWalldistance,FinalizeWalldistance
+PUBLIC:: InitWalldistance
+PUBLIC:: CalcWalldistance
+PUBLIC:: FinalizeWalldistance
+!===================================================================================================================================
 
 CONTAINS
 
@@ -49,8 +36,7 @@ CONTAINS
 !> Read in user defined parameters and prepare data for walldistance.
 !===================================================================================================================================
 SUBROUTINE InitWalldistance()
-! MODULES                                                                                                                          !
-!----------------------------------------------------------------------------------------------------------------------------------!
+! MODULES
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Walldistance_Vars
@@ -60,8 +46,9 @@ USE MOD_Mesh_Vars,          ONLY: nBCSides,Face_xGP,nElems
 USE MOD_ChangeBasisByDim,   ONLY: ChangeBasisSurf
 USE MOD_Interpolation,      ONLY: GetVandermonde,GetDerivativeMatrix
 USE MOD_Interpolation_Vars, ONLY: NodeType,NodeTypeVisuInner
-!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -105,8 +92,7 @@ END SUBROUTINE InitWalldistance
 !> Main walldistance routine.
 !===================================================================================================================================
 SUBROUTINE CalcWalldistance()
-! MODULES                                                                                                                          !
-!----------------------------------------------------------------------------------------------------------------------------------!
+! MODULES
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Walldistance_Vars
@@ -120,16 +106,18 @@ USE MOD_ChangeBasisByDim,   ONLY: ChangeBasisVolume
 USE MOD_Interpolation_Vars, ONLY: NodeType,NodeTypeVisu
 USE MOD_Interpolation,      ONLY: GetVandermonde
 USE MOD_Basis,              ONLY: LagrangeInterpolationPolys
-!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER    :: i,j,k,iElem,iSide,p,q,l
-REAL       :: xi_i(1:PP_dim-1),xi_old(1:PP_dim-1),xVol(PP_dim),xCur(PP_dim)
-REAL       :: dist,best
-REAL       :: Jac(1:PP_dim,1:PP_dim-1)
-REAL       :: dX(1:PP_dim,1:PP_dim-1,0:PP_N,0:PP_NZ)
+INTEGER,PARAMETER             :: maxIter=1000
+INTEGER                       :: i,j,k,iElem,iSide,p,q,l
+REAL                          :: xi_i(1:PP_dim-1),xi_old(1:PP_dim-1),xVol(PP_dim),xCur(PP_dim)
+REAL                          :: dist,best
+REAL                          :: Jac(1:PP_dim,1:PP_dim-1)
+REAL                          :: dX(1:PP_dim,1:PP_dim-1,0:PP_N,0:PP_NZ)
 CHARACTER(LEN=255) :: FileName,FileName_visu
 CHARACTER(LEN=255),ALLOCATABLE:: StrVarNames_loc(:)
 REAL,ALLOCATABLE,TARGET       :: Coords_NVisu(:,:,:,:,:)
@@ -139,7 +127,7 @@ REAL,POINTER                  :: distance_NVisu_p(:,:,:,:,:)
 REAL                          :: distanceTmp(1,0:PP_N,0:PP_N,0:PP_NZ)
 REAL,ALLOCATABLE              :: Vdm_GaussN_NVisu(:,:)
 REAL,EXTERNAL                 :: distanceFunc
-INTEGER                       :: iter,maxIter=1000
+INTEGER                       :: iter
 REAL                          :: g(1:PP_dim-1)
 REAL,PARAMETER                :: alpha = 0.1
 REAL,PARAMETER                :: beta   = 0.1
@@ -260,7 +248,11 @@ WRITE(UNIT_stdOut,'(A)') 'FINE SEARCH DONE!'
 IF (includeTrip) THEN
   WRITE(UNIT_stdOut,'(A)') 'INCLUDE TRIP POINT PROJECTION'
   ! First step: Coarse search using the supersampled points, identify nearest side
+#if PP_dim == 3
+  xVol = (/TripX(1), TripX(2), 0./)
+#else
   xVol = TripX(1:PP_dim)
+#endif /*PP_dim == 3*/
   best = HUGE(1.)
   DO iSide = 1, nBCSides
     IF ((BoundaryType(BC(iSide),BC_TYPE).NE.3).AND.(BoundaryType(BC(iSide),BC_TYPE).NE.4)) CYCLE
@@ -333,18 +325,20 @@ END IF
 
 CALL CloseDataFile()
 
-
 END SUBROUTINE CalcWalldistance
+
 
 !===================================================================================================================================
 !> Function to return the square of the distance
 !===================================================================================================================================
 FUNCTION distSquare(xi_i,xVol,Face_xGP)
-! MODULES                                                                                                                          !
+! MODULES
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Interpolation_Vars
 USE MOD_Basis,             ONLY: LagrangeInterpolationPolys
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 REAL,INTENT(IN) :: xi_i(  1:PP_dim-1)
@@ -378,13 +372,16 @@ distSquare = (xVol(1)-xCur(1))**2+(xVol(2)-xCur(2))**2
 
 END FUNCTION distSquare
 
+
 !===================================================================================================================================
 !> Finalize walldistance variables
 !===================================================================================================================================
 SUBROUTINE FinalizeWalldistance()
-! MODULES                                                                                                                          !
+! MODULES
 USE MOD_Walldistance_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

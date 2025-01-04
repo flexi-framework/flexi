@@ -25,22 +25,12 @@ MODULE MOD_Posti_Mappings
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
-
-INTERFACE Build_FV_DG_distribution
-  MODULE PROCEDURE Build_FV_DG_distribution
-END INTERFACE
-
-INTERFACE Build_mapDepToCalc_mapAllVarsToVisuVars
-  MODULE PROCEDURE Build_mapDepToCalc_mapAllVarsToVisuVars
-END INTERFACE
-
-INTERFACE Build_mapBCSides
-  MODULE PROCEDURE Build_mapBCSides
-END INTERFACE
+!-----------------------------------------------------------------------------------------------------------------------------------
 
 PUBLIC:: Build_FV_DG_distribution
 PUBLIC:: Build_mapDepToCalc_mapAllVarsToVisuVars
 PUBLIC:: Build_mapBCSides
+!===================================================================================================================================
 
 CONTAINS
 
@@ -57,6 +47,7 @@ SUBROUTINE Build_FV_DG_distribution(&
     statefile&
 #endif
     )
+! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars
@@ -65,7 +56,9 @@ USE MOD_ReadInTools ,ONLY: GETSTR,CountOption
 USE MOD_StringTools ,ONLY: STRICMP
 USE MOD_Mesh_ReadIn ,ONLY: BuildPartition
 USE MOD_Mesh_Vars   ,ONLY: nElems
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 #if FV_ENABLED
 CHARACTER(LEN=255),INTENT(IN)  :: statefile
@@ -191,6 +184,7 @@ END SUBROUTINE Build_FV_DG_distribution
 !>  6. build the 'mapAllBCNamesToVisuBCNames' that holds for each available boundary the visualization index
 !===================================================================================================================================
 SUBROUTINE Build_mapDepToCalc_mapAllVarsToVisuVars()
+! MODULES
 USE MOD_Globals
 USE MOD_Visu_Vars
 USE MOD_ReadInTools     ,ONLY: GETSTR,GETLOGICAL,CountOption
@@ -201,6 +195,7 @@ USE MOD_EOS_Posti       ,ONLY: AppendNeededPrims
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -208,7 +203,7 @@ INTEGER             :: iVar,iVar2
 CHARACTER(LEN=255)  :: VarName
 CHARACTER(LEN=255)  :: BoundaryName
 CHARACTER(LEN=20)   :: format
-LOGICAL             :: UseVarNamesHDF5=.FALSE.,UseVarNamesAll=.FALSE.
+LOGICAL             :: UseVarNamesHDF5,UseVarNamesAll
 !===================================================================================================================================
 ! Read Varnames from parameter file and fill
 !   mapAllVarsToVisuVars = map, which stores at position x the position/index of the x.th quantity in the UVisu array
@@ -221,6 +216,9 @@ mapAllVarsToVisuVars     = 0
 mapAllVarsToSurfVisuVars = 0
 nVarVisu        = 0
 nVarSurfVisuAll = 0
+
+UseVarNamesHDF5 = .FALSE.
+UseVarNamesAll  = .FALSE.
 
 ! If no variable names are given in prm file, take the variables given in the HDF5 "VarNames" attribute (if present) or all found
 ! variables (else). This default can be suppressed via the "noVisuVars" flag (used e.g. in paraview plugin prm files)
@@ -387,10 +385,13 @@ END SUBROUTINE Build_mapDepToCalc_mapAllVarsToVisuVars
 !> We also store the number of visualization sides per BC name.
 !===================================================================================================================================
 SUBROUTINE Build_mapBCSides()
+! MODULES
 USE MOD_Visu_Vars
 USE MOD_Mesh_Vars   ,ONLY: nBCSides,BC,SideToElem,BoundaryName
 USE MOD_StringTools ,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

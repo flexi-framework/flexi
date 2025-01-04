@@ -22,30 +22,11 @@ MODULE MOD_Exactfunc
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE DefineParametersExactFunc
-  MODULE PROCEDURE DefineParametersExactFunc
-END INTERFACE
-
-INTERFACE InitExactFunc
-  MODULE PROCEDURE InitExactFunc
-END INTERFACE
-
-INTERFACE ExactFunc
-  MODULE PROCEDURE ExactFunc
-END INTERFACE
-
-INTERFACE CalcSource
-  MODULE PROCEDURE CalcSource
-END INTERFACE
-
-
-PUBLIC::DefineParametersExactFunc
-PUBLIC::InitExactFunc
-PUBLIC::ExactFunc
-PUBLIC::CalcSource
+PUBLIC:: DefineParametersExactFunc
+PUBLIC:: InitExactFunc
+PUBLIC:: ExactFunc
+PUBLIC:: CalcSource
 !==================================================================================================================================
 
 CONTAINS
@@ -56,6 +37,7 @@ CONTAINS
 SUBROUTINE DefineParametersExactFunc()
 ! MODULES
 USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Exactfunc")
@@ -73,6 +55,7 @@ CALL addStrListEntry('IniExactFunc','dissdisp' ,6)
 CALL prms%CreateRealOption('OmegaRef',     "Angular frequency for one-dimensional cosine wave (IniExactFunc 6).")
 END SUBROUTINE DefineParametersExactFunc
 
+
 !==================================================================================================================================
 !> Get some parameters needed for exact function
 !==================================================================================================================================
@@ -87,7 +70,7 @@ USE MOD_Equation_Vars, ONLY: AdvVel,IniExactFunc,IniRefState
 USE MOD_Equation_Vars, ONLY: DiffC
 #endif
 ! IMPLICIT VARIABLE HANDLING
- IMPLICIT NONE
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -129,6 +112,7 @@ USE MOD_Timedisc_Vars, ONLY: fullBoundaryOrder,CurrentStage,dt,RKb,RKc,t
 #if PARABOLIC
 USE MOD_Equation_Vars, ONLY: DiffC
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -254,7 +238,6 @@ END IF
 END SUBROUTINE ExactFunc
 
 
-
 !==================================================================================================================================
 !> Compute source terms for some specific testcases and adds it to DG time derivative
 !==================================================================================================================================
@@ -267,6 +250,7 @@ USE MOD_PreProc
 #if PARABOLIC
 USE MOD_Equation_Vars, ONLY:DiffC
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

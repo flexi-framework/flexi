@@ -4,7 +4,7 @@
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -24,7 +24,7 @@ IMPLICIT NONE
 PUBLIC
 SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTEGER                                     :: nMTriangle
 REAL                                        :: epsZero                        !< machine precision
@@ -34,8 +34,8 @@ REAL,ALLOCATABLE,DIMENSION(:,:)             :: Dinv
 TYPE tILU                                                                     !< ILU for each element
  REAL,ALLOCATABLE,DIMENSION(:)              :: Entry
  INTEGER,ALLOCATABLE,DIMENSION(:)           :: IEntry,JEntry
-END TYPE                                                                     
+END TYPE tILU
 TYPE(tILU), ALLOCATABLE                     :: IL(:)                          !< Incomplete Lower matrix
-TYPE(tILU), ALLOCATABLE                     :: IU(:)                          !< Incomplete Upper matrix 
+TYPE(tILU), ALLOCATABLE                     :: IU(:)                          !< Incomplete Upper matrix
 !===================================================================================================================================
 END MODULE MOD_SparseILU_Vars

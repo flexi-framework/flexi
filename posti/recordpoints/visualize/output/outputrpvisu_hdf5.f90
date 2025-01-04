@@ -22,18 +22,9 @@ MODULE MOD_OutputRPVisu_HDF5
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE WriteDataToHDF5
-  MODULE PROCEDURE WriteDataToHDF5
-END INTERFACE
-
-INTERFACE WriteBLPropsToHDF5
-  MODULE PROCEDURE WriteBLPropsToHDF5
-END INTERFACE
-
-PUBLIC::WriteDataToHDF5,WriteBLPropsToHDF5
+PUBLIC:: WriteDataToHDF5
+PUBLIC:: WriteBLPropsToHDF5
 !===================================================================================================================================
 
 CONTAINS
@@ -57,6 +48,7 @@ USE MOD_RPSetVisuVisu_Vars ,ONLY: nLines,Lines,tLine
 USE MOD_RPSetVisuVisu_Vars ,ONLY: nPlanes,Planes,tPlane
 USE MOD_RPSetVisuVisu_Vars ,ONLY: xF_RP
 USE MOD_OutputRPVisu_Vars  ,ONLY: nCoords,CoordNames
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -215,6 +207,7 @@ CALL CloseDataFile()
 WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
 END SUBROUTINE WriteDataToHDF5
 
+
 !===================================================================================================================================
 !> Subroutine to write the boundary layer specific data to HDF5 file
 !===================================================================================================================================
@@ -231,6 +224,7 @@ USE MOD_RPSetVisuVisu_Vars ,ONLY: nPlanes,Planes,tPlane
 USE MOD_RPSetVisuVisu_Vars ,ONLY: nBoxes,Boxes,tBox
 USE MOD_RPSetVisuVisu_Vars ,ONLY: xF_RP
 USE MOD_OutputRPVisu_Vars  ,ONLY: nCoords,CoordNames
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -303,7 +297,6 @@ DO iBox=1,nBoxes
     CALL WriteArray(TRIM(ZoneTitle),3,(/nBLProps,Box%nRP(1),Box%nRP(3)/),(/nBLProps,Box%nRP(1),Box%nRP(3)/),(/0,0,0/),.FALSE.,RealArray=Box%BLProps)
   END IF!(Box%Type.EQ.2) THEN ! BLBox
 END DO ! iBox
-
 
 ! Close the file.
 CALL CloseDataFile()

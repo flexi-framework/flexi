@@ -65,7 +65,7 @@ END TYPE tArea
 ! This type is used to create an array of pointers, pointing to each of the created areas (to loop over them)
 TYPE tAreaList
   TYPE(tArea),POINTER                 :: pArea              !< Pointer to the area
-END TYPE
+END TYPE tAreaList
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------

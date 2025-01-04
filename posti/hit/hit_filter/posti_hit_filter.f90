@@ -45,6 +45,7 @@ USE MOD_MPI,                     ONLY: InitMPIvars,FinalizeMPI
 #if USE_OPENMP
 USE OMP_Lib
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

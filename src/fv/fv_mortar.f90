@@ -23,29 +23,12 @@ MODULE MOD_FV_Mortar
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-! Private Part --------------------------------------------------------------------------------------------------------------------
-! Public Part ---------------------------------------------------------------------------------------------------------------------
 #if FV_ENABLED
-INTERFACE FV_Elems_Mortar
-  MODULE PROCEDURE FV_Elems_Mortar
-END INTERFACE
-
-INTERFACE FV_gradU_mortar
-  MODULE PROCEDURE FV_gradU_mortar
-END INTERFACE
-
 #if FV_ENABLED == 2
-INTERFACE FV_alpha_Mortar
-  MODULE PROCEDURE FV_alpha_Mortar
-END INTERFACE
-
-
-PUBLIC::FV_alpha_Mortar
+PUBLIC:: FV_alpha_Mortar
 #endif /*FV_ENABLED == 2*/
-PUBLIC::FV_Elems_Mortar
-PUBLIC::FV_gradU_mortar
+PUBLIC:: FV_Elems_Mortar
+PUBLIC:: FV_gradU_mortar
 !==================================================================================================================================
 
 CONTAINS
@@ -95,6 +78,7 @@ END DO !MortarSideID
 END SUBROUTINE FV_alpha_Mortar
 #endif /*FV_ENABLED == 2*/
 
+
 !==================================================================================================================================
 !> Copy FV_Elems information from big mortar sides to the small sides. Compare to U_mortar subroutine.
 !==================================================================================================================================
@@ -137,6 +121,7 @@ DO MortarSideID=firstMortarSideID,lastMortarSideID
   END DO !iMortar
 END DO !MortarSideID
 END SUBROUTINE FV_Elems_Mortar
+
 
 !==================================================================================================================================
 !> Fill master/big mortar sides parts of FV_surf_gradU array.
@@ -191,6 +176,6 @@ DO MortarSideID=firstMortarSideID,lastMortarSideID
 END DO
 
 END SUBROUTINE FV_gradU_mortar
-#endif
+#endif /*FV_ENABLED*/
 
 END MODULE MOD_FV_Mortar

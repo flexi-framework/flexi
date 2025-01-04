@@ -43,11 +43,12 @@ USE MOD_StringTools
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
+!----------------------------------------------------------------------------------------------------------------------------------
 
 !================================================
 !> Link for linked List
 !================================================
-TYPE,PUBLIC :: LINK
+TYPE,PUBLIC:: LINK
   CLASS(OPTION), POINTER :: opt => null()
   CLASS(LINK), POINTER   :: next => null()
 END TYPE LINK
@@ -56,7 +57,7 @@ END TYPE LINK
 !> Class to store all options.
 !> This is basically a linked list of options.
 !==================================================================================================================================
-TYPE,PUBLIC :: Parameters
+TYPE,PUBLIC:: Parameters
   CLASS(LINK), POINTER :: firstLink => null() !< first option in the list
   CLASS(LINK), POINTER :: lastLink  => null() !< last option in the list
   INTEGER              :: maxNameLen          !< maximal string length of the name of an option in the list
@@ -81,103 +82,31 @@ CONTAINS
   PROCEDURE :: read_option                !< routine that parses a single line from the parameter file.
 END TYPE Parameters
 
-INTERFACE IgnoredParameters
-  MODULE PROCEDURE IgnoredParameters
-END INTERFACE
+PUBLIC:: IgnoredParameters
+PUBLIC:: PrintDefaultParameterFile
+PUBLIC:: CountOption
+PUBLIC:: GETINT
+PUBLIC:: GETLOGICAL
+PUBLIC:: GETREAL
+PUBLIC:: GETSTR
+PUBLIC:: GETINTARRAY
+PUBLIC:: GETLOGICALARRAY
+PUBLIC:: GETREALARRAY
+PUBLIC:: GETSTRARRAY
+PUBLIC:: GETDESCRIPTION
+PUBLIC:: GETINTFROMSTR
+PUBLIC:: addStrListEntry
+PUBLIC:: FinalizeParameters
+PUBLIC:: ExtractParameterFile
+PUBLIC:: ModifyParameterFile
+PUBLIC:: CompareParameterFile
 
-INTERFACE PrintDefaultParameterFile
-  MODULE PROCEDURE PrintDefaultParameterFile
-END INTERFACE
+TYPE(Parameters):: prms
+PUBLIC:: prms
 
-INTERFACE CountOption
-  MODULE PROCEDURE CountOption
-END INTERFACE
-
-INTERFACE GETINT
-  MODULE PROCEDURE GETINT
-END INTERFACE
-
-INTERFACE GETLOGICAL
-  MODULE PROCEDURE GETLOGICAL
-END INTERFACE
-
-INTERFACE GETREAL
-  MODULE PROCEDURE GETREAL
-END INTERFACE
-
-INTERFACE GETSTR
-  MODULE PROCEDURE GETSTR
-END INTERFACE
-
-INTERFACE GETINTARRAY
-  MODULE PROCEDURE GETINTARRAY
-END INTERFACE
-
-INTERFACE GETLOGICALARRAY
-  MODULE PROCEDURE GETLOGICALARRAY
-END INTERFACE
-
-INTERFACE GETREALARRAY
-  MODULE PROCEDURE GETREALARRAY
-END INTERFACE
-
-INTERFACE GETSTRARRAY
-  MODULE PROCEDURE GETSTRARRAY
-END INTERFACE
-
-INTERFACE GETINTFROMSTR
-  MODULE PROCEDURE GETINTFROMSTR
-END INTERFACE
-
-INTERFACE GETDESCRIPTION
-  MODULE PROCEDURE GETDESCRIPTION
-END INTERFACE
-
-INTERFACE addStrListEntry
-  MODULE PROCEDURE addStrListEntry
-END INTERFACE
-
-INTERFACE ExtractParameterFile
-  MODULE PROCEDURE ExtractParameterFile
-END INTERFACE
-
-INTERFACE ModifyParameterFile
-  MODULE PROCEDURE ModifyParameterFile
-END INTERFACE
-
-INTERFACE CompareParameterFile
-  MODULE PROCEDURE CompareParameterFile
-END INTERFACE
-
-INTERFACE FinalizeParameters
-  MODULE PROCEDURE FinalizeParameters
-END INTERFACE
-
-PUBLIC :: IgnoredParameters
-PUBLIC :: PrintDefaultParameterFile
-PUBLIC :: CountOption
-PUBLIC :: GETINT
-PUBLIC :: GETLOGICAL
-PUBLIC :: GETREAL
-PUBLIC :: GETSTR
-PUBLIC :: GETINTARRAY
-PUBLIC :: GETLOGICALARRAY
-PUBLIC :: GETREALARRAY
-PUBLIC :: GETSTRARRAY
-PUBLIC :: GETDESCRIPTION
-PUBLIC :: GETINTFROMSTR
-PUBLIC :: addStrListEntry
-PUBLIC :: FinalizeParameters
-PUBLIC :: ExtractParameterFile
-PUBLIC :: ModifyParameterFile
-PUBLIC :: CompareParameterFile
-
-TYPE(Parameters) :: prms
-PUBLIC :: prms
-
-TYPE, PUBLIC :: STR255
+TYPE, PUBLIC:: STR255
    PRIVATE
-   CHARACTER(LEN=255) :: chars
+   CHARACTER(LEN=255):: chars
 END TYPE STR255
 !==================================================================================================================================
 
@@ -251,6 +180,7 @@ ELSE
 END IF
 END SUBROUTINE CreateOption
 
+
 !==================================================================================================================================
 !> Create a new integer option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
@@ -272,6 +202,7 @@ CLASS(IntOption),ALLOCATABLE,TARGET :: intopt
 ALLOCATE(intopt)
 CALL this%CreateOption(intopt, name, description, value=value, multiple=multiple)
 END SUBROUTINE CreateIntOption
+
 
 !==================================================================================================================================
 !> Create a new integer option with a optional string representation. Only calls the general prms\%createoption routine.
@@ -295,6 +226,7 @@ ALLOCATE(intfromstropt)
 CALL this%CreateOption(intfromstropt, name, description, value=value, multiple=multiple)
 END SUBROUTINE CreateIntFromStringOption
 
+
 !==================================================================================================================================
 !> Create a new logical option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
@@ -316,6 +248,7 @@ CLASS(LogicalOption),ALLOCATABLE,TARGET :: logicalopt
 ALLOCATE(logicalopt)
 CALL this%CreateOption(logicalopt, name, description, value=value, multiple=multiple)
 END SUBROUTINE CreateLogicalOption
+
 
 !==================================================================================================================================
 !> Create a new real option. Only calls the general prms\%createoption routine.
@@ -339,6 +272,7 @@ ALLOCATE(realopt)
 CALL this%CreateOption(realopt, name, description, value=value, multiple=multiple)
 END SUBROUTINE CreateRealOption
 
+
 !==================================================================================================================================
 !> Create a new string option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
@@ -360,6 +294,7 @@ CLASS(StringOption),ALLOCATABLE,TARGET :: stringopt
 ALLOCATE(stringopt)
 CALL this%CreateOption(stringopt, name, description, value=value, multiple=multiple)
 END SUBROUTINE CreateStringOption
+
 
 !==================================================================================================================================
 !> Create a new integer array option. Only calls the general prms\%createoption routine.
@@ -383,6 +318,7 @@ ALLOCATE(intopt)
 CALL this%CreateOption(intopt, name, description, value=value, multiple=multiple)
 END SUBROUTINE CreateIntArrayOption
 
+
 !==================================================================================================================================
 !> Create a new logical array option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
@@ -404,6 +340,7 @@ CLASS(LogicalArrayOption),ALLOCATABLE,TARGET :: logicalopt
 ALLOCATE(logicalopt)
 CALL this%CreateOption(logicalopt, name, description, value=value, multiple=multiple)
 END SUBROUTINE CreateLogicalArrayOption
+
 
 !==================================================================================================================================
 !> Create a new real array option. Only calls the general prms\%createoption routine.
@@ -427,6 +364,7 @@ ALLOCATE(realopt)
 CALL this%CreateOption(realopt, name, description, value=value, multiple=multiple)
 END SUBROUTINE CreateRealArrayOption
 
+
 !==================================================================================================================================
 !> Create a new string array option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
@@ -448,6 +386,7 @@ END SUBROUTINE CreateRealArrayOption
 !ALLOCATE(stringopt)
 !CALL this%CreateOption(stringopt, name, description, value=value, multiple=multiple)
 !END SUBROUTINE CreateStringArrayOption
+
 
 !==================================================================================================================================
 !> Count number of occurrence of option with given name.
@@ -526,9 +465,9 @@ CLASS(link), POINTER  :: current
 INTEGER               :: stat,iniUnit,nLines,i
 TYPE(Varying_String)  :: aStr,bStr
 CHARACTER(LEN=255)    :: HelpStr
-LOGICAL               :: firstWarn=.TRUE.
+LOGICAL,SAVE          :: firstWarn=.TRUE.
 CHARACTER(LEN=255),ALLOCATABLE :: FileContent(:)
-CHARACTER(LEN=1)      :: tmpChar=''
+CHARACTER(LEN=1)      :: tmpChar
 !==================================================================================================================================
 CALL this%CreateLogicalOption('ColoredOutput','Colorize stdout, included for compatibility with FLEXI', '.TRUE.')
 
@@ -554,8 +493,9 @@ IF(MPIRoot)THEN
   IF (stat.NE.0) CALL Abort(__STAMP__,"Could not open ini file.")
 
   ! parallel IO: ROOT reads file and sends it to all other procs
-  nLines=0
-  stat=0
+  nLines  = 0
+  stat    = 0
+  tmpChar = ''
   DO
     READ(iniunit,"(A)",IOSTAT=stat)tmpChar
     IF(stat.NE.0)EXIT
@@ -637,6 +577,7 @@ END DO
 use_escape_codes = GETLOGICAL("ColoredOutput")
 END SUBROUTINE read_options
 
+
 !==================================================================================================================================
 !> Parses one line of parameter file and sets the value of the specific option in the 'prms' linked list.
 !> Therefore it iterate over all entries of the linked list and compares the names.
@@ -702,6 +643,7 @@ DO WHILE (ASSOCIATED(current))
 END DO
 END FUNCTION read_option
 
+
 !==================================================================================================================================
 !> Output all parameters, which are defined but NOT set in the parameter file.
 !==================================================================================================================================
@@ -728,6 +670,7 @@ SWRITE(UNIT_stdOut,'(100("!"))')
 CALL clear_formatting()
 END SUBROUTINE IgnoredParameters
 
+
 !==================================================================================================================================
 !> Print a default parameter file. The command line argument --help prints it in the format, that is used for reading the parameter
 !> file. With --markdown one can print a default parameter file in markdown format.
@@ -740,8 +683,8 @@ USE MOD_StringTools ,ONLY: STRICMP
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-LOGICAL,INTENT(IN)   :: markdown  !< marker whether markdown format is used for output
-CHARACTER(LEN=255)   :: name      !< for this parameter help is printed. If empty print all.
+LOGICAL,INTENT(IN)            :: markdown  !< marker whether markdown format is used for output
+CHARACTER(LEN=255),INTENT(IN) :: name      !< for this parameter help is printed. If empty print all.
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CLASS(link), POINTER   :: current
@@ -753,9 +696,9 @@ INTEGER                :: lineLen
 INTEGER                :: spaceNameLen
 INTEGER                :: spaceValueLen
 INTEGER                :: mode
-CHARACTER(LEN=255)     :: section = "-"
-CHARACTER(LEN=255)     :: singlesection = ""
-CHARACTER(LEN=255)     :: singleoption = ""
+CHARACTER(LEN=255)     :: section
+CHARACTER(LEN=255)     :: singlesection
+CHARACTER(LEN=255)     :: singleoption
 CHARACTER(LEN=20)      :: fmtLineLen
 CHARACTER(LEN=20)      :: fmtName
 CHARACTER(LEN=20)      :: fmtValue
@@ -767,9 +710,12 @@ CHARACTER(LEN=255)     :: intFromStringOutput
 CHARACTER(LEN=255)     :: fmtIntFromStringLength
 CHARACTER(LEN=255)     :: fmtStringIntFromString
 !==================================================================================================================================
+maxNameLen    = 0
+maxValueLen   = 0
+section       = "-"
+singlesection = ""
+singleoption  = ""
 
-maxNameLen  = 0
-maxValueLen = 0
 current => prms%firstLink
 ! check if name is a section or a option
 DO WHILE (ASSOCIATED(current))
@@ -931,7 +877,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name     !< parameter name
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal !< reference value
-CLASS(*)                             :: value    !< parameter value
+CLASS(*),INTENT(INOUT)               :: value    !< parameter value
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CLASS(link),POINTER           :: current
@@ -1033,7 +979,7 @@ IMPLICIT NONE
 CHARACTER(LEN=*),INTENT(IN)          :: name      !< parameter name
 INTEGER,INTENT(IN)                   :: no        !< size of array
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal  !< reference value
-CLASS(*)                             :: value(no) !< parameter value
+CLASS(*),INTENT(INOUT)               :: value(no) !< parameter value
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CLASS(link),POINTER   :: current
@@ -1571,12 +1517,15 @@ LOGICAL,INTENT(OUT)          :: prmChanged  !< flag to indicate whether paramete
 ! LOCAL VARIABLES
 INTEGER               :: stat,fileUnit,copyUnit
 INTEGER               :: i,j
-CHARACTER(LEN=255)    :: tmp = ""
-CHARACTER(LEN=255)    :: tmp2= ""
-CHARACTER(LEN=255)    :: prmfile_copy=".tmp.ini"
+CHARACTER(LEN=255)    :: tmp
+CHARACTER(LEN=255)    :: tmp2
+CHARACTER(LEN=255)    :: prmfile_copy
 TYPE(Varying_String)  :: aStr
 !==================================================================================================================================
-prmChanged = .FALSE.
+prmChanged   = .FALSE.
+tmp          = ""
+tmp2         = ""
+prmfile_copy = ".tmp.ini"
 
 IF (MPIRoot) THEN
   IF (.NOT.FILEEXISTS(prmfile)) &
@@ -1647,11 +1596,13 @@ LOGICAL,INTENT(OUT)          :: prmChanged  !< flag to indicate whether paramete
 ! LOCAL VARIABLES
 INTEGER               :: stat1,stat2,prm1Unit,prm2Unit
 INTEGER               :: i
-CHARACTER(LEN=255)    :: tmp1=""
-CHARACTER(LEN=255)    :: tmp2=""
+CHARACTER(LEN=255)    :: tmp1
+CHARACTER(LEN=255)    :: tmp2
 TYPE(Varying_String)  :: aStr
 !==================================================================================================================================
 prmChanged = .FALSE.
+tmp1       = ""
+tmp2       = ""
 
 IF (MPIRoot) THEN
   IF (.NOT.FILEEXISTS(prmfile1)) &

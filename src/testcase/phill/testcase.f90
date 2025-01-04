@@ -28,46 +28,9 @@ MODULE MOD_TestCase
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-
-INTERFACE DefineParametersTestcase
-  MODULE PROCEDURE DefineParametersTestcase
-End INTERFACE
-
-INTERFACE InitTestcase
-  MODULE PROCEDURE InitTestcase
-END INTERFACE
-
-INTERFACE FinalizeTestcase
-  MODULE PROCEDURE FinalizeTestcase
-END INTERFACE
-
-INTERFACE ExactFuncTestcase
-  MODULE PROCEDURE ExactFuncTestcase
-END INTERFACE
-
-INTERFACE CalcForcing
-  MODULE PROCEDURE CalcForcing
-END INTERFACE
-
-INTERFACE TestcaseSource
-  MODULE PROCEDURE TestcaseSource
-END INTERFACE
 
 INTERFACE AnalyzeTestcase
   MODULE PROCEDURE DO_NOTHING_LOG
-END INTERFACE
-
-INTERFACE GetBoundaryFluxTestcase
-  MODULE PROCEDURE GetBoundaryFluxTestcase
-END INTERFACE
-
-INTERFACE GetBoundaryFVgradientTestcase
-  MODULE PROCEDURE GetBoundaryFVgradientTestcase
-END INTERFACE
-
-INTERFACE Lifting_GetBoundaryFluxTestcase
-  MODULE PROCEDURE Lifting_GetBoundaryFluxTestcase
 END INTERFACE
 
 PUBLIC:: DefineParametersTestcase
@@ -80,6 +43,7 @@ PUBLIC:: AnalyzeTestcase
 PUBLIC:: GetBoundaryFluxTestcase
 PUBLIC:: GetBoundaryFVgradientTestcase
 PUBLIC:: Lifting_GetBoundaryFluxTestcase
+!==================================================================================================================================
 
 CONTAINS
 
@@ -90,6 +54,7 @@ SUBROUTINE DefineParametersTestcase()
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadInTools ,ONLY: prms
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Testcase")
@@ -112,6 +77,7 @@ USE MOD_ReadInTools,    ONLY: GETREAL,GETSTR,GETINT
 USE MOD_Mesh_Vars,      ONLY: nBCs,BoundaryName
 USE MOD_Output_Vars,    ONLY: ProjectName
 USE MOD_Output,         ONLY: InitOutputToFile
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -156,7 +122,6 @@ SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitTestcase
 
 
-
 !==================================================================================================================================
 !> Specifies all the initial conditions for the periodic hill testcase.
 !==================================================================================================================================
@@ -165,6 +130,7 @@ SUBROUTINE ExactFuncTestcase(tIn,x,Resu,Resu_t,Resu_tt)
 USE MOD_Globals,      ONLY: Abort
 USE MOD_Equation_Vars,ONLY: RefStatePrim,IniRefState
 USE MOD_EOS,          ONLY: PrimToCons
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -227,7 +193,6 @@ Resu_tt=0.
 END SUBROUTINE ExactFuncTestcase
 
 
-
 !==================================================================================================================================
 !> Specifies the forcing term for the periodic hill testcase
 !==================================================================================================================================
@@ -240,6 +205,7 @@ USE MOD_DG_Vars,        ONLY: U,U_master,U_slave
 USE MOD_Analyze_Vars,   ONLY: wGPSurf,wGPVol,Surf,Vol,writeData_dt,tWriteData
 USE MOD_Mesh_Vars,      ONLY: SurfElem,AnalyzeSide,nSides,nMPISides_YOUR,sJ
 USE MOD_Mesh_Vars,      ONLY: nElems
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -328,6 +294,7 @@ SUBROUTINE TestcaseSource(Ut)
 USE MOD_PreProc
 USE MOD_TestCase_Vars,ONLY:dpdx,BulkVel
 USE MOD_Mesh_Vars,    ONLY:sJ,nElems
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -354,6 +321,7 @@ SUBROUTINE WriteStats()
 USE MOD_Globals      ,ONLY:Abort
 USE MOD_TestCase_Vars,ONLY:writeBuf,FileName,ioCounter
 USE MOD_Output,       ONLY:OutputToFile
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -374,35 +342,45 @@ SUBROUTINE FinalizeTestcase()
 ! MODULES
 USE MOD_Globals      ,ONLY:MPIRoot
 USE MOD_TestCase_Vars,ONLY:writeBuf
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 IF(MPIRoot) THEN
   SDEALLOCATE(writeBuf)
 END IF
-END SUBROUTINE
+END SUBROUTINE FinalizeTestcase
 
 
-! SUBROUTINE DO_NOTHING(optionalREAL,optionalREAL2)
-! IMPLICIT NONE
-! REAL,OPTIONAL,INTENT(IN)    :: optionalREAL,optionalREAL2
-! END SUBROUTINE DO_NOTHING
-
-
+!==================================================================================================================================
+!> Empty placeholder routine
+!==================================================================================================================================
 SUBROUTINE DO_NOTHING_LOG(optionalREAL,optionalLOG)
+! MODULES
+USE MOD_Globals      ,ONLY:MPIRoot
+USE MOD_TestCase_Vars,ONLY:writeBuf
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
 REAL,OPTIONAL,INTENT(IN)    :: optionalREAL
 LOGICAL,OPTIONAL,INTENT(IN) :: optionalLOG
+!==================================================================================================================================
 END SUBROUTINE DO_NOTHING_LOG
 
 
+!==================================================================================================================================
+!> Empty placeholder routine
+!==================================================================================================================================
 SUBROUTINE GetBoundaryFluxTestcase(SideID,t,Nloc,Flux,UPrim_master,                   &
 #if PARABOLIC
                            gradUx_master,gradUy_master,gradUz_master,&
 #endif
                            NormVec,TangVec1,TangVec2,Face_xGP)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES
+! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)   :: SideID  !< ID of current side
 REAL,INTENT(IN)      :: t       !< current time (provided by time integration scheme)
 INTEGER,INTENT(IN)   :: Nloc    !< polynomial degree
@@ -421,8 +399,14 @@ REAL,INTENT(OUT)     :: Flux(PP_nVar,0:Nloc,0:ZDIM(Nloc))  !< resulting boundary
 END SUBROUTINE GetBoundaryFluxTestcase
 
 
+!==================================================================================================================================
+!> Empty placeholder routine
+!==================================================================================================================================
 SUBROUTINE GetBoundaryFVgradientTestcase(SideID,t,gradU,UPrim_master)
+! MODULES
 USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: SideID                                   !< ID of current side
@@ -433,8 +417,14 @@ REAL,INTENT(OUT)   :: gradU       (PP_nVarPrim,0:PP_N,0:PP_NZ) !< FV boundary gr
 END SUBROUTINE GetBoundaryFVgradientTestcase
 
 
+!==================================================================================================================================
+!> Empty placeholder routine
+!==================================================================================================================================
 SUBROUTINE Lifting_GetBoundaryFluxTestcase(SideID,t,UPrim_master,Flux)
+! MODULES
 USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: SideID                                   !< ID of current side

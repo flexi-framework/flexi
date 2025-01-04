@@ -50,6 +50,7 @@ USE MOD_HDF5_OutputRP
 USE MOD_RPParametricCoords, ONLY:GetRecordPoints
 USE MOD_RPSet
 USE MOD_VisuRP,             ONLY:VisuRP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -152,8 +153,9 @@ WRITE(UNIT_stdOut,'(132("="))')
 WRITE(UNIT_stdOut,'(A)') ' PREPARE RECORDPOINTS TOOL FINISHED! '
 WRITE(UNIT_stdOut,'(132("="))')
 
-END PROGRAM PrepareRecordPoints
+!===================================================================================================================================
 
+CONTAINS
 
 !===================================================================================================================================
 !> Initialize parameter variables of Posti tool
@@ -161,6 +163,7 @@ END PROGRAM PrepareRecordPoints
 SUBROUTINE DefineParameters()
 ! MODULES
 USE MOD_ReadInTools ,ONLY: prms
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !===================================================================================================================================
 CALL prms%SetSection('Prepare Record Points')
@@ -179,9 +182,12 @@ SUBROUTINE InitParameters()
 ! MODULES
 USE MOD_Parameters
 USE MOD_Readintools   ,ONLY:GETINT,GETREAL,GETLOGICAL
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !===================================================================================================================================
 NSuper     =GETINT('NSuper','0')
 maxTol     =1.+ABS(GETREAL('maxTolerance','1.e-3'))
 doVisuRP   =GETLOGICAL('doVisuRP','T')
 END SUBROUTINE InitParameters
+
+END PROGRAM PrepareRecordPoints

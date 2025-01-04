@@ -32,25 +32,32 @@ MODULE MOD_SplitFlux
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
+
 ABSTRACT INTERFACE
   PPURE SUBROUTINE VolumeFlux(URef,UPrimRef,U,UPrim,MRef,M,Flux)
+    ! MODULES
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+    ! INPUT / OUTPUT VARIABLES
     REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef,U
     REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef,UPrim
     REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef,M
     REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux
-  END SUBROUTINE
+  END SUBROUTINE VolumeFlux
 END INTERFACE
 
 ABSTRACT INTERFACE
   PPURE SUBROUTINE SurfaceFlux(U_LL,U_RR,F)
+    ! MODULES
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+    ! INPUT / OUTPUT VARIABLES
     REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL,U_RR
     REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F
-  END SUBROUTINE
+  END SUBROUTINE SurfaceFlux
 END INTERFACE
 
-PROCEDURE(VolumeFlux),POINTER    :: SplitDGVolume_pointer    !< pointer defining the SpliDG formulation beeing used
+PROCEDURE(VolumeFlux) ,POINTER   :: SplitDGVolume_pointer    !< pointer defining the SpliDG formulation beeing used
 PROCEDURE(SurfaceFlux),POINTER   :: SplitDGSurface_pointer   !< pointer defining the SpliDG formulation beeing used
 
 INTEGER,PARAMETER      :: PRM_SPLITDG_SD          = 0
@@ -60,13 +67,11 @@ INTEGER,PARAMETER      :: PRM_SPLITDG_KG          = 3
 INTEGER,PARAMETER      :: PRM_SPLITDG_PI          = 4
 INTEGER,PARAMETER      :: PRM_SPLITDG_CH          = 5
 
-INTERFACE InitSplitDG
-  MODULE PROCEDURE InitSplitDG
-END INTERFACE
-
-PUBLIC::InitSplitDG,DefineParametersSplitDG
-PUBLIC::SplitDGSurface_pointer,SplitDGVolume_pointer
-PUBLIC::GetLogMean
+PUBLIC:: DefineParametersSplitDG
+PUBLIC:: InitSplitDG
+PUBLIC:: SplitDGSurface_pointer
+PUBLIC:: SplitDGVolume_pointer
+PUBLIC:: GetLogMean
 !==================================================================================================================================
 
 CONTAINS
@@ -96,6 +101,7 @@ CALL addStrListEntry('SplitDG','ch',           PRM_SPLITDG_CH)
 
 END SUBROUTINE DefineParametersSplitDG
 
+
 !==================================================================================================================================!
 !> Initialize function pointers for the specific split version in use
 !==================================================================================================================================!
@@ -104,8 +110,9 @@ SUBROUTINE InitSplitDG(SplitDG_in)
 USE MOD_Globals
 USE MOD_ReadInTools ,ONLY: GETINTFROMSTR
 USE MOD_DG_Vars     ,ONLY: SplitDG
-!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN),OPTIONAL :: SplitDG_in
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -149,6 +156,7 @@ END SUBROUTINE InitSplitDG
 PPURE SUBROUTINE SplitVolumeFluxSD(URef,UPrimRef,U,UPrim,MRef,M,Flux)
 ! MODULES
 USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -209,12 +217,14 @@ Flux(:) = 0.5*(MRef(1)+M(1))*fTilde(:) + &
 
 END SUBROUTINE SplitVolumeFluxSD
 
+
 !==================================================================================================================================
 !> Computes the surface flux for the split formulation retaining the standard NS-Equations
 !==================================================================================================================================
 PPURE SUBROUTINE SplitSurfaceFluxSD(U_LL,U_RR,F)
 ! MODULES
 USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -237,6 +247,7 @@ F(ENER)= 0.5*((U_LL(EXT_ENER)+U_LL(EXT_PRES))*U_LL(EXT_VEL1)+(U_RR(EXT_ENER)+U_R
 
 END SUBROUTINE SplitSurfaceFluxSD
 
+
 !==================================================================================================================================
 !> Computes the Split-Flux retaining the formulation of Ducros
 !> Attention 1: Factor 2 from differentiation matrix is already been considered
@@ -247,6 +258,7 @@ END SUBROUTINE SplitSurfaceFluxSD
 PPURE SUBROUTINE SplitVolumeFluxDU(URef,UPrimRef,U,UPrim,MRef,M,Flux)
 ! MODULES
 USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -303,12 +315,14 @@ Flux(:) = 0.5*(MRef(1)+M(1))*fTilde(:) + &
 
 END SUBROUTINE SplitVolumeFluxDU
 
+
 !==================================================================================================================================
 !> Computes the surface flux for the split formulation of Ducros
 !==================================================================================================================================
 PPURE SUBROUTINE SplitSurfaceFluxDU(U_LL,U_RR,F)
 ! MODULES
 USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -330,6 +344,7 @@ F(ENER)= 0.25*(U_LL(EXT_ENER)+U_RR(EXT_ENER)+U_LL(EXT_PRES)+U_RR(EXT_PRES))*(U_L
 
 END SUBROUTINE SplitSurfaceFluxDU
 
+
 !==================================================================================================================================
 !> Computes the Split-Flux retaining the KEP formulation of Kennedy and Gruber
 !> Attention 1: Factor 2 from differentiation matrix is already been considered
@@ -340,6 +355,7 @@ END SUBROUTINE SplitSurfaceFluxDU
 PPURE SUBROUTINE SplitVolumeFluxKG(URef,UPrimRef,U,UPrim,MRef,M,Flux)
 ! MODULES
 USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -404,12 +420,14 @@ Flux(:) = 0.5*(MRef(1)+M(1))*fTilde(:) + &
 
 END SUBROUTINE SplitVolumeFluxKG
 
+
 !==================================================================================================================================
 !> Computes the surface flux for the split formulation of Kennedy and Gruber
 !==================================================================================================================================
 PPURE SUBROUTINE SplitSurfaceFluxKG(U_LL,U_RR,F)
 ! MODULES
 USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -437,6 +455,7 @@ F(ENER)= 0.125*(U_LL(EXT_DENS)+U_RR(EXT_DENS))*(E_LL+E_RR)*(U_LL(EXT_VEL1)+U_RR(
 
 END SUBROUTINE SplitSurfaceFluxKG
 
+
 !==================================================================================================================================
 !> Computes the Split-Flux retaining the formulation of Morinishi
 !> Attention 1: Factor 2 from differentiation matrix is already been considered
@@ -448,6 +467,7 @@ END SUBROUTINE SplitSurfaceFluxKG
 PPURE SUBROUTINE SplitVolumeFluxMO(URef,UPrimRef,U,UPrim,MRef,M,Flux)
 ! MODULES
 USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -527,12 +547,14 @@ Flux(:) = 0.5*(MRef(1)+M(1))*fTilde(:) + &
 
 END SUBROUTINE SplitVolumeFluxMO
 
+
 !==================================================================================================================================
 !> Computes the surface flux for the split formulation of Morinishi
 !==================================================================================================================================
 PPURE SUBROUTINE SplitSurfaceFluxMO(U_LL,U_RR,F)
 ! MODULES
 USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -566,6 +588,7 @@ F(ENER)= 0.5 *(rhoep_LL*U_LL(EXT_VEL1)+rhoep_RR*U_RR(EXT_VEL1)) +  &            
 
 END SUBROUTINE SplitSurfaceFluxMO
 
+
 !==================================================================================================================================
 !> Computes the Split-Flux retaining the KEP formulation of Pirozzoli
 !> Attention 1: Factor 2 from differentiation matrix is already been considered
@@ -576,6 +599,7 @@ END SUBROUTINE SplitSurfaceFluxMO
 PPURE SUBROUTINE SplitVolumeFluxPI(URef,UPrimRef,U,UPrim,MRef,M,Flux)
 ! MODULES
 USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -637,12 +661,14 @@ Flux(:) = 0.5*(MRef(1)+M(1))*fTilde(:) + &
 
 END SUBROUTINE SplitVolumeFluxPI
 
+
 !==================================================================================================================================
 !> Computes the surface flux for the split formulation of Pirozzoli
 !==================================================================================================================================
 PPURE SUBROUTINE SplitSurfaceFluxPI(U_LL,U_RR,F)
 ! MODULES
 USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -669,6 +695,7 @@ F(ENER)= 0.125*(U_LL(EXT_DENS)+U_RR(EXT_DENS))*(H_LL+H_RR)*(U_LL(EXT_VEL1)+U_RR(
 
 END SUBROUTINE SplitSurfaceFluxPI
 
+
 !==================================================================================================================================
 !> Computes the Split-Flux retaining the entropy conserving (and formally KEP) formulation of Chandrashekar
 !> Attention 1: Factor 2 from differentiation matrix is already been considered
@@ -681,6 +708,7 @@ PPURE SUBROUTINE SplitVolumeFluxCH(URef,UPrimRef,U,UPrim,MRef,M,Flux)
 ! MODULES
 USE MOD_PreProc
 USE MOD_EOS_Vars, ONLY:sKappaM1
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -760,6 +788,7 @@ Flux = Flux*2.
 
 END SUBROUTINE SplitVolumeFluxCH
 
+
 !==================================================================================================================================
 !> Computes the surface flux for the entropy conserving formulation of Chandrashekar.
 !> The flux after Chanrashekar uses a special computation of the pressure, based on the averages of density and inverse
@@ -769,6 +798,7 @@ PPURE SUBROUTINE SplitSurfaceFluxCH(U_LL,U_RR,F)
 ! MODULES
 USE MOD_PreProc
 USE MOD_EOS_Vars, ONLY:sKappaM1
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -809,11 +839,13 @@ F(ENER) = F(DENS)*HMean
 
 END SUBROUTINE SplitSurfaceFluxCH
 
+
 !==================================================================================================================================
 !> auxilary function for calculating the logarithmic mean numerically stable according to Ismail and Roe
 !==================================================================================================================================
 ELEMENTAL SUBROUTINE GetLogMean(U_L,U_R,UMean)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES

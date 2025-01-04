@@ -33,8 +33,6 @@ MODULE MOD_Flux
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
 
 INTERFACE EvalFlux3D
   MODULE PROCEDURE EvalFlux3D_Point
@@ -60,9 +58,11 @@ INTERFACE EvalDiffFlux3D
 END INTERFACE
 #endif /*PARABOLIC*/
 
-PUBLIC::EvalFlux3D, EvalEulerFlux1D, EvalEulerFlux1D_fast
+PUBLIC:: EvalFlux3D
+PUBLIC:: EvalEulerFlux1D
+PUBLIC:: EvalEulerFlux1D_fast
 #if PARABOLIC
-PUBLIC::EvalDiffFlux3D
+PUBLIC:: EvalDiffFlux3D
 #endif /*PARABOLIC*/
 !==================================================================================================================================
 
@@ -73,6 +73,7 @@ CONTAINS
 !==================================================================================================================================
 PPURE SUBROUTINE EvalFlux3D_Point(U,UPrim,f,g,h)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -130,12 +131,14 @@ h   = 0.
 #endif
 END SUBROUTINE EvalFlux3D_Point
 
+
 !==================================================================================================================================
 !> Wrapper routine to compute the advection part of the RANS SA fluxes for a single volume cell
 !==================================================================================================================================
 PPURE SUBROUTINE EvalFlux3D_Volume(Nloc,U,UPrim,f,g,h)
 ! MODULES
 USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -162,6 +165,7 @@ PPURE SUBROUTINE EvalDiffFlux3D_Point(UPrim,gradUx,gradUy,gradUz,f,g,h)
 USE MOD_Equation_Vars,ONLY: s23,s43,PrTurb,fv1,fn,sigma
 USE MOD_EOS_Vars,     ONLY: cp,Pr
 USE MOD_Viscosity
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -253,12 +257,14 @@ h    = 0.
 END ASSOCIATE
 END SUBROUTINE EvalDiffFlux3D_Point
 
+
 !==================================================================================================================================
 !> Wrapper routine to compute the diffusive part of the RANS SA fluxes for a single volume cell
 !==================================================================================================================================
 SUBROUTINE EvalDiffFlux3D_Volume(UPrim,gradUx,gradUy,gradUz,f,g,h,iElem)
 ! MODULES
 USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -278,6 +284,7 @@ DO k=0,PP_NZ;  DO j=0,PP_N; DO i=0,PP_N
 END DO; END DO; END DO ! i,j,k
 END SUBROUTINE EvalDiffFlux3D_Volume
 
+
 #if FV_ENABLED
 !==================================================================================================================================
 !> Wrapper routine to compute the diffusive part of the RANS SA fluxes for a single volume cell
@@ -288,6 +295,7 @@ USE MOD_PreProc
 #if EDDYVISCOSITY
 USE MOD_EddyVisc_Vars,ONLY: muSGS
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -311,12 +319,14 @@ END DO; END DO; END DO ! i,j,k
 END SUBROUTINE EvalDiffFlux3D_Volume_FV
 #endif /*FV_ENABLED*/
 
+
 !==================================================================================================================================
 !> Wrapper routine to compute the diffusive part of the Navier-Stokes fluxes for a single side
 !==================================================================================================================================
 PPURE SUBROUTINE EvalDiffFlux3D_Surface(Nloc,UPrim,gradUx,gradUy,gradUz,f,g,h)
 ! MODULES
 USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -335,12 +345,14 @@ END DO; END DO ! i,j
 END SUBROUTINE EvalDiffFlux3D_Surface
 #endif /*PARABOLIC*/
 
+
 !==================================================================================================================================
 !> Computes 1D Euler flux using the conservative variables.
 !==================================================================================================================================
 PPURE SUBROUTINE EvalEulerFlux1D(U,F)
 ! MODULES
 USE MOD_EOS_Vars ,ONLY:KappaM1
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -369,11 +381,13 @@ F(ENER)=(U(ENER)+UE(EXT_PRES))*UE(EXT_VEL1)  ! (rho*e+p)*u
 F(MUSA)=(U(MUSA)*UE(EXT_VEL1))               ! muTilde*u
 END SUBROUTINE EvalEulerFlux1D
 
+
 !==================================================================================================================================
 !> Computes 1D Euler flux using the conservative and primitive variables (for better performance)
 !==================================================================================================================================
 PPURE SUBROUTINE EvalEulerFlux1D_fast(U,F)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES

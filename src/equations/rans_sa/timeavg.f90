@@ -26,28 +26,15 @@ MODULE MOD_TimeAverage
 IMPLICIT NONE
 PRIVATE
 
-INTEGER                        :: nMaxVarAvg,nMaxVarFluc
-!----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
+INTEGER:: nMaxVarAvg,nMaxVarFluc
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitCalcTimeAverage
-  MODULE PROCEDURE InitCalcTimeAverage
-END INTERFACE
-
-INTERFACE FinalizeTimeAverage
-  MODULE PROCEDURE FinalizeTimeAverage
-END INTERFACE
-
-INTERFACE CalcTimeAverage
-  MODULE PROCEDURE CalcTimeAverage
-END INTERFACE
-
-PUBLIC::InitCalcTimeAverage, FinalizeTimeAverage, CalcTimeAverage
+PUBLIC:: InitCalcTimeAverage
+PUBLIC:: FinalizeTimeAverage
+PUBLIC:: CalcTimeAverage
 !==================================================================================================================================
+
 CONTAINS
-
-
 
 !==================================================================================================================================
 !> Initializes the time averaging variables and builds map from fluctuation quantities to required time averaged variables
@@ -61,6 +48,7 @@ USE MOD_Preproc
 USE MOD_ReadInTools, ONLY: CountOption,GETSTR,GETLOGICAL,GETINT
 USE MOD_Mesh_Vars,   ONLY: nElems
 USE MOD_AnalyzeEquation_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -286,6 +274,7 @@ END SUBROUTINE InitCalcTimeAverage
 !==================================================================================================================================
 PURE FUNCTION GETMAPBYNAME(VarName,VarNameList,nVarList)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -304,8 +293,7 @@ DO i=1,nVarList
     RETURN
   END IF
 END DO
-END FUNCTION
-
+END FUNCTION GETMAPBYNAME
 
 
 !==================================================================================================================================
@@ -330,6 +318,7 @@ USE MOD_AnalyzeEquation_Vars
 USE MOD_FV_Vars      ,ONLY: FV_Elems,FV_Vdm
 USE MOD_ChangeBasisByDim,ONLY:ChangeBasisVolume
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -343,7 +332,7 @@ REAL                            :: tFuture
 REAL                            :: dtStep
 REAL                            :: vel(3), Mach
 REAL                            :: tmpVars(nVarAvg,0:PP_N,0:PP_N,0:PP_NZ)
-LOGICAL                         :: getPrims=.FALSE.
+LOGICAL                         :: getPrims
 REAL                            :: prim(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ),UE(PP_2Var)
 #if PARABOLIC
 INTEGER                         :: p,q
@@ -359,6 +348,7 @@ dtStep = (dtOld+dt)*0.5
 IF(Finalize) dtStep = dt*0.5
 dtAvg  = dtAvg+dtStep
 dtOld  = dt
+getPrims = .FALSE.
 IF(ANY(CalcAvg(6:nMaxVarAvg))) getPrims=.TRUE.
 
 DO iElem=1,nElems
@@ -520,13 +510,13 @@ END IF
 END SUBROUTINE CalcTimeAverage
 
 
-
 !==================================================================================================================================
 !> Finalizes the time averaging routines
 !==================================================================================================================================
 SUBROUTINE FinalizeTimeAverage()
 ! MODULES
 USE MOD_AnalyzeEquation_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

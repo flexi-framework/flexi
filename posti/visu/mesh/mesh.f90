@@ -23,16 +23,6 @@ MODULE MOD_Posti_VisuMesh
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-
-INTERFACE BuildVisuCoords
-  MODULE PROCEDURE BuildVisuCoords
-END INTERFACE
-
-INTERFACE BuildSurfVisuCoords
-  MODULE PROCEDURE BuildSurfVisuCoords
-END INTERFACE
 
 PUBLIC:: BuildVisuCoords
 PUBLIC:: BuildSurfVisuCoords

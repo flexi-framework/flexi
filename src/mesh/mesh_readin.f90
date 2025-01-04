@@ -51,21 +51,9 @@ INTEGER,PARAMETER    :: SIDE_Flip=4
 INTEGER,PARAMETER    :: SIDE_BCID=5
 !> @}
 
-INTERFACE ReadMesh
-  MODULE PROCEDURE ReadMesh
-END INTERFACE
-
-INTERFACE BuildPartition
-  MODULE PROCEDURE BuildPartition
-END INTERFACE
-
-INTERFACE ReadIJKSorting
-  MODULE PROCEDURE ReadIJKSorting
-END INTERFACE
-
-PUBLIC::ReadMesh
-PUBLIC::BuildPartition
-PUBLIC::ReadIJKSorting
+PUBLIC:: ReadMesh
+PUBLIC:: BuildPartition
+PUBLIC:: ReadIJKSorting
 !==================================================================================================================================
 
 CONTAINS
@@ -86,13 +74,13 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER,PARAMETER              :: Offset = 0 ! Every process reads all BCs
 LOGICAL,ALLOCATABLE            :: UserBCFound(:)
 LOGICAL                        :: NameCheck,LengthCheck
 CHARACTER(LEN=255), ALLOCATABLE:: BCNames(:)
 CHARACTER(LEN=255)             :: ErrorString
 INTEGER, ALLOCATABLE           :: BCMapping(:),BCType(:,:)
 INTEGER                        :: iBC,iUserBC
-INTEGER                        :: Offset=0 ! Every process reads all BCs
 !==================================================================================================================================
 ! read in boundary conditions from ini file, will overwrite BCs from meshfile!
 nUserBCs = CountOption('BoundaryName')
@@ -150,7 +138,6 @@ CALL GetDataSize(File_ID,'BCType',nDims,HSize)
 IF((HSize(1).NE.4).OR.(HSize(2).NE.nBCs)) CALL CollectiveStop(__STAMP__,'Problem in readBC')
 DEALLOCATE(HSize)
 ALLOCATE(BCType(4,nBCs))
-offset=0
 CALL ReadArray('BCType',2,(/4,nBCs/),Offset,1,IntArray=BCType)
 ! Now apply boundary mappings
 IF(nUserBCs .GT. 0)THEN
@@ -851,6 +838,7 @@ ELSE
 END IF
 END FUNCTION ELEMIPROC
 #endif /*USE_MPI*/
+
 
 !===================================================================================================================================
 !> Read arrays nElems_IJK (global number of elements in i,j,k direction) and Elem_IJK (mapping from global element to i,j,k index)

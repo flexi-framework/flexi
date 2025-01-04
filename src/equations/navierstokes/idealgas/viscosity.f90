@@ -23,23 +23,24 @@ MODULE MOD_Viscosity
 #if PARABOLIC
 ! MODULES
 #if   PP_VISC == 0
-USE MOD_EOS_Vars,     ONLY:mu0
+USE MOD_EOS_Vars,     ONLY: mu0
 #elif PP_VISC == 1
-USE MOD_EOS_Vars,     ONLY:R
+USE MOD_EOS_Vars,     ONLY: mu0,R
 #elif PP_VISC == 2
-USE MOD_EOS_Vars,     ONLY:mu0,R,ExpoSuth
+USE MOD_EOS_Vars,     ONLY: mu0,R,ExpoSuth
 #endif
-
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-
+PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
+PUBLIC:: mu0
 #if PP_VISC == 1
-INTERFACE muSuth
-  MODULE PROCEDURE muSuth
-END INTERFACE
-#endif
-
+PUBLIC:: R
+PUBLIC:: muSuth
+#elif PP_VISC == 2
+PUBLIC:: R,ExpoSuth
+#endif /*PP_VISC*/
 !==================================================================================================================================
 
 CONTAINS
@@ -65,6 +66,7 @@ CONTAINS
 ELEMENTAL FUNCTION muSuth(T)
 ! MODULES
 USE MOD_EOS_Vars, ONLY: mu0,Tref,Ts,ExpoSuth,cSuth
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

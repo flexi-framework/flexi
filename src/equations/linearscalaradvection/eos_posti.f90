@@ -23,42 +23,24 @@ MODULE MOD_EOS_Posti
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE GetMaskCons
-  MODULE PROCEDURE GetMaskCons
-END INTERFACE
-
-INTERFACE GetMaskPrim
-  MODULE PROCEDURE GetMaskPrim
-END INTERFACE
-
-INTERFACE GetMaskGrad
-  MODULE PROCEDURE GetMaskGrad
-END INTERFACE
-
+PUBLIC:: GetMaskCons
+PUBLIC:: GetMaskPrim
+PUBLIC:: GetMaskGrad
+PUBLIC:: CalcQuantities
 #if FV_ENABLED && FV_RECONSTRUCT
-INTERFACE AppendNeededPrims
-  MODULE PROCEDURE AppendNeededPrims
-END INTERFACE
-PUBLIC :: AppendNeededPrims
+PUBLIC:: AppendNeededPrims
 #endif
-
-PUBLIC :: GetMaskCons
-PUBLIC :: GetMaskPrim
-PUBLIC :: GetMaskGrad
-PUBLIC :: CalcQuantities
 !==================================================================================================================================
 
 CONTAINS
-
 
 #if FV_ENABLED && FV_RECONSTRUCT
 SUBROUTINE AppendNeededPrims(mapDepToCalc,mapDepToCalc_FV,nVarCalc)
 !==================================================================================================================================
 ! MODULES
 USE MOD_EOS_Posti_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -80,7 +62,8 @@ DO iVar=1,nVarDepEOS
   END IF
 END DO
 END SUBROUTINE AppendNeededPrims
-#endif
+#endif /* FV_ENABLED && FV_RECONSTRUCT */
+
 
 FUNCTION GetMaskCons()
 !==================================================================================================================================
@@ -88,6 +71,7 @@ FUNCTION GetMaskCons()
 USE MOD_EOS_Posti_Vars
 USE MOD_Equation_Vars ,ONLY: StrVarNames
 USE MOD_StringTools   ,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -111,6 +95,7 @@ FUNCTION GetMaskPrim()
 !==================================================================================================================================
 ! MODULES
 USE MOD_EOS_Posti_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
@@ -124,6 +109,7 @@ FUNCTION GetMaskGrad()
 !==================================================================================================================================
 ! MODULES
 USE MOD_EOS_Posti_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
@@ -137,7 +123,9 @@ SUBROUTINE CalcQuantities(nVarCalc,nVal,mapCalcMeshToGlobalMesh,mapDepToCalc,UCa
     NormVec,TangVec1,TangVec2)
 !==================================================================================================================================
 ! MODULES
+USE MOD_Globals
 USE MOD_EOS_Posti_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
@@ -150,14 +138,16 @@ REAL,INTENT(OUT)                                                :: UCalc(PRODUCT
 REAL,DIMENSION(1:PP_nVarPrim,PRODUCT(nVal)),INTENT(IN),OPTIONAL :: gradUx,gradUy,gradUz
 REAL,DIMENSION(1:3,PRODUCT(nVal)),INTENT(IN),OPTIONAL           :: NormVec,TangVec1,TangVec2
 !===================================================================================================================================
-STOP 'Not available for linear scalar advection.'
+CALL Abort(__STAMP__, 'Not available for linear scalar advection.')
 END SUBROUTINE CalcQuantities
 
 
 SUBROUTINE CalcDerivedQuantity(iVarCalc,DepName,nVarCalc,nVal,iElems,mapDepToCalc,UCalc,gradUx,gradUy,gradUz)
 !==================================================================================================================================
 ! MODULES
+USE MOD_Globals
 USE MOD_EOS_Posti_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
@@ -170,7 +160,7 @@ INTEGER,INTENT(IN)            :: mapDepToCalc(nVarDepEOS)
 REAL,INTENT(INOUT)            :: UCalc(PRODUCT(nVal),1:nVarCalc)
 REAL,DIMENSION(1:PP_nVarPrim,PRODUCT(nVal)),INTENT(IN),OPTIONAL :: gradUx,gradUy,gradUz
 !===================================================================================================================================
-STOP 'Not available for linear scalar advection.'
+CALL Abort(__STAMP__, 'Not available for linear scalar advection.')
 END SUBROUTINE CalcDerivedQuantity
 
 END MODULE MOD_EOS_Posti

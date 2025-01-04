@@ -23,15 +23,11 @@ MODULE MOD_CalcBodyForces
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE CalcBodyForces
-  MODULE PROCEDURE CalcBodyForces
-END INTERFACE
 
-PUBLIC :: CalcBodyForces
+PUBLIC:: CalcBodyForces
 !==================================================================================================================================
 
 CONTAINS
-
 
 !==================================================================================================================================
 !> Control routine for CalcBodyforces
@@ -46,6 +42,7 @@ USE MOD_Lifting_Vars,    ONLY:gradUx_master,gradUy_master,gradUz_master
 #endif
 USE MOD_Mesh_Vars,       ONLY:NormVec,SurfElem,nBCSides,BC,nBCs
 USE MOD_AnalyzeEquation_Vars,ONLY:isWall
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -103,7 +100,6 @@ BodyForce=Fv+Fp
 END SUBROUTINE CalcBodyForces
 
 
-
 !==================================================================================================================================
 !> Compute integral pressure force per face
 !==================================================================================================================================
@@ -111,6 +107,7 @@ SUBROUTINE CalcPressureForce(Fp,p_Face,SurfElem,NormVec)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Analyze_Vars,      ONLY:wGPSurf
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -138,8 +135,9 @@ END SUBROUTINE CalcPressureForce
 SUBROUTINE CalcViscousForce(Fv,UPrim_Face,gradUx_Face,gradUy_Face,gradUz_Face,SurfElem,NormVec)
 ! MODULES
 USE MOD_PreProc
-USE MOD_Viscosity
 USE MOD_Analyze_Vars, ONLY:wGPSurf
+USE MOD_Viscosity
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -157,7 +155,7 @@ REAL                           :: muS
 REAL                           :: GradV(3,3),DivV,prim(PP_nVarPrim)
 INTEGER                        :: i, j
 !==================================================================================================================================
-Fv       =0.
+Fv = 0.
 
 DO j=0,PP_NZ; DO i=0,PP_N
   ! calculate viscosity

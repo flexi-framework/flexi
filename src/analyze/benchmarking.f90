@@ -22,31 +22,18 @@ MODULE MOD_Benchmarking
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
 ! Private Part ---------------------------------------------------------------------------------------------------------------------
 #ifdef PAPI
 LOGICAL :: doMeasureFlops
 #endif
 ! Public Part ----------------------------------------------------------------------------------------------------------------------
-INTERFACE InitBenchmarking
-  MODULE PROCEDURE InitBenchmarking
-END INTERFACE
 
-INTERFACE Benchmarking
-  MODULE PROCEDURE Benchmarking
-END INTERFACE
-
-INTERFACE FinalizeBenchmarking
-  MODULE PROCEDURE FinalizeBenchmarking
-END INTERFACE
-
-
-PUBLIC:: Benchmarking, InitBenchmarking, FinalizeBenchmarking
+PUBLIC:: InitBenchmarking
+PUBLIC:: Benchmarking
+PUBLIC:: FinalizeBenchmarking
 !==================================================================================================================================
 
 CONTAINS
-
 
 SUBROUTINE InitBenchmarking()
 !==================================================================================================================================
@@ -54,6 +41,7 @@ SUBROUTINE InitBenchmarking()
 !==================================================================================================================================
 ! MODULES
 USE MOD_ReadInTools,        ONLY: GETLOGICAL
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -69,6 +57,7 @@ SUBROUTINE Benchmarking()
 !> Calls routine to measure amount of flops
 !==================================================================================================================================
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -88,6 +77,7 @@ SUBROUTINE MeasureFlops()
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
 USE MOD_Preproc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -115,11 +105,11 @@ SUBROUTINE FinalizeBenchmarking()
 !> Finalizes variables necessary for benchmarking subroutines
 !==================================================================================================================================
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
 END SUBROUTINE FinalizeBenchmarking
-
 
 END MODULE MOD_Benchmarking

@@ -18,6 +18,7 @@
 !> Module wrapper for the FFTW library via the ISO_C_Binding. This module has to be USE-associated in order to call FFTW routines.
 !===================================================================================================================================
 MODULE FFTW3
+  ! MODULES
   USE, INTRINSIC :: ISO_C_BINDING
   INCLUDE 'fftw3.f03'
 END MODULE FFTW3

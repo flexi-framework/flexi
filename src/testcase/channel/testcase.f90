@@ -40,50 +40,9 @@ USE MOD_TestCase_Vars
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
 
 INTEGER,PARAMETER :: FORCING_CPG             = 0
 INTEGER,PARAMETER :: FORCING_CFR             = 1
-
-INTERFACE DefineParametersTestcase
-  MODULE PROCEDURE DefineParametersTestcase
-END INTERFACE
-
-INTERFACE InitTestcase
-  MODULE PROCEDURE InitTestcase
-END INTERFACE
-
-INTERFACE FinalizeTestcase
-  MODULE PROCEDURE FinalizeTestcase
-END INTERFACE
-
-INTERFACE ExactFuncTestcase
-  MODULE PROCEDURE ExactFuncTestcase
-END INTERFACE
-
-INTERFACE CalcForcing
-  MODULE PROCEDURE CalcForcing
-END INTERFACE
-
-INTERFACE TestcaseSource
-  MODULE PROCEDURE TestcaseSource
-END INTERFACE
-
-INTERFACE AnalyzeTestCase
-  MODULE PROCEDURE AnalyzeTestCase
-END INTERFACE
-
-INTERFACE GetBoundaryFluxTestcase
-  MODULE PROCEDURE GetBoundaryFluxTestcase
-END INTERFACE
-
-INTERFACE GetBoundaryFVgradientTestcase
-  MODULE PROCEDURE GetBoundaryFVgradientTestcase
-END INTERFACE
-
-INTERFACE Lifting_GetBoundaryFluxTestcase
-  MODULE PROCEDURE Lifting_GetBoundaryFluxTestcase
-END INTERFACE
 
 PUBLIC:: DefineParametersTestcase
 PUBLIC:: InitTestcase
@@ -95,6 +54,7 @@ PUBLIC:: AnalyzeTestCase
 PUBLIC:: GetBoundaryFluxTestcase
 PUBLIC:: GetBoundaryFVgradientTestcase
 PUBLIC:: Lifting_GetBoundaryFluxTestcase
+!==================================================================================================================================
 
 CONTAINS
 
@@ -120,6 +80,7 @@ CALL prms%CreateIntOption('nWriteStats', "Write testcase statistics to file at e
 CALL prms%CreateIntOption('nAnalyzeTestCase', "Call testcase specific analysis routines every n-th timestep. "//&
                                               "(Note: always called at global analyze level)"                   , '1000')
 END SUBROUTINE DefineParametersTestcase
+
 
 !==================================================================================================================================
 !> Initializes the Channel testcase. The initial pressure is set to match the specified Bulk Mach number. For this, the initial
@@ -226,7 +187,6 @@ END IF
 SWRITE(UNIT_stdOut,'(A)')' INIT TESTCASE CHANNEL DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitTestcase
-
 
 
 !==================================================================================================================================
@@ -401,6 +361,7 @@ DO iElem=1,nElems
 END DO
 END SUBROUTINE TestcaseSource
 
+
 !==================================================================================================================================
 !> Output testcase statistics
 !==================================================================================================================================
@@ -417,6 +378,7 @@ IMPLICIT NONE
 CALL OutputToFile(FileName,writeBuf(1,1:ioCounter),(/3,ioCounter/),RESHAPE(writeBuf(2:4,1:ioCounter),(/3*ioCounter/)))
 ioCounter=0
 END SUBROUTINE WriteStats
+
 
 !==================================================================================================================================
 !> Specifies periodic hill testcase
@@ -440,6 +402,7 @@ IF(MPIRoot)THEN
 END IF
 END SUBROUTINE AnalyzeTestCase
 
+
 !==================================================================================================================================
 !> Specifies all the initial conditions. The state in conservative variables is returned.
 !==================================================================================================================================
@@ -452,10 +415,12 @@ IMPLICIT NONE
 IF(MPIRoot) THEN
   SDEALLOCATE(writeBuf)
 END IF
-END SUBROUTINE
+END SUBROUTINE FinalizeTestcase
 
 
-
+!==================================================================================================================================
+!>
+!==================================================================================================================================
 SUBROUTINE GetBoundaryFluxTestcase(SideID,t,Nloc,Flux,UPrim_master,                   &
 #if PARABOLIC
                            gradUx_master,gradUy_master,gradUz_master,&
@@ -482,6 +447,9 @@ REAL,INTENT(OUT)     :: Flux(PP_nVar,0:Nloc,0:ZDIM(Nloc))  !< resulting boundary
 END SUBROUTINE GetBoundaryFluxTestcase
 
 
+!==================================================================================================================================
+!>
+!==================================================================================================================================
 SUBROUTINE GetBoundaryFVgradientTestcase(SideID,t,gradU,UPrim_master)
 ! MODULES
 USE MOD_PreProc
@@ -497,6 +465,9 @@ REAL,INTENT(OUT)   :: gradU       (PP_nVarPrim,0:PP_N,0:PP_NZ) !< FV boundary gr
 END SUBROUTINE GetBoundaryFVgradientTestcase
 
 
+!==================================================================================================================================
+!>
+!==================================================================================================================================
 SUBROUTINE Lifting_GetBoundaryFluxTestcase(SideID,t,UPrim_master,Flux)
 ! MODULES
 USE MOD_PreProc

@@ -23,18 +23,19 @@ USE MOD_ReadInTools
 USE ISO_C_BINDING
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 
 INTERFACE
   SUBROUTINE print_userblock(filename,inifilename) BIND(C)
-      USE ISO_C_BINDING, ONLY: C_CHAR
-      CHARACTER(KIND=C_CHAR) :: filename(*)
-      CHARACTER(KIND=C_CHAR) :: inifilename(*)
+    ! MODULES
+    USE ISO_C_BINDING, ONLY: C_CHAR
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+    ! INPUT / OUTPUT VARIABLES
+    CHARACTER(KIND=C_CHAR),INTENT(IN) :: filename(*)
+    CHARACTER(KIND=C_CHAR),INTENT(IN) :: inifilename(*)
   END SUBROUTINE print_userblock
 END INTERFACE
-
-!----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
 
 ! Output format for state visualization
 INTEGER,PARAMETER :: OUTPUTFORMAT_NONE         = 0
@@ -45,38 +46,6 @@ INTEGER,PARAMETER :: OUTPUTFORMAT_PARAVIEW     = 3
 ! Output format for ASCII data files
 INTEGER,PARAMETER :: ASCIIOUTPUTFORMAT_CSV     = 0
 ! INTEGER,PARAMETER :: ASCIIOUTPUTFORMAT_TECPLOT = 1
-
-INTERFACE DefineParametersOutput
-  MODULE PROCEDURE DefineParametersOutput
-END INTERFACE
-
-INTERFACE InitOutput
-  MODULE PROCEDURE InitOutput
-END INTERFACE
-
-INTERFACE PrintPercentage
-  MODULE PROCEDURE PrintPercentage
-END INTERFACE
-
-INTERFACE PrintStatusLine
-  MODULE PROCEDURE PrintStatusLine
-END INTERFACE
-
-INTERFACE Visualize
-  MODULE PROCEDURE Visualize
-END INTERFACE
-
-INTERFACE InitOutputToFile
-  MODULE PROCEDURE InitOutputToFile
-END INTERFACE
-
-INTERFACE OutputToFile
-  MODULE PROCEDURE OutputToFile
-END INTERFACE
-
-INTERFACE FinalizeOutput
-  MODULE PROCEDURE FinalizeOutput
-END INTERFACE
 
 PUBLIC:: DefineParametersOutput
 PUBLIC:: InitOutput
@@ -286,8 +255,8 @@ REAL,INTENT(IN)             :: t      !< current simulation time
 REAL,INTENT(IN)             :: dt     !< current time step
 REAL,INTENT(IN)             :: tStart !< start time of simulation
 REAL,INTENT(IN)             :: tEnd   !< end time of simulation
-INTEGER(KIND=8),INTENT(IN)  :: iter    !< current iteration
-INTEGER(KIND=8),INTENT(IN)  :: maxIter !< end iteration of simulation
+INTEGER(KIND=DP),INTENT(IN) :: iter    !< current iteration
+INTEGER(KIND=DP),INTENT(IN) :: maxIter !< end iteration of simulation
 LOGICAL,INTENT(IN),OPTIONAL :: doETA !< flag to print ETA without carriage return
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -309,13 +278,13 @@ INTEGER,PARAMETER :: barWidth = 32
 INTEGER,PARAMETER :: barWidth = 51
 #endif
 #if FV_ENABLED == 1
-INTEGER(KIND=8)   :: FVcounter
+INTEGER(KIND=DP)  :: FVcounter
 REAL              :: FV_percent
 #elif FV_ENABLED == 2 || FV_ENABLED == 3
 REAL              :: FV_alpha_range(2)
 #endif /*FV_ENABLED*/
 #if PP_LIMITER
-INTEGER(KIND=8)   :: PPcounter
+INTEGER(KIND=DP)  :: PPcounter
 REAL              :: PP_percent
 #endif /*PP_LIMITER*/
 !==================================================================================================================================

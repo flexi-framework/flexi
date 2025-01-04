@@ -24,7 +24,7 @@
 MODULE MOD_SurfInt
 IMPLICIT NONE
 PRIVATE
-
+!----------------------------------------------------------------------------------------------------------------------------------
 #define WITHnVars 1
 
 INTERFACE SurfInt
@@ -35,7 +35,8 @@ INTERFACE DoSurfInt
   MODULE PROCEDURE DoSurfInt
 END INTERFACE
 
-PUBLIC::SurfInt,DoSurfInt
+PUBLIC:: SurfInt
+PUBLIC:: DoSurfInt
 
 CONTAINS
 #include "surfint.t90"
@@ -62,7 +63,8 @@ INTERFACE DoSurfIntCons
   MODULE PROCEDURE DoSurfInt
 END INTERFACE
 
-PUBLIC::SurfIntCons,DoSurfIntCons
+PUBLIC:: SurfIntCons
+PUBLIC:: DoSurfIntCons
 
 CONTAINS
 #include "surfint.t90"
@@ -86,7 +88,8 @@ INTERFACE DoSurfIntLifting
   MODULE PROCEDURE DoSurfInt
 END INTERFACE
 
-PUBLIC::SurfIntLifting,DoSurfIntLifting
+PUBLIC:: SurfIntLifting
+PUBLIC:: DoSurfIntLifting
 
 CONTAINS
 #include "surfint.t90"
@@ -110,7 +113,8 @@ INTERFACE DoSurfIntPrim
   MODULE PROCEDURE DoSurfInt
 END INTERFACE
 
-PUBLIC::SurfIntPrim,DoSurfIntPrim
+PUBLIC:: SurfIntPrim
+PUBLIC:: DoSurfIntPrim
 
 CONTAINS
 #include "surfint.t90"

@@ -43,11 +43,7 @@ TYPE(tRPDataSet),POINTER        :: firstset, actualset !> Pointers to first and 
 
 !===================================================================================================================================
 
-INTERFACE getNewRPDataSet
-  MODULE PROCEDURE getNewRPDataSet
-END INTERFACE
-
-PUBLIC :: getNewRPDataSet
+PUBLIC:: getNewRPDataSet
 
 CONTAINS
 
@@ -57,10 +53,12 @@ CONTAINS
 SUBROUTINE getNewRPDataSet(RPDataSet,nSamples_in)
 ! MODULES
 USE MOD_RPSetVisuVisu_Vars            ,ONLY: nRP_global
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)            :: nSamples_in
-TYPE(tRPDataSet),POINTER      :: RPDataSet
+INTEGER,INTENT(IN)                     :: nSamples_in
+TYPE(tRPDataSet),POINTER,INTENT(INOUT) :: RPDataSet
 !===================================================================================================================================
 ALLOCATE(RPDataSet)
 ALLOCATE(RPDataSet%data(0:nVar_HDF5,1:nRP_global,1:nSamples_in))

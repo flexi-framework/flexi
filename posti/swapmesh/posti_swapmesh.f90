@@ -71,7 +71,7 @@ CALL prms%CreateLogicalOption(  "useCurvedsOld"      , "Controls usage of high-o
                                                        "high-order data and treat curved meshes as linear meshes.", '.TRUE.')
 CALL prms%CreateLogicalOption(  "useCurvedsNew"      , "Controls usage of high-order information in new mesh. Turn off to discard "//&
                                                        "high-order data and treat curved meshes as linear meshes.", '.TRUE.')
-CALL prms%CreateStringOption(   "NodeTypeNew  "      , "Change nodetype, tested for switching betwee GAUSS and GAUSS-LOBATTO "//& 
+CALL prms%CreateStringOption(   "NodeTypeNew  "      , "Change nodetype, tested for switching betwee GAUSS and GAUSS-LOBATTO "//&
                                                        "on the same mesh.")
 CALL prms%CreateIntOption(      "NInter"             , "Polynomial degree used for interpolation on new mesh (should be equal or  "//&
                                                        "higher than NNew) - the state will be interpolated to this degree and then "//&
@@ -87,7 +87,7 @@ CALL prms%CreateRealArrayOption("RefState"           , "If a RefState is defined
 CALL prms%CreateRealOption(     "abortTolerance"     , "Tolerance used to decide if the program should abort if no RefState is given")
 CALL prms%CreateLogicalOption(  "ExtrudeTo3D"        , "Perform an extrusion of a one-layer mesh to the 3D version",'.FALSE.')
 CALL prms%CreateIntOption(      "ExtrudeK"           , "Layer which is used in extrusion")
-CALL prms%CreateLogicalOption(  "ExtrudePeriodic"    , "Perform a periodic extrusion of a 3D mesh to a mesh with extended z length",'.FALSE.') 
+CALL prms%CreateLogicalOption(  "ExtrudePeriodic"    , "Perform a periodic extrusion of a 3D mesh to a mesh with extended z length",'.FALSE.')
 CALL prms%CreateRealArrayOption("rotation_angle"     , "Rotation angles around x-, y-, z-axis in degrees (in that order) for "// &
                                                        "mesh. Can be used to rotate the state with swapmesh tool.",'(/0.,0.,0./)')
 CALL prms%CreateRealArrayOption("displacement"       , "Displacement in x-, y- and z-direction for old mesh.",'(/0.,0.,0./)')

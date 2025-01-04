@@ -28,21 +28,16 @@ MODULE MOD_Smagorinsky
 ! MODULES
 IMPLICIT NONE
 PRIVATE
-
-INTERFACE InitSmagorinsky
-  MODULE PROCEDURE InitSmagorinsky
-END INTERFACE
+!----------------------------------------------------------------------------------------------------------------------------------
 
 INTERFACE Smagorinsky
   MODULE PROCEDURE Smagorinsky_Point
   MODULE PROCEDURE Smagorinsky_Volume
 END INTERFACE
 
-!INTERFACE FinalizeSmagorinsky
-!   MODULE PROCEDURE FinalizeSmagorinsky
-!END INTERFACE
-
-PUBLIC::InitSmagorinsky, Smagorinsky_Volume, FinalizeSmagorinsky
+PUBLIC:: InitSmagorinsky
+PUBLIC:: Smagorinsky_Volume
+PUBLIC:: FinalizeSmagorinsky
 !===================================================================================================================================
 
 CONTAINS
@@ -59,6 +54,7 @@ USE MOD_ReadInTools        ,ONLY: GETREAL,GETLOGICAL
 USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone,wGP
 USE MOD_Mesh_Vars          ,ONLY: MeshInitIsDone,nElems,sJ,Elem_xGP
 USE MOD_EOS_Vars           ,ONLY: mu0
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -113,6 +109,7 @@ END SUBROUTINE InitSmagorinsky
 !===================================================================================================================================
 PPURE SUBROUTINE Smagorinsky_Point(gradUx,gradUy,gradUz,dens,damp,muSGS)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -145,6 +142,7 @@ USE MOD_Mesh_Vars,         ONLY: nElems
 USE MOD_EddyVisc_Vars,     ONLY: damp, muSGS
 USE MOD_Lifting_Vars,      ONLY: gradUx, gradUy, gradUz
 USE MOD_DG_Vars,           ONLY: U
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -167,6 +165,7 @@ END SUBROUTINE Smagorinsky_Volume
 SUBROUTINE FinalizeSmagorinsky()
 ! MODULES
 USE MOD_EddyVisc_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

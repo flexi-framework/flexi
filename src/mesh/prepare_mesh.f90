@@ -20,26 +20,15 @@
 !==================================================================================================================================
 MODULE MOD_Prepare_Mesh
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE setLocalSideIDs
-  MODULE PROCEDURE setLocalSideIDs
-END INTERFACE
-
-INTERFACE fillMeshInfo
-  MODULE PROCEDURE fillMeshInfo
-END INTERFACE
-
-PUBLIC::setLocalSideIDs,fillMeshInfo
-
+PUBLIC:: setLocalSideIDs
+PUBLIC:: fillMeshInfo
 #if USE_MPI
-INTERFACE exchangeFlip
-  MODULE PROCEDURE exchangeFlip
-END INTERFACE
-
-PUBLIC::exchangeFlip
+PUBLIC:: exchangeFlip
 #endif
 !==================================================================================================================================
 
@@ -69,7 +58,9 @@ USE MOD_Mesh_Vars,  ONLY: nMortarSides,nMortarInnerSides,nMortarMPISides
 USE MOD_ReadInTools,ONLY: GETLOGICAL
 USE MOD_MPI_Vars
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -677,7 +668,6 @@ DEALLOCATE(NBinfo_glob,nNBProcs_glob,ProcInfo_glob)
 END SUBROUTINE setLocalSideIDs
 
 
-
 !==================================================================================================================================
 !> This routine condenses the mesh topology from a pointer-based structure into arrays.
 !> The array ElemToSide contains for each elements local side the global SideID and its
@@ -697,7 +687,9 @@ USE MOD_Mesh_Vars,ONLY: MortarType,MortarInfo
 #if USE_MPI
 USE MOD_MPI_Vars
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -840,7 +832,9 @@ USE MOD_Globals
 USE MOD_Mesh_Vars,ONLY: nElems,offsetElem
 USE MOD_Mesh_Vars,ONLY: tElem,tSide,Elems
 USE MOD_MPI_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -926,6 +920,7 @@ END SUBROUTINE exchangeFlip
 !==================================================================================================================================
 RECURSIVE SUBROUTINE MergeSort(A,nTotal)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -958,6 +953,7 @@ END SUBROUTINE MergeSort
 !==================================================================================================================================
 SUBROUTINE DoMerge(A,nA,nB)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -993,6 +989,7 @@ END SUBROUTINE DoMerge
 !==================================================================================================================================
 FUNCTION INVMAP(ID,nIDs,ArrID)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

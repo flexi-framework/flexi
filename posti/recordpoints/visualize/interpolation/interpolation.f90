@@ -21,31 +21,12 @@ MODULE MOD_RPinterpolation
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE InitInterpolation
-  MODULE PROCEDURE InitInterpolation
-END INTERFACE
 
-INTERFACE InterpolateEquiTime
-  MODULE PROCEDURE InterpolateEquiTime
-END INTERFACE
-
-INTERFACE CalcTimeAvg
-  MODULE PROCEDURE CalcTimeAvg
-END INTERFACE
-
-INTERFACE CalcFluctuations
-  MODULE PROCEDURE CalcFluctuations
-END INTERFACE
-
-INTERFACE FinalizeInterpolation
-  MODULE PROCEDURE FinalizeInterpolation
-END INTERFACE
-
-PUBLIC :: InitInterpolation
-PUBLIC :: InterpolateEquiTime
-PUBLIC :: CalcTimeAvg
-PUBLIC :: CalcFluctuations
-PUBLIC :: FinalizeInterpolation
+PUBLIC:: InitInterpolation
+PUBLIC:: InterpolateEquiTime
+PUBLIC:: CalcTimeAvg
+PUBLIC:: CalcFluctuations
+PUBLIC:: FinalizeInterpolation
 !===================================================================================================================================
 
 CONTAINS
@@ -60,6 +41,7 @@ USE MOD_RPData_Vars          ,ONLY: RPTime,nSamples_global
 USE MOD_RPInterpolation_Vars
 USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out
 USE MOD_ParametersVisu       ,ONLY: equiTimeSpacing
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -126,6 +108,7 @@ USE MOD_RPData_Vars          ,ONLY: RPTime,nVar_HDF5,nSamples_global,RPData
 USE MOD_RPSetVisuVisu_Vars   ,ONLY: nRP_global
 USE MOD_RPInterpolation_Vars
 USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -196,6 +179,7 @@ USE MOD_ParametersVisu       ,ONLY: Line_LocalVel,Plane_LocalVel,Box_LocalVel
 USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out,RPData_out,RPDataTimeAvg_out
 USE MOD_EquationRP           ,ONLY: Line_TransformVel,Plane_TransformVel,Box_TransformVel
 USE MOD_HDF5_Input
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -279,6 +263,7 @@ USE MOD_OutputRPVisu_Vars          ,ONLY: nSamples_out,RPData_out,RPDataTimeAvg_
 USE MOD_OutputRPVisu_Vars          ,ONLY: RPDataRMS_out
 USE MOD_ParametersVisu             ,ONLY: doFluctuations
 USE MOD_RPInterpolation_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -307,6 +292,7 @@ END SUBROUTINE CalcFluctuations
 SUBROUTINE FinalizeInterpolation()
 ! MODULES
 USE MOD_RPInterpolation_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !===================================================================================================================================
 SDEALLOCATE(dt)

@@ -19,15 +19,9 @@ MODULE MOD_HIT_Init
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE Rogallo
-  MODULE PROCEDURE Rogallo
-END INTERFACE
 
 PUBLIC:: Rogallo
 !===================================================================================================================================
-
 
 CONTAINS
 
@@ -41,6 +35,7 @@ USE MOD_PreProc,            ONLY: PP_PI
 USE MOD_HIT_Init_Vars,      ONLY: InitSpec,Seed
 USE MOD_HIT_FFT,            ONLY: ComputeFFT_C2R,ComputeFFT_R2C
 USE MOD_HIT_FFT_Vars,       ONLY: Endw,localk,N_FFT,Nc,II,kmax
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -122,6 +117,7 @@ SUBROUTINE ExactSpectrum(InitSpec,E_k)
 ! MODULES
 USE MOD_Globals
 USE MOD_HIT_FFT_Vars,     ONLY: kmax
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -205,6 +201,7 @@ USE MOD_PreProc,            ONLY: PP_PI
 USE MOD_HIT_Init_Vars,      ONLY: rho0,Ma0,Kappa
 USE MOD_HIT_FFT,            ONLY: ComputeFFT_R2C,ComputeFFT_C2R
 USE MOD_HIT_FFT_Vars,       ONLY: Endw,localk,II,N_FFT
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES

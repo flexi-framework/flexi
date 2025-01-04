@@ -23,36 +23,17 @@ MODULE MOD_FV_Reconstruction
 ! MODULES
 IMPLICIT NONE
 PRIVATE
+!----------------------------------------------------------------------------------------------------------------------------------
 
 #if FV_RECONSTRUCT
-INTERFACE FV_PrepareSurfGradient
-  MODULE PROCEDURE FV_PrepareSurfGradient
-END INTERFACE
-
-INTERFACE FV_CalcGradients
-  MODULE PROCEDURE FV_CalcGradients
-END INTERFACE
-
-INTERFACE FV_SurfCalcGradients
-  MODULE PROCEDURE FV_SurfCalcGradients
-END INTERFACE
-
-INTERFACE FV_SurfCalcGradients_BC
-  MODULE PROCEDURE FV_SurfCalcGradients_BC
-END INTERFACE
-
+PUBLIC:: FV_PrepareSurfGradient
+PUBLIC:: FV_SurfCalcGradients
+PUBLIC:: FV_SurfCalcGradients_BC
+PUBLIC:: FV_CalcGradients
 #if VOLINT_VISC
-INTERFACE FV_SurfCalcGradients_Parabolic
-  MODULE PROCEDURE FV_SurfCalcGradients_Parabolic
-END INTERFACE
-#endif
-
-PUBLIC::FV_PrepareSurfGradient
-PUBLIC::FV_SurfCalcGradients,FV_SurfCalcGradients_BC,FV_CalcGradients
-#if VOLINT_VISC
-PUBLIC::FV_SurfCalcGradients_Parabolic
-#endif
-#endif /* FV_RECONSTRUCT */
+PUBLIC:: FV_SurfCalcGradients_Parabolic
+#endif /*VOLINT_VISC*/
+#endif /*FV_RECONSTRUCT*/
 !==================================================================================================================================
 
 CONTAINS
@@ -77,6 +58,7 @@ USE MOD_FV_Vars   ,ONLY: FV_Elems,FV_sdx_XI,FV_sdx_ETA
 #if PP_dim == 3
 USE MOD_FV_Vars   ,ONLY: FV_sdx_ZETA
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
@@ -321,6 +303,7 @@ DO SideID=firstBCSide,lastBCSide
 END DO
 END SUBROUTINE FV_SurfCalcGradients_BC
 
+
 !==================================================================================================================================
 !> Calculate slopes in the inside and limit them using TVD limiters.
 !> It is important to use physical distances (and not reference distances) to calculate the slope, since otherwise the
@@ -439,6 +422,7 @@ END DO
 
 END SUBROUTINE FV_CalcGradients
 
+
 !==================================================================================================================================
 !> Copy surface data at the face specified by dir to the volume.
 !==================================================================================================================================
@@ -446,6 +430,8 @@ PPURE SUBROUTINE CopySurfaceToVolume(surface,volume,iElem,dir,l)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Mesh_Vars      ,ONLY: S2V2,nSides,ElemToSide
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 REAL,INTENT(IN)    :: surface(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< master surface data
@@ -477,6 +463,7 @@ IF (flip.GT.0) THEN
   volume(:,:,:,l) = -volume(:,:,:,l)
 END IF
 END SUBROUTINE CopySurfaceToVolume
+
 
 #if VOLINT_VISC
 !==================================================================================================================================
@@ -597,6 +584,7 @@ DO SideID = firstMortarInnerSide, lastMPISide_MINE
 #endif /* PP_dim==3 */
 END DO ! SideID = 1, nSides
 END SUBROUTINE FV_SurfCalcGradients_Parabolic
+
 
 !==================================================================================================================================
 !> Calculate gradients used for the viscous fluxes on faces
@@ -796,6 +784,7 @@ END DO; END DO; END DO! i,j,k=0,PP_N
 
 END SUBROUTINE FV_CalcGradients_Parabolic
 
+
 !==================================================================================================================================
 !> Calculate gradients used for the viscous fluxes on faces
 !==================================================================================================================================
@@ -804,7 +793,7 @@ SUBROUTINE FV_PrepareSurfGradient_Parabolic(iElem,gradUxi_tmp,gradUeta_tmp  &
                                            ,gradUzeta_tmp             &
 #endif
                                      )
-  ! MODULES
+! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 #if (PP_dim==3)
@@ -926,7 +915,6 @@ END DO ! locSide
 END SUBROUTINE FV_PrepareSurfGradient_Parabolic
 #endif /* VOLINT_VISC */
 #endif /* FV_RECONSTRUCT */
-
 
 END MODULE MOD_FV_Reconstruction
 #endif /* FV_ENABLED */

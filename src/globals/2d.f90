@@ -21,23 +21,13 @@ MODULE MOD_2D
 ! MODULES
 IMPLICIT NONE
 PRIVATE
+!----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE to2D_rank4
-  MODULE PROCEDURE to2D_rank4
-END INTERFACE
-
-INTERFACE to2D_rank5
-  MODULE PROCEDURE to2D_rank5
-END INTERFACE
-
-INTERFACE to2D_rank6
-  MODULE PROCEDURE to2D_rank6
-END INTERFACE
-
-PUBLIC::to2D_rank4
-PUBLIC::to2D_rank5
-PUBLIC::to2D_rank6
-PUBLIC::ExpandArrayTo3D
+PUBLIC:: to2D_rank4
+PUBLIC:: to2D_rank5
+PUBLIC:: to2D_rank6
+PUBLIC:: ExpandArrayTo3D
+!==================================================================================================================================
 
 CONTAINS
 
@@ -45,6 +35,9 @@ CONTAINS
 !> Reduce the size of a single dimension of a rank 4 array to 1.
 !==================================================================================================================================
 SUBROUTINE to2D_rank4(lbound_in,ubound_in,index3D,array)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+!-----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)             :: lbound_in(4)    !< Lower bounds of array
@@ -76,11 +69,15 @@ DEALLOCATE(array_loc)
 
 END SUBROUTINE to2D_rank4
 
+
 !==================================================================================================================================
 !> Reduce the size of a single dimension of a rank 5 array to 1.
 !==================================================================================================================================
 SUBROUTINE to2D_rank5(lbound_in,ubound_in,index3D,array)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)             :: lbound_in(5)      !< Lower bounds of array
 INTEGER,INTENT(IN)             :: ubound_in(5)      !< Upper bounds of array
@@ -114,11 +111,15 @@ DEALLOCATE(array_loc)
 
 END SUBROUTINE to2D_rank5
 
+
 !==================================================================================================================================
 !> Reduce the size of a single dimension of a rank 6 array to 1.
 !==================================================================================================================================
 SUBROUTINE to2D_rank6(lbound_in,ubound_in,index3D,array)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)             :: lbound_in(6)        !< Lower bounds of array
 INTEGER,INTENT(IN)             :: ubound_in(6)        !< Upper bounds of array
@@ -155,6 +156,7 @@ DEALLOCATE(array_loc)
 
 END SUBROUTINE to2D_rank6
 
+
 !==================================================================================================================================
 !> Routine to expand an array along a certain dimension, generally to make it compatible with 3D input/output routines.
 !> The size of the array in the dimension to be expanded must be one!
@@ -163,8 +165,9 @@ END SUBROUTINE to2D_rank6
 SUBROUTINE ExpandArrayTo3D(rank,nVal,index3D,size3D,arrayIn,arrayOut)
 ! MODULES                                                                                                                          !
 USE MOD_Globals
-!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)             :: rank                           !< number of dimensions of the arrays
 INTEGER,INTENT(IN)             :: nVal(rank)                     !< number of entries per dimension

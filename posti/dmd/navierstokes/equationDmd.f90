@@ -8,21 +8,10 @@ MODULE MOD_EquationDMD
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE InitEquationDMD
-  MODULE PROCEDURE InitEquationDMD
-END INTERFACE
 
-INTERFACE CalcEquationDMD
-  MODULE PROCEDURE CalcEquationDMD
-END INTERFACE
-
-INTERFACE FinalizeEquationDMD
-  MODULE PROCEDURE FinalizeEquationDMD
-END INTERFACE
-
-PUBLIC::InitEquationDMD,CalcEquationDMD,FinalizeEquationDMD
+PUBLIC:: InitEquationDMD
+PUBLIC:: CalcEquationDMD
+PUBLIC:: FinalizeEquationDMD
 !===================================================================================================================================
 
 CONTAINS
@@ -39,6 +28,7 @@ USE MOD_EOS               ,ONLY: InitEOS
 USE MOD_EOS_Posti_Vars    ,ONLY: nVarDepEOS,DepTableEOS,DepNames
 USE MOD_Readintools       ,ONLY: CountOption,GETSTR
 USE MOD_StringTools       ,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -77,8 +67,8 @@ CALL InitEOS()
 
 WRITE(UNIT_stdOut,'(A)')' INIT EquationDMD DONE!'
 WRITE(UNIT_stdOut,'(132("-"))')
-END SUBROUTINE InitEquationDMD
 
+END SUBROUTINE InitEquationDMD
 
 
 !===================================================================================================================================
@@ -91,10 +81,10 @@ USE MOD_DMD_Vars            ,ONLY: nVar_State,VarNames_State,N_State,N_StateZ,nD
 USE MOD_EquationDMD_Vars
 USE MOD_EOS_Posti           ,ONLY: CalcQuantities
 USE MOD_StringTools         ,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
 REAL,INTENT(IN)    :: DMDData(nVar_State,N_State+1,N_State+1,N_StateZ+1,nElems_State)
 REAL,INTENT(OUT)   :: DMDData_out(nDoFs*nVarDMD)
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -165,6 +155,7 @@ SUBROUTINE FinalizeEquationDMD()
 ! MODULES
 USE MOD_Globals
 USE MOD_EquationDMD_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -174,8 +165,6 @@ IMPLICIT NONE
 DEALLOCATE(TransMap,is2D)
 WRITE(UNIT_stdOut,'(A)') '  EquationDMD FINALIZED'
 END SUBROUTINE FinalizeEquationDMD
-
-END MODULE MOD_EquationDMD
 
 !===================================================================================================================================
 !> This routine builds the mappings from the total number of variables available for visualization to number of calculation
@@ -193,7 +182,9 @@ USE MOD_DMD_Vars        ,ONLY: VarNameDMD,nVarDMD
 USE MOD_EquationDMD_Vars
 USE MOD_ReadInTools     ,ONLY: GETSTR,CountOption
 USE MOD_StringTools     ,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLESIABLES
@@ -257,3 +248,5 @@ WRITE (*,'(A,'//format//'I3)') "mapCalc ",mapCalc
 WRITE (*,'(A,'//format//'I3)') "mapVisu ",mapVisu
 
 END SUBROUTINE Build_mapCalc_mapVisu
+
+END MODULE MOD_EquationDMD

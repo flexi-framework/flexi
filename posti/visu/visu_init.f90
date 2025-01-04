@@ -24,16 +24,6 @@ MODULE MOD_Visu_Init
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-
-INTERFACE visu_getVarNamesAndFileType
-  MODULE PROCEDURE visu_getVarNamesAndFileType
-END INTERFACE
-
-INTERFACE Visu_InitFile
-  MODULE PROCEDURE Visu_InitFile
-END INTERFACE
 
 PUBLIC:: visu_getVarNamesAndFileType
 PUBLIC:: visu_InitFile
@@ -69,13 +59,13 @@ CHARACTER(LEN=255),INTENT(INOUT),ALLOCATABLE,TARGET :: varnames_loc(:)
 CHARACTER(LEN=255),INTENT(INOUT),ALLOCATABLE,TARGET :: bcnames_loc(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER,PARAMETER                                   :: Offset=0 ! Every process reads all BCs
 INTEGER                                             :: i,j,nVar,dims
 LOGICAL                                             :: varnames_found,readDGsolutionVars,sameVars,VarNamesExist,file_exists
 CHARACTER(LEN=255),ALLOCATABLE                      :: datasetNames(:)
 CHARACTER(LEN=255),ALLOCATABLE                      :: varnames_tmp(:)
 CHARACTER(LEN=255),ALLOCATABLE                      :: tmp(:)
 CHARACTER(LEN=255)                                  :: MeshFile_loc
-INTEGER                                             :: Offset=0 ! Every process reads all BCs
 !===================================================================================================================================
 
 IF (ISVALIDMESHFILE(statefile)) THEN ! MESH

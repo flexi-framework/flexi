@@ -21,37 +21,28 @@ MODULE MOD_Filter
 ! MODULES
 IMPLICIT NONE
 PRIVATE
+!----------------------------------------------------------------------------------------------------------------------------------
 
 ABSTRACT INTERFACE
   SUBROUTINE FilterInt(U_in,FilterMat)
+    ! MODULES
     USE MOD_PreProc
     USE MOD_Mesh_Vars,ONLY: nElems
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+    ! INPUT / OUTPUT VARIABLES
     REAL,INTENT(INOUT) :: U_in(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)
     REAL,INTENT(IN)    :: FilterMat(   0:PP_N,0:PP_N)
-  END SUBROUTINE
+  END SUBROUTINE FilterInt
 END INTERFACE
 
 PROCEDURE(FilterInt),POINTER :: Filter_pointer     !< Point to the filter routine to be used
 
-!----------------------------------------------------------------------------------------------------------------------------------
-
-INTERFACE InitFilter
-  MODULE PROCEDURE InitFilter
-END INTERFACE
-
-INTERFACE FinalizeFilter
-  MODULE PROCEDURE FinalizeFilter
-END INTERFACE
-
-INTERFACE Filter_Selective
-  MODULE PROCEDURE Filter_Selective
-END INTERFACE
-
-PUBLIC :: InitFilter
-PUBLIC :: Filter_pointer
-PUBLIC :: Filter_Selective
-PUBLIC :: FinalizeFilter
-PUBLIC :: DefineParametersFilter
+PUBLIC:: InitFilter
+PUBLIC:: Filter_pointer
+PUBLIC:: Filter_Selective
+PUBLIC:: FinalizeFilter
+PUBLIC:: DefineParametersFilter
 !==================================================================================================================================
 
 CONTAINS
@@ -65,6 +56,7 @@ USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
 #if PP_LIMITER
 USE MOD_PPLimiter   ,ONLY: DefineParametersPPLimiter
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -261,7 +253,6 @@ IF(alpha.GE.0.) THEN
   END DO
 END IF
 END SUBROUTINE HestFilter
-
 
 
 !==================================================================================================================================

@@ -57,14 +57,14 @@ TYPE tFileSet
   CHARACTER(LEN=255)                 :: MeshFile
   CHARACTER(LEN=255)                 :: NodeType
   REAL                               :: time                 !< time
-END TYPE
+END TYPE tFileSet
 TYPE(tFileSet)                       :: ref  !< first file from command line used as reference
 TYPE(tFileSet)                       :: loc  !< current file that is processed
 
 TYPE tAvgData
   REAL,ALLOCATABLE                   :: AvgData(:)
   REAL,ALLOCATABLE                   :: AvgTmp( :)
-END TYPE
+END TYPE tAvgData
 TYPE(tAvgData),ALLOCATABLE           :: avg(:)
 
 ! LOCAL VARIABLES
@@ -490,8 +490,9 @@ CALL MPI_FINALIZE(iError)
 IF (iError.NE.MPI_SUCCESS) STOP 'MPI finalize error'
 #endif
 
-CONTAINS
+!===================================================================================================================================
 
+CONTAINS
 
 !===================================================================================================================================
 !> Retrieves relevant header and dataset parameters from Flexi files and stores them in a type

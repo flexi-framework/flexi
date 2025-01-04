@@ -19,45 +19,15 @@ MODULE MOD_HIT_FFT
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
-INTERFACE InitFFT
-  MODULE PROCEDURE InitFFT
-END INTERFACE
 
-INTERFACE ComputeFFT_R2C
-  MODULE PROCEDURE ComputeFFT_R2C
-END INTERFACE
-
-INTERFACE ComputeFFT_C2R
-  MODULE PROCEDURE ComputeFFT_C2R
-END INTERFACE
-
-INTERFACE Interpolate_DG2FFT
-  MODULE PROCEDURE Interpolate_DG2FFT
-END INTERFACE
-
-INTERFACE Interpolate_FFT2DG
-  MODULE PROCEDURE Interpolate_FFT2DG
-END INTERFACE
-
-INTERFACE EvalFourierAtDGCoords
-  MODULE PROCEDURE EvalFourierAtDGCoords
-END INTERFACE
-
-INTERFACE FinalizeFFT
-  MODULE PROCEDURE FinalizeFFT
-END INTERFACE
-
-PUBLIC:: InitFFT,FinalizeFFT
-PUBLIC:: ComputeFFT_R2C,ComputeFFT_C2R
-PUBLIC:: Interpolate_DG2FFT,Interpolate_FFT2DG
+PUBLIC:: InitFFT
+PUBLIC:: ComputeFFT_R2C
+PUBLIC:: ComputeFFT_C2R
+PUBLIC:: Interpolate_DG2FFT
+PUBLIC:: Interpolate_FFT2DG
 PUBLIC:: EvalFourierAtDGCoords
+PUBLIC:: FinalizeFFT
 !==================================================================================================================================
-
-
 
 CONTAINS
 
@@ -72,6 +42,7 @@ USE MOD_HIT_FFT_Vars
 USE OMP_Lib
 USE FFTW3
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -146,6 +117,7 @@ USE FFTW3
 #if USE_OPENMP
 USE OMP_Lib
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -155,7 +127,7 @@ COMPLEX,INTENT(OUT)   :: U_FFT(   nVar_In,1:Endw(1),1:Endw(2),1:Endw(3)) !< Comp
 LOGICAL,INTENT(IN),OPTIONAL :: doPrintTime                               !< Print execution time to standard output
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER(KIND=8)  :: plan
+INTEGER(KIND=DP):: plan
 INTEGER          :: iVar
 REAL             :: Time
 REAL             :: U_r(1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) ! Real global DG solution per variable
@@ -201,6 +173,7 @@ USE FFTW3
 #if USE_OPENMP
 USE OMP_Lib
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -210,7 +183,7 @@ REAL,INTENT(OUT)      :: U_Global(nVar_In,1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) !< Comp
 LOGICAL,INTENT(IN),OPTIONAL :: doPrintTime                               !< Print execution time to standard output
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER(KIND=8) :: plan
+INTEGER(KIND=DP):: plan
 INTEGER         :: iVar
 REAL            :: Time
 REAL            :: U_r(1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) ! Real global DG solution per variable
@@ -252,6 +225,7 @@ USE MOD_HIT_FFT_Vars          ,ONLY: N_FFT,NCalc
 USE MOD_Mesh_Vars             ,ONLY: Elem_IJK,nElems
 USE MOD_Interpolation         ,ONLY: GetVandermonde
 USE MOD_ChangeBasis           ,ONLY: ChangeBasis3D
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -314,6 +288,7 @@ USE MOD_HIT_FFT_Vars          ,ONLY: N_FFT,NCalc
 USE MOD_Mesh_Vars             ,ONLY: Elem_IJK,nElems
 USE MOD_Interpolation         ,ONLY: GetVandermonde
 USE MOD_ChangeBasis           ,ONLY: ChangeBasis3D
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -377,6 +352,7 @@ USE MOD_HIT_FFT_Vars          ,ONLY: II,Nc,endw
 #if USE_OPENMP
 USE OMP_Lib
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -465,8 +441,9 @@ SUBROUTINE FinalizeFFT()
 ! MODULES                                                                                                                          !
 USE MOD_HIT_FFT_Vars
 USE FFTW3
-!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

@@ -29,22 +29,6 @@ MODULE MOD_Visu_Cwrapper
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
-
-INTERFACE visu_requestInformation
-  MODULE PROCEDURE visu_requestInformation
-END INTERFACE
-
-INTERFACE visu_CWrapper
-  MODULE PROCEDURE visu_CWrapper
-END INTERFACE
-
-INTERFACE visu_dealloc_nodeids
-  MODULE PROCEDURE visu_dealloc_nodeids
-END INTERFACE
 
 PUBLIC:: visu_requestInformation
 PUBLIC:: visu_CWrapper
@@ -59,8 +43,10 @@ CONTAINS
 FUNCTION cstrToChar255(cstr, strlen)
 ! MODULES
 USE ISO_C_BINDING
-! INPUT / OUTPUT VARIABLES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
 TYPE(C_PTR),TARGET,INTENT(IN)  :: cstr
 INTEGER,INTENT(IN)             :: strlen
 CHARACTER(LEN=255)             :: cstrToChar255
@@ -258,9 +244,11 @@ END SUBROUTINE visu_CWrapper
 !> Deallocate the different NodeID arrays.
 !===================================================================================================================================
 SUBROUTINE visu_dealloc_nodeids()
+! MODULES
 USE MOD_Visu_Vars
-!----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

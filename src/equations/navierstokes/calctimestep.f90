@@ -23,19 +23,10 @@ MODULE MOD_CalcTimeStep
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE InitCalctimestep
-  MODULE PROCEDURE InitCalctimestep
-END INTERFACE
 
-INTERFACE CALCTIMESTEP
-  MODULE PROCEDURE CALCTIMESTEP
-END INTERFACE
-
-INTERFACE FinalizeCalctimestep
-  MODULE PROCEDURE FinalizeCalctimestep
-END INTERFACE
-
-PUBLIC :: InitCalctimestep,CALCTIMESTEP,FinalizeCalctimestep
+PUBLIC:: InitCalctimestep
+PUBLIC:: CALCTIMESTEP
+PUBLIC:: FinalizeCalctimestep
 !==================================================================================================================================
 
 REAL,ALLOCATABLE :: MetricsAdv(:,:,:,:,:,:)  !< support variable: NORM2(Metricsfgh)/J
@@ -89,7 +80,7 @@ DO FVE=0,FV_SIZE
 END DO
 #endif /*PARABOLIC*/
 
-END SUBROUTINE
+END SUBROUTINE InitCalctimestep
 
 
 !==================================================================================================================================

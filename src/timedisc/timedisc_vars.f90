@@ -18,14 +18,11 @@
 !==================================================================================================================================
 MODULE MOD_TimeDisc_Vars
 ! MODULES
+USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PUBLIC
 SAVE
-
-INTERFACE SetTimeDiscCoefs
-  MODULE PROCEDURE SetTimeDiscCoefs
-END INTERFACE
-
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -53,12 +50,12 @@ REAL             :: DFLScale(0:FV_SIZE)                !< Viscous CFL number (on
 REAL             :: DFLScale_Readin(0:FV_SIZE)         !< Viscous CFL number (only if PARABOLIC, value from parameter file)
 REAL,ALLOCATABLE :: dtElem(:)                          !< Timestep for each element
 INTEGER          :: CurrentStage=1                     !< Current Runge-Kutta stage within timestep
-INTEGER(KIND=8)  :: nDtLimited                         !< number of limited timesteps
+INTEGER(KIND=DP) :: nDtLimited                         !< number of limited timesteps
 INTEGER          :: nCalcTimeStep                      !< Counter for iterations since last timestep calculation
 INTEGER          :: nCalcTimeStepMax                   !< Compute dt at least after every Nth timestep
-INTEGER(KIND=8)  :: iter                               !< Indicate actual number of timesteps
-INTEGER(KIND=8)  :: iter_analyze                       !< Indicate number of timesteps since last analyze
-INTEGER(KIND=8)  :: maxIter                            !< Maximum permitted number of timesteps
+INTEGER(KIND=DP) :: iter                               !< Indicate actual number of timesteps
+INTEGER(KIND=DP) :: iter_analyze                       !< Indicate number of timesteps since last analyze
+INTEGER(KIND=DP) :: maxIter                            !< Maximum permitted number of timesteps
 LOGICAL          :: fullBoundaryOrder=.FALSE.          !< temporal order degradation, occuring for
                                                        !< time-dependant BCs, can easily be fixed when
                                                        !< using 3 stage 3rd order RK schemes (no others!)
@@ -103,7 +100,6 @@ REAL                :: RelativeDFL          !< scaling factor for DFL defined by
 #endif /*PARABOLIC*/
 REAL                :: b2,b2hat,b3hat,safety,ESDIRK_gamma
 REAL,ALLOCATABLE    :: RKA_implicit(:,:),RKc_implicit(:),RKb_implicit(:),RKb_embedded(:),RKb_denseout(:,:)
-
 
 CONTAINS
 

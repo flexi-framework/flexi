@@ -22,22 +22,12 @@ MODULE MOD_Mesh
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES (PUBLIC)
-!----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitMesh
-  MODULE PROCEDURE InitMesh
-END INTERFACE
-
-INTERFACE FinalizeMesh
-  MODULE PROCEDURE FinalizeMesh
-END INTERFACE
-
-PUBLIC::InitMesh
-PUBLIC::FinalizeMesh
+PUBLIC:: DefineParametersMesh
+PUBLIC:: InitMesh
+PUBLIC:: FinalizeMesh
 !==================================================================================================================================
 
-PUBLIC::DefineParametersMesh
 CONTAINS
 
 !==================================================================================================================================
@@ -414,6 +404,7 @@ CALL DisplayMessageAndTime(WallTime,'INIT MESH DONE!',DisplayLine=.FALSE.)
 SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitMesh
+
 
 !============================================================================================================================
 !> Deallocate mesh data.

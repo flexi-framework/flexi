@@ -20,18 +20,15 @@
 MODULE MOD_HDF5_OutputRP
 ! MODULES
 USE MOD_IO_HDF5, ONLY: FILE_ID,OpenDataFile,CloseDataFile
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE WriteRecordPointstoHDF5
-  MODULE PROCEDURE WriteRecordPointstoHDF5
-END INTERFACE
 
-PUBLIC :: WriteRecordPointstoHDF5
+PUBLIC:: WriteRecordPointstoHDF5
 !===================================================================================================================================
 
 CONTAINS
-
 
 !===================================================================================================================================
 !> Subroutine to write the recordpoints to HDF5 format

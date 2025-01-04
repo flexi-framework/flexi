@@ -4,7 +4,7 @@
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -22,13 +22,13 @@ IMPLICIT NONE
 PUBLIC
 SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL                               :: Jac_Ex_InitIsDone=.FALSE.
 REAL,ALLOCATABLE                      :: LL_plus(:,:)              !< LL_plus(i,j) = L^hat_plus(i)*L_plus(j)
 REAL,ALLOCATABLE                      :: LL_minus(:,:)             !< LL_minus(i,j) = L^hat_minus(i)*L_minus(j)
 #if PARABOLIC
-REAL,ALLOCATABLE                      :: L_mp(:,:)                 !< L_mp(i,iLocSide)=either L_minus(i) or L_plus(i) 
+REAL,ALLOCATABLE                      :: L_mp(:,:)                 !< L_mp(i,iLocSide)=either L_minus(i) or L_plus(i)
 REAL,ALLOCATABLE                      :: R_minus(:,:,:)            !< BR2 lifting surface term
 REAL,ALLOCATABLE                      :: R_plus( :,:,:)            !< BR2 lifting surface term
 REAL,ALLOCATABLE                      :: JacLiftingFlux(:,:,:,:,:,:)

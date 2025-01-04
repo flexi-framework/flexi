@@ -23,27 +23,13 @@ MODULE MOD_Precond
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
-!-----------------------------------------------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE DefineParametersPrecond
-  MODULE PROCEDURE DefineParametersPrecond
-END INTERFACE
-
-INTERFACE InitPrecond
-  MODULE PROCEDURE InitPrecond
-END INTERFACE
-
-INTERFACE BuildPrecond
-  MODULE PROCEDURE BuildPrecond
-END INTERFACE
-
-INTERFACE FinalizePrecond
-  MODULE PROCEDURE FinalizePrecond
-END INTERFACE
-
-PUBLIC :: InitPrecond,BuildPrecond,DefineParametersPrecond
-PUBLIC :: ApplyPrecond
-PUBLIC :: FinalizePrecond
+PUBLIC:: DefineParametersPrecond
+PUBLIC:: InitPrecond
+PUBLIC:: BuildPrecond
+PUBLIC:: ApplyPrecond
+PUBLIC:: FinalizePrecond
 !===================================================================================================================================
 
 CONTAINS
@@ -54,6 +40,7 @@ CONTAINS
 SUBROUTINE DefineParametersPrecond()
 ! MODULES
 USE MOD_ReadInTools ,ONLY: prms
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Preconditioner")
@@ -73,6 +60,7 @@ CALL prms%CreateLogicalOption('NoFillIn'   ,     "Precond for parabolic system f
 CALL prms%CreateLogicalOption('DoDisplayPrecond',"Display building time of preconditioner"                        , value='.FALSE.')
 
 END SUBROUTINE DefineParametersPrecond
+
 
 !===================================================================================================================================
 !> Initialize preconditioner and call initialize of type of preconditioner
@@ -157,6 +145,7 @@ PrecondInitIsDone = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT PRECONDITIONER DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitPrecond
+
 
 !===================================================================================================================================
 !> Build preconditioner for each element, calls a type of preconditioner. The block Jacobi preconditioner only takes into account
@@ -409,7 +398,8 @@ CASE(0)
 CASE(1)
   CALL ApplyILU(v,z)
 END SELECT
-END SUBROUTINE  ApplyPrecond
+END SUBROUTINE ApplyPrecond
+
 
 !===================================================================================================================================
 !> Debug routine for checking block Jacobian preconditioners. Output options include the non-inverted and the inverted
@@ -490,6 +480,7 @@ IF((DebugMatrix.GE.3))THEN
 END IF !DebugMatrix >= 3
 
 END SUBROUTINE CheckBJPrecond
+
 
 !===================================================================================================================================
 !> Finalizes variables

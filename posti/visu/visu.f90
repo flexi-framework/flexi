@@ -24,15 +24,6 @@ MODULE MOD_Visu
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE visu
-  MODULE PROCEDURE visu
-END INTERFACE
-
-INTERFACE FinalizeVisu
-  MODULE PROCEDURE FinalizeVisu
-END INTERFACE
 
 PUBLIC:: visu
 PUBLIC:: FinalizeVisu

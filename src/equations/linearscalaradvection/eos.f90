@@ -23,10 +23,6 @@ MODULE MOD_EOS
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
 
 INTERFACE ConsToPrim
   MODULE PROCEDURE ConsToPrim
@@ -65,16 +61,19 @@ CONTAINS
 !==================================================================================================================================
 PURE SUBROUTINE DefineParametersEos()
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 ! dummy routine
 END SUBROUTINE DefineParametersEos
+
 
 !==================================================================================================================================
 !> Initialize EOS (dummy)
 !==================================================================================================================================
 PURE SUBROUTINE InitEos()
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 ! dummy routine
@@ -86,6 +85,7 @@ END SUBROUTINE InitEos
 !==================================================================================================================================
 PURE SUBROUTINE ConsToPrim(prim,cons)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -98,11 +98,13 @@ REAL,INTENT(OUT) :: prim(PP_nVarPrim) !< primitive variables
 prim = cons
 END SUBROUTINE ConsToPrim
 
+
 !==================================================================================================================================
 !> Dummy routine, necessary for output routines due to compatibility to Navier-Stokes equation system
 !==================================================================================================================================
 PURE SUBROUTINE ConsToPrim_Side(Nloc,prim,cons)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -121,6 +123,7 @@ END SUBROUTINE ConsToPrim_Side
 !==================================================================================================================================
 PURE SUBROUTINE ConsToPrim_Elem(Nloc,prim,cons)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -134,12 +137,14 @@ REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc))   !< primitiv
 prim = cons
 END SUBROUTINE ConsToPrim_Elem
 
+
 !==================================================================================================================================
 !> Dummy routine, necessary for output routines due to compatibility to Navier-Stokes equation system
 !==================================================================================================================================
 PURE SUBROUTINE ConsToPrim_Volume(Nloc,prim,cons)
 ! MODULES
 USE MOD_Mesh_Vars,ONLY:nElems
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -153,11 +158,13 @@ REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)   !<
 prim = cons
 END SUBROUTINE ConsToPrim_Volume
 
+
 !==================================================================================================================================
 !> Dummy routine, necessary for output routines due to compatibility to Navier-Stokes equation system
 !==================================================================================================================================
 PURE SUBROUTINE PrimToCons(prim,cons)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -170,11 +177,13 @@ REAL,INTENT(OUT) :: cons(PP_nVar)     !< vector of conservative variables
 cons = prim
 END SUBROUTINE PrimToCons
 
+
 !==================================================================================================================================
 !> Dummy routine, necessary for output routines due to compatibility to Navier-Stokes equation system
 !==================================================================================================================================
 PURE SUBROUTINE PrimToCons_Side(Nloc,prim,cons)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -188,11 +197,13 @@ REAL,INTENT(OUT)   :: cons(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)) !< vector of conserv
 cons = prim
 END SUBROUTINE PrimToCons_Side
 
+
 !==================================================================================================================================
 !> Transformation from primitive to conservative variables in the whole volume
 !==================================================================================================================================
 PURE SUBROUTINE PrimToCons_Elem(Nloc,prim,cons)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -205,12 +216,14 @@ REAL,INTENT(OUT)   :: cons(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc))          !< v
 cons = prim
 END SUBROUTINE PrimToCons_Elem
 
+
 !==================================================================================================================================
 !> Transformation from primitive to conservative variables in the whole volume
 !==================================================================================================================================
 PURE SUBROUTINE PrimToCons_Volume(Nloc,prim,cons)
 ! MODULES
 USE MOD_Mesh_Vars,ONLY:nElems
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -222,6 +235,7 @@ REAL,INTENT(OUT)   :: cons(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)     
 !==================================================================================================================================
 cons = prim
 END SUBROUTINE PrimToCons_Volume
+
 
 !==================================================================================================================================
 !> Transformation from conservative variables U to entropy vector, dS/dU, S = -rho*s/(kappa-1), s=ln(p)-kappa*ln(rho)
@@ -240,6 +254,7 @@ REAL,DIMENSION(PP_nVar),INTENT(OUT) :: entropy !< vector of entropy variables
 !==================================================================================================================================
 entropy = cons
 END SUBROUTINE ConsToEntropy
+
 
 !==================================================================================================================================
 !> Transformation from entropy to conservative variables U, dS/dU, S = -rho*s/(kappa-1), s=ln(p)-kappa*ln(rho)
@@ -260,12 +275,14 @@ REAL                                 :: s,entropy2(PP_nVar),rhoe
 cons = entropy
 END SUBROUTINE EntropyToCons
 
-!==================================================================================================================================
+!======
+!============================================================================================================================
 !> Transformation from primitive to conservative variables in the whole volume
 !==================================================================================================================================
 PPURE SUBROUTINE ConsToEntropy_Volume(Nloc,entropy,cons)
 ! MODULES
 USE MOD_Mesh_Vars,ONLY:nElems
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -278,6 +295,7 @@ INTEGER            :: i,j,k,iElem
 !==================================================================================================================================
 entropy = cons
 END SUBROUTINE ConsToEntropy_Volume
+
 
 !> Transformation from primitive to conservative variables on a single side
 !==================================================================================================================================

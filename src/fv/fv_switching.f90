@@ -27,24 +27,9 @@ MODULE MOD_FV_Switching
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
+!----------------------------------------------------------------------------------------------------------------------------------
+
 #if FV_ENABLED == 1
-
-INTERFACE FV_Switch
-  MODULE PROCEDURE FV_Switch
-END INTERFACE
-
-INTERFACE FV_ProlongFVElemsToFace
-  MODULE PROCEDURE FV_ProlongFVElemsToFace
-END INTERFACE
-
-INTERFACE FV_FillIni
-  MODULE PROCEDURE FV_FillIni
-END INTERFACE
-
-INTERFACE FV_Info
-  MODULE PROCEDURE FV_Info
-END INTERFACE
-
 PUBLIC::FV_Switch
 PUBLIC::FV_ProlongFVElemsToFace
 PUBLIC::FV_FillIni
@@ -114,6 +99,7 @@ FV_Elems_Amount   = REAL(FV_Elems_Counter)/FV_Switch_counter
 CALL FV_ProlongFVElemsToFace()
 END SUBROUTINE FV_Switch
 
+
 !==================================================================================================================================
 !> Set FV_Elems_slave and FV_Elems_master information
 !==================================================================================================================================
@@ -179,6 +165,7 @@ ELSE
 END IF
 END SUBROUTINE FV_InterpolateDG2FV
 
+
 !==================================================================================================================================
 !> Interpolate solution from FV subcell representation to DG.
 !> Interpolation is done either conservatively in reference space or non-conservatively in phyiscal space.
@@ -214,6 +201,7 @@ ELSE
 END IF
 END SUBROUTINE FV_InterpolateFV2DG
 
+
 !==================================================================================================================================
 !> Print information on the amount of FV subcells
 !==================================================================================================================================
@@ -227,11 +215,11 @@ USE MOD_FV_Vars      ,ONLY: FV_Elems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER(KIND=8),INTENT(IN) :: iter !< number of iterations
+INTEGER(KIND=DP),INTENT(IN) :: iter !< number of iterations
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-IF (iter.EQ.1_8) totalFV_nElems = SUM(FV_Elems) ! counter for output of FV amount during analyze
+IF (iter.EQ.INT(1, KIND=DP)) totalFV_nElems = SUM(FV_Elems) ! counter for output of FV amount during analyze
 #if USE_MPI
 IF(MPIRoot)THEN
   CALL MPI_REDUCE(MPI_IN_PLACE,totalFV_nElems,1,MPI_INTEGER8,MPI_SUM,0,MPI_COMM_FLEXI,iError)
@@ -244,11 +232,13 @@ SWRITE(UNIT_stdOut,'(A,F8.3,A)')' FV amount %: ', REAL(totalFV_nElems) / REAL(nG
 totalFV_nElems = 0
 END SUBROUTINE FV_Info
 
+
 !==================================================================================================================================
 !> Initialize all FV elements and overwrite data of DG FillIni. Each subcell is supersampled with PP_N points in each space
 !> dimension and the mean value is taken as value for this subcell.
 !==================================================================================================================================
 SUBROUTINE FV_FillIni()
+! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Basis             ,ONLY: InitializeVandermonde

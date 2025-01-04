@@ -24,11 +24,8 @@ MODULE MOD_BaseFlow_Readin
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE ReadBaseFlow
-  MODULE PROCEDURE ReadBaseFlow
-END INTERFACE
 
-PUBLIC :: ReadBaseFlow
+PUBLIC:: ReadBaseFlow
 !==================================================================================================================================
 
 CONTAINS

@@ -22,33 +22,22 @@ MODULE MOD_TimeStep
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE SetTimeStep
-  MODULE PROCEDURE SetTimeStep
-END INTERFACE
-
-!INTERFACE TimeStepByLSERKW2
-!  MODULE PROCEDURE TimeStepByLSERKW2
-!END INTERFACE
-
-!INTERFACE TimeStepByLSERKK3
-!  MODULE PROCEDURE TimeStepByLSERKK3
-!END INTERFACE
-
-!INTERFACE TimeStepByESDIRK
-!  MODULE PROCEDURE TimeStepByESDIRK
-!END INTERFACE
 
 ! > Dummy interface for time step function pointer
 ABSTRACT INTERFACE
   SUBROUTINE TimeIntegrator(t)
+    ! MODULES
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+    ! INPUT / OUTPUT VARIABLES
     REAL,INTENT(INOUT) :: t
-  END SUBROUTINE
+  END SUBROUTINE TimeIntegrator
 END INTERFACE
 
 PROCEDURE(TimeIntegrator),POINTER :: TimeStep !< pointer to timestepping routine, depends on td
 
-PUBLIC :: TimeStep
-PUBLIC :: SetTimeStep
+PUBLIC:: TimeStep
+PUBLIC:: SetTimeStep
 !==================================================================================================================================
 
 CONTAINS

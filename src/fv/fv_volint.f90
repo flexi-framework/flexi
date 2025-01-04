@@ -23,12 +23,9 @@ MODULE MOD_FV_VolInt
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
+!----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE FV_VolInt
-  MODULE PROCEDURE FV_VolInt
-END INTERFACE
-
-PUBLIC::FV_VolInt
+PUBLIC:: FV_VolInt
 !==================================================================================================================================
 
 CONTAINS
