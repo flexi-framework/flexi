@@ -26,7 +26,7 @@ PRIVATE
 
 PUBLIC:: InitSparseILU
 PUBLIC:: FinalizeSparseILU
-PUBLIC:: BuildILU
+PUBLIC:: BuildILU0
 PUBLIC:: ApplyILU
 !===================================================================================================================================
 

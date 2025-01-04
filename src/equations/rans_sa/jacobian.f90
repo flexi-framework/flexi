@@ -30,8 +30,6 @@ PUBLIC:: EvalAdvFluxJacobian
 PUBLIC:: EvalDiffFluxJacobian
 PUBLIC:: EvalFluxGradJacobian
 #endif
-PUBLIC:: dConsdPrimTemp
-PUBLIC:: dPrimTempdCons
 !===================================================================================================================================
 
 CONTAINS
@@ -169,7 +167,7 @@ USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Equation_Vars, ONLY: s23,s43
 USE MOD_Equation_Vars, ONLY: cv1,PrTurb,fn,fv1,cn1,sigma
-USE MOD_EOS_Vars,      ONLY: cp
+USE MOD_EOS_Vars,      ONLY: cp,mu0
 USE MOD_Viscosity
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -342,7 +340,7 @@ SUBROUTINE EvalFluxGradJacobian(nDOF_loc,U,UPrim,fJacQx,fJacQy,fJacQz,gJacQx,gJa
 ! MODULES
 USE MOD_PreProc
 USE MOD_Equation_Vars,ONLY: s23,s43,PrTurb,fv1,sigma,fn
-USE MOD_EOS_Vars,     ONLY: cp,Pr
+USE MOD_EOS_Vars,     ONLY: cp,Pr,mu0
 USE MOD_Viscosity
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

@@ -135,8 +135,8 @@ END SUBROUTINE CalcPressureForce
 SUBROUTINE CalcViscousForce(Fv,UPrim_Face,gradUx_Face,gradUy_Face,gradUz_Face,SurfElem,NormVec)
 ! MODULES
 USE MOD_PreProc
-USE MOD_Viscosity
 USE MOD_Analyze_Vars, ONLY:wGPSurf
+USE MOD_Viscosity
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

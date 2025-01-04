@@ -45,9 +45,9 @@ stages:
     - ulimit -s unlimited
     - python3 --version
     # Setup Python virtual environment
-    - rm -rf venv
-    - uv venv venv
-    - source venv/bin/activate
+    # - rm -rf venv
+    # - uv venv venv
+    # - source venv/bin/activate
     # Install coverage
     # - uv pip install --no-cache-dir coverage
 
