@@ -22,18 +22,19 @@
 !> Surface integrals are separated for each direction
 !==================================================================================================================================
 MODULE MOD_SurfInt
+! MODULES
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 #define WITHnVars 1
 
-INTERFACE SurfInt
-  MODULE PROCEDURE SurfInt
-END INTERFACE
+! INTERFACE SurfInt
+!   MODULE PROCEDURE SurfInt
+! END INTERFACE
 
-INTERFACE DoSurfInt
-  MODULE PROCEDURE DoSurfInt
-END INTERFACE
+! INTERFACE DoSurfInt
+!   MODULE PROCEDURE DoSurfInt
+! END INTERFACE
 
 PUBLIC:: SurfInt
 PUBLIC:: DoSurfInt

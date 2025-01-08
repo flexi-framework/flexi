@@ -49,9 +49,12 @@ INTERFACE EntropyToCons
 END INTERFACE
 
 
-PUBLIC::ConsToPrim,PrimToCons
-PUBLIC::ConsToEntropy,EntropyToCons
-PUBLIC::DefineParametersEos,InitEos
+PUBLIC:: DefineParametersEos
+PUBLIC:: ConsToPrim
+PUBLIC:: PrimToCons
+PUBLIC:: ConsToEntropy
+PUBLIC:: EntropyToCons
+PUBLIC:: InitEos
 !==================================================================================================================================
 
 CONTAINS

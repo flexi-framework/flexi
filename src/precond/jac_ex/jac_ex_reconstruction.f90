@@ -22,33 +22,15 @@ MODULE MOD_Jac_Ex_Reconstruction
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
+!----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE Fill_ExtendedState
-  MODULE PROCEDURE Fill_ExtendedState
-END INTERFACE
-
-INTERFACE FV_Reconstruction_Derivative
-  MODULE PROCEDURE FV_Reconstruction_Derivative
-END INTERFACE
-
-INTERFACE FV_Reconstruction_Derivative_Surf
-  MODULE PROCEDURE FV_Reconstruction_Derivative_Surf
-END INTERFACE
-
+PUBLIC:: Fill_ExtendedState
+PUBLIC:: FV_Reconstruction_Derivative
+PUBLIC:: FV_Reconstruction_Derivative_Surf
 #if PARABOLIC
-INTERFACE JacFVGradients_Vol
-  MODULE PROCEDURE JacFVGradients_Vol
-END INTERFACE
-
-INTERFACE JacFVGradients_nb
-  MODULE PROCEDURE JacFVGradients_nb
-END INTERFACE
-#endif
-
-PUBLIC::Fill_ExtendedState,FV_Reconstruction_Derivative,FV_Reconstruction_Derivative_Surf
-#if PARABOLIC
-PUBLIC::JacFVGradients_Vol,JacFVGradients_nb
-#endif
+PUBLIC:: JacFVGradients_Vol
+PUBLIC:: JacFVGradients_nb
+#endif /*PARABOLIC*/
 !==================================================================================================================================
 
 CONTAINS
