@@ -99,7 +99,7 @@ For serial execution, the `POSTI_SWAPMESH` tool is invoked by entering
 ```bash
 posti_swapmesh parameter_postiSwapmesh.ini <statefiles>
 ```
-The tool also runs in parallel using OpenMP. To run in parallel the environment Variable `OMP_NUM_THREADS=XXX` need to be set with the number of threads to be used, provided the compiler option `LIBS_USE_OPENMP` is enabled. In this case the parallel execution is the same as the single execution. 
+The tool also runs in parallel using OpenMP. To run in parallel the environment Variable `OMP_NUM_THREADS=XXX` needs to be set with the number of threads to be used, provided the compiler option `LIBS_USE_OPENMP` is enabled. In this case the parallel execution is the same as the single execution.
 
 A list of parameters used by the `POSTI_SWAPMESH` tool is listed in the table below.
 An example of the `POSTI_SWAPMESH` tool can be found in 
@@ -107,7 +107,7 @@ An example of the `POSTI_SWAPMESH` tool can be found in
 ./flexi/ini/swapmesh
 ```
 
-  
+
 
 
 ```{list-table} POSTI_SWAPMESH parameters.
@@ -165,14 +165,14 @@ An example of the `POSTI_SWAPMESH` tool can be found in
 ### Recordpoints
 
 For investigations with a high temporal resolution, such as frequency analyses, it is generally not practical to write complete state files with a high output frequency. Among other things, this would generate a considerable memory requirement and unnecessarily slow down the simulation due to frequent I/O operations. 
-So-called record points can therefore be used within **FLEXI** for high-frequency outputs in time. These represent point samples and can sample the flow variables with high temporal resolution at defined points in the domain. Several record points can be combined to form geometric shapes such as lines or surfaces. 
+So-called record points can therefore be used within **FLEXI** for high-frequency outputs in time. These represent point samples and can sample the flow variables with high temporal resolution at defined points in the domain. Several record points can be combined to form geometric shapes such as lines or surfaces.
 
 The **POSTI** tools available for this are:
 - POSTI_RP_PREPARE: Definition of the points in the flow domain 
 - POSTI_RP_VISUALIZE: Visualization of the variables recorded at runtime
 - POSTI_RP_EVALUATE: Subsequent evaluation of record points on existing volume solutions
 
-To use the **POSTI** tools, the compile flag `POSTI` and the compile flag associated with the respective tool must be activated.  
+To use the **POSTI** tools, the compile flag `POSTI` and the compile flag associated with the respective tool must be activated.
 
 
 (tools-recordpoints_prepare)=
@@ -180,7 +180,7 @@ To use the **POSTI** tools, the compile flag `POSTI` and the compile flag associ
 
 <!--ToDo's: complete possible values in table, describe in more detail the functionalities Groupname GroupID, ..., how does the RP file looks like, parallel execution???-->
 
-The POSTI_RP_PREPARE tool uses its own parameter file. This specifies the grouping of the recordpoints (individual points, lines, planes, ...) and the associated mesh file for which the recordpoints will be defined. The parameters that can be used are documented in the table listed below. 
+The POSTI_RP_PREPARE tool uses its own parameter file. This specifies the grouping of the recordpoints (individual points, lines, planes, ...) and the associated mesh file for which the recordpoints will be defined. The parameters that can be used are documented in the table listed below.
 The available parameters can also be listed by using the help function
 
 ```bash
@@ -196,7 +196,7 @@ posti_preparerecordpoints parameter_recordpoints.ini
 
 After successful execution, an additional `h5` file is written with the name of the specified project name with postfix `_RPSet`. In order to record the data during the simulation, this file must be specified in the parameter file when executing **FLEXI**. If the `doVisuRP` option is used, the defined recordpoints are also written to a `vtm` file that can be viewed with Paraview. 
 
-To collect the date at the recordpoints locations during the simulation, the recordpoints functionality needs to be acitavted in the ini file of the FLEXI. This is done by setting `RP_inUse = T`.
+To collect the date at the recordpoints locations during the simulation, the recordpoints functionality needs to be activated in the ini file of the FLEXI. This is done by setting `RP_inUse = T`.
 
 The following exemplary options can be added to an existing parameter file:
 
@@ -569,10 +569,58 @@ Sample parameter files can also be found here.
 (tools-recordpoints_evaluate)=
 #### POSTI_RP_EVALUATE
 
+The POSTI_RP_EVALUATE tool can be used to extract data for a given simulation at the defined positions for a given RP_DefFile. For this purpose, the recordpoints can be defined as described in section [POSTI_RP_PREPARE](tools-recordpoints_prepare) and the data can be extracted. It is possible to extract data not only form StateFiles but also e.g. from TimeAverageFiles. By default, the data set `DG_Solution` is read, which can be used to extract data from StateFiles. To extract data from TimeAverageFiles, a corresponding data set like `Mean` or `Fluc` needs to be specified in the parameter file option `RecordpointsDataSetName`.
+Using the following command the data can be extracted at the recordpoint positions:
+
+```bash
+posti_evaluaterecordpoints [parameter.ini] <solutionfiles>
+```
+
+The tool also runs in parallel by prepending `mpirun -np <no. processors>` to the above command, as usual, provided the compiler option `LIBS_USE_MPI` is enabled.
+```bash
+mpirun -np <no. processors> posti_evaluaterecordpoints [parameter.ini] <solutionfiles>
+```
+After the execution of the `posti_evaluaterecordpoints` tool, a `ProjectName_RP_*.h5` file is written. This file is similar to the recordpoint files written during runtime. Therefore, these files can be visualized as described in section [POSTI_RP_VISUALIZE](tools-recordpoints_visu).
+
+```{important}
+When post-processing with activated `LIBS_USE_MPI` flag, especially with large cases and large files as is often the case with TimeAverage files, the file size of approximately $2\, GB$ per core must not be exceeded. In this case, the number of cores used must be increased for MPI-parallel executable **POSTI** tools, or **POSTI** must be compiled with `LIBS_USE_MPI=OFF`.
+```
 
 
+The parameters for this POSTI tool are listed in the table below.
 
 
+```{list-table} POSTI_RP_EVALUATE parameters.
+:header-rows: 1
+:name: tab:postivisurp_parameters
+:align: center
+:width: 100%
+:widths: 25 25 50
+* - Parameter
+  - Possible Values
+  - Description
+* - RP_inUse
+  - T / F
+  - Set true to compute solution history at points defined in recordpoints file
+* - RP_DefFile
+  - ProjectName_RPSet.h5
+  - File containing element-local parametric recordpoint coordinates and structure
+* - RP_MaxMemory
+  - 100
+  - Maximum memory in MiB to be used for storing recordpoint state history. If memory is exceeded before regular IO level states are written to file
+* - RP_SamplingOffset
+  - 1
+  - Multiple of timestep at which recordpoints are evaluated
+* - RecordpointsDataSetName
+  - DG_Solution / Mean / Fluc / ...
+  - If no state files are given to evaluate, specify the data set name to be used here
+```
+
+The available parameters can also be listed by using the help function
+
+```bash
+posti_evaluaterecordpoints --help
+```
 
 <!--## TODO:-->
 <!------------------------------------------------------------------------------------------------->
