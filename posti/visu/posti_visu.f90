@@ -62,7 +62,7 @@ CHARACTER(LEN=255)             :: FileString_multiblock
 #if USE_MPI
 LOGICAL                        :: InitMPI_loc=.FALSE.
 #else
-INTEGER                        :: MPI_COMM_WORLD = 0
+TYPE(MPI_Comm)                 :: MPI_COMM_WORLD = MPI_COMM_NULL
 #endif
 CHARACTER(LEN=255),ALLOCATABLE :: VarNames_loc(:)
 CHARACTER(LEN=255),ALLOCATABLE :: VarNamesSurf_loc(:)

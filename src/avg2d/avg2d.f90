@@ -549,8 +549,8 @@ INTEGER             :: iElem,i,iDiffRecvProc,iDiffSendProc,iProc,nSendVal,nRecvV
 !==================================================================================================================================
 !Everything has to be read in reverse to the inital sending and receive operation
 !Open the receive buffers
-SendBufferAvg2D = 0.
-MPIRequest_Avg2DSend=0
+SendBufferAvg2D      = 0.
+MPIRequest_Avg2DSend = MPI_REQUEST_NULL
 DO iDiffRecvProc = 1,nRecvProcs
   iProc    = RecvProcs(iDiffRecvProc)
   nSendVal = nVarsAvg2D*(PP_N+1)*(PP_N+1)*nElemsToSend(RecvProcs(iDiffRecvProc))
@@ -559,8 +559,8 @@ DO iDiffRecvProc = 1,nRecvProcs
 END DO
 
 !Fill the send buffers and start sending
-MPIRequest_Avg2DRecv=0
-RecvBufferAvg2D = 0.
+RecvBufferAvg2D      = 0.
+MPIRequest_Avg2DRecv = MPI_REQUEST_NULL
 DO iDiffSendProc = 1,nSendProcs
   iProc    = SendProcs(iDiffSendProc)
   nRecvVal = nVarsAvg2D*(PP_N+1)*(PP_N+1)*nElemsToRecv(SendProcs(iDiffSendProc))

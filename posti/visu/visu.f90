@@ -64,7 +64,7 @@ USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_FV,ConvertToSurfVisu_FV
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)               :: mpi_comm_IN
+TYPE(MPI_Comm),INTENT(IN)        :: mpi_comm_IN
 CHARACTER(LEN=255),INTENT(INOUT) :: prmfile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 CHARACTER(LEN=255),INTENT(IN)    :: statefile
@@ -159,7 +159,6 @@ CALL SetStackSizeUnlimited()
 postiMode = .TRUE. ! Flag used in FLEXI routines to do things only for POSTI usage
 CALL InitMPI(mpi_comm_IN)
 CALL InitMPIInfo()
-
 
 CALL FinalizeParameters()
 ! Read Varnames to visualize and build calc and visu dependencies

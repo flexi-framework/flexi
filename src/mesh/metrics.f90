@@ -244,7 +244,7 @@ REAL    :: xiCL_N(0:PP_N)   ,wBaryCL_N(0:PP_N)
 REAL    :: xi0(3),dxi(3),length(3)
 
 #if USE_MPI
-INTEGER           :: MPIRequest_Geo(nNbProcs,2)
+TYPE(MPI_Request) :: MPIRequest_Geo(nNbProcs,2)
 REAL,ALLOCATABLE  :: Geo(:,:,:,:,:)
 #endif
 
@@ -561,7 +561,7 @@ Geo(Geo_SurfElem,:,:,:,:)    = SurfElem(    :,0:PP_NZ,:,firstMPISide_MINE:nSides
 Geo(Geo_NormVec ,:,:,:,:)  = NormVec (  :,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
 Geo(Geo_TangVec1,:,:,:,:)  = TangVec1(  :,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
 Geo(Geo_TangVec2,:,:,:,:) = TangVec2(  :,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
-MPIRequest_Geo=MPI_REQUEST_NULL
+MPIRequest_Geo = MPI_REQUEST_NULL
 CALL StartReceiveMPIData(Geo,GeoSize*(PP_N+1)**(PP_dim-1)*(FV_SIZE+1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,RECV),SendID=1) ! Receive YOUR / Geo: master -> slave
 CALL StartSendMPIData(   Geo,GeoSize*(PP_N+1)**(PP_dim-1)*(FV_SIZE+1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,SEND),SendID=1) ! SEND MINE / Geo: master -> slave
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Geo)

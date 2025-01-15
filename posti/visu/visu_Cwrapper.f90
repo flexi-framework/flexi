@@ -76,7 +76,7 @@ USE MOD_VTK        ,ONLY: CARRAY
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)                    :: mpi_comm_IN
+TYPE(MPI_Comm),INTENT(IN)             :: mpi_comm_IN
 INTEGER,INTENT(IN)                    :: strlen_state
 TYPE(C_PTR),TARGET,INTENT(IN)         :: statefile_IN
 INTEGER,INTENT(IN)                    :: strlen_mesh
@@ -141,7 +141,7 @@ USE MOD_VTK         ,ONLY: WriteCoordsToVTK_array,WriteDataToVTK_array,WriteVarn
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTEGER,INTENT(IN)            :: mpi_comm_IN
+TYPE(MPI_Comm),INTENT(IN)     :: mpi_comm_IN
 INTEGER,INTENT(IN)            :: UseHighOrder
 INTEGER,INTENT(IN)            :: strlen_prm
 INTEGER,INTENT(IN)            :: strlen_posti

@@ -79,9 +79,9 @@ USE MOD_Indicator,         ONLY:DefineParametersIndicator,InitIndicator
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)            :: nArgs_In
+INTEGER,INTENT(IN)                     :: nArgs_In
 CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: Args_In(:)
-INTEGER,INTENT(IN),OPTIONAL   :: mpi_comm_loc
+TYPE(MPI_Comm),INTENT(IN),OPTIONAL     :: mpi_comm_loc
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                 :: userblockFound

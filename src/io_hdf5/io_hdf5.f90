@@ -20,7 +20,7 @@
 MODULE MOD_IO_HDF5
 ! MODULES
 USE HDF5
-USE MOD_Globals,ONLY: iError
+USE MOD_Globals
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 ! PRIVATE
@@ -58,7 +58,7 @@ INTEGER                  :: nDims               !< data size dimensions
 INTEGER,PARAMETER        :: nLimit = INT(REAL(HUGE(INT(1,KIND=4)))/REAL(KIND(REAL(1))))
                                                 !< Max number of entries in double arrays for HDF5 IO. Limit is computed as
                                                 !< INT( Max. Bytes allowed by MPI (2GB per rank) / Size of single double entry)
-INTEGER                  :: MPIInfo             !< hardware / storage specific / file system MPI parameters to pass to HDF5
+TYPE(MPI_Info)           :: MPIInfo             !< hardware / storage specific / file system MPI parameters to pass to HDF5
                                                 !< for optimized performance on specific systems
 
 !> Type containing pointers to data to be written to HDF5 in an element-wise scalar fashion.
@@ -202,19 +202,19 @@ USE MOD_Globals
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*),INTENT(IN)  :: FileString      !< filename to be opened
-LOGICAL,INTENT(IN)           :: create          !< create file if it doesn't exist. Overwrited file if already present!
-LOGICAL,INTENT(IN)           :: single          !< single=T : only one processor opens file, single=F : open/create collectively
-LOGICAL,INTENT(IN)           :: readOnly        !< T : file is opened in read only mode, so file system timestamp remains unchanged
-                                                !< F: file is open read/write mode
-INTEGER,INTENT(IN),OPTIONAL  :: communicatorOpt !< only MPI and single=F: optional communicator to be used for collective access
-                                                !< default: MPI_COMM_FLEXI
-INTEGER,INTENT(IN),OPTIONAL  :: userblockSize   !< size of the file to be prepended to HDF5 file
+CHARACTER(LEN=*),INTENT(IN)        :: FileString      !< filename to be opened
+LOGICAL,INTENT(IN)                 :: create          !< create file if it doesn't exist. Overwrited file if already present!
+LOGICAL,INTENT(IN)                 :: single          !< single=T : only one processor opens file, single=F : open/create collectively
+LOGICAL,INTENT(IN)                 :: readOnly        !< T : file is opened in read only mode, so file system timestamp remains unchanged
+                                                      !< F: file is open read/write mode
+TYPE(MPI_Comm),INTENT(IN),OPTIONAL :: communicatorOpt !< only MPI and single=F: optional communicator to be used for collective access
+                                                      !< default: MPI_COMM_FLEXI
+INTEGER,INTENT(IN),OPTIONAL        :: userblockSize   !< size of the file to be prepended to HDF5 file
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER(HSIZE_T)              :: userblockSize_loc, tmp, tmp2
 #if USE_MPI
-INTEGER                       :: comm
+TYPE(MPI_Comm)                :: comm
 #endif
 !==================================================================================================================================
 LOGWRITE(*,'(A)')'  OPEN HDF5 FILE "',TRIM(FileString),'" ...'
@@ -226,18 +226,16 @@ IF (PRESENT(userblockSize)) userblockSize_loc = userblockSize
 CALL H5OPEN_F(iError)
 
 ! Setup file access property list with parallel I/O access (MPI) or with default property list.
-IF(create)THEN
-  CALL H5PCREATE_F(H5P_FILE_CREATE_F, Plist_File_ID, iError)
-ELSE
-  CALL H5PCREATE_F(H5P_FILE_ACCESS_F, Plist_File_ID, iError)
+IF (create) THEN; CALL H5PCREATE_F(H5P_FILE_CREATE_F, Plist_File_ID, iError)
+ELSE            ; CALL H5PCREATE_F(H5P_FILE_ACCESS_F, Plist_File_ID, iError)
 END IF
+
 #if USE_MPI
-IF (PRESENT(communicatorOpt)) THEN
-  comm = communicatorOpt
-ELSE
-  comm = MPI_COMM_FLEXI
+IF (PRESENT(communicatorOpt)) THEN; comm = communicatorOpt
+ELSE                              ; comm = MPI_COMM_FLEXI
 END IF
-IF(.NOT.single)  CALL H5PSET_FAPL_MPIO_F(Plist_File_ID, comm, MPIInfo, iError)
+
+IF (.NOT.single)  CALL H5PSET_FAPL_MPIO_F(Plist_File_ID, comm, MPIInfo, iError)
 #endif /*USE_MPI*/
 
 ! Open the file collectively.

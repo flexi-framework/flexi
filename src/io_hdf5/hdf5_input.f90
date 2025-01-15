@@ -56,8 +56,8 @@ LOGICAL                        :: isValidHDF5File !< result: file is valid HDF5 
 INTEGER(HID_T)                 :: Plist_ID
 LOGICAL                        :: exists
 !==================================================================================================================================
-isValidHDF5File=.TRUE.
-iError=0
+isValidHDF5File = .TRUE.
+iError = 0
 
 ! Disable error messages
 CALL H5ESET_AUTO_F(0, iError)

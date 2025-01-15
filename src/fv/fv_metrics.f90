@@ -233,14 +233,14 @@ REAL,DIMENSION(3,0:PP_N,0:PP_N,0:PP_NZ):: FV_Path_XI, FV_Path_ETA, FV_Path_ZETA
 REAL                                   :: x0, xN
 REAL,POINTER                           :: FV_dx_P(:,:)
 #if USE_MPI
-INTEGER                                :: MPIRequest(nNbProcs,2)
+TYPE(MPI_Request)                      :: MPIRequest(nNbProcs,2)
 #endif
 #if VOLINT_VISC
 INTEGER                                :: d,ijk2(3),ElemID,NB_ElemID
 #endif
 #endif
 #if USE_MPI
-INTEGER                                :: MPIRequest_Geo(nNbProcs,2)
+TYPE(MPI_Request)                      :: MPIRequest_Geo(nNbProcs,2)
 REAL,ALLOCATABLE                       :: Geo(:,:,:,:)
 #endif
 #if VOLINT_VISC
@@ -922,7 +922,7 @@ END DO ! iSide = 1, nSides
 ! distances at big mortar interfaces must be distributed to the smaller sides
 FV_Elems_master = 1 ! Force use of FV mortar matrices in U_Mortar routine
 #if USE_MPI
-MPIRequest=0
+MPIRequest = MPI_REQUEST_NULL
 ! distances at MPI slave sides must be transmitted to master sides
 CALL U_Mortar1(FV_dx_master,FV_dx_slave,doMPISides=.TRUE.)
 CALL StartReceiveMPIData(FV_dx_slave, (PP_N+1)*(PP_NZ+1), 1,nSides,MPIRequest(:,SEND),SendID=2)
@@ -931,7 +931,7 @@ CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest) !Send MINE -receive YOUR
 #endif
 CALL U_Mortar1(FV_dx_master,FV_dx_slave,doMPISides=.FALSE.)
 #if USE_MPI
-MPIRequest=0
+MPIRequest = MPI_REQUEST_NULL
 ! distances at MPI master sides must be transmitted to slave sides (required in preconditioner)
 CALL StartReceiveMPIData(FV_dx_master, (PP_N+1)*(PP_NZ+1), 1,nSides,MPIRequest(:,SEND),SendID=1)
 CALL StartSendMPIData(   FV_dx_master, (PP_N+1)*(PP_NZ+1), 1,nSides,MPIRequest(:,RECV),SendID=1)

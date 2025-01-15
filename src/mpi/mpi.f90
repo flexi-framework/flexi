@@ -74,7 +74,7 @@ USE MOD_Globals
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN),OPTIONAL      :: mpi_comm_IN !< MPI communicator
+TYPE(MPI_Comm),INTENT(IN),OPTIONAL      :: mpi_comm_IN !< MPI communicator
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 #if USE_MPI
@@ -232,14 +232,14 @@ USE MOD_MPI_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)          :: SendID                                   !< defines the send / receive direction -> 1=send MINE
-                                                                        !< / receive YOUR, 2=send YOUR / receive MINE
-INTEGER,INTENT(IN)          :: DataSize                                 !< size of one entry in array (e.g. one side:
-                                                                        !< nVar*(N+1)**2
-INTEGER,INTENT(IN)          :: LowerBound                               !< lower side index for last dimension of FaceData
-INTEGER,INTENT(IN)          :: UpperBound                               !< upper side index for last dimension of FaceData
-INTEGER,INTENT(OUT)         :: MPIRequest(nNbProcs)                     !< communication handles
-REAL,INTENT(INOUT)          :: FaceData(DataSize,LowerBound:UpperBound) !< the complete face data (for inner, BC and MPI sides).
+INTEGER,INTENT(IN)            :: SendID                                   !< defines the send / receive direction -> 1=send MINE
+                                                                          !< / receive YOUR, 2=send YOUR / receive MINE
+INTEGER,INTENT(IN)            :: DataSize                                 !< size of one entry in array (e.g. one side:
+                                                                          !< nVar*(N+1)**2
+INTEGER,INTENT(IN)            :: LowerBound                               !< lower side index for last dimension of FaceData
+INTEGER,INTENT(IN)            :: UpperBound                               !< upper side index for last dimension of FaceData
+TYPE(MPI_Request),INTENT(OUT) :: MPIRequest(nNbProcs)                     !< communication handles
+REAL,INTENT(OUT)              :: FaceData(DataSize,LowerBound:UpperBound) !< the complete face data (for inner, BC and MPI sides).
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                     :: iNBProc
@@ -270,14 +270,14 @@ USE MOD_MPI_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)          :: SendID                                   !< defines the send / receive direction -> 1=send MINE
-                                                                        !< / receive YOUR, 2=send YOUR / receive MINE
-INTEGER,INTENT(IN)          :: DataSize                                 !< size of one entry in array (e.g. one side:
-                                                                        !< nVar*(N+1)*(N+1))
-INTEGER,INTENT(IN)          :: LowerBound                               !< lower side index for last dimension of FaceData
-INTEGER,INTENT(IN)          :: UpperBound                               !< upper side index for last dimension of FaceData
-INTEGER,INTENT(OUT)         :: MPIRequest(nNbProcs)                     !< communication handles
-REAL,INTENT(IN)             :: FaceData(DataSize,LowerBound:UpperBound) !< the complete face data (for inner, BC and MPI sides).
+INTEGER,INTENT(IN)            :: SendID                                   !< defines the send / receive direction -> 1=send MINE
+                                                                          !< / receive YOUR, 2=send YOUR / receive MINE
+INTEGER,INTENT(IN)            :: DataSize                                 !< size of one entry in array (e.g. one side:
+                                                                          !< nVar*(N+1)*(N+1))
+INTEGER,INTENT(IN)            :: LowerBound                               !< lower side index for last dimension of FaceData
+INTEGER,INTENT(IN)            :: UpperBound                               !< upper side index for last dimension of FaceData
+TYPE(MPI_Request),INTENT(OUT) :: MPIRequest(nNbProcs)                     !< communication handles
+REAL,INTENT(IN)               :: FaceData(DataSize,LowerBound:UpperBound) !< the complete face data (for inner, BC and MPI sides).
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                     :: iNBProc
@@ -310,13 +310,13 @@ USE MOD_MPI_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)    :: SendID                          !< defines the send / receive direction -> 1=send MINE/receive YOUR,
-                                                         !< 2=send YOUR / receive MINE
-INTEGER,INTENT(IN)    :: LowerBound                      !< lower side index for last dimension of FV_Elems
-INTEGER,INTENT(IN)    :: UpperBound                      !< upper side index for last dimension of FV_Elems
-INTEGER,INTENT(OUT)   :: SendRequest(nNbProcs)           !< communicatio handles for send
-INTEGER,INTENT(OUT)   :: RecRequest(nNbProcs)            !< communicatio handles for receive
-INTEGER,INTENT(INOUT) :: FV_Elems(LowerBound:UpperBound) !< information about FV_Elems at faces to be communicated
+INTEGER,INTENT(IN)            :: SendID                          !< defines the send / receive direction -> 1=send MINE/receive YOUR,
+                                                                 !< 2=send YOUR / receive MINE
+INTEGER,INTENT(IN)            :: LowerBound                      !< lower side index for last dimension of FV_Elems
+INTEGER,INTENT(IN)            :: UpperBound                      !< upper side index for last dimension of FV_Elems
+TYPE(MPI_Request),INTENT(OUT) :: SendRequest(nNbProcs)           !< communicatio handles for send
+TYPE(MPI_Request),INTENT(OUT) :: RecRequest(nNbProcs)            !< communicatio handles for receive
+INTEGER,INTENT(INOUT)         :: FV_Elems(LowerBound:UpperBound) !< information about FV_Elems at faces to be communicated
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                     :: iNBProc
@@ -361,13 +361,13 @@ USE MOD_MPI_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)    :: SendID                          !< defines the send / receive direction -> 1=send MINE/receive YOUR,
-                                                         !< 2=send YOUR / receive MINE
-INTEGER,INTENT(IN)    :: LowerBound                      !< lower side index for last dimension of FV_Elems
-INTEGER,INTENT(IN)    :: UpperBound                      !< upper side index for last dimension of FV_Elems
-INTEGER,INTENT(OUT)   :: SendRequest(nNbProcs)           !< communicatio handles for send
-INTEGER,INTENT(OUT)   :: RecRequest(nNbProcs)            !< communicatio handles for receive
-REAL,INTENT(INOUT)    :: FV_alpha(LowerBound:UpperBound) !< information about FV_Elems at faces to be communicated
+INTEGER,INTENT(IN)              :: SendID                          !< defines the send / receive direction -> 1=send MINE/receive YOUR,
+                                                                   !< 2=send YOUR / receive MINE
+INTEGER,INTENT(IN)              :: LowerBound                      !< lower side index for last dimension of FV_Elems
+INTEGER,INTENT(IN)              :: UpperBound                      !< upper side index for last dimension of FV_Elems
+TYPE(MPI_Request),INTENT(OUT)   :: SendRequest(nNbProcs)           !< communicatio handles for send
+TYPE(MPI_Request),INTENT(OUT)   :: RecRequest(nNbProcs)            !< communicatio handles for receive
+REAL,INTENT(INOUT)              :: FV_alpha(LowerBound:UpperBound) !< information about FV_Elems at faces to be communicated
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                     :: iNBProc
@@ -408,8 +408,8 @@ USE MOD_Globals
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)          :: nRequests             !< size of the handles
-INTEGER,INTENT(INOUT)       :: MPIRequest(nRequests) !< communication handles
+INTEGER          ,INTENT(IN)    :: nRequests             !< size of the handles
+TYPE(MPI_Request),INTENT(INOUT) :: MPIRequest(nRequests) !< communication handles
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================

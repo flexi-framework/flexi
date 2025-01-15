@@ -844,7 +844,7 @@ INTEGER             :: iElem,LocSideID,iNbProc
 INTEGER             :: iMortar,nMortars
 INTEGER             :: Flip_MINE(offsetMPISides_MINE(0)+1:offsetMPISides_MINE(nNBProcs))
 INTEGER             :: Flip_YOUR(offsetMPISides_YOUR(0)+1:offsetMPISides_YOUR(nNBProcs))
-INTEGER             :: SendRequest(nNbProcs),RecRequest(nNbProcs)
+TYPE(MPI_Request)   :: SendRequest(nNbProcs),RecRequest(nNbProcs)
 !==================================================================================================================================
 IF(nProcessors.EQ.1) RETURN
 ! fill MINE flip info
@@ -885,8 +885,8 @@ DO iNbProc=1,nNbProcs
   END IF
 END DO ! iProc=1,nNBProcs
 DO iNbProc=1,nNbProcs
-  IF(nMPISides_YOUR_Proc(iNbProc).GT.0)CALL MPI_WAIT(RecRequest(iNbProc) ,MPIStatus,iError)
-  IF(nMPISides_MINE_Proc(iNBProc).GT.0)CALL MPI_WAIT(SendRequest(iNbProc),MPIStatus,iError)
+  IF (nMPISides_YOUR_Proc(iNbProc).GT.0) CALL MPI_WAIT(RecRequest( iNbProc),MPI_STATUS_IGNORE,iError)
+  IF (nMPISides_MINE_Proc(iNBProc).GT.0) CALL MPI_WAIT(SendRequest(iNbProc),MPI_STATUS_IGNORE,iError)
 END DO ! iProc=1,nNBProcs
 DO iElem=1,nElems
   aElem=>Elems(iElem+offsetElem)%ep
