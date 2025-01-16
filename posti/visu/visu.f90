@@ -34,7 +34,11 @@ CONTAINS
 !===================================================================================================================================
 !> Main routine of the visualization tool visu. Called either by the ParaView plugin or by the standalone program version.
 !===================================================================================================================================
-SUBROUTINE visu(mpi_comm_IN, prmfile, postifile, statefile)
+SUBROUTINE visu(prmfile, postifile, statefile &
+#if USE_MPI
+               ,mpi_comm_IN &
+#endif /*USE_MPI*/
+)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -64,10 +68,12 @@ USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_FV,ConvertToSurfVisu_FV
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-TYPE(MPI_Comm),INTENT(IN)        :: mpi_comm_IN
 CHARACTER(LEN=255),INTENT(INOUT) :: prmfile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 CHARACTER(LEN=255),INTENT(IN)    :: statefile
+#if USE_MPI
+TYPE(MPI_Comm),INTENT(IN)        :: mpi_comm_IN
+#endif /*USE_MPI*/
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                          :: changedPrmFile
@@ -157,7 +163,11 @@ CHARACTER(LEN=2047)              :: str
 
 CALL SetStackSizeUnlimited()
 postiMode = .TRUE. ! Flag used in FLEXI routines to do things only for POSTI usage
-CALL InitMPI(mpi_comm_IN)
+CALL InitMPI( &
+#if USE_MPI
+             mpi_comm_IN &
+#endif /*USE_MPI*/
+            )
 CALL InitMPIInfo()
 
 CALL FinalizeParameters()

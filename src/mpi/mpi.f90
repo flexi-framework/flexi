@@ -67,17 +67,21 @@ END SUBROUTINE DefineParametersMPI
 !> Basic MPI initialization. Calls initialization routine of the MPI library and sets myRank, nProcessors and MPIRoot. If the code
 !> is not compiled with MPI, InitMPI sets standard values for these variables.
 !==================================================================================================================================
-SUBROUTINE InitMPI(mpi_comm_IN)
+SUBROUTINE InitMPI(            &
+#if USE_MPI
+                   mpi_comm_IN &
+#endif /*USE_MPI*/
+                  )
 ! MODULES
 USE MOD_Globals
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+#if USE_MPI
 TYPE(MPI_Comm),INTENT(IN),OPTIONAL      :: mpi_comm_IN !< MPI communicator
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-#if USE_MPI
 LOGICAL :: initDone,foundAttr
 INTEGER :: color
 INTEGER(KIND=MPI_ADDRESS_KIND) :: myApp
@@ -104,7 +108,7 @@ END IF
 
 CALL MPI_COMM_RANK(MPI_COMM_FLEXI, myRank     , iError)
 CALL MPI_COMM_SIZE(MPI_COMM_FLEXI, nProcessors, iError)
-IF(iError .NE. 0) &
+IF(iError.NE.MPI_SUCCESS) &
   CALL Abort(__STAMP__,'Could not get rank and number of processors',iError)
 MPIRoot=(myRank .EQ. 0)
 #else  /*USE_MPI*/

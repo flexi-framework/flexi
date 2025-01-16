@@ -58,7 +58,9 @@ INTEGER                  :: nDims               !< data size dimensions
 INTEGER,PARAMETER        :: nLimit = INT(REAL(HUGE(INT(1,KIND=4)))/REAL(KIND(REAL(1))))
                                                 !< Max number of entries in double arrays for HDF5 IO. Limit is computed as
                                                 !< INT( Max. Bytes allowed by MPI (2GB per rank) / Size of single double entry)
+#if USE_MPI
 TYPE(MPI_Info)           :: MPIInfo             !< hardware / storage specific / file system MPI parameters to pass to HDF5
+#endif /*USE_MPI*/
                                                 !< for optimized performance on specific systems
 
 !> Type containing pointers to data to be written to HDF5 in an element-wise scalar fashion.
@@ -125,7 +127,7 @@ CALL prms%CreateLogicalOption('gatheredWrite', "Set true to activate gathered HD
                                                '.FALSE.')
 #if PP_dim == 2
 CALL prms%CreateLogicalOption('output2D'     , "Set true to activate hdf5 data output with flat third dimension.",'.TRUE.')
-#endif
+#endif /*PP_dim == 2*/
 END SUBROUTINE DefineParametersIO_HDF5
 
 
@@ -195,7 +197,11 @@ END SUBROUTINE InitMPIInfo
 !==================================================================================================================================
 !> Open HDF5 file and groups
 !==================================================================================================================================
-SUBROUTINE OpenDataFile(FileString,create,single,readOnly,communicatorOpt,userblockSize)
+SUBROUTINE OpenDataFile(FileString,create,single,readOnly,userblockSize &
+#if USE_MPI
+                       ,communicatorOpt &
+#endif /*USE_MPI*/
+)
 ! MODULES
 USE MOD_Globals
 ! IMPLICIT VARIABLE HANDLING
@@ -207,7 +213,9 @@ LOGICAL,INTENT(IN)                 :: create          !< create file if it doesn
 LOGICAL,INTENT(IN)                 :: single          !< single=T : only one processor opens file, single=F : open/create collectively
 LOGICAL,INTENT(IN)                 :: readOnly        !< T : file is opened in read only mode, so file system timestamp remains unchanged
                                                       !< F: file is open read/write mode
+#if USE_MPI
 TYPE(MPI_Comm),INTENT(IN),OPTIONAL :: communicatorOpt !< only MPI and single=F: optional communicator to be used for collective access
+#endif /*USE_MPI*/
                                                       !< default: MPI_COMM_FLEXI
 INTEGER,INTENT(IN),OPTIONAL        :: userblockSize   !< size of the file to be prepended to HDF5 file
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -215,7 +223,7 @@ INTEGER,INTENT(IN),OPTIONAL        :: userblockSize   !< size of the file to be 
 INTEGER(HSIZE_T)              :: userblockSize_loc, tmp, tmp2
 #if USE_MPI
 TYPE(MPI_Comm)                :: comm
-#endif
+#endif /*USE_MPI*/
 !==================================================================================================================================
 LOGWRITE(*,'(A)')'  OPEN HDF5 FILE "',TRIM(FileString),'" ...'
 
@@ -260,6 +268,7 @@ IF(iError.NE.0) CALL Abort(__STAMP__,&
   'ERROR: Could not open or create file '//TRIM(FileString))
 
 LOGWRITE(*,*)'...DONE!'
+
 END SUBROUTINE OpenDataFile
 
 
@@ -284,6 +293,7 @@ CALL H5FCLOSE_F(File_ID, iError)
 CALL H5CLOSE_F(iError)
 File_ID=0
 LOGWRITE(*,*)'...DONE!'
+
 END SUBROUTINE CloseDataFile
 
 

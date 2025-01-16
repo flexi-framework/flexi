@@ -18,6 +18,7 @@
 !> Provides parameters, used globally (please use EXTREMLY carefully!)
 !==================================================================================================================================
 MODULE MOD_Globals
+! MODULES
 USE ISO_C_BINDING
 USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: HP => INT16,  & ! half precision (only defined for integer)
                                          SP => REAL32, & ! single precision
@@ -28,6 +29,7 @@ USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: HP => INT16,  & ! half precision (only 
 USE mpi_f08
 #endif
 USE ISO_C_BINDING
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
@@ -42,7 +44,9 @@ CHARACTER(LEN=255):: ErrorFileName='NOT_SET'                                  !<
 INTEGER           :: iError                                                   !< default error handle
 INTEGER           :: myRank,myLocalRank,myLeaderRank,myWorkerRank
 INTEGER           :: nProcessors,nLocalProcs,nLeaderProcs,nWorkerProcs
+#if USE_MPI
 TYPE(MPI_Comm)    :: MPI_COMM_FLEXI                                           !< Flexi MPI communicator
+#endif
 LOGICAL           :: MPIRoot                                                  !< flag whether process is MPI root process
 LOGICAL           :: MPILocalRoot                                             !< flag whether process is root of MPI subgroup
 #if USE_MPI
@@ -652,13 +656,19 @@ END SUBROUTINE DisplayMessageAndTime
 !==================================================================================================================================
 !> Calculates current time (own function because of a laterMPI implementation)
 !==================================================================================================================================
-FUNCTION FLEXITIME(Comm)
+FUNCTION FLEXITIME(     &
+#if USE_MPI
+                   Comm &
+#endif /*USE_MPI*/
+                  )
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+#if USE_MPI
 TYPE(mpi_Comm),INTENT(IN),OPTIONAL :: Comm                                       !< global mpi communicator
+#endif /*USE_MPI*/
 REAL                               :: FlexiTime                                  !< output time
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -669,7 +679,7 @@ IF (PRESENT(Comm)) THEN
 ELSE
   CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 END IF
-#endif
+#endif /*USE_MPI*/
 GETTIME(FlexiTime)
 END FUNCTION FLEXITIME
 
