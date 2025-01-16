@@ -358,6 +358,7 @@ DO iDiffRecvProc = 1,nRecvProcs
   END DO
   CALL MPI_ISEND(SendBuffer(1:nElemsToSend(RecvProcs(iDiffRecvProc)),iDiffRecvProc),nSendVal,MPI_DOUBLE_PRECISION,  &
                  iProc,0,MPI_COMM_FLEXI,MPIRequest_Avg2DSend(iDiffRecvProc),iError)
+  IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_ISend',iError)
 END DO
 
 ! Start receiving the domain width data
@@ -368,10 +369,13 @@ DO iDiffSendProc = 1,nSendProcs
   nRecvVal = nElemsToRecv(SendProcs(iDiffSendProc))
   CALL MPI_IRecv(RcvBuffer(1:nElemsToRecv(SendProcs(iDiffSendProc)),iDiffSendProc),nRecvVal,MPI_DOUBLE_PRECISION,  &
                  iProc,0,MPI_COMM_FLEXI,MPIRequest_Avg2DRecv(iDiffSendProc),iError)
+  IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_IRecv',iError)
 END DO
 ! Finish echange of domain width data
 CALL MPI_WAITALL(nRecvProcs,MPIRequest_Avg2DSend(1:nRecvProcs),MPI_STATUSES_IGNORE,iError)
+IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_WAITALL',iError)
 CALL MPI_WAITALL(nSendProcs,MPIRequest_Avg2DRecv(1:nSendProcs),MPI_STATUSES_IGNORE,iError)
+IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_WAITALL',iError)
 #endif /* USE_MPI */
 
 SpanWidth = -1
@@ -460,6 +464,7 @@ DO iDiffRecvProc = 1,nRecvProcs
   END DO
   CALL MPI_ISEND(SendBufferAvg2D(:,:,:,1:nElemsToSend(RecvProcs(iDiffRecvProc)),iDiffRecvProc),nSendVal,MPI_DOUBLE_PRECISION,  &
                  iProc,0,MPI_COMM_FLEXI,MPIRequest_Avg2DSend(iDiffRecvProc),iError)
+  IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_ISend',iError)
 END DO
 
 !Open the receive buffers
@@ -469,6 +474,7 @@ DO iDiffSendProc = 1,nSendProcs
   nRecvVal = nVarsAvg2D*(PP_N+1)*(PP_N+1)*nElemsToRecv(SendProcs(iDiffSendProc))
   CALL MPI_IRecv(RecvBufferAvg2D(:,:,:,1:nElemsToRecv(SendProcs(iDiffSendProc)),iDiffSendProc),nRecvVal,MPI_DOUBLE_PRECISION,  &
                  iProc,0,MPI_COMM_FLEXI,MPIRequest_Avg2DRecv(iDiffSendProc),iError)
+  IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_IRecv',iError)
 END DO
 
 END SUBROUTINE SendAvg2DToMaster
@@ -491,7 +497,10 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !==================================================================================================================================
 CALL MPI_WAITALL(nRecvProcs,MPIRequest_Avg2DSend(1:nRecvProcs),MPI_STATUSES_IGNORE,iError)
+IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_WAITALL',iError)
 CALL MPI_WAITALL(nSendProcs,MPIRequest_Avg2DRecv(1:nSendProcs),MPI_STATUSES_IGNORE,iError)
+IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_WAITALL',iError)
+
 END SUBROUTINE RecvAvg2DOfMaster
 #endif /* USE_MPI */
 
@@ -529,6 +538,7 @@ UAvg2DGlobal(:,:,:,:)=UAvg2DGlobal(:,:,:,:)*spanWidth
 
 END SUBROUTINE Avg2DMaster
 
+
 #if USE_MPI
 !==================================================================================================================================
 !> Each master processor sends it globally averaged elements to the slaves procs and opens its own receiving ports
@@ -556,6 +566,7 @@ DO iDiffRecvProc = 1,nRecvProcs
   nSendVal = nVarsAvg2D*(PP_N+1)*(PP_N+1)*nElemsToSend(RecvProcs(iDiffRecvProc))
   CALL MPI_IRecv(SendBufferAvg2D(:,:,:,1:nElemsToSend(RecvProcs(iDiffRecvProc)),iDiffRecvProc),nSendVal,MPI_DOUBLE_PRECISION,  &
                  iProc,0,MPI_COMM_FLEXI,MPIRequest_Avg2DSend(iDiffRecvProc),iError)
+  IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_IRecv',iError)
 END DO
 
 !Fill the send buffers and start sending
@@ -571,6 +582,7 @@ DO iDiffSendProc = 1,nSendProcs
   END DO
   CALL MPI_ISend(RecvBufferAvg2D(:,:,:,1:nElemsToRecv(SendProcs(iDiffSendProc)),iDiffSendProc),nRecvVal,MPI_DOUBLE_PRECISION,  &
                  iProc,0,MPI_COMM_FLEXI,MPIRequest_Avg2DRecv(iDiffSendProc),iError)
+  IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_ISend',iError)
 END DO
 
 END SUBROUTINE SendAvg2DToSlave
@@ -601,7 +613,9 @@ INTEGER             :: iElem,i,j,k,iDiffRecvProc,iElemToSend,iMyElemIJ,iElemIJ
 !Everything has to be read in reverse to the inital sending and receive operation
 #if USE_MPI
 CALL MPI_WAITALL(nRecvProcs,MPIRequest_Avg2DSend(1:nRecvProcs),MPI_STATUSES_IGNORE,iError)
+IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_WAITALL',iError)
 CALL MPI_WAITALL(nSendProcs,MPIRequest_Avg2DRecv(1:nSendProcs),MPI_STATUSES_IGNORE,iError)
+IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_WAITALL',iError)
 #endif /* USE_MPI */
 
 ! Sort in my own values, maybe so are actually local values but they are overriten by the global ones

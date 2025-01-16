@@ -874,6 +874,7 @@ DO iNbProc=1,nNbProcs
     SideID_end  =OffsetMPISides_MINE(iNbProc)
     CALL MPI_ISEND(Flip_MINE(SideID_start:SideID_end),nSendVal,MPI_INTEGER,  &
                     nbProc(iNbProc),0,MPI_COMM_FLEXI,SendRequest(iNbProc),iError)
+    IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_ISEND',iError)
   END IF
   ! Start receive flip to YOUR
   IF(nMPISides_YOUR_Proc(iNbProc).GT.0)THEN
@@ -882,6 +883,7 @@ DO iNbProc=1,nNbProcs
     SideID_end  =OffsetMPISides_YOUR(iNbProc)
     CALL MPI_IRECV(Flip_YOUR(SideID_start:SideID_end),nRecVal,MPI_INTEGER,  &
                     nbProc(iNbProc),0,MPI_COMM_FLEXI,RecRequest(iNbProc),iError)
+    IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_IRECV',iError)
   END IF
 END DO ! iProc=1,nNBProcs
 DO iNbProc=1,nNbProcs
@@ -914,6 +916,7 @@ END DO ! iElem
 
 END SUBROUTINE exchangeFlip
 #endif
+
 
 !==================================================================================================================================
 !> Fast recursive sorting algorithm for integer arrays
