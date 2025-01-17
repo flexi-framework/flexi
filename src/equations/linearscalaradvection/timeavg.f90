@@ -20,6 +20,7 @@
 MODULE MOD_TimeAverage
 ! MODULES
 USE MOD_Analyze_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------

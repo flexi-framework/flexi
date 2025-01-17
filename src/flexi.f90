@@ -22,6 +22,7 @@ PROGRAM Flexi
 USE MOD_Globals
 USE MOD_Flexi
 USE MOD_TimeDisc,          ONLY:TimeDisc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

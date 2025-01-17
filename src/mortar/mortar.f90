@@ -23,24 +23,11 @@ MODULE MOD_Mortar
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE InitMortar
-  MODULE PROCEDURE InitMortar
-END INTERFACE
 
-INTERFACE MortarBasis_BigToSmall
-  MODULE PROCEDURE MortarBasis_BigToSmall
-END INTERFACE
-
-INTERFACE MortarBasis_SmallToBig
-  MODULE PROCEDURE MortarBasis_SmallToBig
-END INTERFACE
-
-INTERFACE FinalizeMortar
-  MODULE PROCEDURE FinalizeMortar
-END INTERFACE
-
-PUBLIC::InitMortar,FinalizeMortar,MortarBasis_BigToSmall,MortarBasis_SmallToBig
-
+PUBLIC:: InitMortar
+PUBLIC:: MortarBasis_BigToSmall
+PUBLIC:: MortarBasis_SmallToBig
+PUBLIC:: FinalizeMortar
 !==================================================================================================================================
 
 CONTAINS

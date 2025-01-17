@@ -21,6 +21,7 @@ MODULE MOD_IO_HDF5
 ! MODULES
 USE HDF5
 USE MOD_Globals,ONLY: iError
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 ! PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------

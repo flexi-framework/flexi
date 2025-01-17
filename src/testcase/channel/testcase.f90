@@ -37,6 +37,7 @@
 MODULE MOD_TestCase
 ! MODULES
 USE MOD_TestCase_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------

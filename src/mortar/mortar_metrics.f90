@@ -22,14 +22,8 @@ MODULE MOD_Mortar_Metrics
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE Mortar_CalcSurfMetrics
-  MODULE PROCEDURE Mortar_CalcSurfMetrics
-END INTERFACE
 
-PUBLIC::Mortar_CalcSurfMetrics
-
+PUBLIC:: Mortar_CalcSurfMetrics
 !==================================================================================================================================
 
 CONTAINS

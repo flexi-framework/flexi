@@ -44,9 +44,9 @@ INTERFACE VolInt_Visc
 END INTERFACE
 #endif
 
-PUBLIC::VolInt
+PUBLIC:: VolInt
 #if  PARABOLIC && !VOLINT_VISC
-PUBLIC::VolInt_Visc
+PUBLIC:: VolInt_Visc
 #endif
 !==================================================================================================================================
 CONTAINS

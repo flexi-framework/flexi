@@ -20,6 +20,7 @@
 MODULE MOD_HDF5_Input
 ! MODULES
 USE MOD_IO_HDF5
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
