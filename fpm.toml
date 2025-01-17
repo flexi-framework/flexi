@@ -1,6 +1,6 @@
 # General information
 name        = "FLEXI"
-version     = "22.03"
+version     = "24.12"
 licence     = "GPL-3.0"
 description = "FLEXI: A high-order numerical framework for solving PDE"
 homepage    = "https://www.flexi-project.org"

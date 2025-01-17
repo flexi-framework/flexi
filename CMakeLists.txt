@@ -1,9 +1,9 @@
 # =========================================================================
 # Flexi information
 # =========================================================================
-SET(PROJECT_NAME "Flexi")
+SET(PROJECT_NAME "FLEXI")
 SET(PROJECT_DESC "A high order discontinuous Galerkin framework for hyperbolic–parabolic conservation laws")
-SET(PROJECT_VER  "22.03")
+SET(PROJECT_VER  "24.12")
 SET(PROJECT_URL  "https://www.flexi-project.org")
 
 # =========================================================================
