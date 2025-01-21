@@ -6,6 +6,9 @@ before_script:
   - ulimit -s unlimited
   - module list || true
   - python3 -V  || true
+  # Setup Python virtual environment
+  - source venv/bin/activate || true
+  # Setup CMake generator
   - unset CMAKE_GENERATOR
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -62,8 +65,8 @@ stages:
   allow_failure: false
 
 .reggie_cache: &reggie_cache
-  key: "reggie"
-  paths: [reggie]
+  key: "venv"
+  paths: [venv]
   policy: pull
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -119,14 +122,21 @@ ruff:
 reggie_download:
   extends: .default_build_param
   artifacts:
-    paths: [reggie]
+    paths: [venv]
   cache:
-    key: "reggie"
-    paths: [reggie]
+    key: "venv"
+    paths: [venv]
     policy: push
   stage: setup
   script:
-    - git clone https://github.com/piclas-framework/reggie2.0.git reggie
+    # Setup Python virtual environment
+    - rm -rf venv
+    - python -m venv venv
+    - source venv/bin/activate
+    # Install Reggie
+    - pip install git+https://github.com/piclas-framework/reggie2.0.git
+    # Check Reggie
+    - reggie --help
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_checkin": Run most simple reggie with previous builds on check-in
@@ -153,7 +163,7 @@ checkin:
   needs: [build]
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -j 6 -e ./bin/flexi
+    - reggie ../regressioncheck/checks/run_basic/freestream_3D -j 6 -e ./bin/flexi
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_nightly": Build and run
@@ -167,80 +177,84 @@ build_all:
   stage: reggie_nightly
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/run_basic -j 6
+    - reggie ../regressioncheck/checks/run_basic -j 6
 
 timediscs:
   <<: *defaults_nightly
   stage: reggie_nightly
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/timedisc -j 6
+    - reggie ../regressioncheck/checks/timedisc -j 6
 
 convtest:
   <<: *defaults_nightly
   stage: reggie_nightly
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/convtest -j 6
+    - reggie ../regressioncheck/checks/convtest -j 6
 
 parabolic:
   <<: *defaults_nightly
   stage: reggie_nightly
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/parabolic -j 6
+    - reggie ../regressioncheck/checks/parabolic -j 6
 
 riemann:
   <<: *defaults_nightly
   stage: reggie_nightly
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/riemann -j 6
+    - reggie ../regressioncheck/checks/riemann -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_weekly": Build and run more complex tests, basically complete simulatons
+#                         - Taylor-Green vortex
+#                         - NACA profile
+#                         - Advanced FV simulations
+#                         - RANS channel
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 tgv:
   <<: *defaults_weekly
   stage: reggie_weekly
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/tgv -j 6
+    - reggie ../regressioncheck/checks/tgv -j 6
 
 naca:
   <<: *defaults_weekly
   stage: reggie_weekly
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/naca -j 6
+    - reggie ../regressioncheck/checks/naca -j 6
 
 fv_switch:
   <<: *defaults_weekly
   stage: reggie_weekly
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/fv_switch -j 6
+    - reggie ../regressioncheck/checks/fv_switch -j 6
 
 fv_blend:
   <<: *defaults_weekly
   stage: reggie_weekly
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/fv_blend -j 6
+    - reggie ../regressioncheck/checks/fv_blend -j 6
 
 channelRANS:
   <<: *defaults_weekly
   stage: reggie_weekly
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/channelRANS -j 6
+    - reggie ../regressioncheck/checks/channelRANS -j 6
 
 imperator:
   <<: *defaults_weekly
   stage: reggie_weekly
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/preconditioner -j 6
+    - reggie ../regressioncheck/checks/preconditioner -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "documentation": Creates doxygen documentation & compiles the documentation creating the *.pdf
