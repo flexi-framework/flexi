@@ -146,7 +146,7 @@ The sponge zone introduces a dissipative source term to the discrete operator, w
 SpongeLayer           = T           ! Enables the dissipative source term
 SpongeShape           = 1           ! Shape of sponge: 1: Cartesian
 damping               = 1.0         ! Damping factor of sponge
-xStart                = (/2.0,0,0/) ! Coordinates of start position of sponge
+SpongeXStart          = (/2.0,0,0/) ! Coordinates of start position of sponge
                                     ! - ramp (for SpongeShape=1)
 SpongeDistance        = 3.0         ! Length of the sponge ramp
                                     ! - ramp (for SpongeShape=1)
@@ -168,7 +168,7 @@ The source term is of the form
 
 First, `damping` determines the strength of the source term, i.e., $d$ in eq. {eq}`naca0012_equationsponge`. It is dependent on the mean convection velocity, the desired amount of amplitude reduction and, the thickness of the sponge zone. Typically, some trial and error is necessary to obtain an appropriate value. In non-dimensional calculations, i.e., velocity and length scale are of $\mathcal{O}(1)$, $d=0.1 \ldots 2$.
 
-Ramping of the source term from $0$ is necessary to avoid reflections at the sponge interface. If such reflections occur, it is necessary to choose a wider sponge ramp, so that the source term is ramped up more gradually. We choose a parallel ramp by setting `SpongeShape=1`. The ramp’s start position, thickness, and direction are controlled by the parameters `xStart`, `SpongeDistance` and `SpongeDir`, respectively. These parameters govern the shape function $\sigma(\vec{x})$ which smoothly ramps the source term from $0$ to $1$. With the chosen settings, the sponge zone starts one chord behind the airfoil and is ramped up to $1$ at the outflow boundary, located $4$ chords behind the airfoil. In order to visualize the ramping function $d\sigma(\vec{x})$, set `SpongeViz=T`.
+Ramping of the source term from $0$ is necessary to avoid reflections at the sponge interface. If such reflections occur, it is necessary to choose a wider sponge ramp, so that the source term is ramped up more gradually. We choose a parallel ramp by setting `SpongeShape=1`. The ramp’s start position, thickness, and direction are controlled by the parameters `SpongeXStart`, `SpongeDistance` and `SpongeDir`, respectively. These parameters govern the shape function $\sigma(\vec{x})$ which smoothly ramps the source term from $0$ to $1$. With the chosen settings, the sponge zone starts one chord behind the airfoil and is ramped up to $1$ at the outflow boundary, located $4$ chords behind the airfoil. In order to visualize the ramping function $d\sigma(\vec{x})$, set `SpongeViz=T`.
 
 ```{caution}
 The sponge zone is not a physical region but a boundary condition. Place the active source regions far enough downstream of the airfoil to ensure they do not influence the near-field solution.
