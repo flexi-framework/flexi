@@ -66,7 +66,7 @@ The first line activates the calculation of the forces at each ``Analyze_dt``, t
 :align: center
 :width: 60%
 
-Resulting forces on the airfoil up to $t=10$.
+Resulting lift forces on the cylinder.
 ```
 
 ### Evaluation of the Separation Angle
