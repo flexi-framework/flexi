@@ -67,17 +67,21 @@ END SUBROUTINE DefineParametersMPI
 !> Basic MPI initialization. Calls initialization routine of the MPI library and sets myRank, nProcessors and MPIRoot. If the code
 !> is not compiled with MPI, InitMPI sets standard values for these variables.
 !==================================================================================================================================
-SUBROUTINE InitMPI(mpi_comm_IN)
+SUBROUTINE InitMPI(            &
+#if USE_MPI
+                   mpi_comm_IN &
+#endif /*USE_MPI*/
+                  )
 ! MODULES
 USE MOD_Globals
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN),OPTIONAL      :: mpi_comm_IN !< MPI communicator
+#if USE_MPI
+TYPE(MPI_Comm),INTENT(IN),OPTIONAL      :: mpi_comm_IN !< MPI communicator
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-#if USE_MPI
 LOGICAL :: initDone,foundAttr
 INTEGER :: color
 INTEGER(KIND=MPI_ADDRESS_KIND) :: myApp
@@ -86,12 +90,14 @@ IF (PRESENT(mpi_comm_IN)) THEN
   MPI_COMM_FLEXI = mpi_comm_IN
 ELSE
   CALL MPI_INIT(iError)
+  IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_INIT',iError)
   CALL MPI_INITIALIZED(initDone,iError)
   IF(.NOT.initDone) CALL MPI_INIT(iError)
-  IF(iError .NE. 0) CALL Abort(__STAMP__,'Error in MPI_INIT',iError)
+  IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_INITIALIZED',iError)
 
   ! Get number of own app if multiple apps have been launched in single mpirun command
   CALL MPI_COMM_GET_ATTR(MPI_COMM_WORLD,MPI_APPNUM,myApp,foundAttr,iError)
+  IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_COMM_GET_ATTR',iError)
   IF (foundAttr) THEN
     ! Split communicator to obtain own MPI_COMM_FLEXI per executable (explicit cast, since API requires INT().)
     color = MAX(INT(myApp), 0)
@@ -103,9 +109,9 @@ ELSE
 END IF
 
 CALL MPI_COMM_RANK(MPI_COMM_FLEXI, myRank     , iError)
+IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_COMM_RANK',iError)
 CALL MPI_COMM_SIZE(MPI_COMM_FLEXI, nProcessors, iError)
-IF(iError .NE. 0) &
-  CALL Abort(__STAMP__,'Could not get rank and number of processors',iError)
+IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_COMM_SIZE',iError)
 MPIRoot=(myRank .EQ. 0)
 #else  /*USE_MPI*/
 myRank      = 0
@@ -186,12 +192,16 @@ DataSizeSideGradParabolic=PP_nVarLifting*(PP_N+1)*(PP_NZ+1)*3
 GroupSize=GETINT('GroupSize')
 IF(GroupSize.LT.1)THEN ! group procs by node
   CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,myRank,0,MPI_COMM_NODE,iError)
+  IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_COMM_SPLIT',iError)
 ELSE ! use groupsize
   color=myRank/GroupSize
   CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,color,0,MPI_COMM_NODE,iError)
+  IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_COMM_SPLIT',iError)
 END IF
 CALL MPI_COMM_RANK(MPI_COMM_NODE,myLocalRank,iError)
+IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_COMM_RANK',iError)
 CALL MPI_COMM_SIZE(MPI_COMM_NODE,nLocalProcs,iError)
+IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_COMM_SIZE',iError)
 MPILocalRoot=(myLocalRank .EQ. 0)
 
 IF (nProcessors.EQ.nLocalProcs) THEN
@@ -209,15 +219,22 @@ myLeaderRank=-1
 myWorkerRank=-1
 IF(myLocalRank.EQ.0)THEN
   CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,0,0,MPI_COMM_LEADERS,iError)
+  IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_COMM_SPLIT',iError)
   CALL MPI_COMM_RANK( MPI_COMM_LEADERS,myLeaderRank,iError)
+  IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_COMM_RANK',iError)
   CALL MPI_COMM_SIZE( MPI_COMM_LEADERS,nLeaderProcs,iError)
+  IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_COMM_SIZE',iError)
   nWorkerProcs=nProcessors-nLeaderProcs
 ELSE
   CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,1,0,MPI_COMM_WORKERS,iError)
+  IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_COMM_SPLIT',iError)
   CALL MPI_COMM_RANK( MPI_COMM_WORKERS,myWorkerRank,iError)
+  IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_COMM_RANK',iError)
   CALL MPI_COMM_SIZE( MPI_COMM_WORKERS,nWorkerProcs,iError)
+  IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_COMM_SIZE',iError)
   nLeaderProcs=nProcessors-nWorkerProcs
 END IF
+
 END SUBROUTINE InitMPIvars
 
 
@@ -232,14 +249,14 @@ USE MOD_MPI_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)          :: SendID                                   !< defines the send / receive direction -> 1=send MINE
-                                                                        !< / receive YOUR, 2=send YOUR / receive MINE
-INTEGER,INTENT(IN)          :: DataSize                                 !< size of one entry in array (e.g. one side:
-                                                                        !< nVar*(N+1)**2
-INTEGER,INTENT(IN)          :: LowerBound                               !< lower side index for last dimension of FaceData
-INTEGER,INTENT(IN)          :: UpperBound                               !< upper side index for last dimension of FaceData
-INTEGER,INTENT(OUT)         :: MPIRequest(nNbProcs)                     !< communication handles
-REAL,INTENT(INOUT)          :: FaceData(DataSize,LowerBound:UpperBound) !< the complete face data (for inner, BC and MPI sides).
+INTEGER,INTENT(IN)            :: SendID                                   !< defines the send / receive direction -> 1=send MINE
+                                                                          !< / receive YOUR, 2=send YOUR / receive MINE
+INTEGER,INTENT(IN)            :: DataSize                                 !< size of one entry in array (e.g. one side:
+                                                                          !< nVar*(N+1)**2
+INTEGER,INTENT(IN)            :: LowerBound                               !< lower side index for last dimension of FaceData
+INTEGER,INTENT(IN)            :: UpperBound                               !< upper side index for last dimension of FaceData
+TYPE(MPI_Request),INTENT(OUT) :: MPIRequest(nNbProcs)                     !< communication handles
+REAL,INTENT(OUT)              :: FaceData(DataSize,LowerBound:UpperBound) !< the complete face data (for inner, BC and MPI sides).
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                     :: iNBProc
@@ -251,6 +268,7 @@ DO iNbProc=1,nNbProcs
     SideID_end  =OffsetMPISides_rec(iNbProc,SendID)
     CALL MPI_IRECV(FaceData(:,SideID_start:SideID_end),nRecVal,MPI_DOUBLE_PRECISION,  &
                     nbProc(iNbProc),0,MPI_COMM_FLEXI,MPIRequest(iNbProc),iError)
+    IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_IRECV',iError)
   ELSE
     MPIRequest(iNbProc)=MPI_REQUEST_NULL
   END IF
@@ -270,14 +288,14 @@ USE MOD_MPI_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)          :: SendID                                   !< defines the send / receive direction -> 1=send MINE
-                                                                        !< / receive YOUR, 2=send YOUR / receive MINE
-INTEGER,INTENT(IN)          :: DataSize                                 !< size of one entry in array (e.g. one side:
-                                                                        !< nVar*(N+1)*(N+1))
-INTEGER,INTENT(IN)          :: LowerBound                               !< lower side index for last dimension of FaceData
-INTEGER,INTENT(IN)          :: UpperBound                               !< upper side index for last dimension of FaceData
-INTEGER,INTENT(OUT)         :: MPIRequest(nNbProcs)                     !< communication handles
-REAL,INTENT(IN)             :: FaceData(DataSize,LowerBound:UpperBound) !< the complete face data (for inner, BC and MPI sides).
+INTEGER,INTENT(IN)            :: SendID                                   !< defines the send / receive direction -> 1=send MINE
+                                                                          !< / receive YOUR, 2=send YOUR / receive MINE
+INTEGER,INTENT(IN)            :: DataSize                                 !< size of one entry in array (e.g. one side:
+                                                                          !< nVar*(N+1)*(N+1))
+INTEGER,INTENT(IN)            :: LowerBound                               !< lower side index for last dimension of FaceData
+INTEGER,INTENT(IN)            :: UpperBound                               !< upper side index for last dimension of FaceData
+TYPE(MPI_Request),INTENT(OUT) :: MPIRequest(nNbProcs)                     !< communication handles
+REAL,INTENT(IN)               :: FaceData(DataSize,LowerBound:UpperBound) !< the complete face data (for inner, BC and MPI sides).
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                     :: iNBProc
@@ -289,10 +307,12 @@ DO iNbProc=1,nNbProcs
     SideID_end  =OffsetMPISides_send(iNbProc,SendID)
     CALL MPI_ISEND(FaceData(:,SideID_start:SideID_end),nSendVal,MPI_DOUBLE_PRECISION,  &
                     nbProc(iNbProc),0,MPI_COMM_FLEXI,MPIRequest(iNbProc),iError)
+    IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_ISEND',iError)
   ELSE
     MPIRequest(iNbProc)=MPI_REQUEST_NULL
   END IF
-END DO !iProc=1,nNBProcs
+END DO ! iProc=1,nNBProcs
+
 END SUBROUTINE StartSendMPIData
 
 
@@ -310,13 +330,13 @@ USE MOD_MPI_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)    :: SendID                          !< defines the send / receive direction -> 1=send MINE/receive YOUR,
-                                                         !< 2=send YOUR / receive MINE
-INTEGER,INTENT(IN)    :: LowerBound                      !< lower side index for last dimension of FV_Elems
-INTEGER,INTENT(IN)    :: UpperBound                      !< upper side index for last dimension of FV_Elems
-INTEGER,INTENT(OUT)   :: SendRequest(nNbProcs)           !< communicatio handles for send
-INTEGER,INTENT(OUT)   :: RecRequest(nNbProcs)            !< communicatio handles for receive
-INTEGER,INTENT(INOUT) :: FV_Elems(LowerBound:UpperBound) !< information about FV_Elems at faces to be communicated
+INTEGER,INTENT(IN)            :: SendID                          !< defines the send / receive direction -> 1=send MINE/receive YOUR,
+                                                                 !< 2=send YOUR / receive MINE
+INTEGER,INTENT(IN)            :: LowerBound                      !< lower side index for last dimension of FV_Elems
+INTEGER,INTENT(IN)            :: UpperBound                      !< upper side index for last dimension of FV_Elems
+TYPE(MPI_Request),INTENT(OUT) :: SendRequest(nNbProcs)           !< communicatio handles for send
+TYPE(MPI_Request),INTENT(OUT) :: RecRequest(nNbProcs)            !< communicatio handles for receive
+INTEGER,INTENT(INOUT)         :: FV_Elems(LowerBound:UpperBound) !< information about FV_Elems at faces to be communicated
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                     :: iNBProc
@@ -329,6 +349,7 @@ DO iNbProc=1,nNbProcs
     SideID_end  =OffsetMPISides_send(iNbProc,SendID)
     CALL MPI_ISEND(FV_Elems(SideID_start:SideID_end),nSendVal,MPI_INTEGER,  &
                     nbProc(iNbProc),0,MPI_COMM_FLEXI,SendRequest(iNbProc),iError)
+    IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_ISEND',iError)
   ELSE
     SendRequest(iNbProc)=MPI_REQUEST_NULL
   END IF
@@ -339,10 +360,12 @@ DO iNbProc=1,nNbProcs
     SideID_end  =OffsetMPISides_rec(iNbProc,SendID)
     CALL MPI_IRECV(FV_Elems(SideID_start:SideID_end),nRecVal,MPI_INTEGER,  &
                     nbProc(iNbProc),0,MPI_COMM_FLEXI,RecRequest(iNbProc),iError)
+    IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_IRECV',iError)
   ELSE
     RecRequest(iNbProc)=MPI_REQUEST_NULL
   END IF
-END DO !iProc=1,nNBProcs
+END DO ! iProc=1,nNBProcs
+
 END SUBROUTINE StartExchange_FV_Elems
 #endif
 
@@ -361,13 +384,13 @@ USE MOD_MPI_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)    :: SendID                          !< defines the send / receive direction -> 1=send MINE/receive YOUR,
-                                                         !< 2=send YOUR / receive MINE
-INTEGER,INTENT(IN)    :: LowerBound                      !< lower side index for last dimension of FV_Elems
-INTEGER,INTENT(IN)    :: UpperBound                      !< upper side index for last dimension of FV_Elems
-INTEGER,INTENT(OUT)   :: SendRequest(nNbProcs)           !< communicatio handles for send
-INTEGER,INTENT(OUT)   :: RecRequest(nNbProcs)            !< communicatio handles for receive
-REAL,INTENT(INOUT)    :: FV_alpha(LowerBound:UpperBound) !< information about FV_Elems at faces to be communicated
+INTEGER,INTENT(IN)              :: SendID                          !< defines the send / receive direction -> 1=send MINE/receive YOUR,
+                                                                   !< 2=send YOUR / receive MINE
+INTEGER,INTENT(IN)              :: LowerBound                      !< lower side index for last dimension of FV_Elems
+INTEGER,INTENT(IN)              :: UpperBound                      !< upper side index for last dimension of FV_Elems
+TYPE(MPI_Request),INTENT(OUT)   :: SendRequest(nNbProcs)           !< communicatio handles for send
+TYPE(MPI_Request),INTENT(OUT)   :: RecRequest(nNbProcs)            !< communicatio handles for receive
+REAL,INTENT(INOUT)              :: FV_alpha(LowerBound:UpperBound) !< information about FV_Elems at faces to be communicated
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                     :: iNBProc
@@ -380,6 +403,7 @@ DO iNbProc=1,nNbProcs
     SideID_end  =OffsetMPISides_send(iNbProc,SendID)
     CALL MPI_ISEND(FV_alpha(SideID_start:SideID_end),nSendVal,MPI_DOUBLE_PRECISION,  &
                     nbProc(iNbProc),0,MPI_COMM_FLEXI,SendRequest(iNbProc),iError)
+    IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_ISEND',iError)
   ELSE
     SendRequest(iNbProc)=MPI_REQUEST_NULL
   END IF
@@ -390,10 +414,12 @@ DO iNbProc=1,nNbProcs
     SideID_end  =OffsetMPISides_rec(iNbProc,SendID)
     CALL MPI_IRECV(FV_alpha(SideID_start:SideID_end),nRecVal,MPI_DOUBLE_PRECISION,  &
                     nbProc(iNbProc),0,MPI_COMM_FLEXI,RecRequest(iNbProc),iError)
+    IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_IRECV',iError)
   ELSE
     RecRequest(iNbProc)=MPI_REQUEST_NULL
   END IF
-END DO !iProc=1,nNBProcs
+END DO ! iProc=1,nNBProcs
+
 END SUBROUTINE StartExchange_FV_alpha
 #endif /*FV_ENABLED == 2*/
 
@@ -408,12 +434,14 @@ USE MOD_Globals
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)          :: nRequests             !< size of the handles
-INTEGER,INTENT(INOUT)       :: MPIRequest(nRequests) !< communication handles
+INTEGER          ,INTENT(IN)    :: nRequests             !< size of the handles
+TYPE(MPI_Request),INTENT(INOUT) :: MPIRequest(nRequests) !< communication handles
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
 CALL MPI_WaitAll(nRequests,MPIRequest,MPI_STATUSES_IGNORE,iError)
+IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_WaitAll',iError)
+
 END SUBROUTINE FinishExchangeMPIData
 
 
@@ -461,7 +489,9 @@ SDEALLOCATE(OffsetMPISides_rec)
 
 ! Free MPI communicators
 IF(MPI_COMM_WORKERS.NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(MPI_COMM_WORKERS,iError)
+IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_COMM_FREE',iError)
 IF(MPI_COMM_LEADERS.NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(MPI_COMM_LEADERS,iError)
+IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_COMM_FREE',iError)
 
 END SUBROUTINE FinalizeMPI
 #endif /*USE_MPI*/

@@ -57,6 +57,7 @@ per-file-ignores  = [# FLEXI
                      "src/equations/navierstokes/jac_split.f90:T001",           # False positive
                      "src/fv/fv_prolongtoface.f90:T001",                        # False positive
                      "src/filter/pplimiter.f90:T001",                           # False positive
+                     "src/globals/globals.f90:T001",                            # False positive
                      "src/globals/lapack.f90:T041",                             # LAPACK needs assumed size variables
                      "src/indicator/indicator.f90:T012",                        # False positive
                      "src/io_hdf5/hdf5_output.f90:T041",                        # Userblock needs assumed size variables

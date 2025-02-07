@@ -18,6 +18,7 @@
 !> Provides parameters, used globally (please use EXTREMLY carefully!)
 !==================================================================================================================================
 MODULE MOD_Globals
+! MODULES
 USE ISO_C_BINDING
 USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: HP => INT16,  & ! half precision (only defined for integer)
                                          SP => REAL32, & ! single precision
@@ -25,31 +26,34 @@ USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: HP => INT16,  & ! half precision (only 
                                          QP => REAL128   ! quadruple precision
 ! MODULES
 #if USE_MPI
-USE mpi
+USE mpi_f08
 #endif
 USE ISO_C_BINDING
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-CHARACTER(LEN=255)::ParameterFile                                             !< filename of the parameter file
-INTEGER,PARAMETER ::UNIT_stdOut=6                                             !< unit for writing to standard output (e.g. terminal)
-INTEGER,PARAMETER ::UNIT_logOut=133                                           !< unit for writing log files
-INTEGER           ::UNIT_errOut=999                                           !< unit for writing error files
-LOGICAL           ::Logging                                                   !< switch to turn log file writing on or of
-LOGICAL           ::ErrorFiles                                                !< switch to turn error file writing on or of
-CHARACTER(LEN=255)::ErrorFileName='NOT_SET'                                   !< file to write error data into
-INTEGER           ::iError                                                    !< default error handle
-INTEGER           ::myRank,myLocalRank,myLeaderRank,myWorkerRank
-INTEGER           ::nProcessors,nLocalProcs,nLeaderProcs,nWorkerProcs
-INTEGER           ::MPI_COMM_FLEXI !< Flexi MPI communicator
-LOGICAL           ::MPIRoot                                                   !< flag whether process is MPI root process
-LOGICAL           ::MPILocalRoot                                              !< flag whether process is root of MPI subgroup
+CHARACTER(LEN=255):: ParameterFile                                            !< filename of the parameter file
+INTEGER,PARAMETER :: UNIT_stdOut=6                                            !< unit for writing to standard output (e.g. terminal)
+INTEGER,PARAMETER :: UNIT_logOut=133                                          !< unit for writing log files
+INTEGER           :: UNIT_errOut=999                                          !< unit for writing error files
+LOGICAL           :: Logging                                                  !< switch to turn log file writing on or of
+LOGICAL           :: ErrorFiles                                               !< switch to turn error file writing on or of
+CHARACTER(LEN=255):: ErrorFileName='NOT_SET'                                  !< file to write error data into
+INTEGER           :: iError                                                   !< default error handle
+INTEGER           :: myRank,myLocalRank,myLeaderRank,myWorkerRank
+INTEGER           :: nProcessors,nLocalProcs,nLeaderProcs,nWorkerProcs
 #if USE_MPI
-INTEGER           ::MPIStatus(MPI_STATUS_SIZE)
-INTEGER           ::MPI_COMM_NODE   =MPI_COMM_NULL                            !< local node subgroup
-INTEGER           ::MPI_COMM_LEADERS=MPI_COMM_NULL                            !< all node masters
-INTEGER           ::MPI_COMM_WORKERS=MPI_COMM_NULL                            !< all non-master nodes
+TYPE(MPI_Comm)    :: MPI_COMM_FLEXI                                           !< Flexi MPI communicator
+#endif
+LOGICAL           :: MPIRoot                                                  !< flag whether process is MPI root process
+LOGICAL           :: MPILocalRoot                                             !< flag whether process is root of MPI subgroup
+#if USE_MPI
+! TYPE(MPI_Status)  :: MPIStatus(MPI_STATUS_SIZE)
+TYPE(MPI_Comm)    :: MPI_COMM_NODE   =MPI_COMM_NULL                           !< local node subgroup
+TYPE(MPI_Comm)    :: MPI_COMM_LEADERS=MPI_COMM_NULL                           !< all node masters
+TYPE(MPI_Comm)    :: MPI_COMM_WORKERS=MPI_COMM_NULL                           !< all non-master nodes
 #endif
 
 LOGICAL           :: doGenerateUnittestReferenceData
@@ -652,24 +656,30 @@ END SUBROUTINE DisplayMessageAndTime
 !==================================================================================================================================
 !> Calculates current time (own function because of a laterMPI implementation)
 !==================================================================================================================================
-FUNCTION FLEXITIME(Comm)
+FUNCTION FLEXITIME(     &
+#if USE_MPI
+                   Comm &
+#endif /*USE_MPI*/
+                  )
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER, INTENT(IN),OPTIONAL    :: Comm                                       !< global mpi communicator
-REAL                            :: FlexiTime                                  !< output time
+#if USE_MPI
+TYPE(mpi_Comm),INTENT(IN),OPTIONAL :: Comm                                       !< global mpi communicator
+#endif /*USE_MPI*/
+REAL                               :: FlexiTime                                  !< output time
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
 #if USE_MPI
-IF(PRESENT(Comm))THEN
-  CALL MPI_BARRIER(Comm,iError)
+IF (PRESENT(Comm)) THEN
+  CALL MPI_BARRIER(Comm          ,iError)
 ELSE
   CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 END IF
-#endif
+#endif /*USE_MPI*/
 GETTIME(FlexiTime)
 END FUNCTION FLEXITIME
 

@@ -31,7 +31,11 @@ CONTAINS
 !==================================================================================================================================
 !> Initialization of the computation
 !==================================================================================================================================
-SUBROUTINE InitFlexi(nArgs_In,Args_In,mpi_comm_loc)
+SUBROUTINE InitFlexi(nArgs_In, Args_In &
+#if USE_MPI
+                    ,mpi_comm_loc &
+#endif /*USE_MPI*/
+                    )
 ! MODULES
 USE MOD_Globals
 USE MOD_Globals_Vars,      ONLY:InitializationWallTime,StartTime,MajorVersion,MinorVersion!,PatchVersion
@@ -79,31 +83,41 @@ USE MOD_Indicator,         ONLY:DefineParametersIndicator,InitIndicator
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)            :: nArgs_In
+INTEGER,INTENT(IN)                     :: nArgs_In
 CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: Args_In(:)
-INTEGER,INTENT(IN),OPTIONAL   :: mpi_comm_loc
+#if USE_MPI
+TYPE(MPI_Comm),INTENT(IN),OPTIONAL     :: mpi_comm_loc
+#endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                 :: userblockFound
 CHARACTER(LEN=255)      :: RestartFile_loc
 !==================================================================================================================================
 CALL SetStackSizeUnlimited()
+
+#if USE_MPI
 IF(PRESENT(mpi_comm_loc))THEN
   CALL InitMPI(mpi_comm_loc)
 ELSE
+#endif /*USE_MPI*/
   CALL InitMPI()
+#if USE_MPI
 END IF
+#endif /*USE_MPI*/
+
 IF(nArgs_In.EQ.0)THEN
   CALL ParseCommandlineArguments()
 ELSE
   CALL ParseCommandlineArguments(Args_In(1:nArgs_In))
 END IF
+
 ! Check if the number of arguments is correct
 IF (nArgs.GT.2) THEN
   ! Print out error message containing valid syntax
   CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: flexi parameter.ini [restart.h5] or flexi --help'// &
   '[option/section name] to print help for a single parameter, parameter sections or all parameters.')
 END IF
+
 ParameterFile   = Args(1)
 RestartFile_loc = ''
 IF (nArgs.GT.1) THEN
@@ -116,6 +130,7 @@ ELSE IF (STRICMP(GetFileExtension(ParameterFile), "h5")) THEN
   END IF
   RestartFile_loc = Args(1)
 END IF
+
 CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
 CALL DefineParametersInterpolation()

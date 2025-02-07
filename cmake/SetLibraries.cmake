@@ -203,16 +203,16 @@ ELSE()
   IF(LIBS_USE_MPI)
     # HDF5 1.12.0 and greater is compatible with OpenMPI 4.0.0 and greater
     IF("${LIBS_MPI_NAME}" MATCHES "OpenMPI" AND ${MPI_C_LIBRARY_VERSION} VERSION_GREATER_EQUAL "4.0.0")
-        SET (HDF5_TAG "hdf5-1_12_0" CACHE STRING   "HDF5 version tag")
-        SET (HDF5_VERSION "1.12"    CACHE INTERNAL "HDF5 version number")
+        SET (HDF5_TAG "hdf5-1.14.5" CACHE STRING   "HDF5 version tag")
+        SET (HDF5_VERSION "1.14"    CACHE INTERNAL "HDF5 version number")
       ELSE()
         SET (HDF5_TAG "hdf5-1_10_6" CACHE STRING   "HDF5 version tag")
         SET (HDF5_VERSION "1.10"    CACHE INTERNAL "HDF5 version number")
       ENDIF()
     MESSAGE (STATUS "Setting [HDF5] to tag ${HDF5_TAG} to be compatible with detected [${LIBS_MPI_NAME}] (v${MPI_C_LIBRARY_VERSION})")
   ELSE()
-    SET (HDF5_TAG "hdf5-1_12_0" CACHE STRING   "HDF5 version tag")
-    SET (HDF5_VERSION "1.12"    CACHE INTERNAL "HDF5 version number")
+    SET (HDF5_TAG "hdf5-1.14.5" CACHE STRING   "HDF5 version tag")
+    SET (HDF5_VERSION "1.14"    CACHE INTERNAL "HDF5 version number")
     MESSAGE (STATUS "Setting [HDF5] to tag ${HDF5_TAG} as no MPI support was requested")
   ENDIF()
   MARK_AS_ADVANCED(FORCE HDF5_TAG)
@@ -259,10 +259,10 @@ ELSE()
       ${${GITSHALLOW}}
       PREFIX ${LIBS_HDF5_DIR}
       UPDATE_COMMAND ""
-      CONFIGURE_COMMAND FC=${LIBS_HDF5FC} CC=${LIBS_HDF5CC} ${LIBS_HDF5_DIR}/src/HDF5/configure --prefix=${LIBS_HDF5_DIR} --with-pic --enable-fortran ${LIBS_HDF5PARALLEL} --libdir=${LIBS_HDF5_DIR}/lib --enable-build-mode=production --enable-silent-rules --disable-dependency-tracking
-      BUILD_BYPRODUCTS ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.a ${LIBS_HDF5_DIR}/lib/libhdf5.a ${LIBS_HDF5_DIR}/bin/h5diff
+      CONFIGURE_COMMAND ${LIBS_HDF5_DIR}/src/HDF5/configure F9X=${LIBS_HDF5FC} FC=${LIBS_HDF5FC} CC=${LIBS_HDF5CC} --prefix=${LIBS_HDF5_DIR} --libdir=${LIBS_HDF5_DIR}/lib --disable-dependency-tracking --enable-build-mode=production --enable-silent-rules --enable-hl --enable-fortran --enable-unsupported --with-pic ${LIBS_HDF5PARALLEL}
+      BUILD_BYPRODUCTS ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.a ${LIBS_HDF5_DIR}/lib/libhdf5.a ${LIBS_HDF5_DIR}/lib/libhdf5.so ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.so ${LIBS_HDF5_DIR}/bin/h5diff
       # Configure explicitly requires GNU make
-      #BUILD_COMMAND make
+      # BUILD_COMMAND make
     )
     SET(LIBS_HDF5_CMAKE FALSE)
 

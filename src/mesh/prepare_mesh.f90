@@ -844,7 +844,7 @@ INTEGER             :: iElem,LocSideID,iNbProc
 INTEGER             :: iMortar,nMortars
 INTEGER             :: Flip_MINE(offsetMPISides_MINE(0)+1:offsetMPISides_MINE(nNBProcs))
 INTEGER             :: Flip_YOUR(offsetMPISides_YOUR(0)+1:offsetMPISides_YOUR(nNBProcs))
-INTEGER             :: SendRequest(nNbProcs),RecRequest(nNbProcs)
+TYPE(MPI_Request)   :: SendRequest(nNbProcs),RecRequest(nNbProcs)
 !==================================================================================================================================
 IF(nProcessors.EQ.1) RETURN
 ! fill MINE flip info
@@ -874,6 +874,7 @@ DO iNbProc=1,nNbProcs
     SideID_end  =OffsetMPISides_MINE(iNbProc)
     CALL MPI_ISEND(Flip_MINE(SideID_start:SideID_end),nSendVal,MPI_INTEGER,  &
                     nbProc(iNbProc),0,MPI_COMM_FLEXI,SendRequest(iNbProc),iError)
+    IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_ISEND',iError)
   END IF
   ! Start receive flip to YOUR
   IF(nMPISides_YOUR_Proc(iNbProc).GT.0)THEN
@@ -882,11 +883,12 @@ DO iNbProc=1,nNbProcs
     SideID_end  =OffsetMPISides_YOUR(iNbProc)
     CALL MPI_IRECV(Flip_YOUR(SideID_start:SideID_end),nRecVal,MPI_INTEGER,  &
                     nbProc(iNbProc),0,MPI_COMM_FLEXI,RecRequest(iNbProc),iError)
+    IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_IRECV',iError)
   END IF
 END DO ! iProc=1,nNBProcs
 DO iNbProc=1,nNbProcs
-  IF(nMPISides_YOUR_Proc(iNbProc).GT.0)CALL MPI_WAIT(RecRequest(iNbProc) ,MPIStatus,iError)
-  IF(nMPISides_MINE_Proc(iNBProc).GT.0)CALL MPI_WAIT(SendRequest(iNbProc),MPIStatus,iError)
+  IF (nMPISides_YOUR_Proc(iNbProc).GT.0) CALL MPI_WAIT(RecRequest( iNbProc),MPI_STATUS_IGNORE,iError)
+  IF (nMPISides_MINE_Proc(iNBProc).GT.0) CALL MPI_WAIT(SendRequest(iNbProc),MPI_STATUS_IGNORE,iError)
 END DO ! iProc=1,nNBProcs
 DO iElem=1,nElems
   aElem=>Elems(iElem+offsetElem)%ep
@@ -914,6 +916,7 @@ END DO ! iElem
 
 END SUBROUTINE exchangeFlip
 #endif
+
 
 !==================================================================================================================================
 !> Fast recursive sorting algorithm for integer arrays

@@ -61,9 +61,7 @@ CHARACTER(LEN=255)             :: FileString_multiblock
 #endif
 #if USE_MPI
 LOGICAL                        :: InitMPI_loc=.FALSE.
-#else
-INTEGER                        :: MPI_COMM_WORLD = 0
-#endif
+#endif /*USE_MPI*/
 CHARACTER(LEN=255),ALLOCATABLE :: VarNames_loc(:)
 CHARACTER(LEN=255),ALLOCATABLE :: VarNamesSurf_loc(:)
 !==================================================================================================================================
@@ -73,7 +71,11 @@ CALL ParseCommandlineArguments()
 
 IF (doPrintHelp.GT.0) THEN
   prmfile = ''
-  CALL visu(MPI_COMM_WORLD, prmfile, prmfile, Args(1)) !pass first arg (section etc.) instead of statefile
+  CALL visu(prmfile, prmfile, Args(1) &
+#if USE_MPI
+           ,MPI_COMM_WORLD &
+#endif /*USE_MPI*/
+           ) !pass first arg (section etc.) instead of statefile
 END IF
 
 IF (nArgs.LT.1) &
@@ -126,7 +128,11 @@ DO iArg=1+skipArgs,nArgs
   ! Enable progress indicator
   doPrintStatusLine = .TRUE.
 
-  CALL visu(MPI_COMM_WORLD, prmfile, postifile, statefile)
+  CALL visu(prmfile, postifile, statefile &
+#if USE_MPI
+           ,MPI_COMM_WORLD &
+#endif /*USE_MPI*/
+           )
 
   IF (MeshFileMode) THEN
     ! Remove file extension
