@@ -1,6 +1,6 @@
 (sec:tut_sod)=
 # SOD Shock Tube
-The Sod shock tube example {cite}`sod1978survey` is one of the most basic test cases to investigate the shock capturing capabilities of a CFD code. A initial discontinuity is located in the middle of the one dimensional domain $x \in [0,1]$. The left and right states are given by $\rho=1, v=0, p=1$ and $\rho=0.125, v=0, p=0.1$. The tutorial is located at `tutorials/sod`. These states are already set as ``RefState`` in the `parameter_flexi.ini` file.
+The Sod shock tube example {cite}`sod1978survey` is one of the most basic test cases to investigate the shock capturing capabilities of a CFD code. An initial discontinuity is located in the middle of the one dimensional domain $x \in [0,1]$. The left and right states are given by $\rho=1, v=0, p=1$ and $\rho=0.125, v=0, p=0.1$. The tutorial is located at `tutorials/sod`. These states are already set as ``RefState`` in the `parameter_flexi.ini` file.
 
 ## Mesh Generation
 In the tutorial directory, we provide the necessary mesh files, along with a parameter files for **HOPR** to generate these meshes. You can recreate any mesh by running the following command. A full tutorial on how to run **HOPR** is available at the [HOPR documentation][hopr].

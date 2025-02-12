@@ -18,10 +18,10 @@ The different **POSTI** tools are used to further post-process the simulation re
 (tools-visualization)=
 ### POSTI_VISU
 
-`POSTI_VISU` converts **FLEXI** StateFiles, TimeAverage and BaseFlow files from the HDF5 format to the ParaView readable `.vtu` (single) or `.pvtu` (parallel) format. 
+`POSTI_VISU` converts **FLEXI** StateFiles, TimeAverage, and BaseFlow files from the HDF5 format to the ParaView readable `.vtu` (single) or `.pvtu` (parallel) format. 
 
 The `POSTI_VISU` tool reads a separate parameter file as optional first argument, while the files to be visualized are passed as the last argument. Without specifying a separate parameter file, the parameters stored in the userblock of the files are used and only the conservative variables are visualized.
-The latter can be a single file or several files, specified either as simple space-separated list like `Testcase_State_0.h5 Testcase_State_1.h5` or via standard wildcarding like `Testcase_State_*.h5`. The file must contain the entire volume solution, i.e. can be a StateFile or a TimeAverage file, for example.  
+The latter can be a single file or several files, specified either as simple space-separated list like `Testcase_State_0.h5 Testcase_State_1.h5` or via standard wildcarding like `Testcase_State_*.h5`. The file must contain the entire volume solution, i.e., can be a StateFile or a TimeAverage file, for example.  
 
 For serial execution, the `POSTI_VISU` tool is invoked by entering
 ```bash
@@ -39,7 +39,7 @@ ParaView can only read state files up to $2\, GB$ in single mode (`.vtu`).
 
 
 
-The  **POSTI_VISU** tool has a help function that describes the available parameters. This help can be invoked by running the tool with the flag `--help`
+The **POSTI_VISU** tool has a help function that describes the available parameters. This help can be invoked by running the tool with the flag `--help`
 ```bash
 posti_visu --help
 ```

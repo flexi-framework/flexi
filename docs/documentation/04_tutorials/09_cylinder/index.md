@@ -32,7 +32,7 @@ Based on the ideal gas law, we get
 ```{math}
 Ma=1/\sqrt{\kappa p/\rho}=0.2
 ```
-Note that in this non-dimensional setup the mesh is scaled such that the reference length is unity, i.e. $D=1$. Then to arrive at $Re=\rho u D / \mu = 200$, the viscosity is set to
+Note that in this non-dimensional setup the mesh is scaled such that the reference length is unity, i.e., $D=1$. Then to arrive at $Re=\rho u D / \mu = 200$, the viscosity is set to
 ```{math}
 \mu = \rho u D / Re = 1/Re = 0.005
 ```
@@ -76,7 +76,7 @@ posti_visualizerecordpoints parameter_visualizeRecordpoints.ini Cylinder_Re200_R
 ```
 
 After executing the tool, you will get a file named `Cylinder_RP_BLProps_upperSide_BLPla000001.vts` which can be visualized with **ParaView**. Since the data were are interested in is one-dimensional, you won't be able
-to see the data in the default render view. Instead, choose the `Plot Over Line` filter and **ParaView** should automatically apply the correct plot range. As separation occurs when the skin friction falls to zero, you can estimate the separation angle to $110^{\circ}$ by plotting **tau_w** over the circumference and finding the intersection with the $y=0$ axis.
+to see the data in the default render view. Instead, choose the `Plot Over Line` filter and **ParaView** should automatically apply the correct plot range. As separation occurs when the skin friction falls to zero, you can estimate the separation angle to $110^{\circ}$ by plotting **tau\_w** over the circumference and finding the intersection with the $y=0$ axis.
 
 ## Dynamic Mode Decomposition
 The dynamic mode decomposition (DMD) is an algorithm to divide a temporal series into a set of modes which are associated with a frequency and growth/decay rate. Thus, DMD allows us to determine temporal dependencies such as the Strouhal frequency. The DMD in **FLEXI** is implemented according to Schmid et al. {cite}`schmid2009dynamic` and available through the posti tool **posti_dmd**.

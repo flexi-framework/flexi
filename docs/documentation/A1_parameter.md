@@ -43,7 +43,7 @@ The following tables describe the main configuration options which can used in t
 :header-rows: 1
 :name: parameter_mpi
 :width: 100%
-:widths: 20 10 70
+:widths: 20 15 65
 
 * - MPI
   - Default
@@ -139,6 +139,9 @@ The following tables describe the main configuration options which can used in t
 * - WriteTimeAvgFiles
   - T
   - Write HDF5 time average files. Disable this only for debugging. NO TIME AVERAGE FILES WILL BE WRITTEN!  
+```
+```{attention}
+OpenMPI v5.x changed the output buffering behaviour. To see the status line on newer versions of OpenMPI, pass `--output :raw` to `mpirun`.
 ```
 
 ```{list-table} 

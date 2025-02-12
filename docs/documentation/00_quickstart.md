@@ -16,7 +16,7 @@ This quick start guide allows for a fast installation and setup of **FLEXI** wit
 - HDF5
 - FFTW
 
-LAPACK/OpenBLAS, HDF5 and FFTW can be automatically installed by enabling the corresponding compiler options in the CMake configuration.
+LAPACK/OpenBLAS, HDF5, and FFTW can be automatically installed by enabling the corresponding compiler options in the CMake configuration.
 
 **FLEXI** is compiled using CMake. For a compilation in default configuration use:
 ```bash
@@ -47,4 +47,4 @@ flexi parameter_flexi.ini [Restart_State.h5]
 Further details concerning the capabilities of **FLEXI** and the application to small testcases, including e.g., the flow around a [NACA0012](NACA0012) airfoil, are included in the [tutorials](Tutorials).
 
 ## Tools
-**FLEXI** comes with a comprehensive [postprocessing](ToolsOverview) toolchain, such as e.g. the [interpolation](sec:swap_mesh) between different meshes, the [time averaging](sec:time_averaging) of solution files, and the [animation](sec:animate_tool). Most importantly, it includes the `posti_visu` tool to convert the solution files from the custom *h5* format to *vtu* files readable by **ParaView**, as covered in the [workflow section](subsec:post_processing).
+**FLEXI** comes with a comprehensive [postprocessing](ToolsOverview) toolchain, such as, e.g., the [interpolation](sec:swap_mesh) between different meshes, the [time averaging](sec:time_averaging) of solution files, and the [animation](sec:animate_tool). Most importantly, it includes the `posti_visu` tool to convert the solution files from the custom *h5* format to *vtu* files readable by **ParaView**, as covered in the [workflow section](subsec:post_processing).
