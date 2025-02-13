@@ -243,7 +243,11 @@ IF (PRESENT(communicatorOpt)) THEN; comm = communicatorOpt
 ELSE                              ; comm = MPI_COMM_FLEXI
 END IF
 
-IF (.NOT.single)  CALL H5PSET_FAPL_MPIO_F(Plist_File_ID, comm, MPIInfo, iError)
+#if HDF5_HAS_MPIF08
+IF (.NOT.single)  CALL H5PSET_FAPL_MPIO_F(Plist_File_ID, comm        , MPIInfo        , iError)
+#else
+IF (.NOT.single)  CALL H5PSET_FAPL_MPIO_F(Plist_File_ID, comm%MPI_VAL, MPIInfo%MPI_VAL, iError)
+#endif /*HDF5_HAS_MPIF08*/
 #endif /*USE_MPI*/
 
 ! Open the file collectively.
