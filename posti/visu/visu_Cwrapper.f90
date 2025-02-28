@@ -87,7 +87,7 @@ TYPE(C_PTR),TARGET,INTENT(IN)         :: meshfile_IN
 TYPE (CARRAY), INTENT(INOUT)          :: varnames
 TYPE (CARRAY), INTENT(INOUT)          :: bcnames
 #if USE_MPI
-TYPE(MPI_Comm),INTENT(IN)             :: mpi_comm_IN
+INTEGER,       INTENT(IN)             :: mpi_comm_IN
 #endif /*USE_MPI*/
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL
@@ -95,7 +95,14 @@ CHARACTER(LEN=255)                    :: statefile
 CHARACTER(LEN=255)                    :: meshfile
 CHARACTER(LEN=255),POINTER            :: varnames_pointer(:)
 CHARACTER(LEN=255),POINTER            :: bcnames_pointer(:)
+#if USE_MPI
+TYPE(MPI_Comm)                        :: mpicomm = MPI_COMM_NULL
+#endif /*USE_MPI*/
 !===================================================================================================================================
+#if USE_MPI
+mpicomm%MPI_val = mpi_comm_IN
+#endif /*#if USE_MPI*/
+
 statefile = cstrToChar255(statefile_IN, strlen_state)
 meshfile  = cstrToChar255(meshfile_IN , strlen_mesh)
 
@@ -105,7 +112,7 @@ nVarIni = -1
 CALL InitMPIInfo()
 CALL InitMPI( &
 #if USE_MPI
-             mpi_comm_IN &
+             mpicomm &
 #endif /*USE_MPI*/
             )
 CALL visu_getVarNamesAndFileType(statefile,meshfile,VarnamesAll,BCNamesAll)
@@ -125,6 +132,7 @@ ELSE
   bcnames%len  = 0
   bcnames%data = C_NULL_PTR
 END IF
+
 END SUBROUTINE visu_requestInformation
 
 
@@ -177,14 +185,22 @@ TYPE (CARRAY), INTENT(INOUT)  :: valuesSurfFV_out
 TYPE (CARRAY), INTENT(INOUT)  :: nodeidsSurfFV_out
 TYPE (CARRAY), INTENT(INOUT)  :: varnamesSurf_out
 #if USE_MPI
-TYPE(MPI_Comm),INTENT(IN)     :: mpi_comm_IN
+INTEGER,       INTENT(IN)     :: mpi_comm_IN
 #endif /*USE_MPI*/
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-CHARACTER(LEN=255)            :: prmfile
-CHARACTER(LEN=255)            :: postifile
-CHARACTER(LEN=255)            :: statefile
+CHARACTER(LEN=255)                      :: prmfile
+CHARACTER(LEN=255)                      :: postifile
+CHARACTER(LEN=255)                      :: statefile
+LOGICAl                                 :: UseCurveds
+#if USE_MPI
+TYPE(MPI_Comm)                          :: mpicomm = MPI_COMM_NULL
+#endif /*USE_MPI*/
 !===================================================================================================================================
+#if USE_MPI
+mpicomm%MPI_val = mpi_comm_IN
+#endif /*#if USE_MPI*/
+
 prmfile   = cstrToChar255(prmfile_IN,   strlen_prm)
 postifile = cstrToChar255(postifile_IN, strlen_posti)
 statefile = cstrToChar255(statefile_IN, strlen_state)
@@ -194,7 +210,7 @@ doPrintStatusLine = .TRUE.
 
 CALL visu(prmfile, postifile, statefile &
 #if USE_MPI
-         ,mpi_comm_IN &
+         ,mpicomm &
 #endif /*USE_MPI*/
          )
 
