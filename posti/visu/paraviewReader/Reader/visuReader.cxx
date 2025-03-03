@@ -139,7 +139,8 @@ int visuReader::RequestInformation(vtkInformation *,
    }
 
    // convert the MPI communicator to a Fortran communicator
-   int fcomm;
+   // int fcomm;
+   MPI_Fint fcomm;
    fcomm = MPI_Comm_c2f(mpiComm);
    MPI_Barrier(mpiComm);
 
@@ -298,9 +299,14 @@ int visuReader::RequestData(
    FileToLoad = FileNames[timestepToLoad];
    SWRITE("File to load "<<FileToLoad);
 
+   // vtkMPICommunicator *communicator = vtkMPICommunicator::SafeDownCast(this->Controller->GetCommunicator());
+   // mpiComm = MPI_COMM_NULL;
+   // if (communicator) {
+   //    mpiComm = *(communicator->GetMPIComm()->GetHandle());
+   // }
 
    // convert the MPI communicator to a fortran communicator
-   int fcomm = MPI_Comm_c2f(mpiComm);
+   MPI_Fint fcomm = MPI_Comm_c2f(mpiComm);
    MPI_Barrier(mpiComm); // all processes should call the Fortran code at the same time
 
    // get all variables selected for visualization
