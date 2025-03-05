@@ -191,7 +191,7 @@ DataSizeSideGradParabolic=PP_nVarLifting*(PP_N+1)*(PP_NZ+1)*3
 ! split communicator into smaller groups (e.g. for local nodes)
 GroupSize=GETINT('GroupSize')
 IF(GroupSize.LT.1)THEN ! group procs by node
-  CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,myRank,0,MPI_COMM_NODE,iError)
+  CALL MPI_COMM_SPLIT_TYPE(MPI_COMM_FLEXI,MPI_COMM_TYPE_SHARED,myRank,MPI_INFO_NULL,MPI_COMM_NODE,iError)
   IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_COMM_SPLIT',iError)
 ELSE ! use groupsize
   color=myRank/GroupSize
