@@ -193,7 +193,7 @@ CASE(PRM_RIEMANN_HLLE)
 CASE(PRM_RIEMANN_HLLEM)
   RiemannBC_pointer => Riemann_HLLEM
 CASE(PRM_RIEMANN_ROEENTROPYGSHOCKFIX)
-  Riemann_pointer => Riemann_RoeEntropyGShockFix
+  RiemannBC_pointer => Riemann_RoeEntropyGShockFix
 CASE DEFAULT
   CALL CollectiveStop(__STAMP__,&
     'RiemannBC solver not defined!')
@@ -234,11 +234,11 @@ CASE(PRM_RIEMANN_ROEENTROPYFIX)
 CASE(PRM_RIEMANN_ROEL2)
   RiemannBC_pointer => Riemann_RoeL2
 CASE(PRM_RIEMANN_CH)
-  Riemann_pointer => Riemann_CH
+  RiemannBC_pointer => Riemann_CH
 CASE(PRM_RIEMANN_Average)
   RiemannBC_pointer => Riemann_FluxAverage
 CASE(PRM_RIEMANN_ROEENTROPYGSHOCKFIX)
-  Riemann_pointer => Riemann_RoeEntropyGShockFix
+  RiemannBC_pointer => Riemann_RoeEntropyGShockFix
 CASE DEFAULT
   CALL CollectiveStop(__STAMP__,&
     'RiemannBC solver not defined!')
