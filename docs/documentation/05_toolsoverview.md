@@ -33,11 +33,8 @@ mpirun -np <no. processors> posti_visu [parameter_postiVisu.ini [parameter_flexi
 ```
 
 ```{important}
-When post-processing with activated `LIBS_USE_MPI` flag, especially with large cases and large files as is often the case with TimeAverage files, the file size of approximately $2\, GB$ per core must not be exceeded. In this case, the number of cores used must be increased for MPI-parallel executable **POSTI** tools, or **POSTI** must be compiled with `LIBS_USE_MPI=OFF`.
-ParaView can only read state files up to $2\, GB$ in single mode (`.vtu`).
+ParaView can only read state files up to $2\, GB$ in single mode (`.vtu`). Furthermore, the MPI-parallel HDF5 implementation internally uses a signed 32-bit integer, restricting the maximum chunk size to $2\, GB$ per thread. When post-processing with activated `LIBS_USE_MPI` flag, especially with large cases and large files as is often the case with TimeAverage files, the file size of approximately $2\, GB$ per core must not be exceeded. In this case, the number of cores used must be increased for MPI-parallel executable **POSTI** tools, or **POSTI** must be compiled with `LIBS_USE_MPI=OFF`.
 ```
-
-
 
 The **POSTI_VISU** tool has a help function that describes the available parameters. This help can be invoked by running the tool with the flag `--help`
 ```bash
@@ -93,13 +90,13 @@ The practical application of `POSTI_VISU` can be practiced in the following tuto
 (sec:swap_mesh)=
 ### POSTI_SWAPMESH
 
-The `POSTI_SWAPMESH` tool interpolates the solution of a StateFile or a TimeAverage file from one mesh to another, or from one polynomial degree to another. To do so, the parametric coordinates of the interpolation points of the new state are searched in the old mesh. For non-equal elements a Newton algorithm is used to find the parametric coordinates of the interpolation points. Based on the found parametric coordinates high-order interpolation to the interpolation points in the new mesh is performed. Non-conforming meshes are allowed. A reference state can be given for areas in the target mesh which are not covered by the original mesh. The project name and therefore the file name is based on the original project name with '_newMesh' appended, the original file is therefore not overwritten. 
+The `POSTI_SWAPMESH` tool interpolates the solution of a StateFile or a TimeAverage file from one mesh to another, or from one polynomial degree to another. To do so, the parametric coordinates of the interpolation points of the new state are searched in the old mesh. For non-equal elements, a Newton algorithm is used to find the parametric coordinates of the interpolation points. Based on the found parametric coordinates, a high-order interpolation to the interpolation points in the new mesh is performed. Non-conforming meshes are allowed. A reference state can be given for areas in the target mesh which are not covered by the original mesh. The project name and therefore the file name is based on the original project name with '_newMesh' appended, the original file is therefore not overwritten. 
 
 For serial execution, the `POSTI_SWAPMESH` tool is invoked by entering
 ```bash
 posti_swapmesh parameter_postiSwapmesh.ini <statefiles>
 ```
-The tool also runs in parallel using OpenMP. To run in parallel the environment Variable `OMP_NUM_THREADS=XXX` needs to be set with the number of threads to be used, provided the compiler option `LIBS_USE_OPENMP` is enabled. In this case the parallel execution is the same as the single execution.
+The tool also runs in parallel using OpenMP. To run in parallel, the environment variable `OMP_NUM_THREADS=XXX` needs to be set with the number of threads to be used, provided the compiler option `LIBS_USE_OPENMP` is enabled. In this case, the parallel execution is the same as the single execution.
 
 A list of parameters used by the `POSTI_SWAPMESH` tool is listed in the table below.
 An example of the `POSTI_SWAPMESH` tool can be found in 
@@ -165,7 +162,7 @@ An example of the `POSTI_SWAPMESH` tool can be found in
 ### Recordpoints
 
 For investigations with a high temporal resolution, such as frequency analyses, it is generally not practical to write complete state files with a high output frequency. Among other things, this would generate a considerable memory requirement and unnecessarily slow down the simulation due to frequent I/O operations. 
-So-called record points can therefore be used within **FLEXI** for high-frequency outputs in time. These represent point samples and can sample the flow variables with high temporal resolution at defined points in the domain. Several record points can be combined to form geometric shapes such as lines or surfaces.
+Numerical probes, here called record points, can therefore be used within **FLEXI** for high-frequency outputs in time. These represent point samples and can sample the flow variables with high temporal resolution at defined points in the domain. Multiple record points can be combined to form geometric shapes such as lines or surfaces.
 
 The **POSTI** tools available for this are:
 - POSTI_RP_PREPARE: Definition of the points in the flow domain 
@@ -209,10 +206,6 @@ RP_MaxMemory        = 100
 
 Here, the specified `RP_DefFile` contains the element-local parametric recordpoint coordinates. This is the file generated by `posti_preparerecordpoints`. The option `RP_SamplingOffset` defines the multiple of timestep at which recordpoints are evaluated. Additionally, the `RP_MaxMemory` can be set. It defines the maximum memory in MiB to be used for storing recordpoint state history. If the memory is exceeded before regular I/O level, states are written to the file.
 
-
-
-
-
 ```{list-table} POSTI_RP_PREPARE parameters.
 :header-rows: 1
 :name: tab:postirpprepare_parameters
@@ -249,7 +242,7 @@ Here, the specified `RP_DefFile` contains the element-local parametric recordpoi
 * - Line_xstart       
   - 
   - Coordinates of start of line  
-* - Line_xend         
+* - Line_xEnd         
   -
   - Coordinates of end of line  
 * - Circle_GroupID    
@@ -377,11 +370,7 @@ Sample parameter files can also be found here.
 #### POSTI_RP_VISUALIZE
 <!--ToDo's: complete possible values in table, describe in more detail the structure of the written file, mention the output format (paraview/hdf5), give for certain functionalities example recorpoint files (e.g. derived quantities, FFT, ...)  -->
 
-During the runtime of the simulation `ProjectName_RP_*.h5` files are written. These files contain the raw data collected during the simulation. Using the `posti_visualizerecordpoints` tool the raw data can be further post-processed. The tool takes several of the recordpoint files and combines them into a single time series. From the conservative variables  that are stored during the simulation, all available derived quantities can be computed. Additionally, several more advanced post-processing algorithms are available. This includes calculation of time averages, FFT and PSD values and specific boundary layer properties.
-
-
-
-
+During the runtime of the simulation, `ProjectName_RP_*.h5` files are written. These files contain the raw data collected during the simulation. Using the `posti_visualizerecordpoints` tool, the raw data can be further post-processed. The tool takes one or more of the recordpoint files and combines them into a single time series. From the conservative variables that are stored during the simulation, all available derived quantities can be computed. Additionally, several more advanced post-processing algorithms are available. This includes calculation of time averages, FFT, and PSD values and specific boundary layer properties.
 
 The `posti_visualizerecordpoints` tool is designed for single execution only and can be executed as follows:
 
@@ -399,7 +388,7 @@ posti_visualizerecordpoints --help
 
 ```{list-table} POSTI_RP_VISUALIZE parameters.
 :header-rows: 1
-:name: tab:postivisurp_parameters
+:name: tab:postivisualizerp_parameters
 :align: center
 :width: 100%
 :widths: 25 25 50
@@ -583,7 +572,7 @@ mpirun -np <no. processors> posti_evaluaterecordpoints [parameter.ini] <solution
 After the execution of the `posti_evaluaterecordpoints` tool, a `ProjectName_RP_*.h5` file is written. This file is similar to the recordpoint files written during runtime. Therefore, these files can be visualized as described in section [POSTI_RP_VISUALIZE](tools-recordpoints_visu).
 
 ```{important}
-When post-processing with activated `LIBS_USE_MPI` flag, especially with large cases and large files as is often the case with TimeAverage files, the file size of approximately $2\, GB$ per core must not be exceeded. In this case, the number of cores used must be increased for MPI-parallel executable **POSTI** tools, or **POSTI** must be compiled with `LIBS_USE_MPI=OFF`.
+The MPI-parallel HDF5 implementation internally uses a signed 32-bit integer, restricting the maximum chunk size to $2\, GB$ per thread. When post-processing with activated `LIBS_USE_MPI` flag, especially with large cases and large files as is often the case with TimeAverage files, the file size of approximately $2\, GB$ per core must not be exceeded. In this case, the number of cores used must be increased for MPI-parallel executable **POSTI** tools, or **POSTI** must be compiled with `LIBS_USE_MPI=OFF`.
 ```
 
 
@@ -592,7 +581,7 @@ The parameters for this POSTI tool are listed in the table below.
 
 ```{list-table} POSTI_RP_EVALUATE parameters.
 :header-rows: 1
-:name: tab:postivisurp_parameters
+:name: tab:postievaluaterp_parameters
 :align: center
 :width: 100%
 :widths: 25 25 50

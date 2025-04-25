@@ -60,8 +60,8 @@ INTEGER,PARAMETER        :: nLimit = INT(REAL(HUGE(INT(1,KIND=4)))/REAL(KIND(REA
                                                 !< INT( Max. Bytes allowed by MPI (2GB per rank) / Size of single double entry)
 #if USE_MPI
 TYPE(MPI_Info)           :: MPIInfo             !< hardware / storage specific / file system MPI parameters to pass to HDF5
-#endif /*USE_MPI*/
                                                 !< for optimized performance on specific systems
+#endif /*USE_MPI*/
 
 !> Type containing pointers to data to be written to HDF5 in an element-wise scalar fashion.
 !> Alternatively a function pointer can be specified providing the desired data.
