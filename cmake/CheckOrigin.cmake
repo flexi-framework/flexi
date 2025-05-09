@@ -3,10 +3,7 @@
 # =========================================================================
 # Check where the code originates
 IF(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git)
-  EXECUTE_PROCESS(COMMAND git ls-remote --get-url OUTPUT_VARIABLE GIT_ORIGIN WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-
-  # Strip leading and trailing white space
-  STRING(STRIP ${GIT_ORIGIN} GIT_ORIGIN)
+  EXECUTE_PROCESS(COMMAND git ls-remote --get-url WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} OUTPUT_VARIABLE GIT_ORIGIN OUTPUT_STRIP_TRAILING_WHITESPACE)
   MESSAGE(STATUS "Checking git origin: " ${GIT_ORIGIN})
 
   # Setup git hooks
@@ -18,7 +15,7 @@ IF("${GIT_ORIGIN}" MATCHES ".iag.uni-stuttgart.de")
   # Check if the pre-commit hooks exits
   IF (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git/hooks/pre-commit)
     # Create otherwise
-    EXECUTE_PROCESS(COMMAND mkdir -p ${CMAKE_CURRENT_SOURCE_DIR}/.git/hooks)
+    FILE(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/.git/hooks)
     EXECUTE_PROCESS(COMMAND ln -s ${CMAKE_CURRENT_SOURCE_DIR}/${PRECOMMIT_FILE} ${CMAKE_CURRENT_SOURCE_DIR}/.git/hooks/pre-commit)
   ELSE()
     # Check if the hook is the correct symlink and warn otherwise
