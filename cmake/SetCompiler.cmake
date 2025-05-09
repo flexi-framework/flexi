@@ -7,22 +7,8 @@ MARK_AS_ADVANCED(FORCE C_PATH CXX_PATH Fortran_PATH)
 # =========================================================================
 # Set machine-specific definitions and settings
 # =========================================================================
-# HLRS HAWK
-IF (CMAKE_FQDN_HOST MATCHES "hawk\.hww\.hlrs\.de$")
-  MESSAGE(STATUS "Compiling on Hawk")
-  # Overwrite compiler target architecture
-  IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang")
-    SET(FLEXI_INSTRUCTION "-march=znver2 -mtune=znver2" CACHE STRING "Compiler optimization options")
-  ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
-    SET(FLEXI_INSTRUCTION "-xCORE-AVX2" CACHE STRING "Compiler optimization options")
-  ENDIF()
-  # Use AMD Optimized Lapack/BLAS
-  # SET(BLA_VENDOR "FLAME")
-  # Set LUSTRE definition to account for filesystem and MPI implementation
-  ADD_COMPILE_DEFINITIONS(LUSTRE)
-
 # SuperMUC
-ELSEIF (CMAKE_FQDN_HOST MATCHES "sng\.lrz\.de$")
+IF (CMAKE_FQDN_HOST MATCHES "sng\.lrz\.de$")
   MESSAGE(STATUS "Compiling on SuperMUC")
   # Overwrite compiler target architecture
   IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang")
@@ -51,28 +37,7 @@ ELSEIF(CMAKE_FQDN_HOST MATCHES "^(prandtl|grafik.*)\.iag\.uni\-stuttgart\.de")
   # Set LUSTRE definition to account for filesystem
   ADD_COMPILE_DEFINITIONS(LUSTRE)
 
-ELSEIF (CMAKE_FQDN_HOST MATCHES "^ila(head.*|cfd.*)\.ila.uni\-stuttgart\.de")
-  MESSAGE(STATUS "Compiling on ILA cluster")
-  # Overwrite compiler target architecture
-  IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang")
-    SET(FLEXI_INSTRUCTION "-march=core-avx2 -mtune=core-avx2" CACHE STRING "Compiler optimization options")
-  ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
-    SET(FLEXI_INSTRUCTION "-xCORE-AVX2" CACHE STRING "Compiler optimization options")
-  ENDIF()
-  # Work around MPI-IO issue 4446 on machines mounting storage via NFS
-  ADD_COMPILE_DEFINITIONS(NFS)
-
-ELSEIF (CMAKE_FQDN_HOST MATCHES "^(xenon.*|argon.*)\.ila.uni\-stuttgart\.de")
-  MESSAGE(STATUS "Compiling on ILA student cluster")
-  SET(FLEXI_INSTRUCTION "-march=native -mtune=native" CACHE STRING "Compiler optimization options")
-  # Work around MPI-IO issue 4446 on machines mountng storage via NFS
-  ADD_COMPILE_DEFINITIONS(NFS)
-
-ELSEIF ("${CMAKE_FQDN_HOST}" MATCHES "gitlab\.ila\.uni\-stuttgart\.de")
-  MESSAGE(STATUS "Compiling on ILA Gitlab")
-  ADD_COMPILE_DEFINITIONS(VDM_ANALYTICAL)
-  SET(FLEXI_INSTRUCTION "-march=native -mtune=native" CACHE STRING "Compiler optimization options")
-
+# Generic machine
 ELSE()
   MESSAGE(STATUS "Compiling on a generic machine [${CMAKE_HOSTNAME}]")
   # Set compiler target architecture
@@ -188,7 +153,9 @@ IF (FLEXI_PERFORMANCE_PGO)
   ENDIF()
 ENDIF()
 
-# Save the current compiler flags to the cache every time cmake configures the project.
+# =========================================================================
+# SAVE CURRENT COMPILER FLAGS TO THE CACHE
+# =========================================================================
 MARK_AS_ADVANCED(FORCE FLEXI_INSTRUCTION)
 MARK_AS_ADVANCED(FORCE CMAKE_Fortran_FLAGS)
 MARK_AS_ADVANCED(FORCE CMAKE_Fortran_FLAGS_RELEASE)
