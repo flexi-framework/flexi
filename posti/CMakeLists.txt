@@ -30,12 +30,12 @@ SET_TARGET_PROPERTIES(libposti PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
                                           COMPILE_OPTIONS "-fPIC"
                                           CMAKE_POSITION_INDEPENDENT_CODE ON)
 TARGET_LINK_LIBRARIES(libposti libflexishared)
-ADD_DEPENDENCIES(libposti libflexishared)
+ADD_DEPENDENCIES(     libposti libflexishared)
 
 # When using Ninja, CMake tries to parallelize the build resulting in missing module files. Add a dummy target to ensure synchronization
-ADD_CUSTOM_TARGET(libpostitarget)
-ADD_DEPENDENCIES(libpostitarget libflexishared)
-ADD_DEPENDENCIES(libposti libpostitarget)
+ADD_CUSTOM_TARGET(target_libposti COMMENT "Synchronizing build for libposti")
+ADD_DEPENDENCIES(target_libposti libflexishared)
+ADD_DEPENDENCIES(libposti target_libposti)
 
 # =========================================================================
 # FFTW library
@@ -62,15 +62,15 @@ IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT OR POSTI_HIT_INIT OR POSTI_HIT_FILTER
     ENDIF()
     MESSAGE(STATUS "FFTW not found, building library")
       EXTERNALPROJECT_ADD(fftw
-        GIT_REPOSITORY ${FFTWDOWNLOAD}
-        GIT_TAG ${POSTI_FFTWTAG}
-        GIT_PROGRESS TRUE
+        GIT_REPOSITORY    ${FFTWDOWNLOAD}
+        GIT_TAG           ${POSTI_FFTWTAG}
+        GIT_PROGRESS      TRUE
         ${${GITSHALLOW}}
-        PREFIX  ${POSTI_FFTWDIR}
-        UPDATE_COMMAND ""
+        PREFIX            ${POSTI_FFTWDIR}
+        UPDATE_COMMAND    ""
         CONFIGURE_COMMAND ${FFTW_FLAGS}
-        BUILD_IN_SOURCE 1
-        BUILD_BYPRODUCTS ${POSTI_FFTWDIR}/build/${CMAKE_INSTALL_LIBDIR}/libfftw3.a ${POSTI_FFTWDIR}/build/${CMAKE_INSTALL_LIBDIR}/libfftw3_omp.a
+        BUILD_IN_SOURCE   1
+        BUILD_BYPRODUCTS  ${POSTI_FFTWDIR}/build/${CMAKE_INSTALL_LIBDIR}/libfftw3.a ${POSTI_FFTWDIR}/build/${CMAKE_INSTALL_LIBDIR}/libfftw3_omp.a
       )
     SET(FFTW_INCLUDE_DIR ${POSTI_FFTWDIR}/build/include)
     SET(FFTW_LIBRARY     ${POSTI_FFTWDIR}/build/${CMAKE_INSTALL_LIBDIR}/libfftw3.a)
@@ -88,11 +88,11 @@ IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT OR POSTI_HIT_INIT OR POSTI_HIT_FILTER
   ENDIF()
 
   # Build static FFTW library to be included in each POSTI tool
-  ADD_LIBRARY(fftwlib STATIC ${CMAKE_CURRENT_SOURCE_DIR}/posti/common/fftw/fftw.f90)
-  SET_TARGET_PROPERTIES(fftwlib PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
-                                           COMPILE_OPTIONS "-fPIC"
-                                           CMAKE_POSITION_INDEPENDENT_CODE ON)
-  TARGET_LINK_LIBRARIES(fftwlib ${FFTW_LIBRARIES})
+  ADD_LIBRARY(               fftwlib STATIC ${CMAKE_CURRENT_SOURCE_DIR}/posti/common/fftw/fftw.f90)
+  SET_TARGET_PROPERTIES(     fftwlib PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
+                                                COMPILE_OPTIONS "-fPIC"
+                                                CMAKE_POSITION_INDEPENDENT_CODE ON)
+  TARGET_LINK_LIBRARIES(     fftwlib ${FFTW_LIBRARIES})
   TARGET_INCLUDE_DIRECTORIES(fftwlib PRIVATE ${FFTW_INCLUDE_DIR})
   IF(SELFBUILTEXTERNALS)
     ADD_DEPENDENCIES(fftwlib ${SELFBUILTEXTERNALS})
