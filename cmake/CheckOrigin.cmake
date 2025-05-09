@@ -36,4 +36,3 @@ IF("${GIT_ORIGIN}" MATCHES ".iag.uni-stuttgart.de")
     MESSAGE (WARNING "Custom git hooks path detected. Please ensure to call ${PRECOMMIT_FILE} manually.")
   ENDIF()
 ENDIF()
-
