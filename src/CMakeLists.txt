@@ -432,6 +432,8 @@ SET_TARGET_PROPERTIES(libflexistatic    PROPERTIES PREFIX ""
                                                    COMPILE_OPTIONS "-fPIC"
                                                    CMAKE_POSITION_INDEPENDENT_CODE ON
                                                    OUTPUT_NAME "libflexif90")
+# Make sure that the script is executed even though cmake is not explicitly executed after the commit is changed in git
+ADD_DEPENDENCIES(libflexistaticF90 UpdateGitCommitHash)
 IF(SELFBUILTEXTERNALS)
   ADD_DEPENDENCIES(libflexistaticF90 ${SELFBUILTEXTERNALS})
 ENDIF()
@@ -459,8 +461,6 @@ SET_TARGET_PROPERTIES(libflexishared PROPERTIES OUTPUT_NAME "libflexi")
 ADD_DEPENDENCIES(     libflexishared libflexistatic userblocklib stacksizelib ${INTERNALLIBS})
 ADD_EXEC(        flexi ./src/flexi.f90)
 ADD_DEPENDENCIES(flexi libflexistatic userblocklib stacksizelib ${INTERNALLIBS})
-# Make sure that the script is executed even though cmake is not explicitly executed after the commit is changed in git
-ADD_DEPENDENCIES(flexi UpdateGitCommitHash)
 
 # special compiler flags to avoid warnings for empty functions of testcase.f90 and overwrite of intrinsic abort in globals.f90
 IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
