@@ -37,9 +37,20 @@ ELSEIF(CMAKE_FQDN_HOST MATCHES "^(prandtl|grafik.*)\.iag\.uni\-stuttgart\.de")
   # Set LUSTRE definition to account for filesystem
   ADD_COMPILE_DEFINITIONS(LUSTRE)
 
+# macOS
+# ELSEIF(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
+ELSEIF(CMAKE_HOST_APPLE)
+  MESSAGE(STATUS "Compiling on generic ${CMAKE_HOST_SYSTEM_NAME} ${CMAKE_HOST_SYSTEM_VERSION} machine [${CMAKE_HOSTNAME}]")
+  # Skip -mtune on macOS
+  IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang" OR CMAKE_Fortran_COMPILER_ID MATCHES "Cray")
+    SET(FLEXI_INSTRUCTION "-march=native" CACHE STRING "Compiler optimization options")
+  ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
+    SET(FLEXI_INSTRUCTION "-xHost" CACHE STRING "Compiler optimization options")
+  ENDIF()
+
 # Generic machine
 ELSE()
-  MESSAGE(STATUS "Compiling on a generic machine [${CMAKE_HOSTNAME}]")
+  MESSAGE(STATUS "Compiling on generic ${CMAKE_HOST_SYSTEM_NAME} ${CMAKE_HOST_SYSTEM_VERSION} machine [${CMAKE_HOSTNAME}]")
   # Set compiler target architecture
   IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang" OR CMAKE_Fortran_COMPILER_ID MATCHES "Cray")
     SET(FLEXI_INSTRUCTION "-march=native -mtune=native" CACHE STRING "Compiler optimization options")
