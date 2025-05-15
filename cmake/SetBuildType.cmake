@@ -5,11 +5,11 @@
 IF (NOT CMAKE_BUILD_TYPE)
   SET (CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: Release, RelWithDebInfo, Profile, Debug, Sanitize (only GNU))." FORCE)
    IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
-     SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release RelWithDebInfo Profile Sanitize)
+     SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "RelWithDebInfo" "Profile" "Sanitize")
    ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
-     SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release RelWithDebInfo Profile)
+     SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "RelWithDebInfo" "Profile")
    ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Cray")
-     SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release RelWithDebInfo Profile)
+     SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "RelWithDebInfo" "Profile")
    ENDIF()
 ENDIF (NOT CMAKE_BUILD_TYPE)
 
@@ -50,13 +50,14 @@ ELSE()
         MARK_AS_ADVANCED(FORCE CMAKE_RANLIB)
       ELSE()
         MESSAGE(WARNING "GCC indicates LTO support, but binutils wrappers could not be found. Disabling LTO linker plugin." )
-        SET(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)  # enable IPO globally
+        SET(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)  # Fall back to standard IPO
       ENDIF()
     ELSE()
-      SET(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)  # enable IPO globally
+      SET(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)   # For non-GNU compilers, enable IPO globally
     ENDIF()
   ENDIF()
+  # Remove any previously set DEBUG definitions from other parts of the project
   REMOVE_DEFINITIONS("-DDEBUG")
 ENDIF()
-MESSAGE(STATUS "Compiling with [${BUILD_TYPE_LC}] build type")
 
+MESSAGE(STATUS "Compiling with [${BUILD_TYPE_LC}] build type")

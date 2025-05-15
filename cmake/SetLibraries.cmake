@@ -1,19 +1,10 @@
 # =========================================================================
 # Set download locations depending on git origin
 # =========================================================================
+SET(LIBS_DLPATH "https://gitlab.iag.uni-stuttgart.de/")
 # Origin pointing to IAG
-IF("${GIT_ORIGIN}" MATCHES ".iag.uni-stuttgart.de")
-  # Checked out using SSH
-  IF("${GIT_ORIGIN}" MATCHES "^git@")
-    SET(LIBS_DLPATH "git@gitlab.iag.uni-stuttgart.de:")
-  # Checked out using HTTPS
-  # IF("${GIT_ORIGIN}" MATCHES "^https@")
-  ELSE()
-    SET(LIBS_DLPATH "https://gitlab.iag.uni-stuttgart.de/")
-  ENDIF()
-# Fallback to IAG libs
-ELSE()
-  SET(LIBS_DLPATH "https://gitlab.iag.uni-stuttgart.de/")
+IF("${GIT_ORIGIN}" MATCHES ".iag.uni-stuttgart.de" AND "${GIT_ORIGIN}" MATCHES "^git@")
+  SET(LIBS_DLPATH "git@gitlab.iag.uni-stuttgart.de:")
 ENDIF()
 
 
@@ -412,10 +403,6 @@ ELSE()
   SET(LIBS_BUILD_MATH_LIB ON  CACHE BOOL "Compile and build math library")
 ENDIF()
 
-# Check if Intel MKL is requested instead of BLAS/LAPACK
-# CMAKE_DEPENDENT_OPTION(LIBS_USE_MKL "Use system MKL libraries instead of system BLAS/LAPACK" OFF
-#                                     "NOT LIBS_BUILD_MATH_LIB" OFF)
-
 # Use system LAPACK/MKL
 IF(NOT LIBS_BUILD_MATH_LIB)
   # If library is specifically requested, it is required
@@ -446,7 +433,7 @@ ELSE()
       SET (MATHLIB_DOWNLOAD ${LIBS_DLPATH}libs/lapack.git)
     ENDIF()
     SET (MATH_LIB_DOWNLOAD ${MATHLIB_DOWNLOAD} CACHE STRING "LAPACK Download-link" FORCE)
-    SET (MATH_LIB_TAG "v3.10.0")
+    SET (MATH_LIB_TAG "v3.12.1")
     MARK_AS_ADVANCED(FORCE MATH_LIB_DOWNLOAD)
     MARK_AS_ADVANCED(FORCE MATH_LIB_TAG)
   # Build OpenBLAS
@@ -457,7 +444,7 @@ ELSE()
       SET (MATHLIB_DOWNLOAD ${LIBS_DLPATH}libs/OpenBLAS.git)
     ENDIF()
     SET (MATH_LIB_DOWNLOAD ${MATHLIB_DOWNLOAD} CACHE STRING "OpenBLAS Download-link" FORCE)
-    SET (MATH_LIB_TAG "v0.3.17")
+    SET (MATH_LIB_TAG "v0.3.29")
     MARK_AS_ADVANCED(FORCE MATH_LIB_DOWNLOAD)
     MARK_AS_ADVANCED(FORCE MATH_LIB_TAG)
   # Unknown math lib vendor

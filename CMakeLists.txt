@@ -9,12 +9,13 @@ SET(PROJECT_URL  "https://www.flexi-project.org")
 # =========================================================================
 # CMake configuration
 # =========================================================================
+CMAKE_MINIMUM_REQUIRED(VERSION 3.10.0)
+
 MESSAGE(STATUS "This is ${PROJECT_NAME} (v${PROJECT_VER})")
 MESSAGE(STATUS "Generating with [cmake] (v${CMAKE_VERSION})")
-# NOTE: use minimum CMake version required
-CMAKE_MINIMUM_REQUIRED(VERSION 3.10.0)
+
 # Policies (see https://cmake.org/cmake/help/v3.13/manual/cmake-policies.7.html)
-  SET(GITSHALLOW "GIT_SHALLOW ON")
+SET(GITSHALLOW "GIT_SHALLOW ON")
 IF(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.12.0")
   CMAKE_POLICY(SET CMP0074 NEW)
 ENDIF()
@@ -62,18 +63,30 @@ INCLUDE(GNUInstallDirs)
 # =========================================================================
 # Store the current commit information
 # =========================================================================
-EXECUTE_PROCESS(COMMAND git rev-parse HEAD OUTPUT_VARIABLE GIT_COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} RESULT_VARIABLE ERR_NO_GIT OUTPUT_QUIET ERROR_QUIET)
-SET(commit ${CMAKE_CURRENT_SOURCE_DIR}/src/commit.h)
-FILE(WRITE ${commit} "! Define the current commit hash. The default must remain empty, i.e., ''. Do not commit the changed file!\n#define GIT_CURRENT_COMMIT  'v${PROJECT_VER}'\n")
-IF(${ERR_NO_GIT})
-  MESSAGE("No git information found. Continue without git.")
-  ADD_CUSTOM_TARGET(UpdateGitCommitHash COMMENT "Dummy target")
-ELSE()
-  MESSAGE(STATUS "Current git commit ${GIT_COMMIT} will be written to ${commit}")
-  EXECUTE_PROCESS(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/setCommitHash.sh ${commit} WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-  # Make sure that the script is executed even though cmake is not explicitly executed after the commit is changed in git
-  ADD_CUSTOM_TARGET(UpdateGitCommitHash COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/setCommitHash.sh ${commit})
+SET(commit_header "${CMAKE_CURRENT_SOURCE_DIR}/src/commit.h")
+
+# Write an inline CMake update script to a temporary file.
+FILE(WRITE "${CMAKE_CURRENT_BINARY_DIR}/update_commit.cmake"
+"EXECUTE_PROCESS(
+  COMMAND git rev-parse HEAD
+  WORKING_DIRECTORY \"${CMAKE_CURRENT_SOURCE_DIR}\"
+  OUTPUT_VARIABLE GIT_COMMIT
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  ERROR_QUIET
+)
+IF(NOT GIT_COMMIT)
+  SET(GIT_COMMIT \"\")
 ENDIF()
+FILE(WRITE \"\${commit_header}\" \"! Define the current commit hash. The default must remain empty, i.e., ''.\n#define GIT_CURRENT_COMMIT \\\"\${GIT_COMMIT}\\\"\n\")
+")
+
+# Create a custom target that always updates the commit header.
+# This target will run on every build invocation.
+ADD_CUSTOM_TARGET(UpdateGitCommitHash ALL
+  COMMAND ${CMAKE_COMMAND} -Dcommit_header=${commit_header} -P ${CMAKE_CURRENT_BINARY_DIR}/update_commit.cmake
+  COMMENT "Updating commit header with current git commit"
+  VERBATIM
+)
 
 # =========================================================================
 # Check IPO support:
@@ -111,7 +124,7 @@ INCLUDE(SetBuildType)
 # =========================================================================
 # Location of binary and filenames
 # =========================================================================
-# append relative filename-macro for __FILENAME__ in Stamp of abort function (see flexi.h)
+# append relative filename-macro for __FILENAME__ in __STAMP__ of abort function (see flexi.h)
 # subst replacement is GNU make specific
 IF("${CMAKE_GENERATOR}" MATCHES "Unix Makefiles")
 SET(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -D__FILENAME__='\"$(subst ${CMAKE_SOURCE_DIR}/,,$(abspath $<))\"'")
@@ -121,7 +134,7 @@ ENDIF()
 ADD_COMPILE_DEFINITIONS("BASEDIR='\"${CMAKE_CURRENT_BINARY_DIR}/\"'")
 
 # =========================================================================
-# echo COMPILE_DEFINITIONS
+# Echo compile definitions
 # =========================================================================
 GET_DIRECTORY_PROPERTY(comp_defs DIRECTORY ${CMAKE_SOURCE_DIR} COMPILE_DEFINITIONS )
 SET(comp_defs_str "COMPILE_DEFINITIONS = ")
