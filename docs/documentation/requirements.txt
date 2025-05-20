@@ -1,6 +1,6 @@
 myst_parser==2.0.0
 readthedocs-sphinx-search==0.3.2
-setuptools==75.2.0
+setuptools==78.1.1
 sphinx==7.0.0
 sphinx_rtd_size==0.2.0
 sphinx_rtd_theme==2.0.0
