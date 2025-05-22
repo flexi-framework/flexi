@@ -60,7 +60,7 @@ We proceed by running the code with the following command.
 ```bash
 flexi parameter_flexi_switch.ini
 ```
-This test case generates $11$ state files name `dmr_SWITCH_State_<TIMESTAMP>.h5`  for $t=0.0, 0.02, \ldots, 0.20$.
+This test case generates $11$ state files name `dmr_SWITCH_State_<TIMESTAMP>.h5` for $t=0.0, 0.02, \ldots, 0.20$.
 
 ### Visualization
 **FLEXI** relies on [ParaView](https://www.paraview.org) for visualization. In order to visualize the **FLEXI** solution, its format has to be converted from the HDF5 format into another format suitable for **Paraview**. **FLEXI** provides a post-processing tool [posti_visu](tools-visualization) which generates files in VTK format with the following command.
@@ -86,14 +86,14 @@ R = \alpha R_{FV} + (1-\alpha) R_{DG}
 with the blending coefficient $\alpha$. Instead of switching between a DG and a FV discretization, the blending allows a continuous transition between the DG and FV operators. The blending factor is computed based on the indicator proposed by {cite}`hennemann2021provably`, which is parameter-free and does not require any parameters to be tuned by the user. 
 
 #### Build Configuration
-The FV blending is enabled through the build option `FLEXI_FV=BLEND`. The FV blending requires to select the Gauss-Lobatto node set by setting `FLEXI_NODETYPE=GAUSS-LOBATTO` and to enable the split-form DG with ``FLEXI_SPLIT_DG=ON``.  **FLEXI** should be compiled using the `dmr_fvblend` present.
+The FV blending is enabled through the build option `FLEXI_FV=BLEND`. The FV blending requires selecting the Gauss-Lobatto node set by setting `FLEXI_NODETYPE=GAUSS-LOBATTO` and to enable the split-form DG with ``FLEXI_SPLIT_DG=ON``.  **FLEXI** should be compiled using the `dmr_fvblend` present.
 ```bash
 cmake -B build --preset dmr_fvblend
 cmake --build build
 ```
 
 #### Simulation Parameters
-The simulation setup is defined in `parameter_flexi_blend.ini` and the simulation parameters specific to the FV blending approach are summarized  below.
+The simulation setup is defined in `parameter_flexi_blend.ini` and the simulation parameters specific to the FV blending approach are summarized below.
 
 ```ini
 ! ============================================================ !
@@ -127,7 +127,7 @@ Similarly to the switching-based approach, we proceed by running the code with t
 ```bash
 flexi parameter_flexi_blend.ini
 ```
-This test case generates $11$ state files name `dmr_BLEND_State_<TIMESTAMP>.h5`  for $t=0.0, 0.02, \ldots, 0.20$.
+This test case generates $11$ state files name `dmr_BLEND_State_<TIMESTAMP>.h5` for $t=0.0, 0.02, \ldots, 0.20$.
 
 ### Visualization
 **FLEXI** relies on [ParaView](https://www.paraview.org) for visualization. In order to visualize the **FLEXI** solution, its format has to be converted from the HDF5 format into another format suitable for **Paraview**. **FLEXI** provides a post-processing tool [posti_visu](tools-visualization) which generates files in VTK format with the following command.

@@ -1,6 +1,6 @@
 (sec:tut_freestream)=
 # Freestream
-Unlike the previous tutorial, which dealt with simpler equations, we will now consider the behavior of a compressible fluid flow described by the Navier-Stokes equations. The simplest valid flow solution imaginable is a freestream scenario under conditions of pressure, density and velocity. For the current setup, we specify a freestream scenario with constant pressure $p=101325.0\ \mathrm{Pa}$, density $\rho=1.225\ \mathrm{kg/m^3}$ and velocity vector $\boldsymbol{U}=(1,1,1)^T\ \mathrm{m/s}$. This configuration provides a baseline for analyzing how the solver handles simple flow conditions and sets the stage for more challenging simulations.
+Unlike the previous tutorial, which dealt with simpler equations, we will now consider the behavior of a compressible fluid flow described by the Navier-Stokes equations. The simplest valid flow solution imaginable is a freestream scenario under conditions of pressure, density, and velocity. For the current setup, we specify a freestream scenario with constant pressure $p=101325.0\ \mathrm{Pa}$, density $\rho=1.225\ \mathrm{kg/m^3}$ and velocity vector $\boldsymbol{U}=(1,1,1)^T\ \mathrm{m/s}$. This configuration provides a baseline for analyzing how the solver handles simple flow conditions and sets the stage for more challenging simulations.
 
 ## Mesh Generation
 In the tutorial directory, we provide the necessary mesh file, `cartbox_mesh.h5`, along with a parameter file for **HOPR** to generate this mesh. You can recreate the mesh by running the following command.
@@ -130,7 +130,7 @@ Running the code prints all output to `STDOUT`. If the run completes successfull
 ==============================================================
 ```
 ```{error}
-It the output does not look like the one above, check for any error messages to diagnose the issue.
+If the output does not look like the one above, check for any error messages to diagnose the issue.
 ```
 
 After completing the simulation, examine the contents of the working directory. For a successful run, the directory should contain additional generated files named `<PROJECTNAME>_State_<TIMESTAMP>.h5`. Each file stores the solution vector of the conserved variables at each interpolation node at a specific time, corresponding to multiples of `Analyze_dt`.

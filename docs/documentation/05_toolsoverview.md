@@ -18,10 +18,10 @@ The different **POSTI** tools are used to further post-process the simulation re
 (tools-visualization)=
 ### POSTI_VISU
 
-`POSTI_VISU` converts **FLEXI** StateFiles, TimeAverage and BaseFlow files from the HDF5 format to the ParaView readable `.vtu` (single) or `.pvtu` (parallel) format. 
+`POSTI_VISU` converts **FLEXI** StateFiles, TimeAverage, and BaseFlow files from the HDF5 format to the ParaView readable `.vtu` (single) or `.pvtu` (parallel) format. 
 
 The `POSTI_VISU` tool reads a separate parameter file as optional first argument, while the files to be visualized are passed as the last argument. Without specifying a separate parameter file, the parameters stored in the userblock of the files are used and only the conservative variables are visualized.
-The latter can be a single file or several files, specified either as simple space-separated list like `Testcase_State_0.h5 Testcase_State_1.h5` or via standard wildcarding like `Testcase_State_*.h5`. The file must contain the entire volume solution, i.e. can be a StateFile or a TimeAverage file, for example.  
+The latter can be a single file or several files, specified either as simple space-separated list like `Testcase_State_0.h5 Testcase_State_1.h5` or via standard wildcarding like `Testcase_State_*.h5`. The file must contain the entire volume solution, i.e., can be a StateFile or a TimeAverage file, for example.  
 
 For serial execution, the `POSTI_VISU` tool is invoked by entering
 ```bash
@@ -33,13 +33,10 @@ mpirun -np <no. processors> posti_visu [parameter_postiVisu.ini [parameter_flexi
 ```
 
 ```{important}
-When post-processing with activated `LIBS_USE_MPI` flag, especially with large cases and large files as is often the case with TimeAverage files, the file size of approximately $2\, GB$ per core must not be exceeded. In this case, the number of cores used must be increased for MPI-parallel executable **POSTI** tools, or **POSTI** must be compiled with `LIBS_USE_MPI=OFF`.
-ParaView can only read state files up to $2\, GB$ in single mode (`.vtu`).
+ParaView can only read state files up to $2\, GB$ in single mode (`.vtu`). Furthermore, the MPI-parallel HDF5 implementation internally uses a signed 32-bit integer, restricting the maximum chunk size to $2\, GB$ per thread. When post-processing with activated `LIBS_USE_MPI` flag, especially with large cases and large files as is often the case with TimeAverage files, the file size of approximately $2\, GB$ per core must not be exceeded. In this case, the number of cores used must be increased for MPI-parallel executable **POSTI** tools, or **POSTI** must be compiled with `LIBS_USE_MPI=OFF`.
 ```
 
-
-
-The  **POSTI_VISU** tool has a help function that describes the available parameters. This help can be invoked by running the tool with the flag `--help`
+The **POSTI_VISU** tool has a help function that describes the available parameters. This help can be invoked by running the tool with the flag `--help`
 ```bash
 posti_visu --help
 ```
@@ -89,16 +86,17 @@ The practical application of `POSTI_VISU` can be practiced in the following tuto
 
 
 
+
 (sec:swap_mesh)=
 ### POSTI_SWAPMESH
 
-The `POSTI_SWAPMESH` tool interpolates the solution of a StateFile or a TimeAverage file from one mesh to another, or from one polynomial degree to another. To do so, the parametric coordinates of the interpolation points of the new state are searched in the old mesh. For non-equal elements a Newton algorithm is used to find the parametric coordinates of the interpolation points. Based on the found parametric coordinates high-order interpolation to the interpolation points in the new mesh is performed. Non-conforming meshes are allowed. A reference state can be given for areas in the target mesh which are not covered by the original mesh. The project name and therefore the file name is based on the original project name with '_newMesh' appended, the original file is therefore not overwritten. 
+The `POSTI_SWAPMESH` tool interpolates the solution of a StateFile or a TimeAverage file from one mesh to another, or from one polynomial degree to another. To do so, the parametric coordinates of the interpolation points of the new state are searched in the old mesh. For non-equal elements, a Newton algorithm is used to find the parametric coordinates of the interpolation points. Based on the found parametric coordinates, a high-order interpolation to the interpolation points in the new mesh is performed. Non-conforming meshes are allowed. A reference state can be given for areas in the target mesh which are not covered by the original mesh. The project name and therefore the file name is based on the original project name with '_newMesh' appended, the original file is therefore not overwritten. 
 
 For serial execution, the `POSTI_SWAPMESH` tool is invoked by entering
 ```bash
 posti_swapmesh parameter_postiSwapmesh.ini <statefiles>
 ```
-The tool also runs in parallel using OpenMP. To run in parallel the environment Variable `OMP_NUM_THREADS=XXX` need to be set with the number of threads to be used, provided the compiler option `LIBS_USE_OPENMP` is enabled. In this case the parallel execution is the same as the single execution. 
+The tool also runs in parallel using OpenMP. To run in parallel, the environment variable `OMP_NUM_THREADS=XXX` needs to be set with the number of threads to be used, provided the compiler option `LIBS_USE_OPENMP` is enabled. In this case, the parallel execution is the same as the single execution.
 
 A list of parameters used by the `POSTI_SWAPMESH` tool is listed in the table below.
 An example of the `POSTI_SWAPMESH` tool can be found in 
@@ -106,7 +104,7 @@ An example of the `POSTI_SWAPMESH` tool can be found in
 ./flexi/ini/swapmesh
 ```
 
-  
+
 
 
 ```{list-table} POSTI_SWAPMESH parameters.
@@ -160,8 +158,460 @@ An example of the `POSTI_SWAPMESH` tool can be found in
 ```
 
 
+(tools-recordpoints)=
+### Recordpoints
 
-<!--TODO:-->
+For investigations with a high temporal resolution, such as frequency analyses, it is generally not practical to write complete state files with a high output frequency. Among other things, this would generate a considerable memory requirement and unnecessarily slow down the simulation due to frequent I/O operations. 
+Numerical probes, here called record points, can therefore be used within **FLEXI** for high-frequency outputs in time. These represent point samples and can sample the flow variables with high temporal resolution at defined points in the domain. Multiple record points can be combined to form geometric shapes such as lines or surfaces.
+
+The **POSTI** tools available for this are:
+- POSTI_RP_PREPARE: Definition of the points in the flow domain 
+- POSTI_RP_VISUALIZE: Visualization of the variables recorded at runtime
+- POSTI_RP_EVALUATE: Subsequent evaluation of record points on existing volume solutions
+
+To use the **POSTI** tools, the compile flag `POSTI` and the compile flag associated with the respective tool must be activated.
+
+
+(tools-recordpoints_prepare)=
+#### POSTI_RP_PREPARE
+
+<!--ToDo's: complete possible values in table, describe in more detail the functionalities Groupname GroupID, ..., how does the RP file looks like, parallel execution???-->
+
+The POSTI_RP_PREPARE tool uses its own parameter file. This specifies the grouping of the recordpoints (individual points, lines, planes, ...) and the associated mesh file for which the recordpoints will be defined. The parameters that can be used are documented in the table listed below.
+The available parameters can also be listed by using the help function
+
+```bash
+posti_preparerecordpoints --help
+```
+
+
+The tool can be executed as follows:
+
+```bash
+posti_preparerecordpoints parameter_recordpoints.ini
+```
+
+After successful execution, an additional `h5` file is written with the name of the specified project name with postfix `_RPSet`. In order to record the data during the simulation, this file must be specified in the parameter file when executing **FLEXI**. If the `doVisuRP` option is used, the defined recordpoints are also written to a `vtm` file that can be viewed with Paraview. 
+
+To collect the date at the recordpoints locations during the simulation, the recordpoints functionality needs to be activated in the ini file of the FLEXI. This is done by setting `RP_inUse = T`.
+
+The following exemplary options can be added to an existing parameter file:
+
+```ini
+RP_inUse            = T
+RP_DefFile          = *_RPSet.h5
+RP_SamplingOffset   = 10
+RP_MaxMemory        = 100
+```
+
+Here, the specified `RP_DefFile` contains the element-local parametric recordpoint coordinates. This is the file generated by `posti_preparerecordpoints`. The option `RP_SamplingOffset` defines the multiple of timestep at which recordpoints are evaluated. Additionally, the `RP_MaxMemory` can be set. It defines the maximum memory in MiB to be used for storing recordpoint state history. If the memory is exceeded before regular I/O level, states are written to the file.
+
+```{list-table} POSTI_RP_PREPARE parameters.
+:header-rows: 1
+:name: tab:postirpprepare_parameters
+:align: center
+:width: 100%
+:widths: 25 25 50
+* - Parameter
+  - Possible Values
+  - Description
+* - ProjectName
+  - 
+  - Name used to identify the recordpoint file 
+* - MeshFile
+  - MeshFileName.h5
+  - Name of the mesh file
+* - NSuper
+  - 1 / 2 / 3 / ...
+  - Number of Newton start values per element per direction.
+* - maxTolerance
+  - value $\ge 0$
+  - Tolerance in parameter space at the element boundaries, required to mark a recordpoint as found. 
+* - doVisuRP
+  - T/F
+  - Write output file to visualize recordpoints.
+* - GroupName         
+  -
+  - Name of the RP group (one for each group!)  
+* - Line_GroupID      
+  -
+  - ID of a straight line group, defined by start and end coordinates and the number of points along that line, used to allocate the definition to a specific group  
+* - Line_nRP          
+  -
+  - Number of RPs on line  
+* - Line_xstart       
+  - 
+  - Coordinates of start of line  
+* - Line_xEnd         
+  -
+  - Coordinates of end of line  
+* - Circle_GroupID    
+  -
+  - ID of a circular group, used to allocate the definition to a specific group  
+* - Circle_nRP        
+  -
+  - Number of RPs along circle  
+* - Circle_Center     
+  -
+  - Coordinates of circle center  
+* - Circle_Axis       
+  -
+  - Axis vector of circle  
+* - Circle_Dir        
+  -
+  - Vector defining the start point on the circle  
+* - Circle_Radius    
+  -
+  - Radius of the circle  
+* - Circle_Angle      
+  -
+  - Angle from the start point, 360° is a full circle  
+* - CustomLine_GroupID
+  -
+  - ID of a custom line, defined by an arbitrary number of RPs, used to allocate the definition to a specific group
+* - CustomLine_nRP    
+  -
+  - Number of points on the custom line  
+* - CustomLine_x      
+  -
+  - Coordinates of the points on the custom line  
+* - Point_GroupID     
+  -
+  - ID of a point group, used to allocate the definition to a specific group  
+* - Point_x           
+  -
+  - Coordinates of the single point  
+* - Plane_GroupID     
+  -
+  - ID of a plane group, defined by the corner points and the number of points in both directions, used to allocate the definition to a specific group  
+* - Plane_nRP         
+  -
+  - Number of points in the plane  
+* - Plane_CornerX     
+  -
+  - Coordinates of the 4 corner points (x1,y1,z1,x2,y2,z2,...)  
+* - Box_GroupID       
+  -
+  - ID of a box group, defined by the corner points and the number of points in both directions, used to allocate the definition to a specific group  
+* - Box_nRP           
+  -
+  - Number of points in the box  
+* - Box_CornerX       
+  -
+  - Coordinates of the 8 corner points (x1,y1,z1,x2,y2,z2,...)  
+* - Sphere_GroupID    
+  -
+  - ID of a spherical group, with points on the circumference, used to allocate the definition to a specific group  
+* - Sphere_nRP        
+  -
+  - Number of points on the spere in phi and theta direction  
+* - Sphere_Center     
+  -
+  - Coordinates of sphere center  
+* - Sphere_Axis      
+  -
+  - Axis vector of sphere  
+* - Sphere_Dir        
+  -
+  - Vector defining the start point on the sphere  
+* - Sphere_Radius     
+  -
+  - Radius of the sphere  
+* - Sphere_Angle      
+  -
+  - Phi angle of the sphere (360° is a full sphere)  
+* - BLPlane_GroupID   
+  -
+  - ID of a boundary layer group - works like a plane group, but the plane is created by projecting the points of a spline to the nearest boundary and extruding the plane along the normal with a stretching factor, used to allocate the definition to a specific group  
+* - BLPlane_nRP       
+  -
+  - Number of RPs along and normal to the boundary  
+* - BLPlane_nCP       
+  -
+  - Number of control points defining the spline (at least two)  
+* - BLPlane_CP        
+  -
+  - Coordinates of the spline control points  
+* - BLPlane_fac       
+  -
+  - Factor of geometrical stretching in wall-normal direction  
+* - BLPlane_height    
+  -
+  - Wall-normal extend of the plane for each control point  
+* - BLBox_GroupID     
+  -
+  - ID of a boundary layer group - works like a box group, but the box is created by projecting the points of a spline to the nearest boundary and extruding the box along the normal with a stretching factor, used to allocate the definition to a specific group  
+* - BLBox_nRP         
+  -
+  - Number of RPs along and normal to the boundary  
+* - BLBox_nCP         
+  -
+  - Number of control points defining the spline (at least two).  Defined once per BLBox  
+* - BLBox_nSP         
+  -
+  - Number of shifted splines (at least one), linear interpolation between the splines in shifted direction (linear extrusion)  
+* - BLBox_CP          
+  -
+  - Coordinates of the spline control points. nCPxnSP needed.  
+* - BLBox_fac         
+  -
+  - Factor of geometrical stretching in wall-normal direction.  
+* - BLBox_height 
+  -
+  - Wall-normal extend of the box for each control point
+```
+
+
+Exemplary applications of `POSTI_RP_PREPARE` can be found in the following tutorials: [](Cylinder), [](NACA0012)
+Sample parameter files can also be found here.
+
+
+(tools-recordpoints_visu)=
+#### POSTI_RP_VISUALIZE
+<!--ToDo's: complete possible values in table, describe in more detail the structure of the written file, mention the output format (paraview/hdf5), give for certain functionalities example recorpoint files (e.g. derived quantities, FFT, ...)  -->
+
+During the runtime of the simulation, `ProjectName_RP_*.h5` files are written. These files contain the raw data collected during the simulation. Using the `posti_visualizerecordpoints` tool, the raw data can be further post-processed. The tool takes one or more of the recordpoint files and combines them into a single time series. From the conservative variables that are stored during the simulation, all available derived quantities can be computed. Additionally, several more advanced post-processing algorithms are available. This includes calculation of time averages, FFT, and PSD values and specific boundary layer properties.
+
+The `posti_visualizerecordpoints` tool is designed for single execution only and can be executed as follows:
+
+```bash
+posti_visualizerecordpoints parameter_visuRP.ini projectname_RP_*.h5
+```
+
+
+The parameters that can be used are documented in the table listed below. The available parameters can also be listed by using the help function
+
+```bash
+posti_visualizerecordpoints --help
+```
+
+
+```{list-table} POSTI_RP_VISUALIZE parameters.
+:header-rows: 1
+:name: tab:postivisualizerp_parameters
+:align: center
+:width: 100%
+:widths: 25 25 50
+* - Parameter
+  - Possible Values
+  - Description
+* - ProjectName
+  -
+  - Name of the project  
+* - GroupName
+  -
+  - Name(s) of the group(s) to visualize, must be equal to the name given in preparerecordpoints tool  
+* - VarName
+  -
+  - Variable name to visualize  
+* - RP_DefFile
+  - 
+  - Path to the *RPset.h5 file  
+* - usePrims
+  - T / F
+  - Set to indicate that the RP file contains the primitive and not the conservative variables  
+* - meshScale
+  - 
+  - Specify a scalar scaling factor for the RP coordinates  
+* - OutputTimeData
+  - T / F
+  - Should the time series be written? Not compatible with TimeAvg and FFT options!  
+* - OutputTimeAverage
+  - T/ F
+  - Should the time average be computed and written?  
+* - doFluctuations
+  - T / F 
+  - Should the fluctuations be computed and written?  
+* - equiTimeSpacing
+  - T / F
+  - Set to interpolate the temporal data to equdistant time steps (always done for operations requiring FFTs)  
+* - OutputPoints   
+  - T / F 
+  - General option to turn off the output of points  
+* - OutputLines
+  - T / F 
+  - General option to turn off the output of lines
+* - OutputPlanes
+  - T / F
+  - General option to turn off the output of planes  
+* - OutputBoxes
+  - T / F
+  - General option to turn off the output of boxes  
+* - doFFT
+  - T / F
+  - Calculate a fast Fourier transform of the time signal  
+* - doPSD
+  - T / F
+  - Calculate the power spectral density of the time signal  
+* - nBlocks
+  - 
+  - Specify the number of blocks over the time signal used for spectral averaging when calculating spectral quantities  
+* - SamplingFreq
+  - 
+  - Instead of specifying the number of blocks, the sampling frequency in combination with the block size can be set - the number of blocks will then be calculated.  
+* - BlockSize
+  - 
+  - Size of the blocks (in samples) if sampling frequency is given  
+* - CutoffFreq
+  - 
+  - Specify smallest considered frequency in spectral analysis  
+* - hanning
+  - T / F
+  - Set to use the Hann window when performing spectral analysis  
+* - doTurb
+  - T / F
+  - Set to compute a temporal FFT for each RP and compute turbulent quantities like the kinetic energy over wave number  
+* - Box_doBLProps
+  - T / F
+  - Set to calculate seperate boundary layer quantities for boundary layer planes  
+* - Box_BLvelScaling
+  - 
+  - Choose scaling for boundary layer quantities. 0: no scaling, 1: laminar scaling, 3: turbulent scaling 
+* - Plane_doBLProps
+  - T / F
+  - Set to calculate seperate boundary layer quantities for boundary layer planes  
+* - Plane_BLvelScaling
+  - 
+  - Choose scaling for boundary layer quantities. 0: no scaling, 1: laminar scaling, 3: turbulent scaling  
+* - RPRefState
+  - 
+  - Refstate required for computation of e.g. cp.  
+* - RefState
+  - 
+  - State(s) in primitive variables (density, velx, vely, velz, pressure).  
+* - Box_LocalCoords
+  - T / F 
+  - Set to use local instead of global coordinates along boxes  
+* - Box_LocalVel
+  - T / F
+  - Set to use local instead of global velocities along boxes  
+* - Plane_LocalCoords
+  - T / F
+  - Set to use local instead of global coordinates along planes  
+* - Plane_LocalVel
+  - T / F
+  - Set to use local instead of global velocities along planes  
+* - Line_LocalCoords
+  - T / F
+  - Set to use local instead of global coordinates along lines  
+* - Line_LocalVel
+  - T / F
+  - Set to use local instead of global velocities along lines  
+* - Line_LocalVel_vec
+  - 
+  - Vector used for local velocity computation along line  
+* - doFilter
+  - T / F
+  - Set to perform temporal filtering for each RP  
+* - FilterWidth
+  - 
+  - Width of the temporal filter  
+* - FilterMode
+  - 
+  - Set to 0 for low pass filter and to 1 for high pass filter  
+* - TimeAvgFile
+  - 
+  - Optional file that contains the temporal averages that should be used  
+* - SkipSample
+  - 
+  - Used to skip every n-th RP evaluation  
+* - OutputFormat
+  -
+  - Choose the main format for output. 0: ParaView, 2: HDF5  
+* - doEnsemble
+  - T / F
+  - Set to perform ensemble averaging for each RP  
+* - EnsemblePeriod
+  - 
+  - Periodic time to be used for ensemble averaging  
+* - UseNonDimensionalEqn 
+  - T / F 
+  - Set true to compute R and mu from bulk Mach Reynolds (nondimensional form.  
+* - kappa
+  - 1.4
+  - Heat capacity ratio / isentropic exponent  
+* - R
+  - 287.058
+  - Specific gas constant  
+* - Pr
+  - 0.72
+  - Prandtl number  
+* - mu0
+  - 0.0
+  - Dynamic Viscosity
+* - Ts
+  - 110.4
+  - Sutherland's law for variable viscosity: Ts  
+* - Tref
+  - 273.15
+  - Sutherland's law for variable viscosity: Tref  
+* - ExpoSuth
+  - 1.5
+  - Sutherland's law for variable viscosity: Exponent  
+```
+
+
+Exemplary applications of `POSTI_RP_PREPARE` can be found in the following tutorials: [](Cylinder), [](NACA0012)
+Sample parameter files can also be found here.
+
+
+(tools-recordpoints_evaluate)=
+#### POSTI_RP_EVALUATE
+
+The POSTI_RP_EVALUATE tool can be used to extract data for a given simulation at the defined positions for a given RP_DefFile. For this purpose, the recordpoints can be defined as described in section [POSTI_RP_PREPARE](tools-recordpoints_prepare) and the data can be extracted. It is possible to extract data not only form StateFiles but also e.g. from TimeAverageFiles. By default, the data set `DG_Solution` is read, which can be used to extract data from StateFiles. To extract data from TimeAverageFiles, a corresponding data set like `Mean` or `Fluc` needs to be specified in the parameter file option `RecordpointsDataSetName`.
+Using the following command the data can be extracted at the recordpoint positions:
+
+```bash
+posti_evaluaterecordpoints [parameter.ini] <solutionfiles>
+```
+
+The tool also runs in parallel by prepending `mpirun -np <no. processors>` to the above command, as usual, provided the compiler option `LIBS_USE_MPI` is enabled.
+```bash
+mpirun -np <no. processors> posti_evaluaterecordpoints [parameter.ini] <solutionfiles>
+```
+After the execution of the `posti_evaluaterecordpoints` tool, a `ProjectName_RP_*.h5` file is written. This file is similar to the recordpoint files written during runtime. Therefore, these files can be visualized as described in section [POSTI_RP_VISUALIZE](tools-recordpoints_visu).
+
+```{important}
+The MPI-parallel HDF5 implementation internally uses a signed 32-bit integer, restricting the maximum chunk size to $2\, GB$ per thread. When post-processing with activated `LIBS_USE_MPI` flag, especially with large cases and large files as is often the case with TimeAverage files, the file size of approximately $2\, GB$ per core must not be exceeded. In this case, the number of cores used must be increased for MPI-parallel executable **POSTI** tools, or **POSTI** must be compiled with `LIBS_USE_MPI=OFF`.
+```
+
+
+The parameters for this POSTI tool are listed in the table below.
+
+
+```{list-table} POSTI_RP_EVALUATE parameters.
+:header-rows: 1
+:name: tab:postievaluaterp_parameters
+:align: center
+:width: 100%
+:widths: 25 25 50
+* - Parameter
+  - Possible Values
+  - Description
+* - RP_inUse
+  - T / F
+  - Set true to compute solution history at points defined in recordpoints file
+* - RP_DefFile
+  - ProjectName_RPSet.h5
+  - File containing element-local parametric recordpoint coordinates and structure
+* - RP_MaxMemory
+  - 100
+  - Maximum memory in MiB to be used for storing recordpoint state history. If memory is exceeded before regular IO level states are written to file
+* - RP_SamplingOffset
+  - 1
+  - Multiple of timestep at which recordpoints are evaluated
+* - RecordpointsDataSetName
+  - DG_Solution / Mean / Fluc / ...
+  - If no state files are given to evaluate, specify the data set name to be used here
+```
+
+The available parameters can also be listed by using the help function
+
+```bash
+posti_evaluaterecordpoints --help
+```
+
+<!--## TODO:-->
 <!------------------------------------------------------------------------------------------------->
 <!--**posti_swapmesh**-->
 <!----------------------------------- -------------------------------------------------------------->
@@ -255,7 +705,7 @@ An example of the `POSTI_SWAPMESH` tool can be found in
 
 <!--Further info / usage example       No tutorials so far-->
 <!------------------------------------------------------------------------------------------------->
-<!---->
+
 
 
 <!--[>===========================================================================================================================<]-->

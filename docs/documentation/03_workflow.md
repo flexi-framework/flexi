@@ -1,7 +1,7 @@
 # Workflow
 
 This chapter describes the complete process of performing a simulation in **FLEXI**.
-The process comprises the mesh generation using the high-order preprocessor **HOPR**, the actual simulation of the numerical problem, and the post-processing step using the **POSTI** toolchain. An overview of this workflow and the components of **FLEXI** is given in the flowchart below.
+The process comprises the mesh generation using the high-order pre-processor **HOPR**, the actual simulation of the numerical problem, and the post-processing step using the **POSTI** toolchain. An overview of this workflow and the components of **FLEXI** is given in the flowchart below.
 
 ```{figure} ./figures/flowchart.jpg
 :name: fig:flowchart
@@ -17,7 +17,7 @@ Note that both, **HOPR** and **FLEXI**, use the *HDF5* format to output mesh fil
 ## Mesh Generation using HOPR
 
 **FLEXI** obtains its computational meshes from the high-order preprocessor **HOPR** (available under GPLv3 at [HOPR project](https://hopr.readthedocs.io/en/latest/)) in HDF5 format.
-The design philosophy is that all tasks related to mesh organization, different input formats and the construction of high-order geometrical mappings are separated from the *parallel* simulation code.
+The design philosophy is that all tasks related to mesh organization, different input formats and the construction of high-order geometric mappings are separated from the *parallel* simulation code.
 The *serial* standalone framework **HOPR** has been developed to generate high-order meshes from input data by external linear mesh generators, supporting different file formats. It also provides a built-in mesh generator for simple, structured meshes. **HOPR** can either be compiled from the source code or be used directly via the provided AppImage, both available on its [github page](https://github.com/hopr-framework/hopr/releases).
 
 The basic command to run **HOPR** is
@@ -25,7 +25,7 @@ The basic command to run **HOPR** is
 hopr parameter_hopr.ini
 ```
 where the path to the **HOPR** executable has been omitted for simplicity.
-The test cases provided in chapter {ref}`Tutorials` come with both a ready-to-use mesh file as well as a parameter file for **HOPR**, which can be used to generate or modify the meshes as needed.
+The test cases provided in chapter {ref}`Tutorials` come with both a ready-to-use mesh file and a parameter file for **HOPR**, which can be used to generate or modify the meshes as needed.
 Provided the mesh file has been set up, its location must be specified in the **FLEXI** parameter file.
 
 ```ini
@@ -60,7 +60,7 @@ cmake --build build
 
 ## Parameter File
 
-The computational setup of the considered test case, including solver settings, initial and boundary conditions, material properties, data output, is specified via a parameter file. This file is typically named ``parameter_flexi_ini`` and contains a simple list of parameters, given in the form
+The computational setup of the considered test case, including solver settings, initial, and boundary conditions, material properties, data output, is specified via a parameter file. This file is typically named ``parameter_flexi_ini`` and contains a simple list of parameters, given in the form
 ```ini
 ! This is a comment, e.g. section heading
 parameter_name = parameter_value
@@ -86,9 +86,9 @@ The definition of the numerical solver typically covers the following steps.
 
 * **Choose a dealiasing approach.**
 
-    For under-resolved Navier-Stokes simulations, e.g. in an LES setting, dealiasing is important for numerical stability. Various choices are available and set using either *over-integration* or a *split-form* DG scheme. As the performance penalty of over-integration is substantial, the usage of the split formulation is recommended.
+    For under-resolved Navier-Stokes simulations, e.g., in an LES setting, dealiasing is important for numerical stability. Various choices are available and set using either *over-integration* or a *split-form* DG scheme. As the performance penalty of over-integration is substantial, the usage of the split formulation is recommended.
     * ``OverintegrationType=1`` is a filtering strategy, where the complete operator is first evaluated at ``N`` ($U_t^{N}$) and then filtered to a lower effective degree ``NUnder`` ($U_t^{Nunder}$). To use this variant, specify ``Nunder`` to a value smaller than ``N``.        
-    * ``OverintegrationType=2`` is a filtering strategy, where the operator in reference space, e.g. $JU_t$, is first projected to the ``NUnder`` node set before converting it to physical space $U^{Nunder}_t=JU^{Nunder}_t/J^{Nunder}$. This implementation enforces conservation. To use this variant, specify ``Nunder`` to a value smaller than ``N``.
+    * ``OverintegrationType=2`` is a filtering strategy, where the operator in reference space, e.g., $JU_t$, is first projected to the ``NUnder`` node set before converting it to physical space $U^{Nunder}_t=JU^{Nunder}_t/J^{Nunder}$. This implementation enforces conservation. To use this variant, specify ``Nunder`` to a value smaller than ``N``.
     * ``SplitDG`` uses a split formulation, requiring the compiler option ``FLEXI_SPLIT_DG`` to be turned on. The most commonly used options are the kinetic energy stable formulation by Pirozzoli {cite}`pirozzoli2010` (``PI``), the entropy conservative formulation by Chandrashekar {cite}`chandrashekar2013` (``CH``) and a flux differencing form equivalent to the standard DGSEM (``SD``).
         
 * **Choose a Riemann solver.**
@@ -102,14 +102,14 @@ The definition of the numerical solver typically covers the following steps.
 (subsec:ic)=
 ### Initial Conditions
 
-Both, initial and boundary conditions are controlled via the so-called ``RefState`` and ``ExactFunction`` constructs.
+Both initial and boundary conditions are controlled via the so-called ``RefState`` and ``ExactFunction`` constructs.
 
 The ``RefState`` specifies a state vector in primitive form $(\rho,u,v,w,p)^\intercal$. An arbitrary number of reference states can be defined:
 ```ini
 RefState=(/1,1,0,0,0.71428571/)
 RefState=(/1,0.3,0,0,0.71428571/)
 ```
-In this example, the first state describes a parallel flow in $x$ direction at $Ma=1$, the second state at $Ma=0.3$, if a ideal gas with $\kappa = 1.4$ is used.
+In this example, the first state describes a parallel flow in $x$ direction at $Ma=1$, the second state at $Ma=0.3$, if an ideal gas with $\kappa = 1.4$ is used.
 
 The code contains a number of predefined analytic solution fields (``ExactFunction``), which are invoked by specifying their respective number. For instance, the initialization of a simple constant freestream is achieved by setting
 ```ini
@@ -232,7 +232,7 @@ The end time of the simulation is set using ``tEnd``. **FLEXI** features several
 
 Specifically, the following evaluations are possible:
 
-* ``CalcErrorNorms=T``: Calculate the $L_2$ and $L_\infty$ error norms based on the specified ``ExactFunc`` as reference. This evaluation is used for e.g. convergence tests.
+* ``CalcErrorNorms=T``: Calculate the $L_2$ and $L_\infty$ error norms based on the specified ``ExactFunc`` as reference. This evaluation is used for, e.g., convergence tests.
 
 * ``CalcBodyForces=T``: Calculate the pressure and viscous forces acting on every wall boundary condition (BC_TYPE=3,4 or 9) separately. The forces are written to *dat* files.
 
@@ -249,7 +249,7 @@ In general, the simulation is started by running
 ```bash
 flexi parameter.ini [restart_file.h5]
 ```
-The restart file is optional and allows to resume the simulation from any existing state file.
+The restart file is optional and allows resuming the simulation from any existing state file.
 
 ```{attention}
 When restarting from an earlier time (or zero), all later state file possibly located in the present directory are deleted!
@@ -262,7 +262,7 @@ mpirun -np <no. processors> flexi parameter.ini [restart_file.h5]
     
 ### Domain Decomposition
 
-The grid elements are organized along a space-filling curve (SFC), which gives a unique one-dimensional element list. The SFC type is controlled by **HOPR**, with the Hilbert curve set as default. In a parallel run, the mesh is partitioned into as many subdomains as deployed processors simply by splitting the SFC evenly. Thus, domain decomposition is done *fully automatic* and is not limited by e.g. an integer factor between the number of cores and elements. The only limitation is that the number of cores must not exceed the number of mesh elements.
+The grid elements are organized along a space-filling curve (SFC), which gives a unique one-dimensional element list. The SFC type is controlled by **HOPR**, with the Hilbert curve set as default. In a parallel run, the mesh is partitioned into as many subdomains as deployed processors simply by splitting the SFC evenly. Thus, domain decomposition is done *fully automatic* and is not limited by, e.g., an integer factor between the number of cores and elements. The only limitation is that the number of cores must not exceed the number of mesh elements.
 
 ### Choosing the Number of Cores
 Parallel performance heavily depends on the number of processing cores. The performance index is defined as
@@ -283,7 +283,7 @@ and the polynomial degree $N$. Processor workloads for optimal performance lie i
 (subsec:testcase_env)=
 ## Test Case Environment
 
-The test case environment can be used as to add test case-specific code for e.g. custom source terms or diagnostics to be invoked during runtime. 
+The test case environment can be used as to add test case-specific code for, e.g., custom source terms or diagnostics to be invoked during runtime. 
 
 The test cases are contained in the folder ``src/testcase/`` and define standardized interfaces for initialization, source terms and analysis routines
 
@@ -316,12 +316,12 @@ The test cases are contained in the folder ``src/testcase/`` and define standard
   - evaluate dissipation rate of testcase `taylorgreenvortex`
 ```
 
-The compiler option `FLEXI_TESTCASE` sets the current test case. Currently supplied test cases are
+The compiler option `FLEXI_TESTCASE` sets the current test case. Currently, supplied test cases are
 
 * `default`
 * `channel`: turbulent channel flow with steady pressure gradient source term
 * `phill`: periodic hill flow with controlled pressure gradient source term \label{missing:phill_testcase}
-* `riemann2d`: a two dimensional Riemann problem
+* `riemann2d`: a two-dimensional Riemann problem
 * `taylorgreenvortex`: automatic diagnostics for the Taylor-Green vortex flow
 
 Note that the test case environment is currently only applicable to the Navier--Stokes equation system.
@@ -332,7 +332,7 @@ Note that the test case environment is currently only applicable to the Navier--
 
 ### Overview of Toolchain
 
-**FLEXI** comes with a post-processing tool-chain that is enabled through the compiler option `POSTI`. This **POSTI** tool-chain converts the **FLEXI** simulation results, stored in a custom data format in HDF5 files, into standardized data formats like *vtu*, which enable further post-processing and are readable by **ParaView**. Additionally, the tool-chain allows compute other quantities of interest derived from the stored variables.
+**FLEXI** comes with a post-processing tool-chain that is enabled through the compiler option `POSTI`. This **POSTI** tool-chain converts the **FLEXI** simulation results, stored in a custom data format in HDF5 files, into standardized data formats like *vtu*, which enable further post-processing and are readable by **ParaView**. Additionally, the tool-chain allows computing other quantities of interest derived from the stored variables.
 Depending on the type of data output, there are different **POSTI** tools that can be used. The data types typically generated by simulations are as follows:
 
 * ``StateFile``
@@ -390,7 +390,7 @@ Most **POSTI** tools have a help function that describes how to use the tool and
 posti_visu --help
 ```
 
-The `POSTI_VISU` tool reads a separate parameter file as optional first argument, while the files to be visualized are passed as the last argument. The latter can be a single file or several files, specified either as simple space-separated list like `Testcase_State_0.h5 Testcase_State_1.h5` or via standard wildcarding like `Testcase_State_*.h5`. The file must contain the entire volume solution, i.e. can be a StateFile or a TimeAverage file, for example.  
+The `POSTI_VISU` tool reads a separate parameter file as optional first argument, while the files to be visualized are passed as the last argument. The latter can be a single file or several files, specified either as simple space-separated list like `Testcase_State_0.h5 Testcase_State_1.h5` or via standard wildcarding like `Testcase_State_*.h5`. The file must contain the entire volume solution, i.e., can be a StateFile or a TimeAverage file, for example.  
 
 For serial execution, the `POSTI_VISU` tool is invoked by entering
 ```bash

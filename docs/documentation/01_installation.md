@@ -116,7 +116,7 @@ The executables `flexi` and `posti_visu` (if enabled) are generated in the sub-d
 ```{note}
 In the remainder of this user guide, we omit the path to the **FLEXI** executable (and related tools), but assume assume it can be executed directly by typing `flexi`. This can be achieved by defining an *alias* or *symbolic link*, for example.
 ```
-For Linux beginners, we provide a short explanation on how to achieve this usage behavior. In general, in order to execute a file, the command either has to be in the `PATH` environment variable or you have to enter the full path to it in the terminal. To enable typing only `flexi`, you can add a symbolic link to the **FLEXI** executable in the current directory, e.g. test case folder, by entering
+For Linux beginners, we provide a short explanation on how to achieve this usage behavior. In general, in order to execute a file, the command either has to be in the `PATH` environment variable or you have to enter the full path to it in the terminal. To enable typing only `flexi`, you can add a symbolic link to the **FLEXI** executable in the current directory, e.g., test case folder, by entering
 ```bash
 ln -s [FLEXI_ROOT]/build/bin/flexi
 ```
@@ -137,7 +137,7 @@ Convert the output files to the *vtu* format by entering
 ```bash
 posti_visu cavity_State_0000000.200000000.h5
 ```
-and visualize the generated files using e.g. **ParaView**. Note that this conversion step requires to enable the `posti_visu` tool by toggling the `POSTI` flag in the CMake configuration (see section {ref}`sec:compile_flexi` above).
+and visualize the generated files using, e.g., **ParaView**. Note that this conversion step requires enabling the `posti_visu` tool by toggling the `POSTI` flag in the CMake configuration (see section {ref}`sec:compile_flexi` above).
 
 
 [^1]: Package can be automatically installed through **FLEXI** as compiler option.
