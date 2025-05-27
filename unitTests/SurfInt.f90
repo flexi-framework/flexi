@@ -128,16 +128,16 @@ FV_Elems_master = 0
 FV_Elems_slave = 0
 #endif
 #if ((PP_NodeType==1) && defined(SPLIT_DG))
-ALLOCATE(U(PP_nVar,0:NRef,0:NRef,0:NRefZ,nElems))
-ALLOCATE(UPrim(PP_nVarPrim,0:NRef,0:NRef,0:NRefZ,nElems))
-ALLOCATE(U_master(PP_nVar,0:NRef,0:NRefZ,nElems))
+ALLOCATE(U(PP_nVar,0:NRef,0:NRef,0:NRefZ,nElemsRef))
+ALLOCATE(UPrim(PP_nVarPrim,0:NRef,0:NRef,0:NRefZ,nElemsRef))
+ALLOCATE(U_master(PP_nVar,0:NRef,0:NRefZ,nSidesRef))
 ALLOCATE(UPrim_master(PP_nVarPrim,0:NRef,0:NRefZ,nSidesRef))
 U = 1.; UPrim=1.; U_master=1.; UPrim_master=1.
-ALLOCATE(Metrics_fTilde(3,0:NRef,0:NRef,0:NRefZ,nElems,0:0))
-ALLOCATE(Metrics_gTilde(3,0:NRef,0:NRef,0:NRefZ,nElems,0:0))
+ALLOCATE(Metrics_fTilde(3,0:NRef,0:NRef,0:NRefZ,nElemsRef,0:0))
+ALLOCATE(Metrics_gTilde(3,0:NRef,0:NRef,0:NRefZ,nElemsRef,0:0))
 Metrics_fTilde=1.; Metrics_gTilde=1.
 #if PP_dim == 3
-ALLOCATE(Metrics_hTilde(3,0:NRef,0:NRef,0:NRefZ,nElems,0:0))
+ALLOCATE(Metrics_hTilde(3,0:NRef,0:NRef,0:NRefZ,nElemsRef,0:0))
 Metrics_hTilde=1.
 #endif
 ALLOCATE( Ja_Face(3,3,0:NRef,0:NRefZ,1:nSidesRef)) ! temp

@@ -26,7 +26,8 @@ SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL                :: IndicatorInitIsDone=.FALSE.
 INTEGER                :: IndicatorType               !< Type of indicator used
-INTEGER                :: IndVar                      !< variable on which indicator is applied (only cons)
+INTEGER                :: nIndVars                    !< number of variables to be checked by the indicator
+INTEGER,ALLOCATABLE    :: IndVar(:)                   !< variable on which indicator is applied (only cons)
 INTEGER                :: nModes                      !< number of modes to check for Persson modal indicator
 REAL,ALLOCATABLE       :: IndValue(:)                 !< indicator output
 REAL                   :: IndStartTime                !< specify starting time of indicator evaluation

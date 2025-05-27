@@ -1,8 +1,7 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
-! Copyright (c) 2022-2024 Prof. Andrea Beck
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -13,106 +12,69 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
-#include "eos.h"
 
 !==================================================================================================================================
-!> Contains routines to interpolate the interior solution to the boundary
+!> Module to handle time averaging - not used in linear advection diffusion case!
 !==================================================================================================================================
-MODULE MOD_ProlongToFace
+MODULE MOD_TimeAverage
+! MODULES
+USE MOD_Analyze_Vars
 IMPLICIT NONE
 PRIVATE
-#define WITHnVar 1
 
-INTERFACE EvalElemFace
-  MODULE PROCEDURE EvalElemFaceG
-  MODULE PROCEDURE EvalElemFaceGL
-END INTERFACE
+!----------------------------------------------------------------------------------------------------------------------------------
+! GLOBAL VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
 
-PUBLIC:: ProlongToFace
-PUBLIC:: EvalElemFace
-
+PUBLIC::InitCalcTimeAverage, FinalizeTimeAverage, CalcTimeAverage
+!==================================================================================================================================
 CONTAINS
-#include "prolongtoface.t90"
-END MODULE MOD_ProlongToFace
+
+
 
 !==================================================================================================================================
-!> Contains routines to interpolate the conservative interior solution to the boundary
+!> Initializes the time averaging variable
 !==================================================================================================================================
-MODULE MOD_ProlongToFaceCons
-IMPLICIT NONE
-PRIVATE
-#undef WITHnVar
-INTEGER,PARAMETER :: TP_nVar = PP_nVar
-
-INTERFACE ProlongToFaceCons
-#if PP_EntropyVars == 1
-  MODULE PROCEDURE ProlongToFaceEntropy
-#endif
-  MODULE PROCEDURE ProlongToFace
-END INTERFACE
-
-PUBLIC:: ProlongToFaceCons
-
-CONTAINS
-#include "prolongtoface.t90"
-END MODULE MOD_ProlongToFaceCons
-
-!==================================================================================================================================
-!> Contains routines to interpolate the primitive interior solution to the boundary
-!==================================================================================================================================
-MODULE MOD_ProlongToFacePrim
-IMPLICIT NONE
-PRIVATE
-#undef WITHnVar
-INTEGER,PARAMETER :: TP_nVar = PP_nVarPrim
-
-INTERFACE ProlongToFacePrim
-  MODULE PROCEDURE ProlongToFace
-END INTERFACE
-
-PUBLIC:: ProlongToFacePrim
-
-CONTAINS
-#include "prolongtoface.t90"
-END MODULE MOD_ProlongToFacePrim
-
-!==================================================================================================================================
-!> Contains routines to interpolate the primitive interior solution to the boundary
-!==================================================================================================================================
-MODULE MOD_ProlongToFaceLifting
-IMPLICIT NONE
-PRIVATE
-#undef WITHnVar
-INTEGER,PARAMETER :: TP_nVar = PP_nVarLifting
-
-INTERFACE ProlongToFaceLifting
-  MODULE PROCEDURE ProlongToFace
-END INTERFACE
-
-PUBLIC:: ProlongToFaceLifting
-
-CONTAINS
-#include "prolongtoface.t90"
-END MODULE MOD_ProlongToFaceLifting
-
-!==================================================================================================================================
-!> Contains routines to interpolate a scalar interior solution to the boundary
-!==================================================================================================================================
-MODULE MOD_ProlongToFace1
+SUBROUTINE InitCalcTimeAverage()
 ! MODULES
 IMPLICIT NONE
-PRIVATE
-#undef WITHnVar
-INTEGER,PARAMETER :: TP_nVar = 1
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+END SUBROUTINE InitCalcTimeAverage
 
-INTERFACE ProlongToFace1
-  MODULE PROCEDURE ProlongToFace
-END INTERFACE
-
-PUBLIC:: ProlongToFace1
-
-CONTAINS
-#include "prolongtoface.t90"
-END MODULE MOD_ProlongToFace1
 
 !==================================================================================================================================
+!> Computes time averages
+!==================================================================================================================================
+SUBROUTINE CalcTimeAverage(Finalize,dt,t)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+LOGICAL,INTENT(IN)              :: Finalize
+REAL,INTENT(IN)                 :: dt
+REAL,INTENT(IN),OPTIONAL        :: t
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+END SUBROUTINE CalcTimeAverage
+
+
+
+!==================================================================================================================================
+!> Finalizes the time averaging routines
+!==================================================================================================================================
+SUBROUTINE FinalizeTimeAverage()
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+END SUBROUTINE FinalizeTimeAverage
+
+END MODULE MOD_TimeAverage

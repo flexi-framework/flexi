@@ -80,7 +80,7 @@ CALL addStrListEntry('IndicatorType','jameson',       INDTYPE_JAMESON)
 CALL addStrListEntry('IndicatorType','ducros',        INDTYPE_DUCROS)
 CALL addStrListEntry('IndicatorType','ducrostimesjst',INDTYPE_DUCROSTIMESJST)
 CALL prms%CreateIntOption('IndVar',        "Specify variable upon which indicator is applied, for general indicators.",&
-                                           '1')
+                                           multiple=.TRUE.)
 CALL prms%CreateRealOption('IndStartTime', "Specify physical time when indicator evalution starts. Before this time"//&
                                            "a high indicator value is returned from indicator calculation."//&
                                            "(Idea: FV everywhere at begin of computation to smooth solution)", '0.0')
@@ -112,6 +112,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                                  :: nModes_In
 INTEGER                                  :: iBC,nFVBoundaryType
+INTEGER                                  :: iVar
 !==================================================================================================================================
 IF(IndicatorInitIsDone) &
   CALL CollectiveStop(__STAMP__, "InitIndicator not ready to be called or already called.")
@@ -191,7 +192,13 @@ ALLOCATE(IndValue(nElems))
 IndValue=0.
 CALL AddToElemData(ElementOut,'IndValue',RealArray=IndValue)
 
-IndVar = GETINT('IndVar')
+nIndVars = CountOption('IndVar')
+! minimum number of indvars = 1
+nIndVars = MAX(nIndVars,1)
+ALLOCATE(IndVar(nIndVars))
+DO iVar=1,nIndVars
+  IndVar(iVar) = GETINT('IndVar','1')
+END DO
 
 ! FV element at boundaries
 FVBoundaries    = GETLOGICAL('FVBoundaries')
@@ -384,7 +391,7 @@ END SUBROUTINE CalcIndicator
 !==================================================================================================================================
 FUNCTION IndPersson(U) RESULT(IndValue)
 USE MOD_PreProc
-USE MOD_Indicator_Vars,ONLY:nModes,IndVar
+USE MOD_Indicator_Vars,ONLY:nModes,IndVar,nIndVars
 USE MOD_Interpolation_Vars, ONLY:sVdm_Leg
 #if EQNSYSNR == 2 /* NAVIER-STOKES */
 USE MOD_EOS_Vars
@@ -397,68 +404,73 @@ REAL,INTENT(IN)    :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)          !< Solution
 REAL               :: IndValue                                  !< Value of the indicator (Return Value)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                              :: iDeg,i,j,k,l
+INTEGER                               :: iDeg,i,j,k,l,iVar
 #if EQNSYSNR == 2 /* NAVIER-STOKES */
-REAL                                 :: UE(1:PP_2Var)
+REAL                                  :: UE(1:PP_2Var)
 #endif /* NAVIER-STOKES */
 REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_NZ) :: U_loc
 REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_NZ) :: U_Xi
 REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_NZ) :: U_Eta
 REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_NZ) :: U_Modal
+REAL                                  :: IndValue_calc
 !==================================================================================================================================
-SELECT CASE (IndVar)
-CASE(1:PP_nVar)
-  U_loc = U(IndVar,:,:,:)
+IndValue = -HUGE(1)
+DO iVar = 1, nIndVars
+  SELECT CASE (IndVar(iVar))
+    CASE(1:PP_nVar)
+      U_loc = U(IndVar(iVar),:,:,:)
 #if EQNSYSNR == 2 /* NAVIER-STOKES */
-CASE(6)
-  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    UE(EXT_CONS)=U(:,i,j,k)
-    UE(EXT_SRHO)=1./UE(EXT_DENS)
-    UE(EXT_VELV)=VELOCITY_HE(UE)
-    U_loc(i,j,k)=PRESSURE_HE(UE)
-  END DO; END DO; END DO! i,j,k=0,PP_N
+    CASE(6)
+      DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+        UE(EXT_CONS)=U(:,i,j,k)
+        UE(EXT_SRHO)=1./UE(EXT_DENS)
+        UE(EXT_VELV)=VELOCITY_HE(UE)
+        U_loc(i,j,k)=PRESSURE_HE(UE)
+      END DO; END DO; END DO! i,j,k=0,PP_N
 #endif /* NAVIER-STOKES */
-END SELECT
+  END SELECT
 
-! Transform nodal solution to a modal representation
-U_Xi   = 0.
-U_Eta  = 0.
-U_Modal= 0.
-DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N; DO l=0,PP_N
-  U_Xi(i,j,k)    = U_Xi(i,j,k)    + sVdm_Leg(i,l)*U_loc(l,j,k)
-END DO ; END DO ; END DO ; END DO
+  ! Transform nodal solution to a modal representation
+  U_Xi   = 0.
+  U_Eta  = 0.
+  U_Modal= 0.
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N; DO l=0,PP_N
+    U_Xi(i,j,k)    = U_Xi(i,j,k)    + sVdm_Leg(i,l)*U_loc(l,j,k)
+  END DO ; END DO ; END DO ; END DO
 #if PP_dim == 2
-DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N; DO l=0,PP_N
-  U_Modal(i,j,k) = U_Modal(i,j,k) + sVdm_Leg(j,l)*U_Xi(i,l,k)
-END DO ; END DO ; END DO ; END DO
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N; DO l=0,PP_N
+    U_Modal(i,j,k) = U_Modal(i,j,k) + sVdm_Leg(j,l)*U_Xi(i,l,k)
+  END DO ; END DO ; END DO ; END DO
 #else
-DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N; DO l=0,PP_N
-  U_Eta(i,j,k)   = U_Eta(i,j,k)   + sVdm_Leg(j,l)*U_Xi(i,l,k)
-END DO ; END DO ; END DO ; END DO
-DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N; DO l=0,PP_N
-  U_Modal(i,j,k) = U_Modal(i,j,k) + sVdm_Leg(k,l)*U_Eta(i,j,l)
-END DO ; END DO ; END DO ; END DO
+  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N; DO l=0,PP_N
+    U_Eta(i,j,k)   = U_Eta(i,j,k)   + sVdm_Leg(j,l)*U_Xi(i,l,k)
+  END DO ; END DO ; END DO ; END DO
+  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N; DO l=0,PP_N
+    U_Modal(i,j,k) = U_Modal(i,j,k) + sVdm_Leg(k,l)*U_Eta(i,j,l)
+  END DO ; END DO ; END DO ; END DO
 #endif
 
-! Adapted Persson indicator
-IndValue=TINY(0.)
-DO iDeg=0,nModes-1
-  ! Build maximum of 1D indicators
-  ! Xi
-  IndValue=MAX(IndValue,SUM(U_Modal(PP_N-iDeg:PP_N-iDeg,:,:)**2) /  &
-                        (SUM(U_Modal(0:PP_N-iDeg,:,:)**2)+EPSILON(0.)))
-  ! Eta
-  IndValue=MAX(IndValue,SUM(U_Modal(:,PP_N-iDeg:PP_N-iDeg,:)**2) /  &
-                        (SUM(U_Modal(:,0:PP_N-iDeg,:)**2)+EPSILON(0.)))
+  ! Adapted Persson indicator
+  IndValue_calc=TINY(0.)
+  DO iDeg=0,nModes-1
+    ! Build maximum of 1D indicators
+    ! Xi
+    IndValue_calc=MAX(IndValue_calc,SUM(U_Modal(PP_N-iDeg:PP_N-iDeg,:,:)**2) /  &
+                             (SUM(U_Modal(0:PP_N-iDeg,:,:)**2)+EPSILON(0.)))
+    ! Eta
+    IndValue_calc=MAX(IndValue_calc,SUM(U_Modal(:,PP_N-iDeg:PP_N-iDeg,:)**2) /  &
+                             (SUM(U_Modal(:,0:PP_N-iDeg,:)**2)+EPSILON(0.)))
 #if PP_dim == 3
-  ! Zeta
-  IndValue=MAX(IndValue,SUM(U_Modal(:,:,PP_N-iDeg:PP_N-iDeg)**2) /  &
-                        (SUM(U_Modal(:,:,0:PP_N-iDeg)**2)+EPSILON(0.)))
+    ! Zeta
+    IndValue_calc=MAX(IndValue_calc,SUM(U_Modal(:,:,PP_N-iDeg:PP_N-iDeg)**2) /  &
+                             (SUM(U_Modal(:,:,0:PP_N-iDeg)**2)+EPSILON(0.)))
 #endif
+  END DO
+  ! Normalize indicator value
+  IndValue_calc=LOG10(IndValue_calc)
+  ! Choose the maximum of all variables
+  IndValue=MAX(IndValue,IndValue_calc)
 END DO
-! Normalize indicator value
-IndValue=LOG10(IndValue)
-
 END FUNCTION IndPersson
 
 
@@ -527,7 +539,7 @@ FUNCTION JamesonIndicator(U) RESULT(IndValue)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_Indicator_Vars     ,ONLY: IndVar
+USE MOD_Indicator_Vars     ,ONLY: IndVar,nIndVars
 USE MOD_EOS_Vars           ,ONLY: sKappaM1,KappaM1,R
 USE MOD_Interpolation_Vars ,ONLY: L_Minus,L_Plus
 USE MOD_Mesh_Vars          ,ONLY: nElems,nSides
@@ -553,13 +565,14 @@ REAL                      :: IndValue(1:nElems)                                 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                      :: ElemVol,IntegrationWeight
-INTEGER                   :: i,j,k,flip,p,q,SideID,ijk(3),iSide,iElem
+INTEGER                   :: i,j,k,flip,p,q,SideID,ijk(3),iSide,iElem,iVar
 REAL                      :: vmin,vmax
 #if PP_dim == 3
 REAL                      :: v(-1:PP_N+1,-1:PP_N+1,-1:PP_N+1)
 #else
 REAL                      :: v(-1:PP_N+1,-1:PP_N+1,0:0)
 #endif
+REAL                      :: IndValue_calc
 REAL                      :: UJameson(1:1,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 REAL                      :: UJameson_master(1:1,0:PP_N,0:PP_NZ,1:nSides)
 REAL                      :: UJameson_slave( 1:1,0:PP_N,0:PP_NZ,1:nSides)
@@ -574,139 +587,144 @@ INTEGER                   :: DataSizeSide_loc
 #endif
 !==================================================================================================================================
 ! Fill UJameson with conservative variable or pressure
-SELECT CASE(IndVar)
-CASE(1:PP_nVar)
-  UJameson(1,:,:,:,:) = U(IndVar,:,:,:,:)
-CASE(6) ! Pressure
-  DO iElem=1,nElems
-    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      UE(EXT_CONS)=U(:,i,j,k,iElem)
-      UE(EXT_SRHO)=1./UE(EXT_DENS)
-      UE(EXT_VELV)=VELOCITY_HE(UE)
-      UJameson(1,i,j,k,iElem)=PRESSURE_HE(UE)
-    END DO; END DO; END DO! i,j,k=0,PP_N
-  END DO ! iElem
-CASE(7) ! Entropy
-  DO iElem=1,nElems
-    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      UE(EXT_CONS) = U(:,i,j,k,iElem)
-      UE(EXT_SRHO) = 1./UE(EXT_DENS)
-      UE(EXT_VELV) = VELOCITY_HE(UE)
-      UE(EXT_PRES) = PRESSURE_HE(UE)
-      UE(EXT_TEMP) = TEMPERATURE_HE(UE)
-      UJameson(1,i,j,k,iElem) = ENTROPY_HE(UE)
-    END DO; END DO; END DO! i,j,k=0,PP_N
-  END DO ! iElem
-END SELECT
+IndValue = -HUGE(1)
+DO iVar = 1, nIndVars
+  SELECT CASE (IndVar(iVar))
+  CASE(1:PP_nVar)
+    UJameson(1,:,:,:,:) = U(IndVar(iVar),:,:,:,:)
+  CASE(6) ! Pressure
+    DO iElem=1,nElems
+      DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+        UE(EXT_CONS)=U(:,i,j,k,iElem)
+        UE(EXT_SRHO)=1./UE(EXT_DENS)
+        UE(EXT_VELV)=VELOCITY_HE(UE)
+        UJameson(1,i,j,k,iElem)=PRESSURE_HE(UE)
+      END DO; END DO; END DO! i,j,k=0,PP_N
+    END DO ! iElem
+  CASE(7) ! Entropy
+    DO iElem=1,nElems
+      DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+        UE(EXT_CONS) = U(:,i,j,k,iElem)
+        UE(EXT_SRHO) = 1./UE(EXT_DENS)
+        UE(EXT_VELV) = VELOCITY_HE(UE)
+        UE(EXT_PRES) = PRESSURE_HE(UE)
+        UE(EXT_TEMP) = TEMPERATURE_HE(UE)
+        UJameson(1,i,j,k,iElem) = ENTROPY_HE(UE)
+      END DO; END DO; END DO! i,j,k=0,PP_N
+    END DO ! iElem
+  END SELECT
 
-! dummy parameters to store FV_Elems,FV_Elems_master/slave before overwriting them
-! to force ProlongToFace to use FV version everywhere
-TMP        = FV_Elems
-TMP_master = FV_Elems_master
-TMP_slave  = FV_Elems_slave
-FV_Elems        = 1
-FV_Elems_master = 1
-FV_Elems_slave  = 1
+  ! dummy parameters to store FV_Elems,FV_Elems_master/slave before overwriting them
+  ! to force ProlongToFace to use FV version everywhere
+  TMP        = FV_Elems
+  TMP_master = FV_Elems_master
+  TMP_slave  = FV_Elems_slave
+  FV_Elems        = 1
+  FV_Elems_master = 1
+  FV_Elems_slave  = 1
 
-! prolongate UJameson to the faces (FV everywhere)
-! and bring it from the big to the small mortar faces
+  ! prolongate UJameson to the faces (FV everywhere)
+  ! and bring it from the big to the small mortar faces
 #if USE_MPI
-CALL ProlongToFace1(PP_N,UJameson,UJameson_master,UJameson_slave,L_Minus,L_Plus,doMPiSides=.TRUE.)
+  CALL ProlongToFace1(PP_N,UJameson,UJameson_master,UJameson_slave,L_Minus,L_Plus,doMPiSides=.TRUE.)
 #endif
-CALL ProlongToFace1(PP_N,UJameson,UJameson_master,UJameson_slave,L_Minus,L_Plus,doMPiSides=.FALSE.)
+  CALL ProlongToFace1(PP_N,UJameson,UJameson_master,UJameson_slave,L_Minus,L_Plus,doMPiSides=.FALSE.)
 #if USE_MPI
-! revert the temporal forcing to use FV everywhere in the ProlongToFace
-FV_Elems        = TMP
-FV_Elems_master = TMP_master
-FV_Elems_slave  = TMP_slave
-CALL U_Mortar1(UJameson_master,UJameson_slave,doMPiSides=.TRUE.)
+  ! revert the temporal forcing to use FV everywhere in the ProlongToFace
+  FV_Elems        = TMP
+  FV_Elems_master = TMP_master
+  FV_Elems_slave  = TMP_slave
+  CALL U_Mortar1(UJameson_master,UJameson_slave,doMPiSides=.TRUE.)
 #endif
-CALL U_Mortar1(UJameson_master,UJameson_slave,doMPiSides=.FALSE.)
+  CALL U_Mortar1(UJameson_master,UJameson_slave,doMPiSides=.FALSE.)
 
-! communicate UJameson_master from master to slave
-! communicate UJameson_slave  from slave  to master
+  ! communicate UJameson_master from master to slave
+  ! communicate UJameson_slave  from slave  to master
 #if USE_MPI
-DataSizeSide_loc = (PP_N+1)*(PP_NZ+1)
-CALL StartReceiveMPIData(UJameson_slave ,DataSizeSide_loc,1,nSides,MPIRequest_U(   :,SEND),SendID=2) !  U_slave: slave -> master
-CALL StartSendMPIData(   UJameson_slave ,DataSizeSide_loc,1,nSides,MPIRequest_U(   :,RECV),SendID=2) !  U_slave: slave -> master
-CALL StartReceiveMPIData(UJameson_master,DataSizeSide_loc,1,nSides,MPIRequest_Flux(:,SEND),SendID=1) !  U_master: master -> slave
-CALL StartSendMPIData(   UJameson_master,DataSizeSide_loc,1,nSides,MPIRequest_Flux(:,RECV),SendID=1) !  U_master: master -> slave
-CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U)
-CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux)
+  DataSizeSide_loc = (PP_N+1)*(PP_NZ+1)
+  CALL StartReceiveMPIData(UJameson_slave ,DataSizeSide_loc,1,nSides,MPIRequest_U(   :,SEND),SendID=2) !  U_slave: slave -> master
+  CALL StartSendMPIData(   UJameson_slave ,DataSizeSide_loc,1,nSides,MPIRequest_U(   :,RECV),SendID=2) !  U_slave: slave -> master
+  CALL StartReceiveMPIData(UJameson_master,DataSizeSide_loc,1,nSides,MPIRequest_Flux(:,SEND),SendID=1) !  U_master: master -> slave
+  CALL StartSendMPIData(   UJameson_master,DataSizeSide_loc,1,nSides,MPIRequest_Flux(:,RECV),SendID=1) !  U_master: master -> slave
+  CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U)
+  CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux)
 #endif
 
-! bring UJameson from small to big mortar faces
-DO tf=0,1
-  ! ATTENTION: call Flux_Mortar1 with swapped slave/master arguments, since we use it to bring the small
-  !            side UJameson to the big Mortar UJameson!
-  CALL Flux_Mortar1(UJameson_slave,UJameson_master,doMPISides=(tf.EQ.0),weak=.FALSE.)
-  firstMortarSideID = MERGE(firstMortarMPISide,firstMortarInnerSide,tf.EQ.0)
-   lastMortarSideID = MERGE( lastMortarMPISide, lastMortarInnerSide,tf.EQ.0)
-  DO MortarSideID=firstMortarSideID,lastMortarSideID
-    SELECT CASE(MortarType(1,MortarSideID))
-    CASE(1) !1->4
-      UJameson_slave(:,:,:,MortarSideID) = 0.25 * UJameson_slave(:,:,:,MortarSideID)
-    CASE(2) !1->2 in eta
-      UJameson_slave(:,:,:,MortarSideID) = 0.5  * UJameson_slave(:,:,:,MortarSideID)
-    CASE(3) !1->2 in xi
-      UJameson_slave(:,:,:,MortarSideID) = 0.5  * UJameson_slave(:,:,:,MortarSideID)
-    END SELECT
+  ! bring UJameson from small to big mortar faces
+  DO tf=0,1
+    ! ATTENTION: call Flux_Mortar1 with swapped slave/master arguments, since we use it to bring the small
+    !            side UJameson to the big Mortar UJameson!
+    CALL Flux_Mortar1(UJameson_slave,UJameson_master,doMPISides=(tf.EQ.0),weak=.FALSE.)
+    firstMortarSideID = MERGE(firstMortarMPISide,firstMortarInnerSide,tf.EQ.0)
+     lastMortarSideID = MERGE( lastMortarMPISide, lastMortarInnerSide,tf.EQ.0)
+    DO MortarSideID=firstMortarSideID,lastMortarSideID
+      SELECT CASE(MortarType(1,MortarSideID))
+      CASE(1) !1->4
+        UJameson_slave(:,:,:,MortarSideID) = 0.25 * UJameson_slave(:,:,:,MortarSideID)
+      CASE(2) !1->2 in eta
+        UJameson_slave(:,:,:,MortarSideID) = 0.5  * UJameson_slave(:,:,:,MortarSideID)
+      CASE(3) !1->2 in xi
+        UJameson_slave(:,:,:,MortarSideID) = 0.5  * UJameson_slave(:,:,:,MortarSideID)
+      END SELECT
+    END DO
   END DO
-END DO
 
-! evaluate the Jameson indicator for each element
-DO iElem=1,nElems
-  v(0:PP_N,0:PP_N,0:PP_NZ) = UJameson(1,0:PP_N,0:PP_N,0:PP_NZ,iElem)
+  ! evaluate the Jameson indicator for each element
+  DO iElem=1,nElems
+    v(0:PP_N,0:PP_N,0:PP_NZ) = UJameson(1,0:PP_N,0:PP_N,0:PP_NZ,iElem)
 
 #if PP_dim ==3
-  DO iSide=1,6
+    DO iSide=1,6
 #else
-  DO iSide=2,5
+    DO iSide=2,5
 #endif
-    Flip   = ElemToSide(E2S_FLIP,   iSide,iElem)
-    SideID = ElemToSide(E2S_SIDE_ID,iSide,iElem)
-    IF ((firstBCSide.LE.SideID.AND.SideID.LE.lastBCSide)) THEN ! BC side
-      ! if we are at a BC side, then we have to use the local data, which is prolongated into UJameson_master
-      DO q=0,PP_NZ; DO p=0,PP_N
-        ijk = SideToVol(PP_N,-1,p,q,Flip,iSide,PP_dim)
-        v(ijk(1),ijk(2),ijk(3)) = UJameson_master(1,p,q,SideID)
-      END DO; END DO ! p,q=0,PP_N
-    ELSE
-      IF (Flip.EQ.0) THEN ! non BC side
-        ! Master side => use data from slave side
-        DO q=0,PP_NZ; DO p=0,PP_N
-          ijk = SideToVol(PP_N,-1,p,q,Flip,iSide,PP_dim)
-          v(ijk(1),ijk(2),ijk(3)) = UJameson_slave(1,p,q,SideID)
-        END DO; END DO ! p,q=0,PP_N
-      ELSE
-        ! Slave side => use data from master side
+      Flip   = ElemToSide(E2S_FLIP,   iSide,iElem)
+      SideID = ElemToSide(E2S_SIDE_ID,iSide,iElem)
+      IF ((firstBCSide.LE.SideID.AND.SideID.LE.lastBCSide)) THEN ! BC side
+        ! if we are at a BC side, then we have to use the local data, which is prolongated into UJameson_master
         DO q=0,PP_NZ; DO p=0,PP_N
           ijk = SideToVol(PP_N,-1,p,q,Flip,iSide,PP_dim)
           v(ijk(1),ijk(2),ijk(3)) = UJameson_master(1,p,q,SideID)
         END DO; END DO ! p,q=0,PP_N
+      ELSE
+        IF (Flip.EQ.0) THEN ! non BC side
+          ! Master side => use data from slave side
+          DO q=0,PP_NZ; DO p=0,PP_N
+            ijk = SideToVol(PP_N,-1,p,q,Flip,iSide,PP_dim)
+            v(ijk(1),ijk(2),ijk(3)) = UJameson_slave(1,p,q,SideID)
+          END DO; END DO ! p,q=0,PP_N
+        ELSE
+          ! Slave side => use data from master side
+          DO q=0,PP_NZ; DO p=0,PP_N
+            ijk = SideToVol(PP_N,-1,p,q,Flip,iSide,PP_dim)
+            v(ijk(1),ijk(2),ijk(3)) = UJameson_master(1,p,q,SideID)
+          END DO; END DO ! p,q=0,PP_N
+        END IF
       END IF
-    END IF
-  END DO
+    END DO
 
-  ElemVol = 0.0
-  IndValue(iElem) = 0.
-  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    IntegrationWeight=wGPVol(i,j,k)/sJ(i,j,k,iElem,FV_Elems(iElem))
-    ElemVol = ElemVol + IntegrationWeight
-    vmin = MIN(v(i,j,k),v(i-1,j,k),v(i+1,j,k))
-    vmin = MIN(vmin,    v(i,j-1,k),v(i,j+1,k))
+    ElemVol = 0.0
+    IndValue_calc=TINY(0.)
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+      IntegrationWeight=wGPVol(i,j,k)/sJ(i,j,k,iElem,FV_Elems(iElem))
+      ElemVol = ElemVol + IntegrationWeight
+      vmin = MIN(v(i,j,k),v(i-1,j,k),v(i+1,j,k))
+      vmin = MIN(vmin,    v(i,j-1,k),v(i,j+1,k))
 #if PP_dim == 3
-    vmin = MIN(vmin,    v(i,j,k-1),v(i,j,k+1))
+      vmin = MIN(vmin,    v(i,j,k-1),v(i,j,k+1))
 #endif
-    vmax = MAX(v(i,j,k),v(i-1,j,k),v(i+1,j,k))
-    vmax = MAX(vmax,    v(i,j-1,k),v(i,j+1,k))
+      vmax = MAX(v(i,j,k),v(i-1,j,k),v(i+1,j,k))
+      vmax = MAX(vmax,    v(i,j-1,k),v(i,j+1,k))
 #if PP_dim == 3
-    vmax = MAX(vmax,    v(i,j,k-1),v(i,j,k+1))
+      vmax = MAX(vmax,    v(i,j,k-1),v(i,j,k+1))
 #endif
-    IndValue(iElem) = IndValue(iElem) + ABS(vmin-2.*v(i,j,k)+vmax)/ABS(vmin+2.*v(i,j,k)+vmax) * IntegrationWeight
-  END DO; END DO; END DO! i,j,k=0,PP_N
-  IndValue(iElem) = IndValue(iElem) / ElemVol
-END DO ! iElem
+      IndValue_calc = IndValue_calc + ABS(vmin-2.*v(i,j,k)+vmax)/ABS(vmin+2.*v(i,j,k)+vmax) * IntegrationWeight
+    END DO; END DO; END DO! i,j,k=0,PP_N
+    IndValue_calc = IndValue_calc / ElemVol
+    ! Choose the maximum of all variables
+    IndValue(iElem) = MAX(IndValue(iElem),IndValue_calc)
+  END DO ! iElem
+END DO ! nIndVars
 END FUNCTION JamesonIndicator
 
 

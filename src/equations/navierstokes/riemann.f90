@@ -53,6 +53,7 @@ INTEGER,PARAMETER      :: PRM_RIEMANN_HLLE                = 5
 INTEGER,PARAMETER      :: PRM_RIEMANN_HLLEM               = 6
 #ifdef SPLIT_DG
 INTEGER,PARAMETER      :: PRM_RIEMANN_CH                  = 7
+INTEGER,PARAMETER      :: PRM_RIEMANN_IR                  = 8
 INTEGER,PARAMETER      :: PRM_RIEMANN_Average             = 0
 #endif
 
@@ -107,6 +108,7 @@ CALL addStrListEntry('Riemann','hllem',                      PRM_RIEMANN_HLLEM)
 CALL addStrListEntry('Riemann','roeentropygshockfix',        PRM_RIEMANN_ROEENTROPYGSHOCKFIX)
 #ifdef SPLIT_DG
 CALL addStrListEntry('Riemann','ch',                         PRM_RIEMANN_CH)
+CALL addStrListEntry('Riemann','ir',                         PRM_RIEMANN_IR)
 CALL addStrListEntry('Riemann','avg',                        PRM_RIEMANN_Average)
 #endif
 CALL prms%CreateIntFromStringOption('RiemannBC', "Riemann solver used for boundary conditions: Same, LF, Roe, RoeEntropyFix, "//&
@@ -123,6 +125,7 @@ CALL addStrListEntry('RiemannBC','hllem',                    PRM_RIEMANN_HLLEM)
 CALL addStrListEntry('RiemannBC','roeentropygshockfix',      PRM_RIEMANN_ROEENTROPYGSHOCKFIX)
 #ifdef SPLIT_DG
 CALL addStrListEntry('RiemannBC','ch',                       PRM_RIEMANN_CH)
+CALL addStrListEntry('RiemannBC','ir',                       PRM_RIEMANN_IR)
 CALL addStrListEntry('RiemannBC','avg',                      PRM_RIEMANN_Average)
 #endif
 CALL addStrListEntry('RiemannBC','same',                     PRM_RIEMANN_SAME)
@@ -210,6 +213,8 @@ CASE(PRM_RIEMANN_ROEENTROPYFIX)
   Riemann_pointer => Riemann_RoeEntropyFix
 CASE(PRM_RIEMANN_ROEL2)
   Riemann_pointer => Riemann_RoeL2
+CASE(PRM_RIEMANN_IR)
+  Riemann_pointer => Riemann_IR
 CASE(PRM_RIEMANN_CH)
   Riemann_pointer => Riemann_CH
 CASE(PRM_RIEMANN_Average)
@@ -231,6 +236,8 @@ CASE(PRM_RIEMANN_ROE)
   RiemannBC_pointer => Riemann_Roe
 CASE(PRM_RIEMANN_ROEENTROPYFIX)
   RiemannBC_pointer => Riemann_RoeEntropyFix
+CASE(PRM_RIEMANN_IR)
+  RiemannBC_pointer => Riemann_IR
 CASE(PRM_RIEMANN_ROEL2)
   RiemannBC_pointer => Riemann_RoeL2
 CASE(PRM_RIEMANN_CH)
@@ -1301,6 +1308,98 @@ F(ENER)      = F(ENER)      - 0.5*LambdaMax*( &
          +0.5*rhoMean*sKappaM1*(1./beta_RR - 1./beta_LL))
 
 END SUBROUTINE Riemann_CH
+
+!=================================================================================================================================
+!> Approximate riemann solver for the Ismael and Roe split flux (in entropy variables)
+!=================================================================================================================================
+PPURE SUBROUTINE Riemann_IR(F_L,F_R,U_LL,U_RR,F)
+! MODULES
+USE MOD_EOS_Vars      ,ONLY: Kappa,KappaM1,KappaP1
+USE MOD_SplitFlux     ,ONLY: SplitDGSurface_pointer,GetLogMean
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!---------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+                                               !> extended solution vector on the left/right side of the interface
+REAL,DIMENSION(PP_2Var),INTENT(IN) :: U_LL,U_RR
+                                               !> advection fluxes on the left/right side of the interface
+REAL,DIMENSION(PP_nVar),INTENT(IN) :: F_L,F_R
+REAL,DIMENSION(PP_nVar),INTENT(OUT):: F        !< resulting Riemann flux
+!---------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                 :: iVar
+REAL                    :: sR,sL,rho_pR,rho_pL,vR(5),vL(5)
+REAL,DIMENSION(5)       :: z_LL,z_RR
+REAL                    :: z1LogMean,z5LogMean,z1Mean
+REAL                    :: rhoHat,uHat,vHat,wHat,pHat,p2Hat,hHat,ahat
+REAL                    :: Rhat(5,5),dHat(5),vJump(5),diss(5)
+!=================================================================================================================================
+sR     =  LOG(U_RR(EXT_PRES)) - kappa*LOG(U_RR(EXT_DENS))
+sL     =  LOG(U_LL(EXT_PRES)) - kappa*LOG(U_LL(EXT_DENS))
+rho_pR =  U_RR(EXT_DENS)/U_RR(EXT_PRES)
+rho_pL =  U_LL(EXT_DENS)/U_LL(EXT_PRES)
+vR(1)  =  (kappa-sR)/(kappaM1) - 0.5*rho_pR*(SUM(U_RR(EXT_VELV)*U_RR(EXT_VELV)))
+vL(1)  =  (kappa-sL)/(kappaM1) - 0.5*rho_pL*(SUM(U_LL(EXT_VELV)*U_LL(EXT_VELV)))
+vR(2)  =  rho_pR*U_RR(EXT_VEL1)
+vL(2)  =  rho_pL*U_LL(EXT_VEL1)
+vR(3)  =  rho_pR*U_RR(EXT_VEL2)
+vL(3)  =  rho_pL*U_LL(EXT_VEL2)
+vR(4)  =  rho_pR*U_RR(EXT_VEL3)
+vL(4)  =  rho_pL*U_LL(EXT_VEL3)
+vR(5)  = -rho_pR
+vL(5)  = -rho_pL
+
+! Compute parameter vector for left and right state
+z_LL(1) = SQRT(U_LL(EXT_DENS)/U_LL(EXT_PRES))
+z_LL(2) = z_LL(1)*U_LL(EXT_VEL1)
+z_LL(3) = z_LL(1)*U_LL(EXT_VEL2)
+z_LL(4) = z_LL(1)*U_LL(EXT_VEL3)
+z_LL(5) = SQRT(U_LL(EXT_DENS)*U_LL(EXT_PRES))
+z_RR(1) = SQRT(U_RR(EXT_DENS)/U_RR(EXT_PRES))
+z_RR(2) = z_RR(1)*U_RR(EXT_VEL1)
+z_RR(3) = z_RR(1)*U_RR(EXT_VEL2)
+z_RR(4) = z_RR(1)*U_RR(EXT_VEL3)
+z_RR(5) = SQRT(U_RR(EXT_DENS)*U_RR(EXT_PRES))
+
+! Compute averaged auxilliary variables
+CALL getLogMean(z_LL(1),z_RR(1),z1LogMean)
+CALL getLogMean(z_LL(5),z_RR(5),z5LogMean)
+z1Mean  = 0.5*(z_LL(1)+z_RR(1))
+rhoHat  = z1Mean*z5LogMean
+uHat    = 0.5*(z_LL(2)+z_RR(2))/z1Mean
+vHat    = 0.5*(z_LL(3)+z_RR(3))/z1Mean
+wHat    = 0.5*(z_LL(4)+z_RR(4))/z1Mean
+pHat    = 0.5*(z_LL(5)+z_RR(5))/z1Mean
+p2Hat   = 1./(2.*Kappa)*(KappaP1 * z5LogMean/z1LogMean + KappaM1 * pHat)
+aHat    = SQRT(kappa*p2Hat/rhoHat)
+hHat    = Kappa*p2Hat/(rhoHat*KappaM1)+0.5*(uHat**2.+vHat**2.+wHat**2.)
+
+! Matrix of right eigenvectors
+RHat(1,:) = (/ 1.               , 1.                                      , 0.   ,  0.  , 1.               /)
+RHat(2,:) = (/ uHat - aHat      , uHat                                    , 0.   ,  0.  , uHat + aHat      /)
+RHat(3,:) = (/ vHat             , vHat                                    , 1.   ,  0.  , vHat             /)
+RHat(4,:) = (/ wHat             , wHat                                    , 0.   ,  1.  , wHat             /)
+RHat(5,:) = (/ HHat - uHat*aHat , 0.5*(uHat*uHat + vHat*vHat + wHat*wHat) , vHat , wHat , HHat + uHat*aHat /)
+! Diagonal scaling matrix where DHat = ABS(\Lambda)S
+DHat(1) = 0.5*ABS(uHat - aHat)*rhoHat/kappa
+DHat(2) = ABS(uHat)*(kappaM1/kappa)*rhoHat!*rhoHat*rhoHat
+DHat(3) = ABS(uHat)*pHat!*rhoHat
+DHat(4) = DHat(3)
+DHat(5) = 0.5*ABS(uHat + aHat)*rhoHat/kappa
+! Compute the dissipation term RHat*DHat*RHat^T*[v]
+vJump = vR - vL
+diss  = RHat(1,:)*vJump(1) + RHat(2,:)*vJump(2) + RHat(3,:)*vJump(3) + RHat(4,:)*vJump(4) + RHat(5,:)*vJump(5)
+DO iVar = 1,5
+  diss(iVar) = DHat(iVar)*diss(iVar)
+END DO
+diss = RHat(:,1)*diss(1) + RHat(:,2)*diss(2) + RHat(:,3)*diss(3) + RHat(:,4)*diss(4) + RHat(:,5)*diss(5)
+
+! get split flux
+CALL SplitDGSurface_pointer(U_LL,U_RR,F)
+
+! assemble Roe flux
+F= F - 0.5*diss
+END SUBROUTINE Riemann_IR
 #endif /*SPLIT_DG*/
 
 
