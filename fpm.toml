@@ -68,6 +68,8 @@ per-file-ignores  = [# FLEXI
                      "src/readintools/isovaryingstring.f90:T042",               # ISO Varying String needs assumed size variables
                      "src/readintools/stringtools.f90:T042",                    # ISO Varying String needs assumed size variables
                      "src/testcase/*/testcase.f90:T041",                        # Test case needs assumed size variables
+                     "src/equations/burgers/getboundaryflux.f90:M001",          # subroutine not contained within (sub)module or program
+                     "src/equations/burgers/getboundaryflux.f90:T001",          # program missing 'implicit none'
                      # POSTI tools
                      "posti/common/fftw/fftw.f90:T001",                         # FFTW needs interface definition
                      "posti/mergetimeaverages/timeavg.f90:T001",                # False positive

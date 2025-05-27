@@ -66,6 +66,7 @@ INTEGER,PARAMETER      :: PRM_SPLITDG_DU          = 2
 INTEGER,PARAMETER      :: PRM_SPLITDG_KG          = 3
 INTEGER,PARAMETER      :: PRM_SPLITDG_PI          = 4
 INTEGER,PARAMETER      :: PRM_SPLITDG_CH          = 5
+INTEGER,PARAMETER      :: PRM_SPLITDG_IR          = 6
 
 PUBLIC:: DefineParametersSplitDG
 PUBLIC:: InitSplitDG
@@ -143,6 +144,9 @@ CASE(PRM_SPLITDG_PI)
 CASE(PRM_SPLITDG_CH)
   SplitDGVolume_pointer  => SplitVolumeFluxCH
   SplitDGSurface_pointer => SplitSurfaceFluxCH
+CASE(PRM_SPLITDG_IR)
+  SplitDGVolume_pointer  => SplitVolumeFluxIR
+  SplitDGSurface_pointer => SplitSurfaceFluxIR
 CASE DEFAULT
   CALL CollectiveStop(__STAMP__,&
     'SplitDG formulation not defined!')
@@ -839,6 +843,114 @@ F(ENER) = F(DENS)*HMean
 
 END SUBROUTINE SplitSurfaceFluxCH
 
+!==================================================================================================================================
+!> Computes the Split-Flux retaining the entropy conserving formulation of Ismail and Roe
+!==================================================================================================================================
+PPURE SUBROUTINE SplitVolumeFluxIR(URef,UPrimRef,U,UPrim,MRef,M,Flux)
+! MODULES
+USE MOD_PreProc
+USE MOD_EOS_Vars, ONLY:KappaP1,Kappa,KappaM1,sKappaM1
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef,U ! conserved variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef,UPrim ! primitive variables
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef,M ! metric terms
+REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux ! flux in reverence space
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                                    :: qeff ! auxilery variable
+REAL,DIMENSION(1:3)                     :: Meff ! effective metric terms
+REAL,DIMENSION(5)                       :: z,zRef
+REAL                                    :: z1LogMean,z5LogMean,z1Mean
+REAL                                    :: rhoHat,uHat,vHat,wHat,pHat,p2Hat,hHat
+!==================================================================================================================================
+! Compute parameter vector for left and right state
+z(1) = SQRT(U(1)/UPrim(5))
+z(2) = z(1)*UPrim(2)
+z(3) = z(1)*UPrim(3)
+z(4) = z(1)*UPrim(4)
+z(5) = SQRT(U(1)*UPrim(5))
+zRef(1) = SQRT(URef(1)/UPrimRef(5))
+zRef(2) = zRef(1)*UPrimRef(2)
+zRef(3) = zRef(1)*UPrimRef(3)
+zRef(4) = zRef(1)*UPrimRef(4)
+zRef(5) = SQRT(URef(1)*UPrimRef(5))
+
+! Compute averaged auxilliary variables
+CALL getLogMean(z(1),zRef(1),z1LogMean)
+CALL getLogMean(z(5),zRef(5),z5LogMean)
+z1Mean  = 0.5*(z(1)+zRef(1))
+rhoHat  = z1Mean*z5LogMean
+uHat    = 0.5*(z(2)+zRef(2))/z1Mean
+vHat    = 0.5*(z(3)+zRef(3))/z1Mean
+wHat    = 0.5*(z(4)+zRef(4))/z1Mean
+pHat    = 0.5*(z(5)+zRef(5))/z1Mean
+p2Hat   = 1./(2.*Kappa)*(KappaP1 * z5LogMean/z1LogMean + KappaM1 * pHat)
+hHat    = Kappa*p2Hat/(rhoHat*KappaM1)+0.5*(uHat**2.+vHat**2.+wHat**2.)
+
+! compute auxilery variables
+Meff(:) = 0.5*(MRef(:)+M(:))
+qeff    = rhoHat*(uHat*Meff(1)+vHat*Meff(2)+wHat*Meff(3))
+
+! compute flux
+Flux(1) = qeff
+Flux(2) = qeff*uHat + pHat*Meff(1)
+Flux(3) = qeff*vHat + pHat*Meff(2)
+Flux(4) = qeff*wHat + pHat*Meff(3)
+Flux(5) = qeff*hHat
+
+END SUBROUTINE SplitVolumeFluxIR
+
+!==================================================================================================================================
+!> Computes the surface flux for the entropy conserving formulation of Ismail and Roe
+!==================================================================================================================================
+PPURE SUBROUTINE SplitSurfaceFluxIR(U_LL,U_RR,F)
+! MODULES
+USE MOD_PreProc
+USE MOD_EOS_Vars, ONLY:KappaP1,Kappa,KappaM1,sKappaM1
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL,U_RR ! variables at the left-/right-Surfaces
+REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F ! resulting flux
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL,DIMENSION(5)                   :: z_LL,z_RR
+REAL                                :: z1LogMean,z5LogMean,z1Mean
+REAL                                :: rhoHat,uHat,vHat,wHat,pHat,p2Hat,hHat
+!==================================================================================================================================
+! Compute parameter vector for left and right state
+z_LL(1) = SQRT(U_LL(DENS)/U_LL(PRES))
+z_LL(2) = z_LL(1)*U_LL(VEL1)
+z_LL(3) = z_LL(1)*U_LL(VEL2)
+z_LL(4) = z_LL(1)*U_LL(VEL3)
+z_LL(5) = SQRT(U_LL(DENS)*U_LL(PRES))
+z_RR(1) = SQRT(U_RR(DENS)/U_RR(PRES))
+z_RR(2) = z_RR(1)*U_RR(VEL1)
+z_RR(3) = z_RR(1)*U_RR(VEL2)
+z_RR(4) = z_RR(1)*U_RR(VEL3)
+z_RR(5) = SQRT(U_RR(DENS)*U_RR(PRES))
+
+! Compute averaged auxilliary variables
+CALL getLogMean(z_LL(1),z_RR(1),z1LogMean)
+CALL getLogMean(z_LL(5),z_RR(5),z5LogMean)
+z1Mean  = 0.5*(z_LL(1)+z_RR(1))
+rhoHat  = z1Mean*z5LogMean
+uHat    = 0.5*(z_LL(2)+z_RR(2))/z1Mean
+vHat    = 0.5*(z_LL(3)+z_RR(3))/z1Mean
+wHat    = 0.5*(z_LL(4)+z_RR(4))/z1Mean
+pHat    = 0.5*(z_LL(5)+z_RR(5))/z1Mean
+p2Hat   = 1./(2.*Kappa)*(KappaP1 * z5LogMean/z1LogMean + KappaM1 * pHat)
+hHat    = Kappa*p2Hat/(rhoHat*KappaM1)+0.5*(uHat**2.+vHat**2.+wHat**2.)
+
+!compute flux
+F(1) = rhoHat*uHat
+F(2) = F(1)*uHat + pHat
+F(3) = F(1)*vHat
+F(4) = F(1)*wHat
+F(5) = F(1)*hHat
+END SUBROUTINE SplitSurfaceFluxIR
 
 !==================================================================================================================================
 !> auxilary function for calculating the logarithmic mean numerically stable according to Ismail and Roe

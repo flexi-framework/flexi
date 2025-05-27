@@ -476,7 +476,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Lifting_Vars ,ONLY: gradUx_master,gradUx_slave,gradUy_master,gradUy_slave
 USE MOD_FV_Vars      ,ONLY: FV_Elems_Sum,FV_surf_gradU_master,FV_surf_gradU_slave
-USE MOD_Mesh_Vars    ,ONLY: nSides,NormVec,TangVec1,firstMortarInnerSide,lastMPISide_MINE
+USE MOD_Mesh_Vars    ,ONLY: NormVec,TangVec1,firstMortarInnerSide,lastMPISide_MINE
 #if PP_dim==3
 USE MOD_Mesh_Vars    ,ONLY: TangVec2
 USE MOD_Lifting_Vars ,ONLY: gradUz_master,gradUz_slave

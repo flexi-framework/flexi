@@ -111,16 +111,16 @@ IF(.NOT.validHDF5) &
 
 ! Read in parameters of restart solution
 CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-#if EQNSYSNR != 1
+#if EQNSYSNR != 1 && EQNSYSNR != 4
 ! Check if the file is a time-averaged file
 CALL DatasetExists(File_ID,'Mean',RestartMean)
 ! Read in attributes
 IF (.NOT.RestartMean) THEN
-#endif /* EQNSYSNR != 1 */
+#endif /* EQNSYSNR != 1 && EQNSYSNR != 4 */
   CALL GetDataProps(nVar_Restart,N_Restart,nElems_Restart,NodeType_Restart)
   RestartMode = 1
-  SWRITE(UNIT_stdOut,'(A)') ' | Restarting from state file...'
-#if EQNSYSNR != 1
+  SWRITE(UNIT_StdOut,'(A)') ' | Restarting from state file ...'
+#if EQNSYSNR != 1 && EQNSYSNR != 4
 ELSE
   CALL GetDataProps(nVar_Restart,N_Restart,nElems_Restart,NodeType_Restart,'Mean')
   ! Get the VarNames to compare later
@@ -173,7 +173,7 @@ ELSE
     RestartMode = 0
   END IF
 END IF
-#endif /* EQNSYSNR != 1 */
+#endif /* EQNSYSNR != 1 && EQNSYSNR != 4 */
 
 CALL CloseDataFile()
 

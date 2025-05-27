@@ -7,6 +7,10 @@ SET(TOOL_MAIN "posti_walldistance.f90")
 
 MESSAGE(STATUS "Posti: building ${TOOL_NAME} tool.")
 
+FILE(GLOB ${TOOL_NAME}F90 ${TOOL_DIR}/walldistance.f90
+                          ${TOOL_DIR}/posti_walldistance.f90
+                          ${TOOL_DIR}/walldistance_vars.f90)
+
 # Build an object library from the Fortran source files
 ADD_LIBRARY(               ${TOOL_NAME}libF90 OBJECT ${${TOOL_NAME}F90})
 TARGET_INCLUDE_DIRECTORIES(${TOOL_NAME}libF90 PRIVATE ${TOOL_DIR})

@@ -78,10 +78,10 @@ U=0.
 Ut=0.
 
 #if PP_EntropyVars==1
-ALLOCATE(V   (PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems))
+ALLOCATE(V   (PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 V=0.
-ALLOCATE(V_master(PP_nVar,0:PP_N,0:PP_N,1:nSides))
-ALLOCATE(V_slave( PP_nVar,0:PP_N,0:PP_N,1:nSides))
+ALLOCATE(V_master(PP_nVar,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(V_slave( PP_nVar,0:PP_N,0:PP_NZ,1:nSides))
 V_master=0.
 V_slave=0.
 #endif /*if PP_EntropyVars==1*/
