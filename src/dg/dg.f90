@@ -328,11 +328,11 @@ REAL,INTENT(IN)                 :: t                      !< Current time
 IF(FilterType.GT.0) CALL Filter_Pointer(U,FilterMat)
 
 ! 2. Convert Volume solution to primitive
-CALL ConsToPrim(PP_N,UPrim,U)
+CALL ConsToPrim(PP_N,UPrim,U)   
 
 ! Compute entropy variables
 #if PP_EntropyVars == 1
-Call ConsToEntropy(PP_N,V,U)
+Call ConsToEntropy(PP_N,V,U)    
 #endif
 
 ! 3. Prolong the solution to the face integration points for flux computation (and do overlapping communication)
