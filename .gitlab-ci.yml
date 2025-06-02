@@ -109,10 +109,16 @@ fortitude:
   script:
     - fortitude --version
     - fortitude check --output-format=grouped src
-  allow_failure: false
   rules:
-    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH
+    # do not allow failure on master branch
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
       allow_failure: false
+    # do not allow failure when about to merge
+    - if: '$CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH'
+      allow_failure: false
+    # allow failure on feature branch
+    - if: '$CI_COMMIT_BRANCH == $CI_COMMIT_BRANCH'
+      allow_failure: true
 
 ruff:
   <<: *defaults_python
