@@ -55,7 +55,9 @@ INTEGER,PARAMETER    :: SIDE_BCID=5
 PUBLIC:: ReadMesh
 PUBLIC:: BuildPartition
 PUBLIC:: ReadIJKSorting
+#if USE_MPI
 PUBLIC:: ELEMIPROC
+#endif /*USE_MPI*/
 !==================================================================================================================================
 
 CONTAINS

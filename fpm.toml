@@ -55,7 +55,7 @@ ignore            = ["C003",    # C003: implicit-external-procedures
                     ]
 [extra.fortitude.check.per-file-ignores]
 "src/**/*_vars.f90"                                 = ["C132"]           # Vars files need to be public
-"src/globals/globals.f90"                           = ["C132", "T001"]   # False positive
+"src/globals/globals.f90"                           = ["C132"]           # Globals needs to public
 "src/globals/lapack.f90"                            = ["T041"]           # LAPACK needs assumed size variables
 "src/io_hdf5/io_hdf5.f90"                           = ["C131"]           # HDF5 needs to be public
 "src/io_hdf5/hdf5_output.f90"                       = ["T041"]           # Userblock needs assumed size variables
@@ -69,6 +69,3 @@ ignore            = ["C003",    # C003: implicit-external-procedures
 "posti/common/fftw/fftw.f90"                        = ["C132"]           # FFTW needs to be public
 "posti/recordpoints/prepare/parameters.f90"         = ["C132"]           # Vars files need to be public
 "posti/recordpoints/visualize/parameters.f90"       = ["C132"]           # Vars files need to be public
-# "posti/mergetimeaverages/timeavg.f90"               = ["T001"]           # False positive
-# "posti/visu/calc.f90"                               = ["S021"]           # False positive
-# "posti/visu/io_hdf5/visu_hdf5_output.f90"           = ["T001"]           # False positive
