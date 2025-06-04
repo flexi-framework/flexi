@@ -23,6 +23,7 @@ USE MOD_ReadInTools
 USE ISO_C_BINDING
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
 INTERFACE
@@ -51,6 +52,7 @@ PUBLIC:: DefineParametersOutput
 PUBLIC:: InitOutput
 PUBLIC:: PrintPercentage
 PUBLIC:: PrintStatusLine
+PUBLIC:: PrintAnalyze
 PUBLIC:: Visualize
 PUBLIC:: InitOutputToFile
 PUBLIC:: OutputToFile

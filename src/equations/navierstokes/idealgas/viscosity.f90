@@ -29,11 +29,13 @@ USE MOD_EOS_Vars,     ONLY: mu0,R
 #elif PP_VISC == 2
 USE MOD_EOS_Vars,     ONLY: mu0,R,ExpoSuth
 #endif
+#endif /*PARABOLIC*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
+#if PARABOLIC
 PUBLIC:: mu0
 #if PP_VISC == 1
 PUBLIC:: R

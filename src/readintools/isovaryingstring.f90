@@ -57,6 +57,7 @@ USE,INTRINSIC :: iso_c_binding
 ! No implicit typing
 
   implicit none
+  private
 
 ! Parameter definitions
 
@@ -266,9 +267,9 @@ USE,INTRINSIC :: iso_c_binding
      module procedure split_CH
   end interface split
 
-  interface c_ptr_new
-     module procedure c_ptr_new_VS
-  end interface c_ptr_new
+  ! interface c_ptr_new
+  !    module procedure c_ptr_new_VS
+  ! end interface c_ptr_new
 
 
 ! Access specifiers
@@ -2605,14 +2606,13 @@ contains
   END SUBROUTINE split_CH
 
 
-  FUNCTION c_ptr_new_VS(string) RESULT(c_ptr_new)
-  TYPE(varying_string),INTENT(in),TARGET :: string
-  TYPE(c_ptr) :: c_ptr_new
-
-  c_ptr_new = C_LOC(string%chars(1))
-
-  END FUNCTION c_ptr_new_VS
+  ! FUNCTION c_ptr_new_VS(string) RESULT(c_ptr_new)
+  ! TYPE(varying_string),INTENT(in),TARGET :: string
+  ! TYPE(c_ptr) :: c_ptr_new
+  !
+  ! c_ptr_new = C_LOC(string%chars(1))
+  !
+  ! END FUNCTION c_ptr_new_VS
 
 
 end module MOD_ISO_VARYING_STRING
-

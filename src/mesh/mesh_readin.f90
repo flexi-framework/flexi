@@ -27,6 +27,7 @@ MODULE MOD_Mesh_Readin
 USE MOD_HDF5_Input
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 !> @defgroup eleminfo ElemInfo parameters
 !>  Named parameters for ElemInfo array in mesh file
@@ -54,6 +55,7 @@ INTEGER,PARAMETER    :: SIDE_BCID=5
 PUBLIC:: ReadMesh
 PUBLIC:: BuildPartition
 PUBLIC:: ReadIJKSorting
+PUBLIC:: ELEMIPROC
 !==================================================================================================================================
 
 CONTAINS

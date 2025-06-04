@@ -39,11 +39,11 @@ CONTAINS
 END MODULE MOD_Jac_Ex_MortarU
 
 MODULE MOD_Jac_Ex_MortarGrad
-#if PARABOLIC
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
+#if PARABOLIC
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTERFACE Jacobian_MortarGrad
   MODULE PROCEDURE Jacobian_Mortar
@@ -62,11 +62,11 @@ CONTAINS
 END MODULE MOD_Jac_Ex_MortarGrad
 
 MODULE MOD_Jac_Ex_MortarLifting
-#if PARABOLIC
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
+#if PARABOLIC
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTERFACE Jacobian_MortarLifting
   MODULE PROCEDURE Jacobian_Mortar
@@ -85,11 +85,11 @@ CONTAINS
 END MODULE MOD_Jac_Ex_MortarLifting
 
 MODULE MOD_Jac_Ex_MortarScalar
-#if PARABOLIC
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
+#if PARABOLIC
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTERFACE Jacobian_MortarScalar
   MODULE PROCEDURE Jacobian_Mortar

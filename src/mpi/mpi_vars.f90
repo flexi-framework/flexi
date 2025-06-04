@@ -20,12 +20,14 @@ MODULE MOD_MPI_Vars
 ! MODULES
 USE mpi_f08
 ! IMPLICIT VARIABLE HANDLING
+#endif /*USE_MPI*/
 IMPLICIT NONE
 PUBLIC
 SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
+#if USE_MPI
 TYPE(MPI_Request),ALLOCATABLE :: MPIRequest_U(:,:)        !< communication handle for the surface solution
 TYPE(MPI_Request),ALLOCATABLE :: MPIRequest_Flux(:,:)     !< communication handle for the surface flux
 TYPE(MPI_Request),ALLOCATABLE :: MPIRequest_Avg2dSend(:)  !< communication handle for averaging in 2D
