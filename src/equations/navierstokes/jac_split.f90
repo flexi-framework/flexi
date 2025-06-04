@@ -20,11 +20,11 @@
 !> implemented analytically, or a finite difference approach is used to get an approximate jacobian.
 !===================================================================================================================================
 MODULE MOD_Jac_Split
-#ifdef SPLIT_DG
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
+#ifdef SPLIT_DG
 !----------------------------------------------------------------------------------------------------------------------------------
 
 PUBLIC:: Jac_Split

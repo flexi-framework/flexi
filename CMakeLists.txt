@@ -9,7 +9,7 @@ SET(PROJECT_URL  "https://www.flexi-project.org")
 # =========================================================================
 # CMake configuration
 # =========================================================================
-CMAKE_MINIMUM_REQUIRED(VERSION 3.10.0)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.20.0)
 
 MESSAGE(STATUS "This is ${PROJECT_NAME} (v${PROJECT_VER})")
 MESSAGE(STATUS "Generating with [cmake] (v${CMAKE_VERSION})")

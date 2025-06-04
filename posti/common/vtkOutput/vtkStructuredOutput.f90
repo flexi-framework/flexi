@@ -25,6 +25,7 @@ MODULE MOD_VTKStructuredOutput
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
 TYPE RPBox
@@ -54,6 +55,7 @@ TYPE RPPoint
   REAL,ALLOCATABLE        :: Val(:,:)
 END TYPE RPPoint
 
+PUBLIC:: RPBox,RPPlane,RPLine,RPPoint
 PUBLIC:: WriteStructuredDataToVTK
 !===================================================================================================================================
 

@@ -292,4 +292,5 @@ CALL FinalizeMPI()
 CALL MPI_FINALIZE(iError)
 IF (iError.NE.MPI_SUCCESS) STOP 'MPI finalize error'
 #endif
-END PROGRAM
+
+END PROGRAM Posti_Visu

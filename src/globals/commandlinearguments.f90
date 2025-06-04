@@ -21,12 +21,16 @@ MODULE MOD_Commandline_Arguments
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
 ! Global variables for command line argument parsing
 INTEGER                              :: nArgs              !< number of command line argumens
 CHARACTER(LEN=255),ALLOCATABLE       :: Args(:)            !< command line arguments
 
+PUBLIC:: nArgs, Args
+PUBLIC:: ParseCommandlineArguments
+PUBLIC:: FinalizeCommandlineArguments
 !==================================================================================================================================
 
 CONTAINS

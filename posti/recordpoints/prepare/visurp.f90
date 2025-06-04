@@ -21,6 +21,7 @@ MODULE MOD_VisuRP
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
 PUBLIC:: VisuRP

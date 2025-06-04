@@ -19,11 +19,11 @@
 !> Prolongate solution of FV subcells to the DG element boundary using the slopes of the 2nd order reconstruction.
 !==================================================================================================================================
 MODULE MOD_FV_ProlongToFace
-#if FV_RECONSTRUCT
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
+#if FV_RECONSTRUCT
 !----------------------------------------------------------------------------------------------------------------------------------
 
 PUBLIC:: FV_ProlongToDGFace

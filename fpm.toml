@@ -41,39 +41,31 @@ suffixes          = ["f90", "t90"]
 
 # Linting
 [extra.fortitude.check]
-select            = ["E", "F", "M", "S", "T"]
-ignore            = ["E001",  # E001: syntax-error   > disabled because of false positives with PreProcessor
-                     "M011",  # M011: use-all
-                     "S001",  # S001: line-too-long
-                     "S041",  # S041: old-style-array-literal
-                     "S051",  # S051: deprecated-relational-operator
-                     "S102",  # S102: incorrect-space-before-comment
-                     "T003",  # T003: superfluous-implicit-none
+select            = ["C", "E", "MOD", "OB", "PORT", "S"]
+ignore            = ["C003",    # C003: implicit-external-procedures
+                     "C021",    # C021: no-real-suffix
+                     "C022",    # C022: implicit-real-kind
+                     "C121",    # C121: use-all
+                     "E001",    # E001: syntax-error   > disabled because of false positives with PreProcessor
+                     "S001",    # S001: line-too-long
+                     "MOD011",  # MOD011: old-style-array-literal
+                     "MOD021",  # MOD021: deprecated-relational-operator
+                     "S102",    # S102: incorrect-space-before-comment
+                     "S201",    # S201: superfluous-implicit-none
                     ]
-per-file-ignores  = [# FLEXI
-                     "src/areas/areas.f90:T001",                                # False positive
-                     "src/areas/areas.f90:M001",                                # False positive
-                     "src/equations/linearscalaradvection/exactfunc.f90:T001",  # False positive
-                     "src/equations/navierstokes/jac_split.f90:T001",           # False positive
-                     "src/fv/fv_prolongtoface.f90:T001",                        # False positive
-                     "src/filter/pplimiter.f90:T001",                           # False positive
-                     "src/globals/globals.f90:T001",                            # False positive
-                     "src/globals/lapack.f90:T041",                             # LAPACK needs assumed size variables
-                     "src/indicator/indicator.f90:T012",                        # False positive
-                     "src/io_hdf5/hdf5_output.f90:T041",                        # Userblock needs assumed size variables
-                     "src/mesh/metrics.f90:T001",                               # False positive
-                     "src/mpi/mpi_vars.f90:T001",                               # False positive
-                     "src/output/output.f90:T041",                              # Userblock needs assumed size variables
-                     "src/precond/jac_ex/jac_ex_mortar.f90:T001",               # False positive
-                     "src/readintools/isovaryingstring.f90:T042",               # ISO Varying String needs assumed size variables
-                     "src/readintools/stringtools.f90:T042",                    # ISO Varying String needs assumed size variables
-                     "src/testcase/*/testcase.f90:T041",                        # Test case needs assumed size variables
-                     "src/equations/burgers/getboundaryflux.f90:M001",          # subroutine not contained within (sub)module or program
-                     "src/equations/burgers/getboundaryflux.f90:T001",          # program missing 'implicit none'
-                     # POSTI tools
-                     "posti/common/fftw/fftw.f90:T001",                         # FFTW needs interface definition
-                     "posti/mergetimeaverages/timeavg.f90:T001",                # False positive
-                     "posti/visu/calc.f90:S021",                                # False positive
-                     "posti/visu/io_hdf5/visu_hdf5_output.f90:T001",            # False positive
-                    ]
-
+[extra.fortitude.check.per-file-ignores]
+"src/**/*_vars.f90"                                 = ["C132"]           # Vars files need to be public
+"src/globals/globals.f90"                           = ["C132"]           # Globals needs to public
+"src/globals/lapack.f90"                            = ["T041"]           # LAPACK needs assumed size variables
+"src/io_hdf5/io_hdf5.f90"                           = ["C131"]           # HDF5 needs to be public
+"src/io_hdf5/hdf5_output.f90"                       = ["T041"]           # Userblock needs assumed size variables
+"src/output/output.f90"                             = ["T041"]           # Userblock needs assumed size variables
+"src/globals/preprocessing.f90"                     = ["C132"]           # PreProc needs to be public
+"src/readintools/isovaryingstring.f90"              = ["T042"]           # ISO Varying String needs assumed size variables
+"src/readintools/stringtools.f90"                   = ["T042"]           # ISO Varying String needs assumed size variables
+"src/testcase/*/testcase.f90"                       = ["T041"]           # Test case needs assumed size variables
+# POSTI too
+"posti/**/*_vars.f90"                               = ["C132"]           # Vars files need to be public
+"posti/common/fftw/fftw.f90"                        = ["C132"]           # FFTW needs to be public
+"posti/recordpoints/prepare/parameters.f90"         = ["C132"]           # Vars files need to be public
+"posti/recordpoints/visualize/parameters.f90"       = ["C132"]           # Vars files need to be public

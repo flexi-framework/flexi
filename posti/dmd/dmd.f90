@@ -15,6 +15,7 @@
 #include "flexi.h"
 MODULE MOD_DMD
 ! MODULES
+USE MOD_Globals, ONLY: DP
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
@@ -85,7 +86,7 @@ IMPLICIT NONE
 INTEGER                          :: iFile,iVar,offset,nDim,i,j
 REAL,ALLOCATABLE                 :: Utmp(:,:,:,:,:)
 REAL                             :: time,starttime
-DOUBLE PRECISION,ALLOCATABLE     :: Ktmp(:)
+REAL(KIND=DP),ALLOCATABLE        :: Ktmp(:)
 CHARACTER(LEN=255)               :: FileType
 INTEGER,ALLOCATABLE              :: VarSortTimeAvg(:)
 !===================================================================================================================================
@@ -264,12 +265,12 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                          :: i,M,N,LDA,LDU,LDVT,LWMAX,INFO,LWORK,nFilter
 INTEGER,ALLOCATABLE              :: IWORK(:),IPIV(:),filter(:)
-DOUBLE PRECISION,ALLOCATABLE     :: WORK(:)
-DOUBLE PRECISION,ALLOCATABLE     :: SigmaInv(:,:),SigmaMat(:,:),USVD(:,:),WSVD(:,:),SigmaSVD(:)
-DOUBLE PRECISION,ALLOCATABLE     :: USVDTmp(:,:),WSVDTmp(:,:),SigmaSVDTmp(:)
+REAL(KIND=DP),ALLOCATABLE        :: WORK(:)
+REAL(KIND=DP),ALLOCATABLE        :: SigmaInv(:,:),SigmaMat(:,:),USVD(:,:),WSVD(:,:),SigmaSVD(:)
+REAL(KIND=DP),ALLOCATABLE        :: USVDTmp(:,:),WSVDTmp(:,:),SigmaSVDTmp(:)
 COMPLEX,ALLOCATABLE              :: WORKC(:)
 REAL,ALLOCATABLE                 :: RWORK(:),SortVar(:,:)
-DOUBLE PRECISION,ALLOCATABLE     :: KTmp(:,:),RGlobMat(:,:),Rglob,Rsnap1,Rsnap2
+REAL(KIND=DP),ALLOCATABLE        :: KTmp(:,:),RGlobMat(:,:),Rglob,Rsnap1,Rsnap2
 COMPLEX,ALLOCATABLE              :: STilde(:,:),STildeWork(:,:),eigSTilde(:),VL(:,:),VR(:,:)
 COMPLEX,ALLOCATABLE              :: Vand(:,:),qTmp(:,:)
 COMPLEX,ALLOCATABLE              :: P(:,:),PhiTmp(:,:),alphaTmp(:)

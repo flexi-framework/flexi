@@ -18,6 +18,7 @@
 !===================================================================================================================================
 MODULE MOD_DMD_Vars
 ! MODULES
+USE MOD_Globals, ONLY: DP
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PUBLIC
@@ -62,8 +63,7 @@ COMPLEX ,ALLOCATABLE             :: Phi(:,:)                  !> State of the DM
 COMPLEX ,ALLOCATABLE             :: lambda(:)                 !> Logarithmic mapping of the eigenvales
 COMPLEX ,ALLOCATABLE             :: sigmaSort(:)              !> Eigenvalues of the DMD-Modes
 COMPLEX ,ALLOCATABLE             :: alpha(:)                  !> Coefficients of the linearcombination of the data sequence
-DOUBLE PRECISION,ALLOCATABLE     :: K(:,:)                    !> Snapshot-Matrix
-
+REAL(KIND=DP),ALLOCATABLE        :: K(:,:)                    !> Snapshot-Matrix
 
 !===================================================================================================================================
 END MODULE MOD_DMD_Vars

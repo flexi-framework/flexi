@@ -101,6 +101,7 @@ stages:
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "lint": Run the linters
+# policy: allow failure without stopping pipeline only on feature branches
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 fortitude:
   <<: *defaults_python
@@ -108,6 +109,16 @@ fortitude:
   script:
     - fortitude --version
     - fortitude check --output-format=grouped src
+  rules:
+    # Skip running this job for merge requests targeting the default branch
+  - if: '$CI_MERGE_REQUEST_ID && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH'
+    when: never
+    # For feature branches, allow failure without stopping the pipeline
+  - if: '$CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH'
+    allow_failure: true
+    # For master branch, do not allow failure without stopping the pipeline
+  - when: always
+    allow_failure: false
 
 ruff:
   <<: *defaults_python
