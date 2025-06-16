@@ -111,7 +111,7 @@ SET(LIB_TYPE STATIC)
 STRING(TOLOWER ${LIB_TYPE} SEARCH_TYPE)
 
 IF (NOT LIBS_BUILD_HDF5)
-  FIND_PACKAGE(HDF5 NAMES hdf5 COMPONENTS C Fortran ${SEARCH_TYPE} QUIET PATH_SUFFIXES share/cmake)
+  FIND_PACKAGE(HDF5 NAMES hdf5 COMPONENTS C Fortran ${SEARCH_TYPE} QUIET PATH_SUFFIXES share/cmake HDF5_PREFER_PARALLEL LIBS_USE_MPI)
 
   IF (NOT HDF5_FOUND)
   # Try to find the configure version
@@ -387,7 +387,7 @@ IF(LIBS_HDF5_CMAKE)
   ELSE()
     MESSAGE(STATUS "Compiling with ${HDF5_BUILD_STATUS} [HDF5] (v${HDF5_VERSION}) without parallel support")
   ENDIF()
-  LIST(APPEND linkedlibs ${HDF5_C_${LIB_TYPE}_LIBRARY} ${HDF5_FORTRAN_${LIB_TYPE}_LIBRARY} )
+  LIST(APPEND linkedlibs ${HDF5_C_${LIB_TYPE}_LIBRARY} ${HDF5_FORTRAN_${LIB_TYPE}_LIBRARY})
   # For newer versions of HDF5, the CMake package does not explicitly export the libraries
   LIST(APPEND linkedlibs ${HDF5_LIBRARIES} )
 # HDF5 build with configure
