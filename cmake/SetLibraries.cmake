@@ -105,6 +105,11 @@ MARK_AS_ADVANCED(FORCE LIBS_EXTERNAL_LIB_DIR)
 # =========================================================================
 # Try to find system HDF5 using CMake
 SET(LIBS_HDF5_CMAKE TRUE)
+
+# Set type of library to look up, STATIC/SHARED
+SET(LIB_TYPE STATIC)
+STRING(TOLOWER ${LIB_TYPE} SEARCH_TYPE)
+
 IF (NOT LIBS_BUILD_HDF5)
   FIND_PACKAGE(HDF5 NAMES hdf5 COMPONENTS C Fortran ${SEARCH_TYPE} QUIET PATH_SUFFIXES share/cmake)
 
@@ -130,10 +135,6 @@ ELSE()
   MESSAGE (STATUS "[HDF5] not found in system libraries")
   SET(LIBS_BUILD_HDF5 ON  CACHE BOOL "Compile and build HDF5 library")
 ENDIF()
-
-# Set type of library to look up, STATIC/SHARED
-SET(LIB_TYPE STATIC)
-STRING(TOLOWER ${LIB_TYPE} SEARCH_TYPE)
 
 # We support two methods for finding HDF5:
 # a) the version built using configure scripts and b) using CMake
@@ -165,6 +166,13 @@ IF(NOT LIBS_BUILD_HDF5)
     FIND_PACKAGE(HDF5 COMPONENTS C Fortran)
     # In case CMake did not find HDF5 here, it will generate an error by itself
   ENDIF()
+
+  # CMake might return found but only the shared library
+  # > Adjust the LIBS_TYPE accordingly
+  IF(NOT HDF5_static_C_FOUND)
+    SET(LIB_TYPE SHARED)
+  ENDIF()
+
   # Hide all the HDF5 libs paths
   # MARK_AS_ADVANCED(FORCE HDF5_DIR)
   MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_dl)
@@ -215,6 +223,11 @@ IF(NOT LIBS_BUILD_HDF5)
       SET(HDF5_HAS_MPIF08 FALSE)
     ENDIF()
   ENDIF()
+
+  # Unset leftover paths from old CMake runs
+  UNSET(HDF5_LIBRARIES)
+  # For newer versions of HDF5, the CMake package does not explicitly export the libraries
+  LIST(APPEND HDF5_LIBRARIES ${HDF5_hdf5_LIBRARY_hdf5} ${HDF5_Fortran_LIBRARY_hdf5_fortran_RELEASE} ${HDF5_Fortran_LIBRARY_hdf5_fortran} ${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_z_LIBRARY_RELEASE} -ldl)
 
   SET(HDF5_BUILD_STATUS "system")
 # Build HDF5 in FLEXI
@@ -375,6 +388,8 @@ IF(LIBS_HDF5_CMAKE)
     MESSAGE(STATUS "Compiling with ${HDF5_BUILD_STATUS} [HDF5] (v${HDF5_VERSION}) without parallel support")
   ENDIF()
   LIST(APPEND linkedlibs ${HDF5_C_${LIB_TYPE}_LIBRARY} ${HDF5_FORTRAN_${LIB_TYPE}_LIBRARY} )
+  # For newer versions of HDF5, the CMake package does not explicitly export the libraries
+  LIST(APPEND linkedlibs ${HDF5_LIBRARIES} )
 # HDF5 build with configure
 ELSE()
   INCLUDE_DIRECTORIES(BEFORE ${HDF5_INCLUDE_DIR_FORTRAN} ${HDF5_INCLUDE_DIR})
