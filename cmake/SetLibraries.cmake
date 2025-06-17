@@ -7,6 +7,8 @@ IF("${GIT_ORIGIN}" MATCHES ".iag.uni-stuttgart.de" AND "${GIT_ORIGIN}" MATCHES "
   SET(LIBS_DLPATH "git@gitlab.iag.uni-stuttgart.de:")
 ENDIF()
 
+# Unset leftover variables from previous runs
+UNSET(linkedlibs CACHE)
 
 # =========================================================================
 # MPI
@@ -106,113 +108,77 @@ MARK_AS_ADVANCED(FORCE LIBS_EXTERNAL_LIB_DIR)
 # Try to find system HDF5 using CMake
 SET(LIBS_HDF5_CMAKE TRUE)
 
-# Set type of library to look up, STATIC/SHARED
-SET(LIB_TYPE STATIC)
-STRING(TOLOWER ${LIB_TYPE} SEARCH_TYPE)
+# Set preferences for HDF5 library
+SET(HDF5_USE_STATIC_LIBRARIES TRUE)
+SET(HDF5_PREFER_PARALLEL      ${LIBS_USE_MPI})
 
-IF (NOT LIBS_BUILD_HDF5)
-  FIND_PACKAGE(HDF5 NAMES hdf5 COMPONENTS C Fortran ${SEARCH_TYPE} QUIET PATH_SUFFIXES share/cmake HDF5_PREFER_PARALLEL LIBS_USE_MPI)
-
-  IF (NOT HDF5_FOUND)
-  # Try to find the configure version
-    SET(LIBS_HDF5_CMAKE FALSE)
-    FIND_PACKAGE(HDF5 COMPONENTS C Fortran QUIET)
-  ENDIF()
-ENDIF()
 # Hide all the HDF5 libs paths
 MARK_AS_ADVANCED(FORCE HDF5_DIR)
-IF (HDF5_FOUND)
-  # CMake version found
-  IF(NOT LIBS_HDF5_CMAKE AND ${CMAKE_VERSION} VERSION_LESS "3.10.0")
-    MESSAGE (WARNING "HDF5 built with CMake was found! This feature is only supported for CMake 3.10+ and HDF5 1.10.2+!")
-  ENDIF()
-  MESSAGE (STATUS "HDF5 C libs:${HDF5_FOUND} static:${HDF5_static_C_FOUND} and shared:${HDF5_shared_C_FOUND}")
-  MESSAGE (STATUS "HDF5 Fortran libs: static:${HDF5_static_Fortran_FOUND} and shared:${HDF5_shared_Fortran_FOUND}")
-  MESSAGE (STATUS "h5diff found:${HDF5_DIFF_EXECUTABLE}")
-  MESSAGE (STATUS "[HDF5] found in system libraries")
-  SET(LIBS_BUILD_HDF5 OFF CACHE BOOL "Compile and build HDF5 library")
-ELSE()
-  MESSAGE (STATUS "[HDF5] not found in system libraries")
-  SET(LIBS_BUILD_HDF5 ON  CACHE BOOL "Compile and build HDF5 library")
-ENDIF()
+MARK_AS_ADVANCED(FORCE HDF5_C_INCLUDE_DIR)
+MARK_AS_ADVANCED(FORCE HDF5_DIFF_EXECUTABLE)
+MARK_AS_ADVANCED(FORCE HDF5_Fortran_INCLUDE_DIR)
+MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_dl)
+MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_hdf5)
+MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_m)
+MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_sz)
+MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_z)
+MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_dl)
+MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_hdf5)
+MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_hdf5_fortran)
+MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_m)
+MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_sz)
+MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_z)
+MARK_AS_ADVANCED(FORCE HDF5_hdf5_LIBRARY_hdf5)
+MARK_AS_ADVANCED(FORCE HDF5_hdf5_LIBRARY_RELEASE)
+MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_hdf5_fortran)
+MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_hdf5_fortran_RELEASE)
 
-# We support two methods for finding HDF5:
-# a) the version built using configure scripts and b) using CMake
-# Support for CMake-built HDF5 is limited to version >1.10.2 which require at CMake >3.10
+IF (NOT LIBS_BUILD_HDF5)
+  FIND_PACKAGE(HDF5 QUIET COMPONENTS C Fortran)
+
+  IF (HDF5_FOUND)
+    MESSAGE (STATUS "[HDF5] found in system libraries [${HDF5_DIR}]")
+    SET(LIBS_BUILD_HDF5 OFF CACHE BOOL "Compile and build HDF5 library")
+  ELSE()
+    MESSAGE (STATUS "[HDF5] not found in system libraries")
+    SET(LIBS_BUILD_HDF5 ON  CACHE BOOL "Compile and build HDF5 library")
+  ENDIF()
+ENDIF()
 
 # Use system HDF5
 IF(NOT LIBS_BUILD_HDF5)
   # Unset leftover paths from old CMake runs
   UNSET(HDF5_VERSION CACHE)
+  UNSET(HDF5_DEFINITIONS)
   UNSET(HDF5_LIBRARIES)
   UNSET(HDF5_INCLUDE_DIR_FORTRAN)
   UNSET(HDF5_INCLUDE_DIR)
   UNSET(HDF5_DIFF_EXECUTABLE)
 
-  # Try to find the CMake version
-  SET(LIBS_HDF5_CMAKE TRUE)
-  FIND_PACKAGE(HDF5 NAMES hdf5 COMPONENTS C Fortran ${SEARCH_TYPE} QUIET PATH_SUFFIXES share/cmake)
-  # CMake version found
-  IF (HDF5_FOUND)
-    IF(${CMAKE_VERSION} VERSION_LESS "3.10.0")
-      MESSAGE (WARNING "HDF5 built with CMake was found! This feature is only supported for CMake 3.10+ and HDF5 1.10.2+ !")
-    ENDIF()
-    MESSAGE (STATUS "HDF5 C libs:${HDF5_FOUND} static:${HDF5_static_C_FOUND} and shared:${HDF5_shared_C_FOUND}")
-    MESSAGE (STATUS "HDF5 Fortran libs: static:${HDF5_static_Fortran_FOUND} and shared:${HDF5_shared_Fortran_FOUND}")
-    MESSAGE (STATUS "h5diff found:${HDF5_DIFF_EXECUTABLE}")
-  ELSE()
-    # Try to find the configure version
-    SET(LIBS_HDF5_CMAKE FALSE)
-    FIND_PACKAGE(HDF5 COMPONENTS C Fortran)
-    # In case CMake did not find HDF5 here, it will generate an error by itself
-  ENDIF()
+  # If library is specifically requested, it is required
+  FIND_PACKAGE(HDF5 REQUIRED COMPONENTS C Fortran)
 
-  # CMake might return found but only the shared library
-  # > Adjust the LIBS_TYPE accordingly
-  IF(NOT HDF5_static_C_FOUND)
-    SET(LIB_TYPE SHARED)
-  ENDIF()
-
-  # Hide all the HDF5 libs paths
-  # MARK_AS_ADVANCED(FORCE HDF5_DIR)
-  MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_dl)
-  MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_hdf5)
-  MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_m)
-  MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_sz)
-  MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_z)
-  MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_dl)
-  MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_hdf5)
-  MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_hdf5_fortran)
-  MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_m)
-  MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_sz)
-  MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_z)
-
-  # Check if HDF5_Fortran_LIBRARY is set
-  IF("${HDF5_Fortran_LIBRARY_hdf5_fortran}" STREQUAL "")
-    CMAKE_PATH(GET HDF5_INCLUDE_DIR PARENT_PATH HDF5_ROOT_DIR)
-    CMAKE_PATH(APPEND HDF5_ROOT_DIR "lib/libhdf5_fortran.so" OUTPUT_VARIABLE HDF5_Fortran_LIBRARY_hdf5_fortran)
-  ENDIF()
-
-  # Check if HDF5 includes support for mpi_f08
-  UNSET(HDF5_HAS_MPIF08)
-  UNSET(HDF5_MPI_VERSION)
+  # Check if HDF5 is parallel
+  # > HDF5_IS_PARALLEL is set by FIND_PACKAGE(HDF5)
   IF(LIBS_USE_MPI)
-    IF(APPLE)
-      EXECUTE_PROCESS(COMMAND nm -gU      ${HDF5_Fortran_LIBRARY_hdf5_fortran} COMMAND grep mpio_f   OUTPUT_VARIABLE HDF5_USES_MPIF   RESULT_VARIABLE GREP_RESULT OUTPUT_STRIP_TRAILING_WHITESPACE)
-    ELSE()
-      EXECUTE_PROCESS(COMMAND readelf -Ws ${HDF5_Fortran_LIBRARY_hdf5_fortran} COMMAND grep mpio_f   OUTPUT_VARIABLE HDF5_USES_MPIF   RESULT_VARIABLE GREP_RESULT OUTPUT_STRIP_TRAILING_WHITESPACE)
+    IF(NOT HDF5_IS_PARALLEL)
+      MESSAGE(FATAL_ERROR "HDF5 is not built with parallel support. Please install a parallel version of HDF5 or build it yourself.")
     ENDIF()
 
-    IF(GREP_RESULT EQUAL 0)
-      SET(HDF5_IS_PARALLEL TRUE)
-    ELSE()
-      SET(HDF5_IS_PARALLEL FALSE)
+    # If HDF5 Fortran library is not set, get it from the Fortran target
+    IF("${HDF5_Fortran_LIBRARY_hdf5_fortran}" STREQUAL "")
+      GET_PROPERTY(HDF5_Fortran_LIBRARY_hdf5_fortran TARGET hdf5::hdf5_fortran PROPERTY LOCATION)
     ENDIF()
 
-    IF(APPLE)
-      EXECUTE_PROCESS(COMMAND nm -gU      ${HDF5_Fortran_LIBRARY_hdf5_fortran} COMMAND grep mpio_f08 OUTPUT_VARIABLE HDF5_USES_MPIF08 RESULT_VARIABLE GREP_RESULT OUTPUT_STRIP_TRAILING_WHITESPACE)
+    IF(NOT "${HDF5_Fortran_LIBRARY_hdf5_fortran}" STREQUAL "")
+      IF(APPLE)
+        EXECUTE_PROCESS(COMMAND nm -gU      ${HDF5_Fortran_LIBRARY_hdf5_fortran} COMMAND grep mpio_f08 OUTPUT_VARIABLE HDF5_USES_MPIF08 RESULT_VARIABLE GREP_RESULT OUTPUT_STRIP_TRAILING_WHITESPACE)
+      ELSE()
+        EXECUTE_PROCESS(COMMAND readelf -Ws ${HDF5_Fortran_LIBRARY_hdf5_fortran} COMMAND grep mpio_f08 OUTPUT_VARIABLE HDF5_USES_MPIF08 RESULT_VARIABLE GREP_RESULT OUTPUT_STRIP_TRAILING_WHITESPACE)
+      ENDIF()
+    # Cray might still not provide anything, set mpi_f08 to false
     ELSE()
-      EXECUTE_PROCESS(COMMAND readelf -Ws ${HDF5_Fortran_LIBRARY_hdf5_fortran} COMMAND grep mpio_f08 OUTPUT_VARIABLE HDF5_USES_MPIF08 RESULT_VARIABLE GREP_RESULT OUTPUT_STRIP_TRAILING_WHITESPACE)
+      SET(GREP_RESULT 1)
     ENDIF()
 
     IF(GREP_RESULT EQUAL 0)
@@ -224,152 +190,97 @@ IF(NOT LIBS_BUILD_HDF5)
     ENDIF()
   ENDIF()
 
-  # Unset leftover paths from old CMake runs
-  UNSET(HDF5_LIBRARIES)
-  # For newer versions of HDF5, the CMake package does not explicitly export the libraries
-  LIST(APPEND HDF5_LIBRARIES ${HDF5_hdf5_LIBRARY_hdf5} ${HDF5_Fortran_LIBRARY_hdf5_fortran_RELEASE} ${HDF5_Fortran_LIBRARY_hdf5_fortran} ${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_z_LIBRARY_RELEASE} -ldl)
-
+  # Set build status to system
   SET(HDF5_BUILD_STATUS "system")
-# Build HDF5 in FLEXI
 ELSE()
+  MESSAGE(STATUS "Setting [HDF5] to self-build")
   # Origin pointing to Github
   IF("${GIT_ORIGIN}" MATCHES ".github.com")
     SET (HDF5DOWNLOAD "https://github.com/HDFGroup/hdf5.git")
   ELSE()
     SET (HDF5DOWNLOAD ${LIBS_DLPATH}libs/hdf5.git )
   ENDIF()
-  SET (HDF5_DOWNLOAD ${HDF5DOWNLOAD} CACHE STRING "HDF5 Download-link")
+  SET(HDF5_DOWNLOAD ${HDF5DOWNLOAD} CACHE STRING "HDF5 Download-link")
+  MESSAGE(STATUS "Setting [HDF5] download link: ${HDF5DOWNLOAD}")
   MARK_AS_ADVANCED(FORCE HDF5_DOWNLOAD)
 
-  #SET HDF5_TAG depending on MPI Version
-  IF(LIBS_USE_MPI)
-    # HDF5 1.12.0 and greater is compatible with OpenMPI 4.0.0 and greater
-    IF("${LIBS_MPI_NAME}" MATCHES "OpenMPI")
-      IF (${MPI_C_LIBRARY_VERSION} VERSION_GREATER_EQUAL "4.0.0")
-        SET (HDF5_TAG "hdf5-1.14.5" CACHE STRING   "HDF5 version tag")
-        SET (HDF5_VERSION "1.14"    CACHE INTERNAL "HDF5 version number")
-      ELSE()
-        SET (HDF5_TAG "hdf5-1_10_6" CACHE STRING   "HDF5 version tag")
-        SET (HDF5_VERSION "1.10"    CACHE INTERNAL "HDF5 version number")
-      ENDIF()
-    ELSE()
-      SET (HDF5_TAG "hdf5-1.14.5" CACHE STRING   "HDF5 version tag")
-      SET (HDF5_VERSION "1.14"    CACHE INTERNAL "HDF5 version number")
-    ENDIF()
-    MESSAGE (STATUS "Setting [HDF5] to tag ${HDF5_TAG} to be compatible with detected [${LIBS_MPI_NAME}] (v${MPI_C_LIBRARY_VERSION})")
-  ELSE()
-    SET (HDF5_TAG "hdf5-1.14.5" CACHE STRING   "HDF5 version tag")
-    SET (HDF5_VERSION "1.14"    CACHE INTERNAL "HDF5 version number")
-    MESSAGE (STATUS "Setting [HDF5] to tag ${HDF5_TAG} as no MPI support was requested")
-  ENDIF()
+  # Set HDF5 tag / version
+  SET(HDF5_STR "1.14.5")
+  SET(HDF5_TAG "hdf5_${HDF5_STR}" CACHE STRING   "HDF5 version tag")
   MARK_AS_ADVANCED(FORCE HDF5_TAG)
+  MESSAGE(STATUS "Setting [HDF5] download tag:  ${HDF5_TAG}")
 
   # Set HDF5 build dir
-  SET(LIBS_HDF5_DIR  ${LIBS_EXTERNAL_LIB_DIR}/HDF5/build)
+  SET(LIBS_HDF5_DIR ${LIBS_EXTERNAL_LIB_DIR}/HDF5/build)
 
   # Check if HDF5 was already built
-  IF (NOT EXISTS "${LIBS_HDF5_DIR}/lib/libhdf5.a")
-    # Set if HDF5 should be built in parallel
-    IF(LIBS_USE_MPI)
-      SET(LIBS_HDF5PARALLEL --enable-parallel)
-      SET(LIBS_HDF5FC ${MPI_Fortran_COMPILER})
-      SET(LIBS_HDF5CC ${MPI_C_COMPILER})
-      SET(HDF5_IS_PARALLEL TRUE)
-    ELSE()
-      UNSET(LIBS_HDF5PARALLEL)
-      SET(LIBS_HDF5FC ${CMAKE_Fortran_COMPILER})
-      SET(LIBS_HDF5CC ${CMAKE_C_COMPILER} )
-      SET(HDF5_IS_PARALLEL FALSE)
+  UNSET(HDF5_FOUND)
+  UNSET(HDF5_VERSION)
+  UNSET(HDF5_INCLUDE_DIR)
+  UNSET(HDF5_LIBRARIES)
+  UNSET(HDF5_Fortran_LIBRARIES)
+  FIND_PACKAGE(HDF5 ${HDF5_STR} QUIET COMPONENTS C Fortran HDF5_PREFER_PARALLEL=${LIBS_USE_MPI} PATHS ${LIBS_HDF5_DIR} NO_DEFAULT_PATH)
+
+  # CMake does not correctly pick-up HDF5 parallel support, thus set it manually
+  SET(HDF5_IS_PARALLEL ${LIBS_USE_MPI})
+  IF(HDF5_IS_PARALLEL)
+    SET(HDF5_MPI_VERSION "[mpi_f08]")
+    SET(HDF5_HAS_MPIF08 TRUE)
+  ENDIF()
+
+  IF(HDF5_FOUND)
+    # If re-running CMake, it might wrongly pick-up the system HDF5
+    IF(NOT EXISTS ${LIBS_HDF5_DIR}/lib/libhdf5.so)
+      UNSET(HDF5_FOUND)
+      SET(HDF5_VERSION     ${HDF5_STR})
     ENDIF()
 
-    ## Set parallel build with maximum number of threads
-    #INCLUDE(ProcessorCount)
-    #PROCESSORCOUNT(N)
+    # CMake might fail to set the HDF5 paths
+    IF(HDF5_FOUND AND "${HDF5_LIBRARIES}" STREQUAL "")
+      SET(HDF5_LIBRARIES         ${LIBS_HDF5_DIR}/lib/libhdf5.so ${LIBS_HDF5_DIR}/lib/libhdf5.a ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.so ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.a)
+      SET(HDF5_Fortran_LIBRARIES ${LIBS_HDF5_DIR}/lib/libhdf5.so ${LIBS_HDF5_DIR}/lib/libhdf5.a ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.so ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.a)
+    ENDIF()
+  ENDIF()
 
-    # Optional Features:
-    #   --enable-silent-rules   less verbose build output (undo: "make V=1")
-    #   --enable-build-mode=(debug|production|clean)
-    #                           Sets the build mode. Debug turns on symbols, API
-    #                           tracing, asserts, and debug optimization, as well as
-    #                           several other minor configure options that aid in
-    #                           debugging. Production turns high optimizations on.
-    #                           Clean turns nothing on and disables optimization
-    #                           (i.e.: a 'clean slate' configuration). All these
-    #                           settings can be overridden by using specific
-    #                           configure flags. [default=production]
-    #   --disable-dependency-tracking
-    #                           speeds up one-time build
+  # Check again if HDF5 was found
+  IF(NOT HDF5_FOUND)
+    # Set parallel build with maximum number of threads
+    INCLUDE(ProcessorCount)
+    PROCESSORCOUNT(N)
 
     # Let CMake take care of download, configure and build
     EXTERNALPROJECT_ADD(HDF5
-      GIT_REPOSITORY ${HDF5_DOWNLOAD}
-      GIT_TAG ${HDF5_TAG}
-      GIT_PROGRESS TRUE
+      GIT_REPOSITORY     ${HDF5_DOWNLOAD}
+      GIT_TAG            ${HDF5_TAG}
+      GIT_PROGRESS       TRUE
       ${${GITSHALLOW}}
-      PREFIX ${LIBS_HDF5_DIR}
-      UPDATE_COMMAND ""
-      CONFIGURE_COMMAND ${LIBS_HDF5_DIR}/src/HDF5/configure F9X=${LIBS_HDF5FC} FC=${LIBS_HDF5FC} CC=${LIBS_HDF5CC} --prefix=${LIBS_HDF5_DIR} --libdir=${LIBS_HDF5_DIR}/lib --disable-dependency-tracking --enable-build-mode=production --enable-silent-rules --enable-hl --enable-fortran --enable-unsupported --with-pic ${LIBS_HDF5PARALLEL}
-      BUILD_BYPRODUCTS ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.a ${LIBS_HDF5_DIR}/lib/libhdf5.a ${LIBS_HDF5_DIR}/lib/libhdf5.so ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.so ${LIBS_HDF5_DIR}/bin/h5diff
-      # Configure explicitly requires GNU make
-      # BUILD_COMMAND make
+      PREFIX             ${LIBS_HDF5_DIR}
+      INSTALL_DIR        ${LIBS_HDF5_DIR}
+      UPDATE_COMMAND     ""
+      # HDF5 explicitely needs "make" to configure
+      CMAKE_GENERATOR    "Unix Makefiles"
+      BUILD_COMMAND      make -j${N}
+      # Set the CMake arguments for HDF5
+      CMAKE_ARGS         -DCMAKE_BUILD_TYPE=None -DCMAKE_INSTALL_PREFIX=${LIBS_HDF5_DIR} -DHDF5_INSTALL_CMAKE_DIR=lib/cmake/hdf5 -DCMAKE_POLICY_DEFAULT_CMP0175=OLD -DBUILD_STATIC_LIBS=ON -DHDF5_BUILD_FORTRAN=ON -DHDF5_ENABLE_Z_LIB_SUPPORT=OFF -DHDF5_ENABLE_SZIP_SUPPORT=OFF -DHDF5_ENABLE_PARALLEL=${LIBS_USE_MPI}
+      # Set the build byproducts
+      INSTALL_BYPRODUCTS ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.a ${LIBS_HDF5_DIR}/lib/libhdf5.a ${LIBS_HDF5_DIR}/lib/libhdf5.so ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.so ${LIBS_HDF5_DIR}/bin/h5diff
     )
-    SET(LIBS_HDF5_CMAKE FALSE)
 
-    # CMake HDF5 is fast but not yet reliable. The following section can be enabled once HDF5 promotes the CMake option to stable
-    #EXTERNALPROJECT_ADD(HDF5
-    #  GIT_REPOSITORY ${HDF5DOWNLOAD}
-    #  GIT_TAG ${HDF5_TAG}
-    #  GIT_PROGRESS TRUE
-    #  PREFIX ${LIBS_HDF5_DIR}
-    #  UPDATE_COMMAND ""
-    #  CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${LIBS_HDF5_DIR} -DCMAKE_C_COMPILER=${LIBS_HDF5CC} -DCMAKE_Fortran_COMPILER=${LIBS_HDF5FC} -DBUILD-TESTING=OFF -DHDF5_BUILD_EXAMPLES=OFF -DHDF5_BUILD_TOOLS=OFF -DHDF5_BUILD_FORTRAN=ON -DHDF5_ENABLE_PARALLEL=ON
-    #  BUILD_COMMAND ${MAKE}
-    #)
-    # SET(LIBS_HDF5_CMAKE TRUE)
-
+    # Add CMake HDF5 to the list of self-built externals
     LIST(APPEND SELFBUILTEXTERNALS HDF5)
+
+    # Set HDF5 version and MPI support
+    SET(HDF5_VERSION ${HDF5_STR})
+
+    # Set HDF5 paths
+    SET(HDF5_INCLUDE_DIR       ${LIBS_HDF5_DIR}/include)
+    SET(HDF5_DIFF_EXECUTABLE   ${LIBS_HDF5_DIR}/bin/h5diff)
+    SET(HDF5_LIBRARIES         ${LIBS_HDF5_DIR}/lib/libhdf5.so ${LIBS_HDF5_DIR}/lib/libhdf5.a ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.so ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.a)
+    SET(HDF5_Fortran_LIBRARIES ${LIBS_HDF5_DIR}/lib/libhdf5.so ${LIBS_HDF5_DIR}/lib/libhdf5.a ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.so ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.a)
   ENDIF()
-  # Always set for self-build libraries
-  SET(LIBS_HDF5_CMAKE FALSE)
 
-  # Set HDF5 paths
-  SET(HDF5_C_INCLUDE_DIR                        ${LIBS_HDF5_DIR}/include)
-  SET(HDF5_DIFF_EXECUTABLE                      ${LIBS_HDF5_DIR}/bin/h5diff)
-  SET(HDF5_Fortran_INCLUDE_DIR                  ${LIBS_HDF5_DIR}/include)
-  SET(HDF5_hdf5_LIBRARY_hdf5                    ${LIBS_HDF5_DIR}/lib/libhdf5.so)
-  SET(HDF5_hdf5_LIBRARY_RELEASE                 ${LIBS_HDF5_DIR}/lib/libhdf5.a)
-  SET(HDF5_Fortran_LIBRARY_hdf5_fortran         ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.so)
-  SET(HDF5_Fortran_LIBRARY_hdf5_fortran_RELEASE ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.a)
-
-  MARK_AS_ADVANCED(FORCE HDF5_C_INCLUDE_DIR)
-  MARK_AS_ADVANCED(FORCE HDF5_DIFF_EXECUTABLE)
-  MARK_AS_ADVANCED(FORCE HDF5_Fortran_INCLUDE_DIR)
-  MARK_AS_ADVANCED(FORCE HDF5_hdf5_LIBRARY_hdf5)
-  MARK_AS_ADVANCED(FORCE HDF5_hdf5_LIBRARY_RELEASE)
-  MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_hdf5_fortran)
-  MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_hdf5_fortran_RELEASE)
-  # Unset leftover paths from old CMake runs
-  UNSET(HDF5_LIBRARIES)
-  UNSET(HDF5_INCLUDE_DIR_FORTRAN)
-  UNSET(HDF5_INCLUDE_DIR)
-  UNSET(HDF5_DIFF_EXECUTABLE)
-  # Add HDF5 path to include directories for linking
-  LIST(APPEND HDF5_INCLUDE_DIR_FORTRAN ${HDF5_Fortran_INCLUDE_DIR} ${HDF5_C_INCLUDE_DIR})
-  LIST(APPEND HDF5_INCLUDE_DIR  ${HDF5_C_INCLUDE_DIR})
-  MARK_AS_ADVANCED(FORCE HDF5_z_LIBRARY_RELEASE)
-  # Add ZLIB to include paths for HDF5 data compression
-  FIND_LIBRARY(HDF5_z_LIBRARY_RELEASE z)
-  LIST(APPEND HDF5_LIBRARIES ${HDF5_hdf5_LIBRARY_hdf5} ${HDF5_Fortran_LIBRARY_hdf5_fortran_RELEASE} ${HDF5_Fortran_LIBRARY_hdf5_fortran} ${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_z_LIBRARY_RELEASE} -ldl)
-
+  # Set build status to self-built
   SET(HDF5_BUILD_STATUS "self-built")
-
-  # Check if HDF5 includes support for mpi_f08
-  UNSET(HDF5_HAS_MPIF08)
-  UNSET(HDF5_MPI_VERSION)
-  IF(LIBS_USE_MPI)
-    SET(HDF5_HAS_MPIF08 FALSE)
-    SET(HDF5_MPI_VERSION "[mpi]")
-  ENDIF()
 ENDIF()
 
 # HDF5 1.14 references build directory
@@ -378,27 +289,14 @@ IF(HDF5_VERSION VERSION_EQUAL "1.14")
   LIST(FILTER HDF5_INCLUDE_DIR EXCLUDE REGEX "src/H5FDsubfiling")
 ENDIF()
 
-# Actually add the HDF5 paths (system/custom built) to the linking paths
-# HDF5 build with CMake
-IF(LIBS_HDF5_CMAKE)
-  INCLUDE_DIRECTORIES(BEFORE ${HDF5_INCLUDE_DIR} ${HDF5_INCLUDE_DIR_FORTRAN})
-  IF(${HDF5_IS_PARALLEL})
-    MESSAGE(STATUS "Compiling with ${HDF5_BUILD_STATUS} [HDF5] (v${HDF5_VERSION}) with parallel support ${HDF5_MPI_VERSION}")
-  ELSE()
-    MESSAGE(STATUS "Compiling with ${HDF5_BUILD_STATUS} [HDF5] (v${HDF5_VERSION}) without parallel support")
-  ENDIF()
-  LIST(APPEND linkedlibs ${HDF5_C_${LIB_TYPE}_LIBRARY} ${HDF5_FORTRAN_${LIB_TYPE}_LIBRARY})
-  # For newer versions of HDF5, the CMake package does not explicitly export the libraries
-  LIST(APPEND linkedlibs ${HDF5_LIBRARIES} )
-# HDF5 build with configure
+# Actually add the HDF5 paths (system/self-built) to the linking paths
+# > INFO: We could also use the HDF5::HDF5/hdf5::hdf5/hdf5::hdf5_fortran targets here but they are not set before compiling self-built HDF5
+INCLUDE_DIRECTORIES(BEFORE ${HDF5_INCLUDE_DIR})
+LIST(PREPEND linkedlibs ${HDF5_LIBRARIES} )
+IF(${HDF5_IS_PARALLEL})
+  MESSAGE(STATUS "Compiling with ${HDF5_BUILD_STATUS} [HDF5] (v${HDF5_VERSION}) with parallel support ${HDF5_MPI_VERSION}")
 ELSE()
-  INCLUDE_DIRECTORIES(BEFORE ${HDF5_INCLUDE_DIR_FORTRAN} ${HDF5_INCLUDE_DIR})
-  IF(${HDF5_IS_PARALLEL})
-    MESSAGE(STATUS "Compiling with ${HDF5_BUILD_STATUS} [HDF5] (v${HDF5_VERSION}) with parallel support ${HDF5_MPI_VERSION}")
-  ELSE()
-    MESSAGE(STATUS "Compiling with ${HDF5_BUILD_STATUS} [HDF5] (v${HDF5_VERSION}) without parallel support")
-  ENDIF()
-  LIST(APPEND linkedlibs ${HDF5_LIBRARIES} )
+  MESSAGE(STATUS "Compiling with ${HDF5_BUILD_STATUS} [HDF5] (v${HDF5_VERSION}) without parallel support")
 ENDIF()
 
 
