@@ -168,11 +168,10 @@ venv_create:
   script:
     - deactivate || true
     - rm -rf venv
-    - python3 -m venv venv
+    - uv venv venv
     - source venv/bin/activate
-    - python3 -m ensurepip
-    - python3 -m pip install --upgrade pip setuptools wheel
-    - python3 -m pip install --upgrade --ignore-installed pytest pytest-cov
+    - uv pip install --upgrade pip setuptools wheel
+    - uv pip install --upgrade pytest pytest-cov
 
 reggie_download:
   extends: .default_build_param
@@ -190,12 +189,8 @@ reggie_download:
       policy: push
   stage: setup
   script:
-    # Setup Python virtual environment
-    - rm -rf venv
-    - python -m venv venv
-    - source venv/bin/activate
     # Install Reggie
-    - pip install git+https://github.com/piclas-framework/reggie2.0.git
+    - uv pip install git+https://github.com/piclas-framework/reggie2.0.git
     # Check Reggie
     - reggie --help
 
