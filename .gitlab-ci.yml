@@ -88,11 +88,11 @@ stages:
     - venv
   policy: pull
 
-.reggie_cache: &reggie_cache
-  key: "reggie"
-  paths:
-    - reggie
-  policy: pull
+# .reggie_cache: &reggie_cache
+#   key: "reggie"
+#   paths:
+#     - reggie
+#   policy: pull
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Defaults for the standard tests (utilizing "extends" to merge the other "artifacts" options with the specific path)
@@ -103,7 +103,7 @@ stages:
     paths: [build]
   cache:
     - *venv_cache
-    - *reggie_cache
+    # - *reggie_cache
     - key: "${CI_COMMIT_REF_SLUG}"
       paths: [build]
       policy: pull
@@ -183,10 +183,10 @@ reggie_download:
       paths:
         - venv
       policy: pull-push
-    - key: "reggie"
-      paths:
-        - reggie
-      policy: push
+    # - key: "reggie"
+    #   paths:
+    #     - reggie
+    #   policy: push
   stage: setup
   script:
     # Install Reggie
