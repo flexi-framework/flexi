@@ -1,0 +1,104 @@
+# Load the base image
+FROM ubuntu:24.04
+
+# Numerics research group
+LABEL maintainer="numerics@iag.uni-stuttgart.de"
+
+# Setup required packages
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
+    git git-lfs wget curl tar bzip2 build-essential cmake cmake-curses-gui gfortran \
+    zlib1g-dev python3-dev python3-pip python3-venv mold && \
+    apt-get clean
+
+# Setup build evironment
+ENV CC=gcc \
+    CXX=g++ \
+    FC=gfortran \
+    F90=gfortran
+
+# Setup OpenBlas
+RUN cd /tmp && \
+    wget https://github.com/OpenMathLib/OpenBLAS/archive/refs/tags/v0.3.29.tar.gz && \
+    tar -xvf v0.3.29.tar.gz && \
+    cd OpenBLAS-0.3.29 && \
+    mkdir build && cd build && \
+    cmake -DCMAKE_INSTALL_PREFIX=/usr/local .. && \
+    make -j$(nproc) && cmake --install . && \
+    cd /tmp && rm -rf OpenBLAS* && rm -rf v0.3.29.tar.gz
+
+# Setup OpenMPI
+RUN cd /tmp && \
+    wget https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-5.0.7.tar.bz2 && \
+    tar -xvf openmpi-5.0.7.tar.bz2 && \
+    cd openmpi-5.0.7 && \
+    ./configure --prefix=/usr/local && \
+    make -j$(nproc) && make install && \
+    ldconfig && \
+    cd /tmp && rm -rf openmpi*
+
+# Setup HDF5
+RUN cd /tmp && \
+    wget https://github.com/HDFGroup/hdf5/releases/download/hdf5_1.14.4.3/hdf5-1.14.4-3.tar.gz && \
+    tar -xvf hdf5-1.14.4-3.tar.gz && \
+    cd hdf5-1.14.4-3 && \
+    mkdir build && cd build && \
+    cmake -DCMAKE_INSTALL_PREFIX=/usr/local \
+        -DHDF5_BUILD_FORTRAN=ON \
+        -DHDF5_ENABLE_PARALLEL=ON \
+        .. && \
+    make -j$(nproc) && cmake --install . && \
+    cd /tmp && rm -rf hdf5*
+
+# Setup FFTW
+RUN cd /tmp && \
+    wget https://fftw.org/fftw-3.3.10.tar.gz && \
+    tar -xvf fftw-3.3.10.tar.gz && \
+    cd fftw-3.3.10 && \
+    ./configure --prefix=/usr/local && \
+    make -j$(nproc) && make install && \
+    cd /tmp && rm -rf fftw*
+
+# Setup ParaView
+# apt-repository provides v5.11.2 which suffers from XML-parsing bug (https://discourse.paraview.org/t/i-cannot-read-a-vtp-file-i-could-open-yesterday-can-someone-try-to-open-it/13938)
+COPY FileParser_5_9_0.patch .
+RUN cd /tmp && \
+  apt-get install -y \
+  mesa-common-dev libglu1-mesa-dev libgl1-mesa-dev libegl1-mesa-dev \
+  qtbase5-dev qt5-qmake libqt5x11extras5-dev libqt5help5 libqt5webenginewidgets5 libqt5webchannel5-dev qtwebengine5-dev qtbase5-dev-tools qttools5-dev qtxmlpatterns5-dev-tools libqt5svg5-dev && \
+  git clone https://github.com/Kitware/ParaView.git && cd ParaView && \
+  git checkout v5.13.3 && git submodule update --init --recursive && \
+  mv ../../FileParser_5_9_0.patch . && patch -p0 < FileParser_5_9_0.patch && \
+  mkdir build && cd build/ && \
+  cmake \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DPARAVIEW_USE_MPI=ON \
+    -DPARAVIEW_INSTALL_DEVELOPMENT_FILES=ON \
+    -DPARAVIEW_USE_PYTHON=ON \
+    -DVTK_MODULE_USE_EXTERNAL_VTK_hdf5=ON \
+    -DHDF5_IS_PARALLEL=ON \
+    -DHDF5_DIR=/usr/local/cmake \
+    -DCMAKE_INSTALL_PREFIX=/usr/local ../ && \
+  make -j $(nproc) && make install && \
+  cd /tmp && rm -rf ParaView
+
+# Setup FLEXI, building all presets
+RUN cd / && \
+  git clone https://github.com/flexi-framework/flexi.git && \
+  cd flexi && \
+  for PRESET in $(cmake --list-presets | sed -n 's/"\(.*\)"/\1/p'); \
+    do cmake -B build_${PRESET} --preset $PRESET && cmake --build build_${PRESET} -j ${nproc}; \
+  done
+  
+# Setup HOPR
+RUN cd / && \
+  git clone https://github.com/hopr-framework/hopr.git && \
+  cd hopr && mkdir build && cd build && \
+  cmake -DLIBS_BUILD_HDF5=OFF ../ && \
+  make -j $(nproc)
+ENV PATH="/hopr/build/bin:$PATH"
+
+# Reduce image size
+RUN apt-get autoremove -y && apt-get clean -y && \
+  rm -rf /var/lib/apt/lists/*
