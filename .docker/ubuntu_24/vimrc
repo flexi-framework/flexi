@@ -1,0 +1,7 @@
+set hlsearch            " activate highlight search
+set expandtab           " use whitespaces for tabs
+set tabstop=2           " tab width (number of whitespaces)
+let g:tex_no_error=1    " disable tex-syntax error checking to suppress undesired highlighting of e.g. underscores and carets
+" adjust syntax highlighting of non-standard file types
+au BufReadPost *.t90 set syntax=fortran
+au BufReadPost CMakeLists*.txt set syntax=cmake
