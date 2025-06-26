@@ -53,8 +53,8 @@ stages:
 .default_build_param: &default_build_param
   tags: [dockertag]
   # Docker image to use for the CI/CD pipeline
-  # image: ${CI_REGISTRY_IMAGE}/nrg-fedora:41-x86_64
-  image: registry.iag.uni-stuttgart.de/flexi/flexi/nrg-fedora_41-x86_64
+  # image: ${CI_REGISTRY_IMAGE}/nrg-fedora:42-x86_64
+  image: registry.iag.uni-stuttgart.de/flexi/flexi/nrg-fedora_42-x86_64
   artifacts:
     name: "${CI_PIPELINE_ID}-${CI_COMMIT_REF_NAME}-${CI_JOB_NAME}"
     expire_in: 1 day
