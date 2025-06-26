@@ -110,7 +110,23 @@ SET(LIBS_HDF5_CMAKE TRUE)
 
 # Set preferences for HDF5 library
 # SET(HDF5_USE_STATIC_LIBRARIES TRUE)
-SET(HDF5_PREFER_PARALLEL      ${LIBS_USE_MPI})
+IF (LIBS_USE_MPI)
+  SET(HDF5_PREFER_PARALLEL TRUE)
+  FIND_PROGRAM(HDF5_COMPILER h5pcc)
+ELSE()
+  SET(HDF5_PREFER_PARALLEL FALSE)
+  FIND_PROGRAM(HDF5_COMPILER h5cc)
+ENDIF()
+
+# When using the configure version, CMake takes the directory of the first HDF5 compiler found
+# > h5cc  - serial   version
+# > h5pcc - parallel version
+# > Thus, we need to prepend the PATH to ensure we are picking the correct one first
+IF(NOT "${HDF5_COMPILER}" STREQUAL "" AND NOT "${HDF5_COMPILER}" STREQUAL "HDF5_COMPILER-NOTFOUND")
+  SET(ORIGINAL_PATH_ENV "$ENV{PATH}")
+  GET_FILENAME_COMPONENT(HDF5_PARENT_DIR ${HDF5_COMPILER} DIRECTORY)
+  SET(ENV{PATH} "${HDF5_PARENT_DIR}:$ENV{PATH}")
+ENDIF()
 
 # Hide all the HDF5 libs paths
 MARK_AS_ADVANCED(FORCE HDF5_DIR)
@@ -298,6 +314,9 @@ IF(${HDF5_IS_PARALLEL})
 ELSE()
   MESSAGE(STATUS "Compiling with ${HDF5_BUILD_STATUS} [HDF5] (v${HDF5_VERSION}) without parallel support")
 ENDIF()
+
+# Restore the original PATH
+SET(ENV{PATH} "${ORIGINAL_PATH_ENV}")
 
 
 # =========================================================================
