@@ -4,13 +4,19 @@ FROM fedora:41
 # Numerics research group
 LABEL maintainer="numerics@iag.uni-stuttgart.de"
 
+# Disable weak dependencies
+RUN echo 'install_weak_deps=False' >> /etc/dnf/dnf.conf
+
 # Setup required packages
-RUN dnf makecache && \
-    dnf update -y && \
-    dnf install -y git cmake gcc-c++ gcc-gfortran mpich-devel zlib-ng-devel openblas-devel hdf5-devel hdf5-mpich-devel && \
+RUN dnf makecache             && \
+    dnf update  -y            && \
+    dnf install -y git-core cmake gcc-c++ gcc-gfortran mpich-devel zlib-ng-devel openblas-devel hdf5-devel hdf5-mpich-devel && \
     dnf install -y python3 uv && \
-    dnf install -y doxygen && \
-    dnf clean all
+    dnf install -y doxygen    && \
+    dnf install -y ruff       &&  `# Setup Ruff`      \
+    dnf autoremove            && \
+    dnf clean all             && \
+    rm -rf /var/log/dnf5.*
 
 # Set architecture argument
 ARG ARCH
@@ -43,10 +49,13 @@ ENV LD_LIBRARY_PATH="/usr/lib64/mpich/lib:${LD_LIBRARY_PATH}"
 ENV MANPATH="/usr/share/man/mpich-${ARCH}:${MANPATH}"
 ENV PKG_CONFIG_PATH="/usr/lib64/mpich/lib/pkgconfig:${PKG_CONFIG_PATH}"
 
-# Setup Ruff
-RUN dnf install -y ruff
-
 # Setup Fortitude
-RUN dnf install -y cargo
-RUN uv tool install git+https://github.com/PlasmaFAIR/fortitude
 ENV PATH="/root/.local/bin:$PATH"
+RUN dnf install -y cargo      && \
+    uv tool install git+https://github.com/PlasmaFAIR/fortitude && \
+    uv cache clean            && \
+    rm -rf /root/.cargo       && \
+    dnf remove  -y cargo      && \
+    dnf autoremove            && \
+    dnf clean all             && \
+    rm -rf /var/log/dnf5.*
