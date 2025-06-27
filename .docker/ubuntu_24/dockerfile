@@ -1,7 +1,7 @@
 # Load the base image
 # Ubuntu-based FLEXI environment including ParaView and HOPR/PyHope
-# build docker image as usual:          docker build -t flexi_env .
-# run docker image with X11-forwarding: xhost +local:docker && docker run -u 0 -it --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix flexi_env
+# build docker image with github namespace: docker build -t ghcr.io/flexi-framework/ubuntu24.04_gcc:2025.06_devel .
+# run docker image with X11-forwarding:     xhost +local:docker && docker run -it --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix ghcr.io/flexi-framework/ubuntu24.04_gcc:2025.06_devel
 # -----------------------------------------------------------------
 FROM ubuntu:24.04
 
@@ -17,7 +17,7 @@ RUN apt-get update && \
     # FLEXI environment
     apt-get install -y --no-install-recommends \
     git git-lfs wget curl tar bzip2 build-essential cmake cmake-curses-gui gfortran \
-    zlib1g-dev python3-dev python3-pip python3-venv mold vim nano && \
+    zlib1g-dev python3-dev python3-pip python3-venv libxft-dev mold vim nano && \
     # ParaView setup
     apt-get install -y \
     mesa-common-dev libglu1-mesa-dev libgl1-mesa-dev libegl1-mesa-dev \
@@ -37,7 +37,7 @@ RUN cd /tmp && \
     tar -xvf v0.3.29.tar.gz && \
     cd OpenBLAS-0.3.29 && \
     mkdir build && cd build && \
-    cmake -DCMAKE_INSTALL_PREFIX=/usr/local .. && \
+    cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DDYNAMIC_ARCH=ON .. && \
     make -j$(nproc) && cmake --install . && \
     cd /tmp && rm -rf OpenBLAS* && rm -rf v0.3.29.tar.gz
 
@@ -119,7 +119,7 @@ RUN cd ~ && \
 RUN cd ~ && \
   git clone https://github.com/hopr-framework/hopr.git && \
   cd hopr && mkdir build && cd build && \
-  cmake -DLIBS_BUILD_HDF5=OFF ../ && \
+  cmake -DLIBS_BUILD_HDF5=OFF -DHOPR_INSTRUCTION='-march=x86-64 -mtune=generic' ../ && \
   make -j $(nproc)
 ENV PATH="/home/nrg/hopr/build/bin:$PATH"
 
