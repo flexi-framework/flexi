@@ -25,29 +25,29 @@ ARG ARCH
 ENV UV_LINK_MODE=copy
 
 # Setup standard paths
-ENV LD_LIBRARY_PATH="/usr/lib64"
-ENV MANPATH="/usr/share/man"
-ENV PKG_CONFIG_PATH="/usr/lib64/pkgconfig"
+ENV LD_LIBRARY_PATH="/usr/lib64"           \
+    MANPATH="/usr/share/man"               \
+    PKG_CONFIG_PATH="/usr/lib64/pkgconfig"
 
 # Setup MPI
 # RUN source /etc/profile && module load mpi
 # > Each RUN command in a Dockerfile starts a new shell process, thus Docker
 # > does not persist the shell state, including environment modifications
 # > such as module load, across RUN commands.
-ENV MPI_BIN=/usr/lib64/mpich/bin
-ENV MPI_SYSCONFIG=/etc/mpich-${ARCH}
-ENV MPI_FORTRAN_MOD_DIR=/usr/lib64/gfortran/modules/mpich
-ENV MPI_INCLUDE=/usr/include/mpich-${ARCH}
-ENV MPI_LIB=/usr/lib64/mpich/lib
-ENV MPI_MAN=/usr/share/man/mpich-${ARCH}
-ENV MPI_PYTHON3_SITEARCH=/usr/lib64/python3.13/site-packages/mpich
-ENV MPI_COMPILER=mpich-${ARCH}
-ENV MPI_SUFFIX=_mpich
-ENV MPI_HOME=/usr/lib64/mpich
-ENV PATH="/usr/lib64/mpich/bin:${PATH}"
-ENV LD_LIBRARY_PATH="/usr/lib64/mpich/lib:${LD_LIBRARY_PATH}"
-ENV MANPATH="/usr/share/man/mpich-${ARCH}:${MANPATH}"
-ENV PKG_CONFIG_PATH="/usr/lib64/mpich/lib/pkgconfig:${PKG_CONFIG_PATH}"
+ENV MPI_BIN=/usr/lib64/mpich/bin           \
+    MPI_SYSCONFIG=/etc/mpich-${ARCH}       \
+    MPI_FORTRAN_MOD_DIR=/usr/lib64/gfortran/modules/mpich          \
+    MPI_INCLUDE=/usr/include/mpich-${ARCH} \
+    MPI_LIB=/usr/lib64/mpich/lib           \
+    MPI_MAN=/usr/share/man/mpich-${ARCH}   \
+    MPI_PYTHON3_SITEARCH=/usr/lib64/python3.13/site-packages/mpich \
+    MPI_COMPILER=mpich-${ARCH}             \
+    MPI_SUFFIX=_mpich                      \
+    MPI_HOME=/usr/lib64/mpich              \
+    PATH="/usr/lib64/mpich/bin:${PATH}"    \
+    LD_LIBRARY_PATH="/usr/lib64/mpich/lib:${LD_LIBRARY_PATH}"      \
+    MANPATH="/usr/share/man/mpich-${ARCH}:${MANPATH}"              \
+    PKG_CONFIG_PATH="/usr/lib64/mpich/lib/pkgconfig:${PKG_CONFIG_PATH}"
 
 # Setup Fortitude
 ENV PATH="/root/.local/bin:$PATH"
