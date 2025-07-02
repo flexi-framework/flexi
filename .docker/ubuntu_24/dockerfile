@@ -17,11 +17,10 @@ RUN apt-get update && \
     # FLEXI environment
     apt-get install -y --no-install-recommends \
     git git-lfs wget curl tar bzip2 build-essential cmake cmake-curses-gui gfortran \
-    zlib1g-dev python3-dev python3-pip python3-venv libxft-dev mold vim nano && \
+    zlib1g-dev python3-dev python3-pip python3-venv libxft-dev mold vim nano \
     # ParaView setup
-    apt-get install -y \
     mesa-common-dev libglu1-mesa-dev libgl1-mesa-dev libegl1-mesa-dev \
-    qtbase5-dev qt5-qmake libqt5x11extras5-dev libqt5help5 libqt5webenginewidgets5 libqt5webchannel5-dev qtwebengine5-dev qtbase5-dev-tools qttools5-dev qtxmlpatterns5-dev-tools libqt5svg5-dev && \
+    qtbase5-dev qt5-qmake libqt5x11extras5-dev libqt5opengl5-dev libqt5help5 libqt5webenginewidgets5 libqt5webchannel5-dev qtwebengine5-dev qtbase5-dev-tools qttools5-dev qtxmlpatterns5-dev-tools libqt5svg5-dev && \
     # reduce image size
     apt-get clean -y && apt-get autoremove -y --purge && rm -rf /var/lib/apt/lists/*
 
