@@ -8,6 +8,7 @@
   "configurePresets": [
     {
       "name": "linadv",
+      "displayName": "tutorials/linadv",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -33,6 +34,7 @@
     },
     {
       "name": "convtest_inviscid",
+      "displayName": "tutorials/convtest",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -60,6 +62,7 @@
     },
     {
       "name": "convtest_viscous",
+      "displayName": "tutorials/convtest",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -87,6 +90,7 @@
     },
     {
       "name": "cavity",
+      "displayName": "tutorials/cavity/Basic_Re100 tutorials/cavity/Advanced_Re400",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -116,6 +120,7 @@
     },
     {
       "name": "sod",
+      "displayName": "tutorials/sod",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -146,6 +151,7 @@
     },
     {
       "name": "dmr_fvswitch",
+      "displayName": "tutorials/dmr",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -174,6 +180,7 @@
     },
     {
       "name": "dmr_fvblend",
+      "displayName": "tutorials/dmr",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -202,6 +209,7 @@
     },
     {
       "name": "channel",
+      "displayName": "tutorials/channel",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -233,6 +241,7 @@
     },
     {
       "name": "cylinder",
+      "displayName": "tutorials/cylinder",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -263,6 +272,7 @@
     },
     {
       "name": "naca0012",
+      "displayName": "tutorials/naca0012",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -295,6 +305,7 @@
     },
     {
       "name": "freestream",
+      "displayName": "tutorials/freestream",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -325,6 +336,7 @@
     },
     {
       "name": "tgv_overintegration",
+      "displayName": "tutorials/taylorgreenvortex",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -353,6 +365,7 @@
     },
     {
       "name": "tgv_split_gauss",
+      "displayName": "tutorials/taylorgreenvortex",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -382,6 +395,7 @@
     },
     {
       "name": "tgv_split_lobatto",
+      "displayName": "tutorials/taylorgreenvortex",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {

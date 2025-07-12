@@ -20,17 +20,28 @@ RUN apt-get update && \
     zlib1g-dev python3-dev python3-pip python3-venv libxft-dev mold vim nano \
     # ParaView setup
     mesa-common-dev libglu1-mesa-dev libgl1-mesa-dev libegl1-mesa-dev \
-    qtbase5-dev qt5-qmake libqt5x11extras5-dev libqt5opengl5-dev libqt5help5 libqt5webenginewidgets5 libqt5webchannel5-dev qtwebengine5-dev qtbase5-dev-tools qttools5-dev qtxmlpatterns5-dev-tools libqt5svg5-dev && \
+    qtbase5-dev qt5-qmake libqt5x11extras5-dev libqt5opengl5-dev libqt5help5 qtbase5-dev-tools qttools5-dev qtxmlpatterns5-dev-tools libqt5svg5-dev && \
     # reduce image size
     apt-get clean -y && apt-get autoremove -y --purge && rm -rf /var/lib/apt/lists/*
 
+# set default locale for consistent build behavior and enabled non-ASCII keys (e.g. Umlaute): C = computer language, UTF-8 = utf8-encoding
+ENV LC_ALL=C.UTF-8 \
+    LANG=C.UTF-8
+# disable CPU-specific optimizations to ensure portability of image:
+# position-independent code (PIC) for shared libraries, compatibility with x86-64 processors, generic CPU scheduler
+ENV CPU_PORTABLE_FLAGS="-fPIC -march=x86-64 -mtune=generic"
 # Setup build evironment
 ENV CC=gcc \
     CXX=g++ \
     FC=gfortran \
-    F90=gfortran
+    F90=gfortran \
+    CFLAGS=${CPU_PORTABLE_FLAGS} \
+    CXXFLAGS=${CPU_PORTABLE_FLAGS} \
+    CPPFLAGS=${CPU_PORTABLE_FLAGS} \
+    FFLAGS=${CPU_PORTABLE_FLAGS} \
+    FCFLAGS=${CPU_PORTABLE_FLAGS}
 
-# Setup OpenBlas
+# Setup OpenBlas, ensure cross-platform portability by building library for multiple targets and detecting CPU at runtime (DYNAMIC_ARCH=ON)
 RUN cd /tmp && \
     wget https://github.com/OpenMathLib/OpenBLAS/archive/refs/tags/v0.3.29.tar.gz && \
     tar -xvf v0.3.29.tar.gz && \
@@ -106,12 +117,17 @@ COPY vimrc /home/nrg/.vimrc
 RUN python3 -m venv venv
 ENV PATH="/home/nrg/venv/bin:$PATH"
 
-# Setup FLEXI, building all presets
+# Setup FLEXI
 RUN cd ~ && \
   git clone https://github.com/flexi-framework/flexi.git && \
   cd flexi && \
-  for PRESET in $(cmake --list-presets | sed -n 's/"\(.*\)"/\1/p'); \
-    do cmake -B build_${PRESET} -DFLEXI_INSTRUCTION='-march=x86-64 -mtune=generic' --preset $PRESET && cmake --build build_${PRESET} -j ${nproc}; \
+  for PRESET in $(cmake --list-presets | sed -n 's/"\(.*\)".*/\1/p'); do \
+    # build all presets without CPU-specifi optimizations to ensure portability
+    cmake -B build_${PRESET} -DFLEXI_INSTRUCTION='-march=x86-64 -mtune=generic' --preset $PRESET && cmake --build build_${PRESET} -j ${nproc}; \
+    # create symbolic link to prebuilt FLEXI binary for all associated tutorials: "name" of preset = name of build folder -> "displayName" of preset = path/to/tutorials
+    for TUTORIAL in $(cmake --list-presets | sed -n "s/.*$PRESET.*- \(.*\)/\1/p"); do \
+      ln -s -r build_${PRESET}/bin/flexi ${TUTORIAL}/flexi_${PRESET}; \
+    done \
   done
   
 # Setup HOPR
