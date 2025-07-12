@@ -8,7 +8,7 @@
   "configurePresets": [
     {
       "name": "linadv",
-      "displayName": "tutorials/linadv",
+      "binaryDir": "tutorials/linadv/build",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -34,7 +34,7 @@
     },
     {
       "name": "convtest_inviscid",
-      "displayName": "tutorials/convtest",
+      "binaryDir": "tutorials/convtest/build_inviscid",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -62,7 +62,7 @@
     },
     {
       "name": "convtest_viscous",
-      "displayName": "tutorials/convtest",
+      "binaryDir": "tutorials/convtest/build_viscous",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -90,7 +90,7 @@
     },
     {
       "name": "cavity",
-      "displayName": "tutorials/cavity/Basic_Re100 tutorials/cavity/Advanced_Re400",
+      "binaryDir": "tutorials/cavity/build",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -120,7 +120,7 @@
     },
     {
       "name": "sod",
-      "displayName": "tutorials/sod",
+      "binaryDir": "tutorials/sod/build",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -151,7 +151,7 @@
     },
     {
       "name": "dmr_fvswitch",
-      "displayName": "tutorials/dmr",
+      "binaryDir": "tutorials/dmr/build_fvswitch",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -180,7 +180,7 @@
     },
     {
       "name": "dmr_fvblend",
-      "displayName": "tutorials/dmr",
+      "binaryDir": "tutorials/dmr/build_fvblend",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -209,7 +209,7 @@
     },
     {
       "name": "channel",
-      "displayName": "tutorials/channel",
+      "binaryDir": "tutorials/channel/build",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -241,7 +241,7 @@
     },
     {
       "name": "cylinder",
-      "displayName": "tutorials/cylinder",
+      "binaryDir": "tutorials/cylinder/build",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -272,7 +272,7 @@
     },
     {
       "name": "naca0012",
-      "displayName": "tutorials/naca0012",
+      "binaryDir": "tutorials/naca0012/build",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -305,7 +305,7 @@
     },
     {
       "name": "freestream",
-      "displayName": "tutorials/freestream",
+      "binaryDir": "tutorials/freestream/build",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -336,7 +336,7 @@
     },
     {
       "name": "tgv_overintegration",
-      "displayName": "tutorials/taylorgreenvortex",
+      "binaryDir": "tutorials/taylorgreenvortex/build_overintegration",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -365,7 +365,7 @@
     },
     {
       "name": "tgv_split_gauss",
-      "displayName": "tutorials/taylorgreenvortex",
+      "binaryDir": "tutorials/taylorgreenvortex/build_split_gauss",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -395,7 +395,7 @@
     },
     {
       "name": "tgv_split_lobatto",
-      "displayName": "tutorials/taylorgreenvortex",
+      "binaryDir": "tutorials/taylorgreenvortex/build_split_lobatto",
       "hidden": false,
       "generator": "Unix Makefiles",
       "cacheVariables": {
@@ -423,5 +423,62 @@
       }
     }
   ],
-  "buildPresets": []
+  "buildPresets": [
+    {
+      "name": "linadv",
+      "configurePreset": "linadv"
+    },
+    {
+      "name": "convtest_inviscid",
+      "configurePreset": "convtest_inviscid"
+    },
+    {
+      "name": "convtest_viscous",
+      "configurePreset": "convtest_viscous"
+    },
+    {
+      "name": "cavity",
+      "configurePreset": "cavity"
+    },
+    {
+      "name": "sod",
+      "configurePreset": "sod"
+    },
+    {
+      "name": "dmr_fvswitch",
+      "configurePreset": "dmr_fvswitch"
+    },
+    {
+      "name": "dmr_fvblend",
+      "configurePreset": "dmr_fvblend"
+    },
+    {
+      "name": "channel",
+      "configurePreset": "channel"
+    },
+    {
+      "name": "cylinder",
+      "configurePreset": "cylinder"
+    },
+    {
+      "name": "naca0012",
+      "configurePreset": "naca0012"
+    },
+    {
+      "name": "freestream",
+      "configurePreset": "freestream"
+    },
+    {
+      "name": "tgv_overintegration",
+      "configurePreset": "tgv_overintegration"
+    },
+    {
+      "name": "tgv_split_gauss",
+      "configurePreset": "tgv_split_gauss"
+    },
+    {
+      "name": "tgv_split_lobatto",
+      "configurePreset": "tgv_split_lobatto"
+    }
+  ]
 }

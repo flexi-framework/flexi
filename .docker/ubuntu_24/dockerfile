@@ -120,16 +120,12 @@ ENV PATH="/home/nrg/venv/bin:$PATH"
 # Setup FLEXI
 RUN cd ~ && \
   git clone https://github.com/flexi-framework/flexi.git && \
-  cd flexi && \
-  for PRESET in $(cmake --list-presets | sed -n 's/"\(.*\)".*/\1/p'); do \
-    # build all presets without CPU-specifi optimizations to ensure portability
-    cmake -B build_${PRESET} -DFLEXI_INSTRUCTION='-march=x86-64 -mtune=generic' --preset $PRESET && cmake --build build_${PRESET} -j ${nproc}; \
-    # create symbolic link to prebuilt FLEXI binary for all associated tutorials: "name" of preset = name of build folder -> "displayName" of preset = path/to/tutorials
-    for TUTORIAL in $(cmake --list-presets | sed -n "s/.*$PRESET.*- \(.*\)/\1/p"); do \
-      ln -s -r build_${PRESET}/bin/flexi ${TUTORIAL}/flexi_${PRESET}; \
-    done \
+  cd flexi  && \
+  # build all presets without CPU-specific optimizations to ensure portability
+  for PRESET in $(cmake --list-presets | sed -n 's/"\(.*\)"/\1/p'); do \
+    cmake -DFLEXI_INSTRUCTION='-march=x86-64 -mtune=generic' --preset $PRESET && cmake --build --preset $PRESET -j ${nproc}; \
   done
-  
+
 # Setup HOPR
 RUN cd ~ && \
   git clone https://github.com/hopr-framework/hopr.git && \
