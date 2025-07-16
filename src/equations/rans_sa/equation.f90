@@ -131,8 +131,8 @@ PrTurb      = GETREAL(   'PrTurb')
 ALLOCATE(SAd(0:PP_N,0:PP_N,0:PP_NZ,0:FV_SIZE,nElems))
 ! We choose a large number as our default for the walldistance, since it basically means we calculate free turbulence away from a
 ! wall. The square-root is taken since the value get's squared in the auxilliary functions, and this prevents errounus arithmetic
-! operations to take place.
-SAd = SQRT(HUGE(1.))
+! operations to take place. We must furthermore divide by 2 since any numerical error might cause overflow when squaring it again.
+SAd = 0.5*SQRT(HUGE(1.))
 ! Read-in of walldistance
 FileName = MeshFile(1:INDEX(MeshFile,'_mesh.h5')-1)//'_walldistance.h5'
 file_exists = FILEEXISTS(FileName)
