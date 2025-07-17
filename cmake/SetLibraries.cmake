@@ -345,7 +345,7 @@ IF(NOT LIBS_BUILD_MATH_LIB)
   ENDIF()
 
   # VDM inverse, replace lapack with analytical solution
-  IF (CMAKE_BUILD_TYPE MATCHES "Debug" AND CMAKE_FQDN_HOST MATCHES "hawk\.hww\.hlrs\.de$")
+  IF (CMAKE_BUILD_TYPE_LC STREQUAL "debug" AND CMAKE_FQDN_HOST MATCHES "hawk\.hww\.hlrs\.de$")
     MESSAGE(STATUS "Compiling FLEXI in debug mode on Hawk with system math lib. Setting VDM inverse to analytical solution")
     ADD_COMPILE_DEFINITIONS(VDM_ANALYTICAL)
   ENDIF()
@@ -357,7 +357,7 @@ ELSE()
   SET_PROPERTY(CACHE LIBS_BUILD_MATH_LIB_VENDOR PROPERTY STRINGS LAPACK OpenBLAS)
 
   # Build LAPACK
-  IF (LIBS_BUILD_MATH_LIB_VENDOR MATCHES "LAPACK")
+  IF (LIBS_BUILD_MATH_LIB_VENDOR STREQUAL "LAPACK")
     # Origin pointing to Github
     IF("${GIT_ORIGIN}" MATCHES ".github.com")
       SET (MATHLIB_DOWNLOAD "https://github.com/Reference-LAPACK/lapack.git")
@@ -369,7 +369,7 @@ ELSE()
     MARK_AS_ADVANCED(FORCE MATH_LIB_DOWNLOAD)
     MARK_AS_ADVANCED(FORCE MATH_LIB_TAG)
   # Build OpenBLAS
-  ELSEIF (LIBS_BUILD_MATH_LIB_VENDOR MATCHES "OpenBLAS")
+  ELSEIF (LIBS_BUILD_MATH_LIB_VENDOR STREQUAL "OpenBLAS")
     IF("${GIT_ORIGIN}" MATCHES ".github.com")
       SET (MATHLIB_DOWNLOAD "https://github.com/xianyi/OpenBLAS.git")
     ELSE()
@@ -387,7 +387,7 @@ ELSE()
   # Set math libs build dir
   SET(LIBS_MATH_DIR  ${LIBS_EXTERNAL_LIB_DIR}/${LIBS_BUILD_MATH_LIB_VENDOR})
 
-  IF (LIBS_BUILD_MATH_LIB_VENDOR MATCHES "LAPACK")
+  IF (LIBS_BUILD_MATH_LIB_VENDOR STREQUAL "LAPACK")
     # Check if math lib was already built
     IF (NOT EXISTS "${LIBS_MATH_DIR}/lib/liblapack.so")
       # Let CMake take care of download, configure and build
@@ -404,7 +404,7 @@ ELSE()
 
       LIST(APPEND SELFBUILTEXTERNALS ${LIBS_BUILD_MATH_LIB_VENDOR})
     ENDIF()
-  ELSEIF (LIBS_BUILD_MATH_LIB_VENDOR MATCHES "OpenBLAS")
+  ELSEIF (LIBS_BUILD_MATH_LIB_VENDOR STREQUAL "OpenBLAS")
     # Check if math lib was already built
     IF (NOT EXISTS "${LIBS_MATH_DIR}/libopenblas.so")
       # Let CMake take care of download, configure and build
@@ -425,7 +425,7 @@ ELSE()
     ENDIF()
   ENDIF()
 
-  IF (LIBS_BUILD_MATH_LIB_VENDOR MATCHES "LAPACK")
+  IF (LIBS_BUILD_MATH_LIB_VENDOR STREQUAL "LAPACK")
     # Set math lib paths
     UNSET(MATH_LIB_LIBRARIES)
     SET(MATH_LIB_LIBRARIES              ${LIBS_MATH_DIR}/lib)
@@ -442,7 +442,7 @@ ELSE()
     INCLUDE_DIRECTORIES (${MATH_LIB_LIBRARIES})
     LIST(APPEND linkedlibs ${LAPACK_LIBRARY} ${BLAS_LIBRARY})
     MESSAGE(STATUS "Compiling with self-built [LAPACK]")
-  ELSEIF (LIBS_BUILD_MATH_LIB_VENDOR MATCHES "OpenBLAS")
+  ELSEIF (LIBS_BUILD_MATH_LIB_VENDOR STREQUAL "OpenBLAS")
     # Set math lib paths
     SET(MATH_LIB_LIBRARIES              ${LIBS_MATH_DIR}/src/${LIBS_BUILD_MATH_LIB_VENDOR})
 

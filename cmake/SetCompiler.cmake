@@ -85,7 +85,7 @@ IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
   SET (CMAKE_Fortran_FLAGS_DEBUG          "${CMAKE_Fortran_FLAGS} -g  -Og -ggdb3 -ffpe-trap=invalid,zero,overflow -fbounds-check -fbacktrace -Wall")
   SET (CMAKE_Fortran_FLAGS_SANITIZE       "${CMAKE_Fortran_FLAGS} -g  -Og -ggdb3 -ffpe-trap=invalid,zero,overflow,denorm -fbounds-check -fbacktrace -Wall -fsanitize=address,undefined,leak -fno-omit-frame-pointer -Wc-binding-type -Wuninitialized -pedantic")
   # Compile flags depend on the generator
-  IF(NOT "${CMAKE_GENERATOR}" MATCHES "Ninja")
+  IF(NOT "${CMAKE_GENERATOR}" STREQUAL "Ninja")
     # add flags only for compiling not linking!
     SET (FLEXI_COMPILE_FLAGS "-xf95-cpp-input")
   ELSE()
@@ -105,7 +105,7 @@ ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Flang")
   SET (CMAKE_Fortran_FLAGS_PROFILE        "${CMAKE_Fortran_FLAGS} -pg -O3 ${FLEXI_INSTRUCTION} -finline-functions ")
   SET (CMAKE_Fortran_FLAGS_DEBUG          "${CMAKE_Fortran_FLAGS} -g  -O0 -ggdb3 -ffpe-trap=invalid,zero,overflow -fbounds-check -finit-real=snan -fbacktrace -Wall")
   # Compile flags depend on the generator
-  IF(NOT "${CMAKE_GENERATOR}" MATCHES "Ninja")
+  IF(NOT "${CMAKE_GENERATOR}" STREQUAL "Ninja")
     # add flags only for compiling not linking!
     SET (FLEXI_COMPILE_FLAGS "-xf95-cpp-input")
   ELSE()
@@ -125,7 +125,7 @@ ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
   SET (CMAKE_Fortran_FLAGS_PROFILE        "${CMAKE_Fortran_FLAGS} -p -O3 ${FLEXI_INSTRUCTION} -qopt-report0 -qopt-report-phase=vec -no-prec-div")
   SET (CMAKE_Fortran_FLAGS_DEBUG          "${CMAKE_Fortran_FLAGS} -g -O0 -fpe0 -traceback -check all,noarg_temp_created,noformat,nooutput_conversion,pointer,uninit -init=snan -init=arrays")
   # Compile flags depend on the generator
-  IF(NOT "${CMAKE_GENERATOR}" MATCHES "Ninja")
+  IF(NOT "${CMAKE_GENERATOR}" STREQUAL "Ninja")
     # add flags only for compiling not linking!
     SET (FLEXI_COMPILE_FLAGS "-fpp -allow nofpp_comments -assume bscc")
   ELSE()

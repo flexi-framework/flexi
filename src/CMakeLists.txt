@@ -258,15 +258,15 @@ SET_PROPERTY(CACHE FLEXI_TESTCASE PROPERTY STRINGS ${TESTCASES})
 # Unit test at end of compilation
 # =========================================================================
 # Check is unit tests can be activated
-IF(BUILD_TYPE_LC MATCHES "sanitize" AND LIBS_USE_MPI OR BUILD_TYPE_LC MATCHES "profile")
+IF(BUILD_TYPE_LC STREQUAL "sanitize" AND LIBS_USE_MPI OR BUILD_TYPE_LC STREQUAL "profile")
   SET(ACTIVATE_UNIT_TEST       OFF)
   # Store if we force-disabled the unit tests
   SET(UNIT_TEST_FORCE_DISABLED ON  CACHE BOOL "Force disable unit tests" FORCE)
   # Check if unit tests were previously activated
   IF(FLEXI_UNITTESTS)
-    IF (BUILD_TYPE_LC MATCHES "profile")
+    IF (BUILD_TYPE_LC STREQUAL "profile")
       MESSAGE(WARNING "Unit tests automatically disabled (FLEXI_UNITTESTS=OFF) with\n CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}\nas the tests will always fail due to memory errors returned from the profiling library.")
-    ELSEIF (LIBS_MPI_NAME MATCHES "OpenMPI")
+    ELSEIF (LIBS_MPI_NAME STREQUAL "OpenMPI")
       MESSAGE(WARNING "Unit tests automatically disabled (FLEXI_UNITTESTS=OFF) with\n CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}\n LIBS_USE_MPI = ${LIBS_USE_MPI}\nas the tests will always fail due to memory errors returned from the MPI library.")
     ENDIF()
     SET(FLEXI_UNITTESTS OFF)
