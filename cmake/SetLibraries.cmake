@@ -4,7 +4,16 @@
 SET(LIBS_DLPATH "https://gitlab.iag.uni-stuttgart.de/")
 # Origin pointing to IAG
 IF("${GIT_ORIGIN}" MATCHES ".iag.uni-stuttgart.de" AND "${GIT_ORIGIN}" MATCHES "^git@")
-  SET(LIBS_DLPATH "git@gitlab.iag.uni-stuttgart.de:")
+
+  # Check if IAG Gitlab is reachable with SSH
+  EXECUTE_PROCESS(COMMAND ssh -T -o BatchMode=yes -o ConnectTimeout=5 git@gitlab.iag.uni-stuttgart.de
+                  RESULT_VARIABLE SSH_IAG
+                  OUTPUT_QUIET ERROR_QUIET)
+  IF(SSH_IAG EQUAL 0)
+    SET(LIBS_DLPATH "git@gitlab.iag.uni-stuttgart.de:")
+  ELSE()
+    MESSAGE(WARNING "Cannot reach gitlab.iag.uni-stuttgart.de via SSH. Falling back to HTTPS.")
+  ENDIF()
 ENDIF()
 
 # Unset leftover variables from previous runs
