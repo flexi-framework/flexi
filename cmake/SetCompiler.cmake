@@ -95,15 +95,28 @@ IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
 
 # AMD Optimized LLVM/CLANG
 ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Flang")
-  # set Flags
-  IF (NOT DEFINED C_FLAGS_INITIALIZED )
-    SET (C_FLAGS_INITIALIZED "yes" CACHE INTERNAL "Flag if compiler flags are already initialized" )
-    SET (CMAKE_Fortran_FLAGS              "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -std=f2008 -lstdc++ -DFLANG")
+  # LLVM flang(-new)
+  IF (CMAKE_Fortran_COMPILER_VERSION VERSION_GREATER_EQUAL "20.0.0")
+    # set Flags
+    IF (NOT DEFINED C_FLAGS_INITIALIZED )
+      SET (C_FLAGS_INITIALIZED "yes" CACHE INTERNAL "Flag if compiler flags are already initialized" )
+      SET (CMAKE_Fortran_FLAGS              "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -cpp -DFLANG")
+    ENDIF()
+    SET (CMAKE_Fortran_FLAGS_RELEASE        "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} ")
+    SET (CMAKE_Fortran_FLAGS_RELWITHDEBINFO "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -ffpe-trap=invalid,zero,overflow -fbacktrace")
+    SET (CMAKE_Fortran_FLAGS_PROFILE        "${CMAKE_Fortran_FLAGS} -pg -O3 ${FLEXI_INSTRUCTION} ")
+    SET (CMAKE_Fortran_FLAGS_DEBUG          "${CMAKE_Fortran_FLAGS} -g  -O0 -ggdb3 -ffpe-trap=invalid,zero,overflow -fbounds-check -finit-real=snan -fbacktrace -Wall")
+  ELSE()
+    # set Flags
+    IF (NOT DEFINED C_FLAGS_INITIALIZED )
+      SET (C_FLAGS_INITIALIZED "yes" CACHE INTERNAL "Flag if compiler flags are already initialized" )
+      SET (CMAKE_Fortran_FLAGS              "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -std=f2008 -lstdc++ -DFLANG")
+    ENDIF()
+    SET (CMAKE_Fortran_FLAGS_RELEASE        "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions ")
+    SET (CMAKE_Fortran_FLAGS_RELWITHDEBINFO "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions -ffpe-trap=invalid,zero,overflow -fbacktrace")
+    SET (CMAKE_Fortran_FLAGS_PROFILE        "${CMAKE_Fortran_FLAGS} -pg -O3 ${FLEXI_INSTRUCTION} -finline-functions ")
+    SET (CMAKE_Fortran_FLAGS_DEBUG          "${CMAKE_Fortran_FLAGS} -g  -O0 -ggdb3 -ffpe-trap=invalid,zero,overflow -fbounds-check -finit-real=snan -fbacktrace -Wall")
   ENDIF()
-  SET (CMAKE_Fortran_FLAGS_RELEASE        "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions ")
-  SET (CMAKE_Fortran_FLAGS_RELWITHDEBINFO "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions -ffpe-trap=invalid,zero,overflow -fbacktrace")
-  SET (CMAKE_Fortran_FLAGS_PROFILE        "${CMAKE_Fortran_FLAGS} -pg -O3 ${FLEXI_INSTRUCTION} -finline-functions ")
-  SET (CMAKE_Fortran_FLAGS_DEBUG          "${CMAKE_Fortran_FLAGS} -g  -O0 -ggdb3 -ffpe-trap=invalid,zero,overflow -fbounds-check -finit-real=snan -fbacktrace -Wall")
   # Compile flags depend on the generator
   IF(NOT "${CMAKE_GENERATOR}" STREQUAL "Ninja")
     # add flags only for compiling not linking!
