@@ -220,11 +220,17 @@ build:
       # GNU Compiler Collection (GCC)
       - CI_JOB_IMAGE: registry.iag.uni-stuttgart.de/flexi/flexi/nrg-fedora_42-x86_64
         CI_BUILD_DIR: build
+        CI_LINKER:    MOLD
       # Low Level Virtual Machine (LLVM)
       # - CI_JOB_IMAGE: registry.iag.uni-stuttgart.de/flexi/flexi/nrg-fedora_42-llvm-x86_64
       #   CI_BUILD_DIR: build_llvm
+      # Intel oneAPI Compiler
+      - CI_JOB_IMAGE: registry.iag.uni-stuttgart.de/flexi/flexi/nrg-fedora_42-intel-x86_64
+        CI_BUILD_DIR: build_intel
+        CI_LINKER:    DEFAULT
   script:
     - echo ${CI_BUILD_DIR}
+    - export CMAKE_LINKER_TYPE=${CI_LINKER}
     - cmake -B ${CI_BUILD_DIR} -DLIBS_BUILD_HDF5=OFF
     - cmake --build ${CI_BUILD_DIR} -j6
 

@@ -12,14 +12,14 @@ RUN dnf makecache                 && \
     dnf update  -y                && \
     dnf install -y git-core          \
       cmake ninja                    \
-      gcc-c++ procps-ng                  \
+      gcc-c++ procps-ng              \
       libasan libubsan               \
       mold                           \
       fftw-devel                     \
-      zlib-ng-devel zlib-ng-compat-devel &&     \
+      zlib-ng-devel zlib-ng-compat-devel && \
     dnf install -y python3 uv &&     \
     dnf install -y doxygen    &&     \
-    dnf install -y ruff       &&  `# Setup Ruff`      \
+    dnf install -y ruff       &&  `# Setup Ruff` \
     dnf autoremove            &&     \
     dnf clean all             &&     \
     rm -rf /var/log/dnf5.*
