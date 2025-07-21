@@ -1,0 +1,189 @@
+# Load the base image
+FROM fedora:42
+
+# Numerics research group
+LABEL maintainer="numerics@iag.uni-stuttgart.de"
+
+# Disable weak dependencies
+RUN echo 'install_weak_deps=False' >> /etc/dnf/dnf.conf
+
+# Setup required packages
+RUN dnf makecache                 && \
+    dnf update  -y                && \
+    dnf install -y git-core          \
+      cmake ninja                    \
+      gcc-c++ procps-ng                  \
+      libasan libubsan               \
+      mold                           \
+      fftw-devel                     \
+      zlib-ng-devel zlib-ng-compat-devel &&     \
+    dnf install -y python3 uv &&     \
+    dnf install -y doxygen    &&     \
+    dnf install -y ruff       &&  `# Setup Ruff`      \
+    dnf autoremove            &&     \
+    dnf clean all             &&     \
+    rm -rf /var/log/dnf5.*
+
+# Set architecture argument
+ARG ARCH
+
+# Setup uv
+ENV UV_LINK_MODE=copy
+
+# Install Intel BaseKit
+# > Adapted Arch Linux PKGBUILD. Get magic number and magic url from
+# > https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html
+# RUN export ONEAPI_VERSION="2025.2.0"    && \
+#     export _pkgmagic="592"              && \
+#     export _urlmagic="bd1d0273-a931-4f7e-ab76-6a2a67d646c7" && \
+#     cd /tmp                             && \
+#     curl -LO "https://registrationcenter-download.intel.com/akdlm/IRC_NAS/${_urlmagic}/intel-oneapi-base-toolkit-${ONEAPI_VERSION}.${_pkgmagic}_offline.sh" && \
+#     sh intel-oneapi-base-toolkit-${ONEAPI_VERSION}.${_pkgmagic}_offline.sh \
+#       --extract-folder build               \
+#       --extract-only                       \
+#       --remove-extracted-files no          \
+#       --log ./extract.log
+RUN export ONEAPI_VERSION="2023.2.1"    && \
+    export _pkgmagic="16"               && \
+    printf '[oneAPI]\n\
+name=Intel® oneAPI repository\n\
+baseurl=https://yum.repos.intel.com/oneapi\n\
+enabled=1\n\
+gpgcheck=1\n\
+repo_gpgcheck=1\n\
+gpgkey=https://yum.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB\n' > //etc/yum.repos.d/oneAPI.repo && \
+      rpm --import https://yum.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB    && \
+      dnf clean all           && \
+      dnf -y makecache        && \
+      dnf -y install intel-oneapi-compiler-dpcpp-cpp-and-cpp-classic \
+                     intel-oneapi-compiler-fortran-${ONEAPI_VERSION}-${_pkgmagic} \
+                     intel-oneapi-mpi-devel && \
+    dnf autoremove            && \
+    dnf clean all             && \
+    rm -rf /var/log/dnf5.*    && \
+    unset ONEAPI_VERSION      && \
+    unset _pkgmagic
+
+# Setup standard paths
+ENV LD_LIBRARY_PATH="/usr/lib64"           \
+    MANPATH="/usr/share/man"               \
+    PKG_CONFIG_PATH="/usr/lib64/pkgconfig"
+
+# Setup build evironment
+ENV CC="icx" \
+    CXX="icpx" \
+    FC="ifx" \
+    F90="ifx" \
+    TBBROOT="/opt/intel/oneapi/tbb/2021.10.0" \
+    ONEAPI_ROOT="/opt/intel/oneapi" \
+    I_MPI_ROOT="/opt/intel/oneapi/mpi/2021.16" \
+    FI_PROVIDER_PATH="/opt/intel/oneapi/mpi/2021.10.0/libfabric/lib/prov:/usr/lib64/libfabric" \
+    CMAKE_PREFIX_PATH="/opt/intel/oneapi/tbb/2021.10.0/:\
+/opt/intel/oneapi/compiler/2023.2.1/linux/IntelDPCPP" \
+    PKG_CONFIG_PATH="/opt/intel/oneapi/tbb/2021.10.0/lib/pkgconfig:\
+/opt/intel/oneapi/mpi/2021.16/lib/pkgconfig:\
+/opt/intel/oneapi/compiler/2023.2.1/lib/pkgconfig:\
+/opt/intel/oneapi/tbb/2021.10.0/lib/pkgconfig:\
+/opt/intel/oneapi/compiler/2023.2.1/lib/pkgconfig:\
+${PKG_CONFIG_PATH}" \
+    CPLUS_INCLUDE_PATH="/opt/intel/oneapi/mpi/2021.16/include" \
+    C_INCLUDE_PATH="/opt/intel/oneapi/mpi/2021.16/include" \
+    CMPLR_ROOT="/opt/intel/oneapi/compiler/2023.2.1" \
+    OCL_ICD_FILENAMES="libintelocl_emu.so:libalteracl.so:/opt/intel/oneapi/compiler/2023.2.1/linux/lib/x64/libintelocl.so" \
+    LIBRARY_PATH="/opt/intel/oneapi/tbb/2021.10.0/lib/intel64/gcc4.8:\
+/opt/intel/oneapi/mpi/2021.16/lib:\
+/opt/intel/oneapi/compiler/2023.2.1/linux/compiler/lib/intel64_lin:\
+/opt/intel/oneapi/compiler/2023.2.1/linux/lib:\
+/opt/intel/oneapi/mpi/2021.10.0/libfabric/lib:\
+/opt/intel/oneapi/mpi/2021.10.0/lib/release:\
+/opt/intel/oneapi/mpi/2021.10.0/lib" \
+    LD_LIBRARY_PATH="/opt/intel/oneapi/tbb/2021.10.0/lib/intel64/gcc4.8:\
+/opt/intel/oneapi/mpi/2021.16/opt/mpi/libfabric/lib:\
+/opt/intel/oneapi/mpi/2021.16/lib:\
+/opt/intel/oneapi/debugger/2023.2.0/gdb/intel64/lib:\
+/opt/intel/oneapi/debugger/2023.2.0/libipt/intel64/lib:\
+/opt/intel/oneapi/debugger/2023.2.0/dep/lib:\
+/opt/intel/oneapi/compiler/2023.2.1/linux/lib:\
+/opt/intel/oneapi/compiler/2023.2.1/linux/lib/x64:\
+/opt/intel/oneapi/compiler/2023.2.1/linux/lib/oclfpga/host/linux64/lib:\
+/opt/intel/oneapi/compiler/2023.2.1/linux/compiler/lib/intel64_lin:\
+/opt/intel/oneapi/mpi/2021.10.0/libfabric/lib:\
+/opt/intel/oneapi/mpi/2021.10.0/lib/release:\
+/opt/intel/oneapi/mpi/2021.10.0/lib:\
+${LD_LIBRARY_PATH}" \
+    PATH="/opt/intel/oneapi/mpi/2021.16/bin:\
+/opt/intel/oneapi/dev-utilities/2021.10.0/bin:\
+/opt/intel/oneapi/debugger/2023.2.0/gdb/intel64/bin:\
+/opt/intel/oneapi/compiler/2023.2.1/linux/lib/oclfpga/bin:\
+/opt/intel/oneapi/compiler/2023.2.1/linux/bin/intel64:\
+/opt/intel/oneapi/compiler/2023.2.1/linux/bin:\
+/opt/intel/oneapi/mpi/2021.10.0/libfabric/bin:\
+/opt/intel/oneapi/mpi/2021.10.0/bin:\
+/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
+    INTEL_PYTHONHOME="/opt/intel/oneapi/debugger/2023.2.0/dep" \
+    CPATH="/opt/intel/oneapi/tbb/2021.10.0/include:\
+/opt/intel/oneapi/dev-utilities/2021.10.0/include:\
+/opt/intel/oneapi/compiler/2023.2.1/linux/lib/oclfpga/include"
+
+# Setup MPI
+ENV MPICC="mpiicc" \
+    MPICXX="mpiicpc" \
+    MPIFC="mpiifx" \
+    MPIF90="mpiifx" \
+    I_MPI_CC="icx" \
+    I_MPI_CXX="icpx" \
+    I_MPI_FC="ifx"
+
+# Setup OpenBlas
+RUN export OPENBLAS_VERSION="0.3.30"    && \
+    export CMAKE_GENERATOR="Ninja"      && \
+    export CMAKE_LINKER_TYPE="MOLD"     && \
+    cd /tmp                             && \
+    curl -LO https://github.com/OpenMathLib/OpenBLAS/archive/refs/tags/v${OPENBLAS_VERSION}.tar.gz && \
+    tar -xvf v${OPENBLAS_VERSION}.tar.gz && \
+    cd OpenBLAS-${OPENBLAS_VERSION}     && \
+    cmake                                  \
+      -B build                             \
+      -DCMAKE_INSTALL_PREFIX=/usr/local    \
+      -DBUILD_SHARED_LIBS=ON               \
+      -DNO_AFFINITY=ON                     \
+      -DNO_WARMUP=1                        \
+      -DTARGET=CORE2                       \
+      -DNUM_THREADS=64                     \
+      -DDYNAMIC_ARCH=ON                    \
+      -DNO_AVX512=1                     && \
+    cmake --build build -j              && \
+    cmake --install build               && \
+    cd /tmp                             && \
+    rm -rf OpenBLAS*                    && \
+    rm -rf v${OPENBLAS_VERSION}.tar.gz  && \
+    unset OPENBLAS_VERSION CMAKE_GENERATOR CMAKE_LINKER_TYPE
+
+# Setup HDF5
+RUN export HDF5_VERSION="1.14.6"        && \
+    export CMAKE_GENERATOR="Ninja"      && \
+    export CMAKE_LINKER_TYPE="MOLD"     && \
+    cd /tmp                             && \
+    curl -LO https://github.com/HDFGroup/hdf5/archive/hdf5_${HDF5_VERSION}/hdf5-${HDF5_VERSION}.tar.gz && \
+    tar -xvf hdf5-${HDF5_VERSION}.tar.gz && \
+    cd hdf5-hdf5_${HDF5_VERSION}        && \
+    cmake                                  \
+      -B build                             \
+        -DCMAKE_INSTALL_PREFIX=/usr/local  \
+        -DHDF5_BUILD_FORTRAN=ON            \
+        -DHDF5_ENABLE_PARALLEL=ON          \
+        -DBUILD_TESTING=OFF             && \
+    cmake --build build -j              && \
+    cmake --install build               && \
+    cd /tmp                             && \
+    rm -rf hdf5*                        && \
+    unset HDF5_VERSION CMAKE_GENERATOR CMAKE_LINKER_TYP
+
+# Setup Fortitude
+RUN dnf install -y cargo      && \
+    CC=cc cargo install --git https://github.com/PlasmaFAIR/fortitude fortitude --root /usr/local && \
+    rm -rf /root/.cargo       && \
+    dnf remove  -y cargo      && \
+    dnf autoremove            && \
+    dnf clean all             && \
+    rm -rf /var/log/dnf5.*
