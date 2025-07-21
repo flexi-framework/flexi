@@ -12,7 +12,7 @@ IF("${GIT_ORIGIN}" MATCHES ".iag.uni-stuttgart.de" AND "${GIT_ORIGIN}" MATCHES "
   IF(SSH_IAG EQUAL 0)
     SET(LIBS_DLPATH "git@gitlab.iag.uni-stuttgart.de:")
   ELSE()
-    MESSAGE(WARNING "Cannot reach gitlab.iag.uni-stuttgart.de via SSH. Falling back to HTTPS.")
+    MESSAGE(STATUS "Cannot reach gitlab.iag.uni-stuttgart.de via SSH. Falling back to HTTPS.")
   ENDIF()
 ENDIF()
 
