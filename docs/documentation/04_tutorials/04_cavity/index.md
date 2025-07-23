@@ -29,7 +29,7 @@ cmake --build build
 The basic tutorial is contained in the `Basic_Re100` subfolder of the `tutorials\cavity` directory.
 
 ### Mesh Generation
-The domain of interest consists of a square 2D geometry. Although the flow field is two- dimensional, we will create a three-dimensional domain here and apply periodic boundary conditions in the z−direction. Also, we will only use one element in that direction to save computational costs. In the tutorial directory, we provide the necessary mesh files, along with a parameter files for **HOPR** to generate these meshes. You can recreate any mesh by running the following command. A full tutorial on how to run **HOPR** is available at the [HOPR documentation][hopr].
+The domain of interest consists of a square 2D geometry. Although the flow field is two- dimensional, we will create a three-dimensional domain here and apply periodic boundary conditions in the z-direction. Also, we will only use one element in that direction to save computational costs. In the tutorial directory, we provide the necessary mesh files, along with a parameter files for **HOPR** to generate these meshes. You can recreate any mesh by running the following command. A full tutorial on how to run **HOPR** is available at the [HOPR documentation][hopr].
 ```bash
 hopr parameter_hopr.ini
 ```
