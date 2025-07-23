@@ -81,8 +81,9 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: iElem,iRank,i,j,k
+INTEGER             :: iElem,i,j,k
 #if USE_MPI
+INTEGER             :: iRank
 INTEGER             :: iElemToSend,nRecvVal,nSendVal
 INTEGER             :: ElemRank
 #endif /* USE_MPI */

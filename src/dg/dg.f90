@@ -273,7 +273,9 @@ USE MOD_MPI                 ,ONLY: StartExchange_FV_Elems
 USE MOD_FV_Vars             ,ONLY: gradUxi,gradUeta,gradUzeta
 #if VOLINT_VISC
 USE MOD_FV_Vars             ,ONLY: gradUxi_central,gradUeta_central,gradUzeta_central
+#if USE_MPI
 USE MOD_FV_Vars             ,ONLY: FV_surf_gradU_master,FV_surf_gradU_slave
+#endif /*USE_MPI*/
 USE MOD_FV_Reconstruction   ,ONLY: FV_SurfCalcGradients_Parabolic
 #endif /* VOLINT_VISC */
 USE MOD_FV_Vars             ,ONLY: FV_surf_gradU,FV_multi_master,FV_multi_slave
