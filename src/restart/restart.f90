@@ -561,9 +561,9 @@ IF (DoRestart) THEN
   CALL CloseDataFile()
 
   IF (RestartMode.GT.1) THEN
-    SWRITE(UNIT_stdOut,'(A,ES13.7)') ' | Restart from time-averaged file successful t = ',RestartTime
+    SWRITE(UNIT_stdOut,'(A,ES14.7)') ' | Restart from time-averaged file successful t = ',RestartTime
   ELSE
-    SWRITE(UNIT_stdOut,'(A,ES13.7)') ' | Restart from state file successful at t = '     ,RestartTime
+    SWRITE(UNIT_stdOut,'(A,ES14.7)') ' | Restart from state file successful at t = '     ,RestartTime
   END IF
 
   ! Delete all files that will be rewritten

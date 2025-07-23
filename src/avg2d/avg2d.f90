@@ -97,7 +97,7 @@ LOGICAL,ALLOCATABLE :: ijDone(:,:,:)
 INTEGER,ALLOCATABLE :: posIProc_tmp(:),ElemsToSend_tmp(:,:,:,:),ElemsToRcv_tmp(:,:,:,:),posLocTmp(:,:)
 REAL                :: dx
 REAL,ALLOCATABLE    :: domainWidth(:)
-REAL,ALLOCATABLE    :: SendBuffer(:,:),RcvBuffer(:,:)
+REAL,ALLOCATABLE    :: SendBuffer(:,:),RecvBuffer(:,:)
 !==================================================================================================================================
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT AVG2D...'
@@ -356,18 +356,18 @@ DO iDiffRecvProc = 1,nRecvProcs
     i=iDiffElem(iElem)
     SendBuffer(iElemToSend,iDiffRecvProc) = domainWidth(i)
   END DO
-  CALL MPI_ISEND(SendBuffer(1:nElemsToSend(RecvProcs(iDiffRecvProc)),iDiffRecvProc),nSendVal,MPI_DOUBLE_PRECISION,  &
+  CALL MPI_ISEND(SendBuffer(1,iDiffRecvProc),nSendVal,MPI_DOUBLE_PRECISION,  &
                  iProc,0,MPI_COMM_FLEXI,MPIRequest_Avg2DSend(iDiffRecvProc),iError)
   IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_ISend',iError)
 END DO
 
 ! Start receiving the domain width data
-ALLOCATE(RcvBuffer(MAXVAL(nElemsToRecv),nSendProcs))
-RcvBuffer = 0.
+ALLOCATE(RecvBuffer(MAXVAL(nElemsToRecv),nSendProcs))
+RecvBuffer = 0.
 DO iDiffSendProc = 1,nSendProcs
   iProc    = SendProcs(iDiffSendProc)
   nRecvVal = nElemsToRecv(SendProcs(iDiffSendProc))
-  CALL MPI_IRecv(RcvBuffer(1:nElemsToRecv(SendProcs(iDiffSendProc)),iDiffSendProc),nRecvVal,MPI_DOUBLE_PRECISION,  &
+  CALL MPI_IRecv(RecvBuffer(1,iDiffSendProc),nRecvVal,MPI_DOUBLE_PRECISION,  &
                  iProc,0,MPI_COMM_FLEXI,MPIRequest_Avg2DRecv(iDiffSendProc),iError)
   IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_IRecv',iError)
 END DO
@@ -384,7 +384,7 @@ DO iDiffSendProc = 1,nSendProcs
   DO iElemToRcv = 1,nElemsToRecv(SendProcs(iDiffSendProc))
     iElem = ElemsToRecvIJSorted(iDiffSendProc,iElemToRcv)
     i=iDiffElem(iElem)
-    domainWidth(i)=domainWidth(i)+RcvBuffer(iElemToRcv,iDiffSendProc)
+    domainWidth(i)=domainWidth(i)+RecvBuffer(iElemToRcv,iDiffSendProc)
   END DO
 END DO
 SpanWidth=MAXVAL(domainWidth(:))
@@ -392,7 +392,7 @@ SpanWidth=1./SpanWidth
 
 SDEALLOCATE(domainWidth)
 SDEALLOCATE(SendBuffer)
-SDEALLOCATE(RcvBuffer)
+SDEALLOCATE(RecvBuffer)
 
 SWRITE(UNIT_stdOut,'(A)') ' INIT AVG2D DONE...'
 SWRITE(UNIT_stdOut,'(132("-"))')
@@ -462,7 +462,7 @@ DO iDiffRecvProc = 1,nRecvProcs
     i=iDiffElem(iElem)
     SendBufferAvg2D(:,:,:,iElemToSend,iDiffRecvProc) = UAvg2DLocal(:,:,:,i)
   END DO
-  CALL MPI_ISEND(SendBufferAvg2D(:,:,:,1:nElemsToSend(RecvProcs(iDiffRecvProc)),iDiffRecvProc),nSendVal,MPI_DOUBLE_PRECISION,  &
+  CALL MPI_ISEND(SendBufferAvg2D(:,:,:,1,iDiffRecvProc),nSendVal,MPI_DOUBLE_PRECISION,  &
                  iProc,0,MPI_COMM_FLEXI,MPIRequest_Avg2DSend(iDiffRecvProc),iError)
   IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_ISend',iError)
 END DO
@@ -472,7 +472,7 @@ RecvBufferAvg2D = 0.
 DO iDiffSendProc = 1,nSendProcs
   iProc    = SendProcs(iDiffSendProc)
   nRecvVal = nVarsAvg2D*(PP_N+1)*(PP_N+1)*nElemsToRecv(SendProcs(iDiffSendProc))
-  CALL MPI_IRecv(RecvBufferAvg2D(:,:,:,1:nElemsToRecv(SendProcs(iDiffSendProc)),iDiffSendProc),nRecvVal,MPI_DOUBLE_PRECISION,  &
+  CALL MPI_IRecv(RecvBufferAvg2D(:,:,:,1,iDiffSendProc),nRecvVal,MPI_DOUBLE_PRECISION,  &
                  iProc,0,MPI_COMM_FLEXI,MPIRequest_Avg2DRecv(iDiffSendProc),iError)
   IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_IRecv',iError)
 END DO
@@ -564,7 +564,7 @@ MPIRequest_Avg2DSend = MPI_REQUEST_NULL
 DO iDiffRecvProc = 1,nRecvProcs
   iProc    = RecvProcs(iDiffRecvProc)
   nSendVal = nVarsAvg2D*(PP_N+1)*(PP_N+1)*nElemsToSend(RecvProcs(iDiffRecvProc))
-  CALL MPI_IRecv(SendBufferAvg2D(:,:,:,1:nElemsToSend(RecvProcs(iDiffRecvProc)),iDiffRecvProc),nSendVal,MPI_DOUBLE_PRECISION,  &
+  CALL MPI_IRecv(SendBufferAvg2D(:,:,:,1,iDiffRecvProc),nSendVal,MPI_DOUBLE_PRECISION,  &
                  iProc,0,MPI_COMM_FLEXI,MPIRequest_Avg2DSend(iDiffRecvProc),iError)
   IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_IRecv',iError)
 END DO
@@ -580,7 +580,7 @@ DO iDiffSendProc = 1,nSendProcs
     i=iDiffElem(iElem)
     RecvBufferAvg2D(:,:,:,iElemToRecv,iDiffSendProc) = UAvg2DGlobal(:,:,:,i)
   END DO
-  CALL MPI_ISend(RecvBufferAvg2D(:,:,:,1:nElemsToRecv(SendProcs(iDiffSendProc)),iDiffSendProc),nRecvVal,MPI_DOUBLE_PRECISION,  &
+  CALL MPI_ISend(RecvBufferAvg2D(:,:,:,1,iDiffSendProc),nRecvVal,MPI_DOUBLE_PRECISION,  &
                  iProc,0,MPI_COMM_FLEXI,MPIRequest_Avg2DRecv(iDiffSendProc),iError)
   IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_ISend',iError)
 END DO
