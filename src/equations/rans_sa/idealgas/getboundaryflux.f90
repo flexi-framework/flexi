@@ -217,6 +217,7 @@ END SUBROUTINE InitBC
 !> Computes the boundary state for the different boundary conditions.
 !==================================================================================================================================
 SUBROUTINE GetBoundaryState(SideID,t,Nloc,UPrim_boundary,UPrim_master,NormVec,TangVec1,TangVec2,Face_xGP)
+!----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals      ,ONLY: Abort
@@ -225,7 +226,7 @@ USE MOD_EOS          ,ONLY: ConsToPrim,PrimtoCons
 USE MOD_EOS          ,ONLY: PRESSURE_RIEMANN
 USE MOD_EOS_Vars     ,ONLY: sKappaM1,Kappa,KappaM1,R
 USE MOD_ExactFunc    ,ONLY: ExactFunc
-USE MOD_Equation_Vars,ONLY: IniExactFunc,BCDataPrim,RefStatePrim,nRefState
+USE MOD_Equation_Vars,ONLY: IniExactFunc,BCDataPrim,RefStatePrim
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -242,15 +243,14 @@ REAL,INTENT(OUT)        :: UPrim_boundary(PRIM,0:Nloc,0:ZDIM(Nloc)) !< resulting
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: p,q
-REAL                    :: absdiff(1:nRefState)
 INTEGER                 :: BCType,BCState
 REAL,DIMENSION(PP_nVar) :: Cons
-REAL                    :: MaOut
-REAL                    :: c,vmag,Ma,cb,pt,pb ! for BCType==23,24,25
-REAL                    :: U,Tb,Tt,tmp1,tmp2,tmp3,A,Rminus,nv(3) ! for BCType==27
+REAL                    :: Ma,MaOut,c,cb,pt,pb ! for BCType==23,24,25.27
+REAL                    :: U,Tb,Tt,tmp1,tmp2,tmp3,A,Rplus,nv(3) ! for BCType==27
 !===================================================================================================================================
 BCType  = Boundarytype(BC(SideID),BC_TYPE)
 BCState = Boundarytype(BC(SideID),BC_STATE)
+
 SELECT CASE(BCType)
   CASE(2) ! Exact function or refstate
     IF(BCState.EQ.0)THEN
@@ -276,7 +276,6 @@ SELECT CASE(BCType)
       CALL ConsToPrim(UPrim_boundary(:,p,q),Cons)
     END DO; END DO
 
-
   CASE(3,4,9,91,23,24,25,27)
     ! Initialize boundary state with rotated inner state
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
@@ -288,7 +287,6 @@ SELECT CASE(BCType)
       UPrim_boundary(PRES,p,q)     = UPrim_master(PRES,p,q)
       UPrim_boundary(TEMP,p,q)     = UPrim_master(TEMP,p,q)
     END DO; END DO !p,q
-
 
     SELECT CASE(BCType)
     CASE(3) ! Adiabatic wall
@@ -391,7 +389,7 @@ SELECT CASE(BCType)
         ! (27) set pressure depending on subsonic or supersonic case
         IF(Ma<1) THEN
           ! Subsonic: pressure prescribed at boundary
-          pb = RefStatePrim(5,BCState)
+          pb = RefStatePrim(PRES,BCState)
         ELSE
           ! Supersonic: set local (inner) total pressure
           pb = UPrim_boundary(PRES,p,q)+0.5*UPrim_boundary(DENS,p,q)*DOT_PRODUCT(UPrim_Boundary(VELV,p,q),UPrim_Boundary(VELV,p,q))
@@ -884,6 +882,7 @@ ELSE
 #endif /*TESTCASE_BC*/
   CALL GetBoundaryState(SideID,t,PP_N,UPrim_boundary,UPrim_master,&
                         NormVec,TangVec1,TangVec2,Face_xGP)
+
   SELECT CASE(BCType)
     CASE(2,12,121,22,23,24,25,27) ! Riemann solver based BCs
         Flux = 0.5*(UPrim_master(PRIM_LIFT,:,:)+UPrim_boundary(PRIM_LIFT,:,:))
@@ -1016,6 +1015,7 @@ DEALLOCATE(U_local)
 
 SWRITE(UNIT_stdOut,'(A)')'  done initializing BC state!'
 END SUBROUTINE ReadBCFlow
+
 
 !==================================================================================================================================
 !> Finalize arrays used for boundary conditions.
