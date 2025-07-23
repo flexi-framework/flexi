@@ -136,7 +136,9 @@ ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
   SET (CMAKE_Fortran_FLAGS_RELEASE        "${CMAKE_Fortran_FLAGS}    -O3 ${FLEXI_INSTRUCTION} -qopt-report0 -qopt-report-phase=vec -no-prec-div")
   SET (CMAKE_Fortran_FLAGS_RELWITHDEBINFO "${CMAKE_Fortran_FLAGS}    -O3 ${FLEXI_INSTRUCTION} -qopt-report0 -qopt-report-phase=vec -no-prec-div -fpe0 -traceback")
   SET (CMAKE_Fortran_FLAGS_PROFILE        "${CMAKE_Fortran_FLAGS} -p -O3 ${FLEXI_INSTRUCTION} -qopt-report0 -qopt-report-phase=vec -no-prec-div")
-  SET (CMAKE_Fortran_FLAGS_DEBUG          "${CMAKE_Fortran_FLAGS} -g -O0 -fpe0 -traceback -check all,noarg_temp_created,noformat,nooutput_conversion,pointer,uninit -init=snan -init=arrays")
+  # SET (CMAKE_Fortran_FLAGS_DEBUG          "${CMAKE_Fortran_FLAGS} -g -O0 -fpe0 -traceback -check all,noarg_temp_created,noformat,nooutput_conversion,pointer,uninit -init=snan -init=arrays")
+  # > LLVM Memory Sanitizer requires that all libraries linked into the application must be built with the memory sanitizer
+  SET (CMAKE_Fortran_FLAGS_DEBUG          "${CMAKE_Fortran_FLAGS} -g -O0 -fpe0 -traceback -check all,noarg_temp_created,noformat,nooutput_conversion,pointer,nouninit -init=snan -init=arrays")
   # Compile flags depend on the generator
   IF(NOT "${CMAKE_GENERATOR}" STREQUAL "Ninja")
     # add flags only for compiling not linking!
