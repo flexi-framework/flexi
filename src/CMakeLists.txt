@@ -253,6 +253,12 @@ ENDIF()
 SET(   FLEXI_TESTCASE   "default"      CACHE STRING
                         "Name of testcase which is used. Must be identical to directory name in testcase folder.")
 SET_PROPERTY(CACHE FLEXI_TESTCASE PROPERTY STRINGS ${TESTCASES})
+# Riemann2D needs special boundary conditions
+IF ("${FLEXI_TESTCASE}" STREQUAL "riemannd2d")
+  ADD_COMPILE_DEFINITIONS(TESTCASE_BC=1)
+ELSE()
+  ADD_COMPILE_DEFINITIONS(TESTCASE_BC=0)
+ENDIF()
 
 # =========================================================================
 # Unit test at end of compilation

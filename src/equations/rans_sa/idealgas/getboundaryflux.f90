@@ -471,6 +471,7 @@ SUBROUTINE GetBoundaryFlux(SideID,t,Nloc,Flux,UPrim_master,                   &
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals      ,ONLY: Abort
+USE MOD_DG_Vars      ,ONLY: UPrim_Boundary
 USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
 USE MOD_EOS          ,ONLY: PrimToCons,ConsToPrim
 USE MOD_ExactFunc    ,ONLY: ExactFunc
@@ -479,8 +480,9 @@ USE MOD_Flux         ,ONLY: EvalDiffFlux3D
 USE MOD_Riemann      ,ONLY: ViscousFlux
 #endif
 USE MOD_Riemann      ,ONLY: Riemann
+#if TESTCASE_BC
 USE MOD_TestCase     ,ONLY: GetBoundaryFluxTestcase
-USE MOD_DG_Vars      ,ONLY: UPrim_Boundary
+#endif /*TESTCASE_BC*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -526,6 +528,7 @@ REAL                                 :: gradUn_vTang2,gradUt1_vTang2,gradUt2_vNo
 BCType  = Boundarytype(BC(SideID),BC_TYPE)
 BCState = Boundarytype(BC(SideID),BC_STATE)
 
+#if TESTCASE_BC
 IF (BCType.LT.0) THEN ! testcase boundary condition
   CALL GetBoundaryFluxTestcase(SideID,t,Nloc,Flux,UPrim_master,              &
 #if PARABOLIC
@@ -533,6 +536,7 @@ IF (BCType.LT.0) THEN ! testcase boundary condition
 #endif
                                NormVec,TangVec1,TangVec2,Face_xGP)
 ELSE
+#endif /*TESTCASE_BC*/
   CALL GetBoundaryState(SideID,t,Nloc,UPrim_boundary,UPrim_master,&
       NormVec,TangVec1,TangVec2,Face_xGP)
 
@@ -757,7 +761,9 @@ ELSE
     CALL Abort(__STAMP__,&
         'no BC defined in navierstokes/getboundaryflux.f90!')
   END SELECT
+#if TESTCASE_BC
 END IF ! BCType < 0
+#endif /*TESTCASE_BC*/
 END SUBROUTINE GetBoundaryFlux
 
 
@@ -769,9 +775,11 @@ SUBROUTINE GetBoundaryFVgradient(SideID,t,gradU,UPrim_master,NormVec,TangVec1,Ta
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals       ,ONLY: Abort
-USE MOD_Mesh_Vars     ,ONLY: BoundaryType,BC
-USE MOD_TestCase      ,ONLY: GetBoundaryFVgradientTestcase
 USE MOD_DG_Vars       ,ONLY: UPrim_Boundary
+USE MOD_Mesh_Vars     ,ONLY: BoundaryType,BC
+#if TESTCASE_BC
+USE MOD_TestCase      ,ONLY: GetBoundaryFVgradientTestcase
+#endif /*TESTCASE_BC*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -793,9 +801,11 @@ INTEGER           :: BCType,BCState
 BCType  = Boundarytype(BC(SideID),BC_TYPE)
 BCState = Boundarytype(BC(SideID),BC_STATE)
 
+#if TESTCASE_BC
 IF (BCType.LT.0) THEN ! testcase boundary condition
   CALL GetBoundaryFVgradientTestcase(SideID,t,gradU,UPrim_master)
 ELSE
+#endif /*TESTCASE_BC*/
   CALL GetBoundaryState(SideID,t,PP_N,UPrim_boundary,UPrim_master,&
       NormVec,TangVec1,TangVec2,Face_xGP)
   SELECT CASE(BCType)
@@ -808,7 +818,9 @@ ELSE
     CALL Abort(__STAMP__,&
          'no BC defined in navierstokes/getboundaryflux.f90!')
   END SELECT
+#if TESTCASE_BC
 END IF ! BCType < 0
+#endif /*TESTCASE_BC*/
 
 END SUBROUTINE GetBoundaryFVgradient
 #endif /*FV_ENABLED && FV_RECONSTRUCT*/
@@ -822,10 +834,12 @@ SUBROUTINE Lifting_GetBoundaryFlux(SideID,t,UPrim_master,Flux,NormVec,TangVec1,T
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals      ,ONLY: Abort
+USE MOD_DG_Vars      ,ONLY: UPrim_Boundary
 USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
 USE MOD_Lifting_Vars ,ONLY: doWeakLifting
+#if TESTCASE_BC
 USE MOD_TestCase     ,ONLY: Lifting_GetBoundaryFluxTestcase
-USE MOD_DG_Vars      ,ONLY: UPrim_Boundary
+#endif /*TESTCASE_BC*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -847,9 +861,11 @@ INTEGER           :: BCType,BCState
 BCType  = Boundarytype(BC(SideID),BC_TYPE)
 BCState = Boundarytype(BC(SideID),BC_STATE)
 
+#if TESTCASE_BC
 IF (BCType.LT.0) THEN ! testcase boundary conditions
   CALL Lifting_GetBoundaryFluxTestcase(SideID,t,UPrim_master,Flux)
 ELSE
+#endif /*TESTCASE_BC*/
   CALL GetBoundaryState(SideID,t,PP_N,UPrim_boundary,UPrim_master,&
                         NormVec,TangVec1,TangVec2,Face_xGP)
   SELECT CASE(BCType)
@@ -884,7 +900,9 @@ ELSE
   DO q=0,PP_NZ; DO p=0,PP_N
     Flux(:,p,q)=Flux(:,p,q)*SurfElem(p,q)
   END DO; END DO
+#if TESTCASE_BC
 END IF
+#endif /*TESTCASE_BC*/
 
 END SUBROUTINE Lifting_GetBoundaryFlux
 #endif /*PARABOLIC*/
