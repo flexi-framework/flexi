@@ -852,6 +852,7 @@ USE MOD_Indicator_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
+SDEALLOCATE(IndVar)
 SDEALLOCATE(IndValue)
 SDEALLOCATE(FVBoundaryType)
 
