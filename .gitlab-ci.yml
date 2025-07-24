@@ -100,7 +100,7 @@ stages:
   allow_failure: false
 
 .venv_cache: &venv_cache
-  key: "venv"
+  key: "${CI_PIPELINE_ID}-venv"
   paths:
     - venv
   policy: pull
@@ -186,7 +186,7 @@ venv_create:
   #   when: on_success
   #   expire_in: 1 day
   cache:
-    - key: "venv"
+    - key: "${CI_PIPELINE_ID}-venv"
       paths:
         - venv
       policy: push
@@ -212,7 +212,7 @@ reggie_download:
   #   when: on_success
   #   expire_in: 1 day
   cache:
-    - key: "venv"
+    - key: "${CI_PIPELINE_ID}-venv"
       paths:
         - venv
       policy: pull-push
@@ -235,7 +235,7 @@ build:
   #   when: on_success
   #   expire_in: 1 day
   cache:
-    key: "${CI_COMMIT_REF_SLUG}-${CI_COMPILER}"
+    key: "${CI_PIPELINE_ID}-${CI_COMPILER}"
     paths:
       - build_${CI_COMPILER}
     policy: push
@@ -253,7 +253,7 @@ checkin:
     - build
   cache:
     - *venv_cache
-    - key: "${CI_COMMIT_REF_SLUG}-${CI_COMPILER}"
+    - key: "${CI_PIPELINE_ID}-${CI_COMPILER}"
       paths:
         - build
         - build_intel
