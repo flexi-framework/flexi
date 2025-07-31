@@ -480,8 +480,8 @@ ENDIF()
 # =========================================================================
 # Ctags
 # =========================================================================
-MARK_AS_ADVANCED(FORCE CTAGS_PATH)
 FIND_PROGRAM(CTAGS_PATH ctags-exuberant)
+MARK_AS_ADVANCED(FORCE CTAGS_PATH)
 IF(CTAGS_PATH)
   SET(             EQNS_WO_ACTUAL ${EQNSYSTEMS})
   LIST(REMOVE_ITEM EQNS_WO_ACTUAL ${FLEXI_EQNSYSNAME})
