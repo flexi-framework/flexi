@@ -128,12 +128,30 @@ stages:
   cache:
     - *venv_cache
   variables:
-    FF_ENABLE_JOB_CLEANUP: 1
+    # The project directory will be cleaned up at the end of the build
+    FF_ENABLE_JOB_CLEANUP: true
+    # The trace force send interval for logs is dynamically adjusted based on the trace update interval
+    FF_USE_DYNAMIC_TRACE_FORCE_SEND_INTERVAL: true
+    # Fastzip is a performant archiver for cache/artifact archiving and extraction
+    FF_USE_FASTZIP: true
+    # Use fast compression for artifacts, resulting in larger archives
+    ARTIFACT_COMPRESSION_LEVEL: "fast"
+    # Use no compression for caches
+    CACHE_COMPRESSION_LEVEL: "fastest"
 
 .defaults_python: &defaults_python
   extends: .default_python
   variables:
-    FF_ENABLE_JOB_CLEANUP: 1
+    # The project directory will be cleaned up at the end of the build
+    FF_ENABLE_JOB_CLEANUP: true
+    # The trace force send interval for logs is dynamically adjusted based on the trace update interval
+    FF_USE_DYNAMIC_TRACE_FORCE_SEND_INTERVAL: true
+    # Fastzip is a performant archiver for cache/artifact archiving and extraction
+    FF_USE_FASTZIP: true
+    # Use fast compression for artifacts, resulting in larger archives
+    ARTIFACT_COMPRESSION_LEVEL: "fast"
+    # Use no compression for caches
+    CACHE_COMPRESSION_LEVEL: "fastest"
 
 .defaults_nightly: &defaults_nightly
   <<: *defaults
