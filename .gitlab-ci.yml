@@ -19,6 +19,22 @@
 # ==================================================================================================================================
 # Continuous Integration/Continuous Deployment
 # ==================================================================================================================================
+spec:
+  inputs:
+    nightly:
+      description: "Run the nightly regression checks"
+      type: boolean
+      default: false
+    weekly:
+      description: "Run the weekly regression checks"
+      type: boolean
+      default: false
+    deploy:
+      description: "Deploy the code to GitHub"
+      type: boolean
+      default: false
+---
+
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Settings
@@ -122,7 +138,7 @@ stages:
 .defaults_nightly: &defaults_nightly
   <<: *defaults
   rules:
-    - if: '$DO_NIGHTLY'
+    - if: '"$[[ inputs.nightly ]]" == "true"'
   # Stage: Requires reggie artifacts
   needs:
     - reggie_download
@@ -132,7 +148,7 @@ stages:
 .defaults_weekly: &defaults_weekly
   <<: *defaults
   rules:
-    - if: '$DO_WEEKLY'
+    - if: '"$[[ inputs.weekly ]]" == "true"'
   # Stage: Requires reggie artifacts
   needs:
     - reggie_download
@@ -331,8 +347,8 @@ documentation:
   extends: .default_build_param
   stage: documentation
   rules:
-    - if: '$DO_DEPLOY'
-    - if: '$DO_WEEKLY'
+    - if: '"$[[ inputs.deploy ]]" == "true"'
+    - if: '"$[[ inputs.weekly ]]" == "true"'
   script:
     - cd docs/doxygen
     - ./builddoxy.sh
@@ -350,8 +366,8 @@ userguide:
   stage: documentation
   image: sphinxdoc/sphinx-latexpdf:latest
   rules:
-    - if: '$DO_DEPLOY'
-    - if: '$DO_WEEKLY'
+    - if: '"$[[ inputs.deploy ]]" == "true"'
+    - if: '"$[[ inputs.weekly ]]" == "true"'
   script:
     - cd docs/documentation
     - python3 -m pip install --exists-action=w --no-cache-dir -r requirements.txt
@@ -378,7 +394,7 @@ homepage:
   extends: .default_deploy_param
   stage: deploy
   rules:
-    - if: '$DO_DEPLOY && $CI_SERVER_URL =~ /.*\.iag\.uni-stuttgart\.de$/'
+    - if: '"$[[ inputs.deploy ]]" == "true" && $CI_SERVER_URL =~ /.*\.iag\.uni-stuttgart\.de$/'
   cache:
     - key: "${CI_COMMIT_REF_SLUG}-USERGUIDE"
       paths: [docs/documentation]
@@ -393,7 +409,7 @@ github:
   extends: .default_deploy_param
   stage: deploy
   rules:
-    - if: '$DO_DEPLOY && $CI_SERVER_URL =~ /.*\.iag\.uni-stuttgart\.de$/'
+    - if: '"$[[ inputs.deploy ]]" == "true" && $CI_SERVER_URL =~ /.*\.iag\.uni-stuttgart\.de$/'
   variables:
     FF_ENABLE_JOB_CLEANUP: 1
   script:
