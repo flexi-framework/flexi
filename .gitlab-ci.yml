@@ -19,6 +19,22 @@
 # ==================================================================================================================================
 # Continuous Integration/Continuous Deployment
 # ==================================================================================================================================
+spec:
+  inputs:
+    nightly:
+      description: "Run the nightly regression checks"
+      type: boolean
+      default: false
+    weekly:
+      description: "Run the weekly regression checks"
+      type: boolean
+      default: false
+    deploy:
+      description: "Deploy the code to GitHub"
+      type: boolean
+      default: false
+---
+
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Settings
@@ -29,9 +45,10 @@ before_script:
   # - module list || true
   - python3 --version
   # Setup Python virtual environment
-  - source venv/bin/activate || true
+  - test -f venv/bin/activate && source venv/bin/activate
   # Setup CMake generator
-  - unset CMAKE_GENERATOR
+  - export CMAKE_GENERATOR="Ninja"
+  - export CMAKE_LINKER_TYPE="MOLD"
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stages
@@ -39,7 +56,8 @@ before_script:
 stages:
   - lint
   - setup
-  - reggie_checkin
+  - build
+  - checkin
   - reggie_nightly
   - reggie_weekly
   - python
@@ -54,16 +72,12 @@ stages:
   tags: [dockertag]
   # Docker image to use for the CI/CD pipeline
   # image: ${CI_REGISTRY_IMAGE}/nrg-fedora:42-x86_64
-  image: registry.iag.uni-stuttgart.de/flexi/flexi/nrg-fedora_42-x86_64
+  image:
+    name: registry.iag.uni-stuttgart.de/flexi/flexi/nrg-fedora_42-x86_64
   artifacts:
     name: "${CI_PIPELINE_ID}-${CI_COMMIT_REF_NAME}-${CI_JOB_NAME}"
     expire_in: 1 day
     when: on_failure
-  variables:
-    PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
-  cache:
-    paths:
-      - .cache/pip
 
 .default_python_param: &default_python_param
   <<: *default_build_param
@@ -78,52 +92,86 @@ stages:
   <<: *default_build_param
   allow_failure: false
 
+.default_param_matrix: &default_param_matrix
+  <<: *default_build_param
+  allow_failure: false
+  image:
+    name: $CI_JOB_IMAGE
+  parallel:
+    matrix:
+      # GNU Compiler Collection (GCC)
+      - CI_COMPILER:  gnu
+        CI_LINKER:    MOLD
+        CI_JOB_IMAGE: registry.iag.uni-stuttgart.de/flexi/flexi/nrg-fedora_42-x86_64
+      # Low Level Virtual Machine (LLVM)
+      # - CI_JOB_IMAGE: registry.iag.uni-stuttgart.de/flexi/flexi/nrg-fedora_42-llvm-x86_64
+        # CI_COMPILER:  llvm
+      # Intel oneAPI Compiler
+      - CI_COMPILER:  intel
+        CI_LINKER:    DEFAULT
+        CI_JOB_IMAGE: registry.iag.uni-stuttgart.de/flexi/flexi/nrg-fedora_42-intel-x86_64
+
 .default_python: &default_python
   <<: *default_python_param
   allow_failure: false
 
 .venv_cache: &venv_cache
-  key: "venv"
+  key: "${CI_PIPELINE_ID}-venv"
   paths:
     - venv
   policy: pull
-
-# .reggie_cache: &reggie_cache
-#   key: "reggie"
-#   paths:
-#     - reggie
-#   policy: pull
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Defaults for the standard tests (utilizing "extends" to merge the other "artifacts" options with the specific path)
 .defaults: &defaults
   extends: .default_param
-  needs: [build]
-  artifacts:
-    paths: [build]
   cache:
     - *venv_cache
-    # - *reggie_cache
-    - key: "${CI_COMMIT_REF_SLUG}"
-      paths: [build]
-      policy: pull
   variables:
-    FF_ENABLE_JOB_CLEANUP: 1
+    # The project directory will be cleaned up at the end of the build
+    FF_ENABLE_JOB_CLEANUP: true
+    # The trace force send interval for logs is dynamically adjusted based on the trace update interval
+    FF_USE_DYNAMIC_TRACE_FORCE_SEND_INTERVAL: true
+    # Fastzip is a performant archiver for cache/artifact archiving and extraction
+    FF_USE_FASTZIP: true
+    # Use fast compression for artifacts, resulting in larger archives
+    ARTIFACT_COMPRESSION_LEVEL: "fast"
+    # Use no compression for caches
+    CACHE_COMPRESSION_LEVEL: "fastest"
 
 .defaults_python: &defaults_python
   extends: .default_python
   variables:
-    FF_ENABLE_JOB_CLEANUP: 1
+    # The project directory will be cleaned up at the end of the build
+    FF_ENABLE_JOB_CLEANUP: true
+    # The trace force send interval for logs is dynamically adjusted based on the trace update interval
+    FF_USE_DYNAMIC_TRACE_FORCE_SEND_INTERVAL: true
+    # Fastzip is a performant archiver for cache/artifact archiving and extraction
+    FF_USE_FASTZIP: true
+    # Use fast compression for artifacts, resulting in larger archives
+    ARTIFACT_COMPRESSION_LEVEL: "fast"
+    # Use no compression for caches
+    CACHE_COMPRESSION_LEVEL: "fastest"
 
 .defaults_nightly: &defaults_nightly
   <<: *defaults
   rules:
-    - if: '$DO_NIGHTLY'
+    - if: '"$[[ inputs.nightly ]]" == "true"'
+  # Stage: Requires reggie artifacts
+  needs:
+    - reggie_download
+  script:
+    - reggie ./regressioncheck/checks/${CI_JOB_NAME} -j 6
 
 .defaults_weekly: &defaults_weekly
   <<: *defaults
   rules:
-    - if: '$DO_WEEKLY'
+    - if: '"$[[ inputs.weekly ]]" == "true"'
+  # Stage: Requires reggie artifacts
+  needs:
+    - reggie_download
+  script:
+    - reggie ./regressioncheck/checks/${CI_JOB_NAME} -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "lint": Run the linters
@@ -132,6 +180,7 @@ stages:
 fortitude:
   <<: *defaults_python
   stage: lint
+  dependencies: []
   script:
     - fortitude --version
     - fortitude check --output-format=grouped src
@@ -149,6 +198,7 @@ fortitude:
 ruff:
   <<: *defaults_python
   stage: lint
+  dependencies: []
   script:
     - ruff --version
     - ruff check --extend-ignore=E201,E202,E203,E221,E222,E225,E231,E271,E272 --line-length=132 --preview docs tools
@@ -158,13 +208,22 @@ ruff:
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 
 venv_create:
+  # Stage: Creates the venv and pushes it as artifact
   extends: .default_build_param
+  stage: setup
+  # Stage: Does not require any artifacts
+  dependencies: []
+  # Stage: Artifacts are not too large yet but will be so in reggie_download
+  # artifacts:
+  #   paths:
+  #     - venv/
+  #   when: on_success
+  #   expire_in: 1 day
   cache:
-    - key: "venv"
+    - key: "${CI_PIPELINE_ID}-venv"
       paths:
         - venv
-      policy: pull-push
-  stage: setup
+      policy: push
   script:
     - deactivate || true
     - rm -rf venv
@@ -174,20 +233,23 @@ venv_create:
     - uv pip install --upgrade pytest pytest-cov
 
 reggie_download:
+  # Stage: Pulls the artifacted venv and uploads it as artifact
   extends: .default_build_param
-  needs: [venv_create]
-  artifacts:
-    paths: [venv]
+  stage: setup
+  # Stage: Requires venv artifacts
+  needs:
+    - venv_create
+  # Stage: Artifacts are too large to upload
+  # artifacts:
+  #   paths:
+  #     - venv/
+  #   when: on_success
+  #   expire_in: 1 day
   cache:
-    - key: "venv"
+    - key: "${CI_PIPELINE_ID}-venv"
       paths:
         - venv
       policy: pull-push
-    # - key: "reggie"
-    #   paths:
-    #     - reggie
-    #   policy: push
-  stage: setup
   script:
     # Install Reggie
     - uv pip install git+https://github.com/piclas-framework/reggie2.0.git
@@ -198,27 +260,40 @@ reggie_download:
 # Stage "reggie_checkin": Run most simple reggie with previous builds on check-in
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 build:
-  extends: .default_build_param
-  needs: [reggie_download]
-  artifacts:
-    paths: [build]
+  extends: .default_param_matrix
+  stage: build
+  # artifacts:
+  #   paths:
+  #     - build/
+  #     - build_intel/
+  #   when: on_success
+  #   expire_in: 1 day
   cache:
-    key: "${CI_COMMIT_REF_SLUG}"
-    paths: [build]
+    key: "${CI_PIPELINE_ID}-${CI_COMPILER}"
+    paths:
+      - build_${CI_COMPILER}
     policy: push
-  stage: reggie_checkin
   script:
-    - mkdir -p build
-    - cd build
-    - cmake .. -DLIBS_BUILD_HDF5=OFF
-    - make -j 6
+    - export CMAKE_LINKER_TYPE=${CI_LINKER}
+    - cmake -B build_${CI_COMPILER} -DLIBS_BUILD_HDF5=OFF
+    - cmake --build build_${CI_COMPILER} -j6
 
 checkin:
-  <<: *defaults
-  stage: reggie_checkin
-  needs: [build]
+  extends: .default_param_matrix
+  stage: checkin
+  # Stage: Requires build artifacts
+  needs:
+    - reggie_download
+    - build
+  cache:
+    - *venv_cache
+    - key: "${CI_PIPELINE_ID}-${CI_COMPILER}"
+      paths:
+        - build
+        - build_intel
+      policy: pull
   script:
-    - cd build
+    - cd build_${CI_COMPILER}
     - reggie ../regressioncheck/checks/run_basic/freestream_3D -j 6 -e ./bin/flexi
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -232,36 +307,23 @@ build_all:
   <<: *defaults_nightly
   stage: reggie_nightly
   script:
-    - cd build
-    - reggie ../regressioncheck/checks/run_basic -j 6
+    - reggie ./regressioncheck/checks/run_basic -j 6
 
-timediscs:
+timedisc:
   <<: *defaults_nightly
   stage: reggie_nightly
-  script:
-    - cd build
-    - reggie ../regressioncheck/checks/timedisc -j 6
 
 convtest:
   <<: *defaults_nightly
   stage: reggie_nightly
-  script:
-    - cd build
-    - reggie ../regressioncheck/checks/convtest -j 6
 
 parabolic:
   <<: *defaults_nightly
   stage: reggie_nightly
-  script:
-    - cd build
-    - reggie ../regressioncheck/checks/parabolic -j 6
 
 riemann:
   <<: *defaults_nightly
   stage: reggie_nightly
-  script:
-    - cd build
-    - reggie ../regressioncheck/checks/riemann -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_weekly": Build and run more complex tests, basically complete simulatons
@@ -273,44 +335,28 @@ riemann:
 tgv:
   <<: *defaults_weekly
   stage: reggie_weekly
-  script:
-    - cd build
-    - reggie ../regressioncheck/checks/tgv -j 6
 
 naca:
   <<: *defaults_weekly
   stage: reggie_weekly
-  script:
-    - cd build
-    - reggie ../regressioncheck/checks/naca -j 6
 
 fv_switch:
   <<: *defaults_weekly
   stage: reggie_weekly
-  script:
-    - cd build
-    - reggie ../regressioncheck/checks/fv_switch -j 6
 
 fv_blend:
   <<: *defaults_weekly
   stage: reggie_weekly
-  script:
-    - cd build
-    - reggie ../regressioncheck/checks/fv_blend -j 6
 
 channelRANS:
   <<: *defaults_weekly
   stage: reggie_weekly
-  script:
-    - cd build
-    - reggie ../regressioncheck/checks/channelRANS -j 6
 
 imperator:
   <<: *defaults_weekly
   stage: reggie_weekly
   script:
-    - cd build
-    - reggie ../regressioncheck/checks/preconditioner -j 6
+    - reggie ./regressioncheck/checks/preconditioner -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "documentation": Creates doxygen documentation & compiles the documentation creating the *.pdf
@@ -319,8 +365,8 @@ documentation:
   extends: .default_build_param
   stage: documentation
   rules:
-    - if: '$DO_DEPLOY'
-    - if: '$DO_WEEKLY'
+    - if: '"$[[ inputs.deploy ]]" == "true"'
+    - if: '"$[[ inputs.weekly ]]" == "true"'
   script:
     - cd docs/doxygen
     - ./builddoxy.sh
@@ -338,8 +384,8 @@ userguide:
   stage: documentation
   image: sphinxdoc/sphinx-latexpdf:latest
   rules:
-    - if: '$DO_DEPLOY'
-    - if: '$DO_WEEKLY'
+    - if: '"$[[ inputs.deploy ]]" == "true"'
+    - if: '"$[[ inputs.weekly ]]" == "true"'
   script:
     - cd docs/documentation
     - python3 -m pip install --exists-action=w --no-cache-dir -r requirements.txt
@@ -366,7 +412,7 @@ homepage:
   extends: .default_deploy_param
   stage: deploy
   rules:
-    - if: '$DO_DEPLOY && $CI_SERVER_URL =~ /.*\.iag\.uni-stuttgart\.de$/'
+    - if: '"$[[ inputs.deploy ]]" == "true" && $CI_SERVER_URL =~ /.*\.iag\.uni-stuttgart\.de$/'
   cache:
     - key: "${CI_COMMIT_REF_SLUG}-USERGUIDE"
       paths: [docs/documentation]
@@ -381,7 +427,7 @@ github:
   extends: .default_deploy_param
   stage: deploy
   rules:
-    - if: '$DO_DEPLOY && $CI_SERVER_URL =~ /.*\.iag\.uni-stuttgart\.de$/'
+    - if: '"$[[ inputs.deploy ]]" == "true" && $CI_SERVER_URL =~ /.*\.iag\.uni-stuttgart\.de$/'
   variables:
     FF_ENABLE_JOB_CLEANUP: 1
   script:

@@ -264,7 +264,7 @@ ELSE IF (digits.LE.-1) THEN ! scientific (exponential) representation
   WRITE(fmtDigits,*) -digits
   WRITE(tmp,'(E24.'//fmtDigits//')') value
 ELSE ! digits not given
-  WRITE(tmp,'(E24.19)') value
+  WRITE(tmp,'(E24.17)') value
 END IF
 GETSTRLENREAL = LEN(TRIM(ADJUSTL(tmp)))
 

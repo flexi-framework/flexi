@@ -14,9 +14,24 @@ ENDIF()
 IF("${GIT_ORIGIN}" MATCHES ".iag.uni-stuttgart.de")
   # Check if the pre-commit hooks exits
   IF (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git/hooks/pre-commit)
-    # Create otherwise
-    FILE(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/.git/hooks)
-    EXECUTE_PROCESS(COMMAND ln -s ${CMAKE_CURRENT_SOURCE_DIR}/${PRECOMMIT_FILE} ${CMAKE_CURRENT_SOURCE_DIR}/.git/hooks/pre-commit)
+    # Invalid symlinks do not exist for CMake
+    # > Valid inside docker images, chroot, etc.
+
+    # Check if the user home directory exists
+    IF(    DEFINED ENV{HOME})
+      SET(USER_HOME_DIR $ENV{HOME})
+    ELSEIF(DEFINED ENV{USERPROFILE})
+      SET(USER_HOME_DIR $ENV{USERPROFILE})
+    ELSE()
+      SET(USER_HOME_DIR "")
+    ENDIF()
+
+    # Only attempt to create a symlink if the user has a home
+    IF(USER_HOME_DIR AND NOT "${USER_HOME_DIR}" STREQUAL "/" AND IS_DIRECTORY "${USER_HOME_DIR}")
+      # Create otherwise
+      FILE(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/.git/hooks)
+      EXECUTE_PROCESS(COMMAND ln -s ${CMAKE_CURRENT_SOURCE_DIR}/${PRECOMMIT_FILE} ${CMAKE_CURRENT_SOURCE_DIR}/.git/hooks/pre-commit)
+    ENDIF()
   ELSE()
     # Check if the hook is the correct symlink and warn otherwise
     EXECUTE_PROCESS(COMMAND readlink ${CMAKE_CURRENT_SOURCE_DIR}/.git/hooks/pre-commit OUTPUT_VARIABLE PRECOMMIT_LINK OUTPUT_STRIP_TRAILING_WHITESPACE)

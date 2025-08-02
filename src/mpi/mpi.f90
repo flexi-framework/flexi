@@ -266,7 +266,7 @@ DO iNbProc=1,nNbProcs
     nRecVal     =DataSize*nMPISides_rec(iNbProc,SendID)
     SideID_start=OffsetMPISides_rec(iNbProc-1,SendID)+1
     SideID_end  =OffsetMPISides_rec(iNbProc,SendID)
-    CALL MPI_IRECV(FaceData(:,SideID_start:SideID_end),nRecVal,MPI_DOUBLE_PRECISION,  &
+    CALL MPI_IRECV(FaceData(:,SideID_start),nRecVal,MPI_DOUBLE_PRECISION,  &
                     nbProc(iNbProc),0,MPI_COMM_FLEXI,MPIRequest(iNbProc),iError)
     IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_IRECV',iError)
   ELSE
@@ -305,7 +305,7 @@ DO iNbProc=1,nNbProcs
     nSendVal    =DataSize*nMPISides_send(iNbProc,SendID)
     SideID_start=OffsetMPISides_send(iNbProc-1,SendID)+1
     SideID_end  =OffsetMPISides_send(iNbProc,SendID)
-    CALL MPI_ISEND(FaceData(:,SideID_start:SideID_end),nSendVal,MPI_DOUBLE_PRECISION,  &
+    CALL MPI_ISEND(FaceData(:,SideID_start),nSendVal,MPI_DOUBLE_PRECISION,  &
                     nbProc(iNbProc),0,MPI_COMM_FLEXI,MPIRequest(iNbProc),iError)
     IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_ISEND',iError)
   ELSE

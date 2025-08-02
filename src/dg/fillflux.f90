@@ -83,11 +83,16 @@ LOGICAL,INTENT(IN),OPTIONAL :: pureFV      != .TRUE. prolongates all elements as
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: SideID,p,q,firstSideID_wo_BC,firstSideID ,lastSideID,FVEM
+INTEGER :: SideID,p,q,firstSideID_wo_BC,firstSideID,lastSideID
 #if PARABOLIC
-REAL    :: FluxV_loc(PP_nVar,0:PP_N, 0:PP_NZ)
-#endif
+REAL    :: FluxV_loc(PP_nVar,0:PP_N,0:PP_NZ)
+#endif /*PARABOLIC*/
+#if FV_ENABLED
 INTEGER :: FV_Elems_Max(1:nSides) ! 0 if both sides DG, 1 else
+INTEGER :: FVEM
+#else /*FV_ENABLED*/
+INTEGER, PARAMETER :: FVEM = 0
+#endif /*FV_ENABLED*/
 !==================================================================================================================================
 ! fill flux for sides ranging between firstSideID and lastSideID using Riemann solver for advection and viscous terms
 ! Set the side range according to MPI or no MPI
@@ -133,19 +138,22 @@ END IF
 ! 1. compute flux for non-BC sides
 DO SideID=firstSideID_wo_BC,lastSideID
   ! 1.1) advective part of flux
+#if FV_ENABLED
+  FVEM = FV_Elems_Max(SideID)
+#endif
   CALL Riemann(PP_N,Flux_master(:,:,:,SideID),&
       U_master    (:,:,:,SideID),U_slave    (:,:,:,SideID),       &
       UPrim_master(:,:,:,SideID),UPrim_slave(:,:,:,SideID),       &
-      NormVec (:,:,:,FV_Elems_Max(SideID),SideID), &
-      TangVec1(:,:,:,FV_Elems_Max(SideID),SideID), &
-      TangVec2(:,:,:,FV_Elems_Max(SideID),SideID),doBC=.FALSE.)
+      NormVec (:,:,:,FVEM,SideID), &
+      TangVec1(:,:,:,FVEM,SideID), &
+      TangVec2(:,:,:,FVEM,SideID),doBC=.FALSE.)
 
 #if PARABOLIC
   ! 1.2) Fill viscous flux for non-BC sides
   CALL ViscousFlux(PP_N,FluxV_loc, UPrim_master(:,:,:,SideID), UPrim_slave  (:,:,:,SideID), &
       gradUx_master(:,:,:,SideID),gradUy_master(:,:,:,SideID), gradUz_master(:,:,:,SideID),&
       gradUx_slave (:,:,:,SideID),gradUy_slave (:,:,:,SideID), gradUz_slave (:,:,:,SideID),&
-      NormVec(:,:,:,FV_Elems_Max(SideID),SideID)&
+      NormVec(:,:,:,FVEM,SideID)&
 #if EDDYVISCOSITY
       ,muSGS_master(:,:,:,SideID),muSGS_slave(:,:,:,SideID)&
 #endif
@@ -181,8 +189,11 @@ END IF ! .NOT. MPISIDES
 ! 3. multiply by SurfElem
 DO SideID=firstSideID,lastSideID
   ! multiply with SurfElem
+#if FV_ENABLED
+  FVEM = FV_Elems_Max(SideID)
+#endif
   DO q=0,PP_NZ; DO p=0,PP_N
-    Flux_master(:,p,q,SideID) = Flux_master(:,p,q,SideID) * SurfElem(p,q,FV_Elems_Max(SideID),SideID)
+    Flux_master(:,p,q,SideID) = Flux_master(:,p,q,SideID) * SurfElem(p,q,FVEM,SideID)
   END DO; END DO
 END DO ! SideID
 

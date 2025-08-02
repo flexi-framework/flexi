@@ -233,7 +233,7 @@ IF(InterpolateSolution)THEN
   CALL WriteBaseFlow(ProjectName=TRIM(ProjectName)//'_interpolated',MeshFileName=TRIM(MeshFile),OutputTime=BaseFlowTime,FutureTime=BaseFlowTime)
 END IF
 
-SWRITE(UNIT_stdOut,'(A,ES13.7)')' | Readin of baseflow file successful at t = ',BaseFlowTime
+SWRITE(UNIT_stdOut,'(A,ES14.7)')' | Readin of baseflow file successful at t = ',BaseFlowTime
 
 EndT = FLEXITIME()
 SWRITE(UNIT_stdOut,'(A,F0.3,A)')' READIN MEAN BASEFLOW DONE  [',EndT-StartT,'s]'

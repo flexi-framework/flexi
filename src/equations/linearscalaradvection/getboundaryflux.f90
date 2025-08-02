@@ -220,9 +220,11 @@ SUBROUTINE GetBoundaryFVgradient(SideID,t,gradU,UPrim_master,NormVec,TangVec1,Ta
 USE MOD_PreProc
 USE MOD_Globals       ,ONLY: Abort
 USE MOD_Mesh_Vars     ,ONLY: BoundaryType,BC
-USE MOD_TestCase      ,ONLY: GetBoundaryFVgradientTestcase
 USE MOD_Exactfunc     ,ONLY: ExactFunc
 USE MOD_Equation_Vars ,ONLY: IniExactFunc
+#if TESTCASE_BC
+USE MOD_TestCase      ,ONLY: GetBoundaryFVgradientTestcase
+#endif /*TESTCASE_BC*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -245,23 +247,28 @@ REAL    :: UPrim_boundary(1:PP_nVarPrim)
 BCType  = Boundarytype(BC(SideID),BC_TYPE)
 BCState = Boundarytype(BC(SideID),BC_STATE)
 
+#if TESTCASE_BC
 IF (BCType.LT.0) THEN ! testcase boundary condition
   CALL GetBoundaryFVgradientTestcase(SideID,t,gradU,UPrim_master)
 ELSE
+#endif /*TESTCASE_BC*/
   SELECT CASE(BCType)
-  CASE(2) ! exact BC = Dirichlet BC !!
-    ! Determine the exact BC state
-    DO q=0,PP_NZ; DO p=0,PP_N
-      CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q),UPrim_boundary)
-      gradU(:,p,q) = (UPrim_master(:,p,q) - UPrim_boundary) * sdx_Face(p,q,3)
-    END DO ; END DO
+    CASE(2) ! exact BC = Dirichlet BC !!
+      ! Determine the exact BC state
+      DO q=0,PP_NZ; DO p=0,PP_N
+        CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q),UPrim_boundary)
+        gradU(:,p,q) = (UPrim_master(:,p,q) - UPrim_boundary) * sdx_Face(p,q,3)
+      END DO ; END DO
 
-  CASE(1) !Periodic already filled!
-  CASE DEFAULT ! unknown BCType
-    CALL Abort(__STAMP__,&
-         'no BC defined in linearscalaradvection/getboundaryfvgradient.f90!')
+    CASE(1)
+      ! Periodic already filled!
+    CASE DEFAULT ! unknown BCType
+      CALL Abort(__STAMP__, 'no BC defined in linearscalaradvection/getboundaryfvgradient.f90!')
   END SELECT ! BCType
+#if TESTCASE_BC
 END IF
+#endif /*TESTCASE_BC*/
+
 END SUBROUTINE GetBoundaryFVgradient
 #endif /*FV_ENABLED && FV_RECONSTRUCT*/
 
@@ -274,11 +281,13 @@ SUBROUTINE Lifting_GetBoundaryFlux(SideID,t,UPrim_master,Flux,NormVec,TangVec1,T
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals      ,ONLY: Abort
-USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
-USE MOD_Lifting_Vars ,ONLY: doWeakLifting
-USE MOD_TestCase     ,ONLY: Lifting_GetBoundaryFluxTestcase
 USE MOD_Exactfunc    ,ONLY: ExactFunc
 USE MOD_Equation_Vars,ONLY: IniExactFunc
+USE MOD_Lifting_Vars ,ONLY: doWeakLifting
+USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
+#if TESTCASE_BC
+USE MOD_TestCase     ,ONLY: Lifting_GetBoundaryFluxTestcase
+#endif /*TESTCASE_BC*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -301,19 +310,21 @@ REAL              :: UPrim_boundary(PP_nVarPrim,0:PP_N,0:PP_NZ)
 BCType  = Boundarytype(BC(SideID),BC_TYPE)
 BCState = Boundarytype(BC(SideID),BC_STATE)
 
+#if TESTCASE_BC
 IF (BCType.LT.0) THEN ! testcase boundary conditions
   CALL Lifting_GetBoundaryFluxTestcase(SideID,t,UPrim_master,Flux)
 ELSE
+#endif /*TESTCASE_BC*/
   SELECT CASE(BCType)
-  CASE(2)
-    DO q=0,PP_NZ; DO p=0,PP_N
-      CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q),UPrim_boundary(:,p,q))
-    END DO; END DO
-    Flux=0.5*(UPrim_master+UPrim_boundary)
-  CASE(1) !Periodic already filled!
-  CASE DEFAULT ! unknown BCType
-    CALL Abort(__STAMP__,&
-         'no BC defined in navierstokes/getboundaryflux.f90!')
+    CASE(2)
+      DO q=0,PP_NZ; DO p=0,PP_N
+        CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q),UPrim_boundary(:,p,q))
+      END DO; END DO
+      Flux=0.5*(UPrim_master+UPrim_boundary)
+    CASE(1)
+      ! Periodic already filled!
+    CASE DEFAULT ! unknown BCType
+      CALL Abort(__STAMP__, 'no BC defined in navierstokes/getboundaryflux.f90!')
   END SELECT
 
   !in case lifting is done in strong form
@@ -322,7 +333,9 @@ ELSE
   DO q=0,PP_NZ; DO p=0,PP_N
     Flux(:,p,q)=Flux(:,p,q)*SurfElem(p,q)
   END DO; END DO
+#if TESTCASE_BC
 END IF
+#endif /*TESTCASE_BC*/
 
 END SUBROUTINE Lifting_GetBoundaryFlux
 #endif /*PARABOLIC*/

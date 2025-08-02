@@ -872,7 +872,7 @@ DO iNbProc=1,nNbProcs
     nSendVal    =nMPISides_MINE_Proc(iNbProc)
     SideID_start=OffsetMPISides_MINE(iNbProc-1)+1
     SideID_end  =OffsetMPISides_MINE(iNbProc)
-    CALL MPI_ISEND(Flip_MINE(SideID_start:SideID_end),nSendVal,MPI_INTEGER,  &
+    CALL MPI_ISEND(Flip_MINE(SideID_start),nSendVal,MPI_INTEGER,  &
                     nbProc(iNbProc),0,MPI_COMM_FLEXI,SendRequest(iNbProc),iError)
     IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_ISEND',iError)
   END IF
@@ -881,7 +881,7 @@ DO iNbProc=1,nNbProcs
     nRecVal     =nMPISides_YOUR_Proc(iNbProc)
     SideID_start=OffsetMPISides_YOUR(iNbProc-1)+1
     SideID_end  =OffsetMPISides_YOUR(iNbProc)
-    CALL MPI_IRECV(Flip_YOUR(SideID_start:SideID_end),nRecVal,MPI_INTEGER,  &
+    CALL MPI_IRECV(Flip_YOUR(SideID_start),nRecVal,MPI_INTEGER,  &
                     nbProc(iNbProc),0,MPI_COMM_FLEXI,RecRequest(iNbProc),iError)
     IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_IRECV',iError)
   END IF

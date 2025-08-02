@@ -52,9 +52,11 @@ PUBLIC:: ExactFuncTestcase
 PUBLIC:: TestcaseSource
 PUBLIC:: CalcForcing
 PUBLIC:: AnalyzeTestCase
+#if TESTCASE_BC
 PUBLIC:: GetBoundaryFluxTestcase
 PUBLIC:: GetBoundaryFVgradientTestcase
 PUBLIC:: Lifting_GetBoundaryFluxTestcase
+#endif /*TESTCASE_BC*/
 !==================================================================================================================================
 
 CONTAINS
@@ -419,6 +421,7 @@ END IF
 END SUBROUTINE FinalizeTestcase
 
 
+#if TESTCASE_BC
 !==================================================================================================================================
 !>
 !==================================================================================================================================
@@ -445,6 +448,9 @@ REAL,INTENT(IN)      :: TangVec2(  3,0:Nloc,0:ZDIM(Nloc))  !< tangential2 vector
 REAL,INTENT(IN)      :: Face_xGP(  3,0:Nloc,0:ZDIM(Nloc))  !< positions of surface flux points
 REAL,INTENT(OUT)     :: Flux(PP_nVar,0:Nloc,0:ZDIM(Nloc))  !< resulting boundary fluxes
 !==================================================================================================================================
+CALL Abort(__STAMP__, 'Invalid boundary condition for testcase "default"')
+Flux = 0.
+
 END SUBROUTINE GetBoundaryFluxTestcase
 
 
@@ -463,6 +469,9 @@ REAL,INTENT(IN)    :: t                                        !< current time (
 REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ) !< primitive solution from the inside
 REAL,INTENT(OUT)   :: gradU       (PP_nVarPrim,0:PP_N,0:PP_NZ) !< FV boundary gradient
 !==================================================================================================================================
+CALL Abort(__STAMP__, 'Invalid boundary condition for testcase "default"')
+gradU = 0.
+
 END SUBROUTINE GetBoundaryFVgradientTestcase
 
 
@@ -481,6 +490,10 @@ REAL,INTENT(IN)    :: t                                        !< current time (
 REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ) !< primitive solution from the inside
 REAL,INTENT(OUT)   :: Flux(     PP_nVarLifting,0:PP_N,0:PP_NZ) !< lifting boundary flux
 !==================================================================================================================================
+CALL Abort(__STAMP__, 'Invalid boundary condition for testcase "default"')
+Flux = 0.
+
 END SUBROUTINE Lifting_GetBoundaryFluxTestcase
+#endif /*TESTCASE_BC*/
 
 END MODULE MOD_TestCase

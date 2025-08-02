@@ -18,13 +18,14 @@
 !==================================================================================================================================
 MODULE MOD_PreProc
 ! MODULES
+USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: DP => REAL64
 IMPLICIT NONE
 PUBLIC
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 REAL,PARAMETER        :: PP_RealTolerance = EPSILON(1.0D0) !< machine precision
-REAL,PARAMETER        :: PP_Pi = ACOS(-1.0D0)              !< Pi up to machine accuracy
+REAL,PARAMETER        :: PP_Pi = ACOS(REAL(-1.0,KIND=DP))   !< Pi up to machine accuracy
 #if PP_N == N
 INTEGER               :: PP_N                              !< polynomial degree
 #endif

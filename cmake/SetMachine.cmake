@@ -16,7 +16,7 @@ SITE_NAME(CMAKE_HOSTNAME)
 # CMake generator settings
 # =========================================================================
 SET(USED_CMAKE_GENERATOR "${CMAKE_GENERATOR}" CACHE STRING "Expose CMAKE_GENERATOR (cannot be changed here)" FORCE)
-IF("${CMAKE_GENERATOR}" MATCHES "Ninja")
+IF("${CMAKE_GENERATOR}" STREQUAL "Ninja")
   # CMake introduced the CMAKE_COLOR_DIAGNOSTICS flag with 3.24.0, https://gitlab.kitware.com/cmake/cmake/-/merge_requests/6990
   IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.24.0"))
     SET(CMAKE_COLOR_DIAGNOSTICS ON CACHE INTERNAL "Flag if CMake should attempt to color output")
@@ -67,7 +67,7 @@ IF (MACHINE_USE_SCOREP)
   IF (NOT CMAKE_BUILD_TYPE)
     SET (CMAKE_BUILD_TYPE Profile CACHE STRING "Choose the type of build, options are: Release RelWithDebInfo Profile Debug Sanitize." FORCE)
   ENDIF (NOT CMAKE_BUILD_TYPE)
-  IF (CMAKE_BUILD_TYPE MATCHES "Release")
+  IF (CMAKE_BUILD_TYPE_LC STREQUAL "release")
     MESSAGE (WARNING "Score-P requires debug compile flags which are not available with BUILD_TYPE='Release'")
   ENDIF()
 

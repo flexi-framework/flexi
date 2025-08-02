@@ -412,10 +412,10 @@ REAL,INTENT(OUT)                :: L_Inf_Error(PP_nVar)   !< LInf error of the s
 ! LOCAL VARIABLES
 INTEGER                         :: iElem,k,l,m
 REAL                            :: U_exact(PP_nVar)
-REAL                            :: U_NAnalyze(1:PP_nVar,0:NAnalyze,0:NAnalyze,0:NAnalyzeZ)
-REAL                            :: Coords_NAnalyze(3,0:NAnalyze,0:NAnalyze,0:NAnalyzeZ)
-REAL                            :: J_NAnalyze(1,0:NAnalyze,0:NAnalyze,0:NAnalyzeZ)
-REAL                            :: J_N(1,0:PP_N,0:PP_N,0:PP_NZ)
+REAL                            :: U_NAnalyze(   1:PP_nVar,0:NAnalyze,0:NAnalyze,0:NAnalyzeZ)
+REAL                            :: Coords_NAnalyze(      3,0:NAnalyze,0:NAnalyze,0:NAnalyzeZ)
+REAL                            :: J_NAnalyze(           1,0:NAnalyze,0:NAnalyze,0:NAnalyzeZ)
+REAL                            :: J_N(       1,0:PP_N,0:PP_N,0:PP_NZ)
 REAL                            :: IntegrationWeight
 #if FV_ENABLED
 REAL                            :: U_DG(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
@@ -423,50 +423,47 @@ REAL                            :: U_FV(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 #endif
 !==================================================================================================================================
 ! Calculate error norms
-L_Inf_Error(:)=-1.E10
-L_2_Error(:)=0.
+L_Inf_Error(:) = -HUGE(1.)
+L_2_Error(  :) = 0.
+
 ! Interpolate values of Error-Grid from GP's
 DO iElem=1,nElems
 #if FV_ENABLED
   IF (FV_Elems(iElem).GT.0) THEN ! FV Element
-    DO m=0,PP_NZ
-      DO l=0,PP_N
-        DO k=0,PP_N
-          CALL ExactFunc(AnalyzeExactFunc,time,Elem_xGP(1:3,k,l,m,iElem),U_DG(:,k,l,m),AnalyzeRefState)
-        END DO ! k
-      END DO ! l
-    END DO ! m
+    DO m=0,PP_NZ; DO l=0,PP_N; DO k=0,PP_N
+      CALL ExactFunc(AnalyzeExactFunc,time,Elem_xGP(1:3,k,l,m,iElem),U_DG(:,k,l,m),AnalyzeRefState)
+    END DO; END DO; END DO ! k, l, m
+
+    ! Project the DG solution to the FV subcells
     CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,U_DG(:,:,:,:),U_FV(:,:,:,:))
-    DO m=0,PP_NZ
-      DO l=0,PP_N
-        DO k=0,PP_N
-          L_Inf_Error = MAX(L_Inf_Error,ABS(U(:,k,l,m,iElem) - U_FV(:,k,l,m)))
-          IntegrationWeight = FV_w(k)*FV_w(l)*FV_w(m)/sJ(k,l,m,iElem,1)
-          ! To sum over the elements, We compute here the square of the L_2 error
-          L_2_Error = L_2_Error+(U(:,k,l,m,iElem) - U_FV(:,k,l,m))*(U(:,k,l,m,iElem) - U_FV(:,k,l,m))*IntegrationWeight
-        END DO ! k
-      END DO ! l
-    END DO ! m
+
+    ! Calculate the FV errors on the FV subcells
+    DO m=0,PP_NZ; DO l=0,PP_N; DO k=0,PP_N
+      L_Inf_Error = MAX(L_Inf_Error,ABS(U(:,k,l,m,iElem) - U_FV(:,k,l,m)))
+      IntegrationWeight = FV_w(k)*FV_w(l)*FV_w(m)/sJ(k,l,m,iElem,1)
+      ! To sum over the elements, we compute here the square of the L_2 error
+      L_2_Error = L_2_Error+(U(:,k,l,m,iElem) - U_FV(:,k,l,m))*(U(:,k,l,m,iElem) - U_FV(:,k,l,m))*IntegrationWeight
+    END DO; END DO; END DO ! k, l, m
   ELSE
 #endif
    ! Interpolate the physical position Elem_xGP to the analyze position, needed for exact function
    CALL ChangeBasisVolume(3,PP_N,NAnalyze,Vdm_GaussN_NAnalyze,Elem_xGP(1:3,:,:,:,iElem),Coords_NAnalyze(1:3,:,:,:))
+
    ! Interpolate the Jacobian to the analyze grid: be careful we interpolate the inverse of the inverse of the Jacobian ;-)
    J_N(1,0:PP_N,0:PP_N,0:PP_NZ)=1./sJ(:,:,:,iElem,0)
    CALL ChangeBasisVolume(1,PP_N,NAnalyze,Vdm_GaussN_NAnalyze,J_N,J_NAnalyze)
+
    ! Interpolate the solution to the analyze grid
    CALL ChangeBasisVolume(PP_nVar,PP_N,NAnalyze,Vdm_GaussN_NAnalyze,U(1:PP_nVar,:,:,:,iElem),U_NAnalyze(1:PP_nVar,:,:,:))
-   DO m=0,NAnalyzeZ
-     DO l=0,NAnalyze
-       DO k=0,NAnalyze
-         CALL ExactFunc(AnalyzeExactFunc,time,Coords_NAnalyze(1:3,k,l,m),U_exact,AnalyzeRefState)
-         L_Inf_Error = MAX(L_Inf_Error,abs(U_NAnalyze(:,k,l,m) - U_exact))
-         IntegrationWeight = wGPVolAnalyze(k,l,m)*J_NAnalyze(1,k,l,m)
-         ! To sum over the elements, We compute here the square of the L_2 error
-         L_2_Error = L_2_Error+(U_NAnalyze(:,k,l,m) - U_exact)*(U_NAnalyze(:,k,l,m) - U_exact)*IntegrationWeight
-       END DO ! k
-     END DO ! l
-   END DO ! m
+
+  ! Calculate the DG errors on the analyze grid
+   DO m=0,NAnalyzeZ; DO l=0,NAnalyze; DO k=0,NAnalyze
+     CALL ExactFunc(AnalyzeExactFunc,time,Coords_NAnalyze(1:3,k,l,m),U_exact,AnalyzeRefState)
+     L_Inf_Error = MAX(L_Inf_Error,abs(U_NAnalyze(:,k,l,m) - U_exact))
+     IntegrationWeight = wGPVolAnalyze(k,l,m)*J_NAnalyze(1,k,l,m)
+     ! To sum over the elements, we compute here the square of the L_2 error
+     L_2_Error = L_2_Error+(U_NAnalyze(:,k,l,m) - U_exact)*(U_NAnalyze(:,k,l,m) - U_exact)*IntegrationWeight
+    END DO; END DO; END DO ! k, l, m
 #if FV_ENABLED
   END IF
 #endif
@@ -482,7 +479,7 @@ ELSE
 END IF
 #endif
 
-! We normalize the L_2 Error with the Volume of the domain and take into account that we have to use the square root
+! We normalize the L_2 Error with the volume of the domain and take into account that we have to use the square root
 L_2_Error = SQRT(L_2_Error/Vol)
 
 END SUBROUTINE CalcErrorNorms

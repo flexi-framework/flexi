@@ -32,7 +32,7 @@ ADD_DEPENDENCIES(     ${TOOL_NAME}libF90 libflexishared libposti fftwlib)
 
 # When using Ninja, CMake tries to parallelize the build resulting in missing module files. Add a dummy target to ensure synchronization
 ADD_CUSTOM_TARGET(target_${TOOL_NAME} COMMENT "Synchronizing build for ${TOOL_NAME} tool")
-ADD_DEPENDENCIES( target_${TOOL_NAME} libflexishared)
+ADD_DEPENDENCIES( target_${TOOL_NAME} libflexishared libposti)
 ADD_DEPENDENCIES( ${TOOL_NAME}libF90 target_${TOOL_NAME})
 
 # Standalone Posti executable

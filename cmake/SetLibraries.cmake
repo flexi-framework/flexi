@@ -4,7 +4,19 @@
 SET(LIBS_DLPATH "https://gitlab.iag.uni-stuttgart.de/")
 # Origin pointing to IAG
 IF("${GIT_ORIGIN}" MATCHES ".iag.uni-stuttgart.de" AND "${GIT_ORIGIN}" MATCHES "^git@")
-  SET(LIBS_DLPATH "git@gitlab.iag.uni-stuttgart.de:")
+  # SSH is expensive, run it only once
+  IF(NOT DEFINED SSH_IAG_CACHED)
+    # Check if IAG Gitlab is reachable with SSH
+    EXECUTE_PROCESS(COMMAND ssh -T -o BatchMode=yes -o ConnectTimeout=5 git@gitlab.iag.uni-stuttgart.de
+                    RESULT_VARIABLE SSH_IAG
+                    OUTPUT_QUIET ERROR_QUIET)
+    SET(SSH_IAG_CACHED "{SSH_IAG}" CACHE INTERNAL "Exit code of SSH check")
+    IF(SSH_IAG EQUAL 0)
+      SET(LIBS_DLPATH "git@gitlab.iag.uni-stuttgart.de:")
+    ELSE()
+      MESSAGE(STATUS "Cannot reach gitlab.iag.uni-stuttgart.de via SSH. Falling back to HTTPS.")
+    ENDIF()
+  ENDIF()
 ENDIF()
 
 # Unset leftover variables from previous runs
@@ -70,7 +82,7 @@ IF(LIBS_USE_MPI)
     #SET(LIBS_MPI_NAME "HPE MPT")
     #STRING(REGEX MATCH "([0-9]+)\\.([0-9]+)" MPI_C_LIBRARY_VERSION ${MPI_C_LIBRARY_VERSION_STRING})
     MESSAGE(FATAL_ERROR "HPE MPT not supported any more")
-  ELSEIF(MPI_C_LIBRARY_VERSION_STRING MATCHES ".*Intel.*" AND MPI_C_VERSION_MAJOR VERSION_EQUAL "3")
+  ELSEIF(MPI_C_LIBRARY_VERSION_STRING MATCHES ".*Intel.*" AND MPI_C_VERSION_MAJOR VERSION_GREATER_EQUAL "3")
     SET(LIBS_MPI_NAME "Intel MPI")
     STRING(REGEX MATCH "([0-9]+)\\.([0-9]+)" MPI_C_LIBRARY_VERSION ${MPI_C_LIBRARY_VERSION_STRING})
   ELSE()
@@ -127,27 +139,6 @@ IF(NOT "${HDF5_COMPILER}" STREQUAL "" AND NOT "${HDF5_COMPILER}" STREQUAL "HDF5_
   GET_FILENAME_COMPONENT(HDF5_PARENT_DIR ${HDF5_COMPILER} DIRECTORY)
   SET(ENV{PATH} "${HDF5_PARENT_DIR}:$ENV{PATH}")
 ENDIF()
-
-# Hide all the HDF5 libs paths
-MARK_AS_ADVANCED(FORCE HDF5_DIR)
-MARK_AS_ADVANCED(FORCE HDF5_C_INCLUDE_DIR)
-MARK_AS_ADVANCED(FORCE HDF5_DIFF_EXECUTABLE)
-MARK_AS_ADVANCED(FORCE HDF5_Fortran_INCLUDE_DIR)
-MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_dl)
-MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_hdf5)
-MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_m)
-MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_sz)
-MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_z)
-MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_dl)
-MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_hdf5)
-MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_hdf5_fortran)
-MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_m)
-MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_sz)
-MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_z)
-MARK_AS_ADVANCED(FORCE HDF5_hdf5_LIBRARY_hdf5)
-MARK_AS_ADVANCED(FORCE HDF5_hdf5_LIBRARY_RELEASE)
-MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_hdf5_fortran)
-MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_hdf5_fortran_RELEASE)
 
 IF (NOT LIBS_BUILD_HDF5)
   FIND_PACKAGE(HDF5 QUIET COMPONENTS C Fortran)
@@ -227,7 +218,7 @@ ELSE()
   MESSAGE(STATUS "Setting [HDF5] download tag:  ${HDF5_TAG}")
 
   # Set HDF5 build dir
-  SET(LIBS_HDF5_DIR ${LIBS_EXTERNAL_LIB_DIR}/HDF5/build)
+  SET(LIBS_HDF5_DIR ${LIBS_EXTERNAL_LIB_DIR}/HDF5)
 
   # Check if HDF5 was already built
   UNSET(HDF5_FOUND)
@@ -253,8 +244,10 @@ ELSE()
 
     # CMake might fail to set the HDF5 paths
     IF(HDF5_FOUND AND "${HDF5_LIBRARIES}" STREQUAL "")
-      SET(HDF5_LIBRARIES         ${LIBS_HDF5_DIR}/lib/libhdf5.so ${LIBS_HDF5_DIR}/lib/libhdf5.a ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.so ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.a)
-      SET(HDF5_Fortran_LIBRARIES ${LIBS_HDF5_DIR}/lib/libhdf5.so ${LIBS_HDF5_DIR}/lib/libhdf5.a ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.so ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.a)
+      SET(HDF5_INCLUDE_DIR       ${LIBS_HDF5_DIR}/include)
+      # WARNING: The order of the following libraries matters! They need to be listed from the most dependent to the least dependent.
+    SET(HDF5_LIBRARIES         ${LIBS_HDF5_DIR}/lib/libhdf5_hl.a ${LIBS_HDF5_DIR}/lib/libhdf5.a ${LIBS_HDF5_DIR}/lib/libhdf5_tools.a)
+    SET(HDF5_Fortran_LIBRARIES ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.a ${LIBS_HDF5_DIR}/lib/libhdf5_f90cstub.a ${LIBS_HDF5_DIR}/lib/libhdf5_hl_fortran.a ${LIBS_HDF5_DIR}/lib/libhdf5_hl_f90cstub.a ${LIBS_HDF5_DIR}/lib/libhdf5_hl.a ${LIBS_HDF5_DIR}/lib/libhdf5.a ${LIBS_HDF5_DIR}/lib/libhdf5_tools.a)
     ENDIF()
   ENDIF()
 
@@ -277,9 +270,10 @@ ELSE()
       CMAKE_GENERATOR    "Unix Makefiles"
       BUILD_COMMAND      make -j${N}
       # Set the CMake arguments for HDF5
-      CMAKE_ARGS         -DCMAKE_BUILD_TYPE=None -DCMAKE_INSTALL_PREFIX=${LIBS_HDF5_DIR} -DHDF5_INSTALL_CMAKE_DIR=lib/cmake/hdf5 -DCMAKE_POLICY_DEFAULT_CMP0175=OLD -DBUILD_STATIC_LIBS=ON -DHDF5_BUILD_FORTRAN=ON -DHDF5_ENABLE_Z_LIB_SUPPORT=OFF -DHDF5_ENABLE_SZIP_SUPPORT=OFF -DHDF5_ENABLE_PARALLEL=${LIBS_USE_MPI}
+      CMAKE_ARGS         -DCMAKE_BUILD_TYPE=None -DCMAKE_INSTALL_PREFIX=${LIBS_HDF5_DIR} -DHDF5_INSTALL_CMAKE_DIR=lib/cmake/hdf5 -DCMAKE_POLICY_DEFAULT_CMP0175=OLD -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF -DHDF5_BUILD_FORTRAN=ON -DHDF5_ENABLE_Z_LIB_SUPPORT=OFF -DHDF5_ENABLE_SZIP_SUPPORT=OFF -DHDF5_ENABLE_PARALLEL=${LIBS_USE_MPI}
       # Set the build byproducts
-      INSTALL_BYPRODUCTS ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.a ${LIBS_HDF5_DIR}/lib/libhdf5.a ${LIBS_HDF5_DIR}/lib/libhdf5.so ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.so ${LIBS_HDF5_DIR}/bin/h5diff
+      # WARNING: The order of the following libraries matters! They need to be listed from the most dependent to the least dependent.
+      INSTALL_BYPRODUCTS ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.a ${LIBS_HDF5_DIR}/lib/libhdf5_f90cstub.a ${LIBS_HDF5_DIR}/lib/libhdf5_hl_fortran.a ${LIBS_HDF5_DIR}/lib/libhdf5_hl_f90cstub.a ${LIBS_HDF5_DIR}/lib/libhdf5_hl.a ${LIBS_HDF5_DIR}/lib/libhdf5.a ${LIBS_HDF5_DIR}/lib/libhdf5_tools.a ${LIBS_HDF5_DIR}/bin/h5diff
     )
 
     # Add CMake HDF5 to the list of self-built externals
@@ -291,8 +285,9 @@ ELSE()
     # Set HDF5 paths
     SET(HDF5_INCLUDE_DIR       ${LIBS_HDF5_DIR}/include)
     SET(HDF5_DIFF_EXECUTABLE   ${LIBS_HDF5_DIR}/bin/h5diff)
-    SET(HDF5_LIBRARIES         ${LIBS_HDF5_DIR}/lib/libhdf5.so ${LIBS_HDF5_DIR}/lib/libhdf5.a ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.so ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.a)
-    SET(HDF5_Fortran_LIBRARIES ${LIBS_HDF5_DIR}/lib/libhdf5.so ${LIBS_HDF5_DIR}/lib/libhdf5.a ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.so ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.a)
+      # WARNING: The order of the following libraries matters! They need to be listed from the most dependent to the least dependent.
+    SET(HDF5_LIBRARIES         ${LIBS_HDF5_DIR}/lib/libhdf5_hl.a ${LIBS_HDF5_DIR}/lib/libhdf5.a ${LIBS_HDF5_DIR}/lib/libhdf5_tools.a)
+    SET(HDF5_Fortran_LIBRARIES ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.a ${LIBS_HDF5_DIR}/lib/libhdf5_f90cstub.a ${LIBS_HDF5_DIR}/lib/libhdf5_hl_fortran.a ${LIBS_HDF5_DIR}/lib/libhdf5_hl_f90cstub.a ${LIBS_HDF5_DIR}/lib/libhdf5_hl.a ${LIBS_HDF5_DIR}/lib/libhdf5.a ${LIBS_HDF5_DIR}/lib/libhdf5_tools.a)
   ENDIF()
 
   # Set build status to self-built
@@ -308,12 +303,33 @@ ENDIF()
 # Actually add the HDF5 paths (system/self-built) to the linking paths
 # > INFO: We could also use the HDF5::HDF5/hdf5::hdf5/hdf5::hdf5_fortran targets here but they are not set before compiling self-built HDF5
 INCLUDE_DIRECTORIES(BEFORE ${HDF5_INCLUDE_DIR})
-LIST(PREPEND linkedlibs ${HDF5_LIBRARIES} )
+LIST(PREPEND linkedlibs ${HDF5_Fortran_LIBRARIES} )
 IF(${HDF5_IS_PARALLEL})
   MESSAGE(STATUS "Compiling with ${HDF5_BUILD_STATUS} [HDF5] (v${HDF5_VERSION}) with parallel support ${HDF5_MPI_VERSION}")
 ELSE()
   MESSAGE(STATUS "Compiling with ${HDF5_BUILD_STATUS} [HDF5] (v${HDF5_VERSION}) without parallel support")
 ENDIF()
+
+# Hide all the HDF5 libs paths
+MARK_AS_ADVANCED(FORCE HDF5_DIR)
+MARK_AS_ADVANCED(FORCE HDF5_C_INCLUDE_DIR)
+MARK_AS_ADVANCED(FORCE HDF5_DIFF_EXECUTABLE)
+MARK_AS_ADVANCED(FORCE HDF5_Fortran_INCLUDE_DIR)
+MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_dl)
+MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_hdf5)
+MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_m)
+MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_sz)
+MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_z)
+MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_dl)
+MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_hdf5)
+MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_hdf5_fortran)
+MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_m)
+MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_sz)
+MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_z)
+MARK_AS_ADVANCED(FORCE HDF5_hdf5_LIBRARY_hdf5)
+MARK_AS_ADVANCED(FORCE HDF5_hdf5_LIBRARY_RELEASE)
+MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_hdf5_fortran)
+MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_hdf5_fortran_RELEASE)
 
 # Restore the original PATH
 SET(ENV{PATH} "${ORIGINAL_PATH_ENV}")
@@ -345,7 +361,7 @@ IF(NOT LIBS_BUILD_MATH_LIB)
   ENDIF()
 
   # VDM inverse, replace lapack with analytical solution
-  IF (CMAKE_BUILD_TYPE MATCHES "Debug" AND CMAKE_FQDN_HOST MATCHES "hawk\.hww\.hlrs\.de$")
+  IF (CMAKE_BUILD_TYPE_LC STREQUAL "debug" AND CMAKE_FQDN_HOST MATCHES "hawk\.hww\.hlrs\.de$")
     MESSAGE(STATUS "Compiling FLEXI in debug mode on Hawk with system math lib. Setting VDM inverse to analytical solution")
     ADD_COMPILE_DEFINITIONS(VDM_ANALYTICAL)
   ENDIF()
@@ -357,7 +373,7 @@ ELSE()
   SET_PROPERTY(CACHE LIBS_BUILD_MATH_LIB_VENDOR PROPERTY STRINGS LAPACK OpenBLAS)
 
   # Build LAPACK
-  IF (LIBS_BUILD_MATH_LIB_VENDOR MATCHES "LAPACK")
+  IF (LIBS_BUILD_MATH_LIB_VENDOR STREQUAL "LAPACK")
     # Origin pointing to Github
     IF("${GIT_ORIGIN}" MATCHES ".github.com")
       SET (MATHLIB_DOWNLOAD "https://github.com/Reference-LAPACK/lapack.git")
@@ -369,9 +385,9 @@ ELSE()
     MARK_AS_ADVANCED(FORCE MATH_LIB_DOWNLOAD)
     MARK_AS_ADVANCED(FORCE MATH_LIB_TAG)
   # Build OpenBLAS
-  ELSEIF (LIBS_BUILD_MATH_LIB_VENDOR MATCHES "OpenBLAS")
+  ELSEIF (LIBS_BUILD_MATH_LIB_VENDOR STREQUAL "OpenBLAS")
     IF("${GIT_ORIGIN}" MATCHES ".github.com")
-      SET (MATHLIB_DOWNLOAD "https://github.com/xianyi/OpenBLAS.git")
+      SET (MATHLIB_DOWNLOAD "https://github.com/OpenMathLib/OpenBLAS.git")
     ELSE()
       SET (MATHLIB_DOWNLOAD ${LIBS_DLPATH}libs/OpenBLAS.git)
     ENDIF()
@@ -387,45 +403,59 @@ ELSE()
   # Set math libs build dir
   SET(LIBS_MATH_DIR  ${LIBS_EXTERNAL_LIB_DIR}/${LIBS_BUILD_MATH_LIB_VENDOR})
 
-  IF (LIBS_BUILD_MATH_LIB_VENDOR MATCHES "LAPACK")
+  # Set parallel build with maximum number of threads
+  INCLUDE(ProcessorCount)
+  PROCESSORCOUNT(N)
+
+  IF (LIBS_BUILD_MATH_LIB_VENDOR STREQUAL "LAPACK")
     # Check if math lib was already built
-    IF (NOT EXISTS "${LIBS_MATH_DIR}/lib/liblapack.so")
+    IF (NOT EXISTS "${LIBS_MATH_DIR}/lib/liblapack.a")
       # Let CMake take care of download, configure and build
       EXTERNALPROJECT_ADD(${LIBS_BUILD_MATH_LIB_VENDOR}
-        GIT_REPOSITORY ${MATH_LIB_DOWNLOAD}
-        GIT_TAG ${MATH_LIB_TAG}
-        GIT_PROGRESS TRUE
+        GIT_REPOSITORY     ${MATH_LIB_DOWNLOAD}
+        GIT_TAG            ${MATH_LIB_TAG}
+        GIT_PROGRESS       TRUE
         ${${GITSHALLOW}}
-        PREFIX ${LIBS_MATH_DIR}
-        UPDATE_COMMAND ""
-        CMAKE_ARGS -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_PREFIX=${LIBS_MATH_DIR} -DBLAS++=OFF -DLAPACK++=OFF -DBUILD_SHARED_LIBS=ON -DCBLAS=OFF -DLAPACKE=OFF -DBUILD_TESTING=OFF
-        BUILD_BYPRODUCTS ${LIBS_MATH_DIR}/lib/liblapack.so ${LIBS_MATH_DIR}/lib/libblas.so
+        PREFIX             ${LIBS_MATH_DIR}
+        UPDATE_COMMAND     ""
+        # LAPACK explicitely needs "make" to configure
+        CMAKE_GENERATOR    "Unix Makefiles"
+        BUILD_COMMAND      make -j${N}
+        # Set the CMake arguments for LAPACK
+        CMAKE_ARGS         -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_PREFIX=${LIBS_MATH_DIR} -DBLAS++=OFF -DLAPACK++=OFF -DBUILD_SHARED_LIBS=OFF -DCBLAS=OFF -DLAPACKE=OFF -DBUILD_TESTING=OFF
+        # Set the build byproducts
+        BUILD_BYPRODUCTS   ${LIBS_MATH_DIR}/lib/liblapack.a ${LIBS_MATH_DIR}/lib/libblas.a
       )
 
       LIST(APPEND SELFBUILTEXTERNALS ${LIBS_BUILD_MATH_LIB_VENDOR})
     ENDIF()
-  ELSEIF (LIBS_BUILD_MATH_LIB_VENDOR MATCHES "OpenBLAS")
+  ELSEIF (LIBS_BUILD_MATH_LIB_VENDOR STREQUAL "OpenBLAS")
     # Check if math lib was already built
-    IF (NOT EXISTS "${LIBS_MATH_DIR}/libopenblas.so")
+    IF (NOT EXISTS "${LIBS_MATH_DIR}/libopenblas.a")
       # Let CMake take care of download, configure and build
       EXTERNALPROJECT_ADD(${LIBS_BUILD_MATH_LIB_VENDOR}
-        GIT_REPOSITORY ${MATH_LIB_DOWNLOAD}
-        GIT_TAG ${MATH_LIB_TAG}
-        GIT_PROGRESS TRUE
+        GIT_REPOSITORY     ${MATH_LIB_DOWNLOAD}
+        GIT_TAG            ${MATH_LIB_TAG}
+        GIT_PROGRESS       TRUE
         ${${GITSHALLOW}}
-        PREFIX ${LIBS_MATH_DIR}
-        UPDATE_COMMAND ""
-        CONFIGURE_COMMAND ""
-        BUILD_BYPRODUCTS ${LIBS_MATH_DIR}/src/${LIBS_BUILD_MATH_LIB_VENDOR}/libopenblas.so
-        BUILD_IN_SOURCE TRUE
-        INSTALL_COMMAND ""
+        PREFIX             ${LIBS_MATH_DIR}
+        UPDATE_COMMAND     ""
+        # OpenBLAS explicitely needs "make" to configure
+        CMAKE_GENERATOR    "Unix Makefiles"
+        BUILD_COMMAND      make -j${N}
+        # Set the CMake arguments for LAPACK
+        CMAKE_ARGS         -DBUILD_STATIC_LIBS=ON -DBUILD_TESTING=OFF
+        # Set the CMake arguments for OpenBLAS
+        BUILD_BYPRODUCTS   ${LIBS_MATH_DIR}/src/${LIBS_BUILD_MATH_LIB_VENDOR}/libopenblas.a
+        BUILD_IN_SOURCE    TRUE
+        INSTALL_COMMAND    ""
       )
 
       LIST(APPEND SELFBUILTEXTERNALS ${LIBS_BUILD_MATH_LIB_VENDOR})
     ENDIF()
   ENDIF()
 
-  IF (LIBS_BUILD_MATH_LIB_VENDOR MATCHES "LAPACK")
+  IF (LIBS_BUILD_MATH_LIB_VENDOR STREQUAL "LAPACK")
     # Set math lib paths
     UNSET(MATH_LIB_LIBRARIES)
     SET(MATH_LIB_LIBRARIES              ${LIBS_MATH_DIR}/lib)
@@ -434,22 +464,22 @@ ELSE()
     UNSET(BLAS_LIBRARY)
     UNSET(LAPACK_LIBRARIES)
 
-    SET(LAPACK_LIBRARY                  ${MATH_LIB_LIBRARIES}/liblapack.so)
-    SET(BLAS_LIBRARY                    ${MATH_LIB_LIBRARIES}/libblas.so)
+    SET(LAPACK_LIBRARY                  ${MATH_LIB_LIBRARIES}/liblapack.a)
+    SET(BLAS_LIBRARY                    ${MATH_LIB_LIBRARIES}/libblas.a)
     SET(LAPACK_LIBRARIES                ${LAPACK_LIBRARY}${BLAS_LIBRARY})
 
     # Actually add the math lib paths to the linking paths
     INCLUDE_DIRECTORIES (${MATH_LIB_LIBRARIES})
     LIST(APPEND linkedlibs ${LAPACK_LIBRARY} ${BLAS_LIBRARY})
     MESSAGE(STATUS "Compiling with self-built [LAPACK]")
-  ELSEIF (LIBS_BUILD_MATH_LIB_VENDOR MATCHES "OpenBLAS")
+  ELSEIF (LIBS_BUILD_MATH_LIB_VENDOR STREQUAL "OpenBLAS")
     # Set math lib paths
     SET(MATH_LIB_LIBRARIES              ${LIBS_MATH_DIR}/src/${LIBS_BUILD_MATH_LIB_VENDOR})
 
     UNSET(LAPACK_LIBRARY)
     UNSET(LAPACK_LIBRARIES)
 
-    SET(LAPACK_LIBRARY                  ${MATH_LIB_LIBRARIES}/libopenblas.so)
+    SET(LAPACK_LIBRARY                  ${MATH_LIB_LIBRARIES}/libopenblas.a)
     SET(LAPACK_LIBRARIES                ${LAPACK_LIBRARY}${BLAS_LIBRARY})
 
     # Actually add the math lib paths to the linking paths

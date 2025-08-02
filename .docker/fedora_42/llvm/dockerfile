@@ -1,0 +1,149 @@
+# Load the base image
+FROM fedora:42
+
+# Numerics research group
+LABEL maintainer="numerics@iag.uni-stuttgart.de"
+
+# Disable weak dependencies
+RUN echo 'install_weak_deps=False' >> /etc/dnf/dnf.conf
+
+# Setup required packages
+RUN dnf makecache                 && \
+    dnf update  -y                && \
+    dnf install -y git-core          \
+      cmake ninja                    \
+      clang flang                    \
+      libasan libubsan               \
+      mold                           \
+      fftw-devel                     \
+      zlib-ng-devel zlib-ng-compat-devel &&     \
+    dnf install -y python3 uv &&     \
+    dnf install -y doxygen    &&     \
+    dnf install -y ruff       &&  `# Setup Ruff`      \
+    dnf autoremove            &&     \
+    dnf clean all             &&     \
+    rm -rf /var/log/dnf5.*
+
+# Set architecture argument
+ARG ARCH
+
+# Setup uv
+ENV UV_LINK_MODE=copy
+
+# Setup build evironment
+ENV CC="clang"                             \
+    CXX="clang++"                          \
+    FC="flang"                             \
+    F90="flang"
+
+# Setup OpenBlas
+RUN export OPENBLAS_VERSION="0.3.30"    && \
+    export CMAKE_GENERATOR="Ninja"      && \
+    export CMAKE_LINKER_TYPE="MOLD"     && \
+    cd /tmp                             && \
+    curl -LO https://github.com/OpenMathLib/OpenBLAS/archive/refs/tags/v${OPENBLAS_VERSION}.tar.gz && \
+    tar -xvf v${OPENBLAS_VERSION}.tar.gz && \
+    cd OpenBLAS-${OPENBLAS_VERSION}     && \
+    cmake                                  \
+      -B build                             \
+      -DCMAKE_INSTALL_PREFIX=/usr/local    \
+      -DBUILD_SHARED_LIBS=ON               \
+      -DNO_AFFINITY=ON                     \
+      -DNO_WARMUP=1                        \
+      -DTARGET=CORE2                       \
+      -DNUM_THREADS=64                     \
+      -DDYNAMIC_ARCH=ON                    \
+      -DNO_AVX512=1                     && \
+    cmake --build build -j              && \
+    cmake --install build               && \
+    cd /tmp                             && \
+    rm -rf OpenBLAS*                    && \
+    rm -rf v${OPENBLAS_VERSION}.tar.gz  && \
+    unset OPENBLAS_VERSION CMAKE_GENERATOR CMAKE_LINKER_TYPE
+
+# Setup MPICH
+RUN export MPICH_VERSION="4.3.1"        && \
+    cd /tmp                             && \
+    curl -LO https://www.mpich.org/static/downloads/${MPICH_VERSION}/mpich-${MPICH_VERSION}.tar.gz && \
+    tar -xvf mpich-${MPICH_VERSION}.tar.gz && \
+    cd mpich-${MPICH_VERSION}           && \
+    ./configure                            \
+      --prefix=/usr/local                  \
+      --enable-shared                      \
+      --with-hwloc=embedded                \
+      --enable-romio                       \
+      --with-slurm=no                      \
+      --without-cuda                       \
+      --without-hip                        \
+      --without-ze                         \
+      --enable-g=none                      \
+      --disable-debuginfo                  \
+      --enable-error-checking=no           \
+      --enable-fast=O3,avx,ndebug          \
+      --without-java                       \
+      CC=clang CXX=clang++ FC=flang     && \
+    make -j                             && \
+    make install                        && \
+    ldconfig                            && \
+    cd /tmp                             && \
+    rm -rf mpich*                       && \
+    unset MPICH_VERSION
+
+# Setup standard paths
+ENV LD_LIBRARY_PATH="/usr/lib64"           \
+    MANPATH="/usr/share/man"               \
+    PKG_CONFIG_PATH="/usr/lib64/pkgconfig"
+
+# Setup MPI
+# > Each RUN command in a Dockerfile starts a new shell process, thus Docker
+# > does not persist the shell state, including environment modifications
+# > such as module load, across RUN commands.
+ENV MPI_BIN="/usr/local/bin" \
+    MPI_INCLUDE="/usr/local/include" \
+    MPI_LIB="/usr/local/lib" \
+    MPI_MAN="/usr/local/share/man" \
+    MPI_HOME="/usr/local" \
+    MPI_PYTHON3_SITEARCH="/usr/local/lib/python3.13/site-packages/mpich" \
+    MPI_COMPILER="mpich" \
+    PATH="/usr/local/bin:${PATH}" \
+    LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH}" \
+    MANPATH="/usr/local/share/man:${MANPATH}" \
+    PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:${PKG_CONFIG_PATH}"
+
+# Setup HDF5
+RUN export HDF5_VERSION="1.14.6"        && \
+    export CMAKE_GENERATOR="Ninja"      && \
+    export CMAKE_LINKER_TYPE="MOLD"     && \
+    cd /tmp                             && \
+    curl -LO https://github.com/HDFGroup/hdf5/archive/hdf5_${HDF5_VERSION}/hdf5-${HDF5_VERSION}.tar.gz && \
+    tar -xvf hdf5-${HDF5_VERSION}.tar.gz && \
+    cd hdf5-hdf5_${HDF5_VERSION}        && \
+    cmake                                  \
+      -B build                             \
+        -DCMAKE_INSTALL_PREFIX=/usr/local  \
+        -DHDF5_BUILD_FORTRAN=ON            \
+        -DHDF5_ENABLE_PARALLEL=ON          \
+        -DBUILD_TESTING=OFF             && \
+    cmake --build build -j              && \
+    cmake --install build               && \
+    cd /tmp                             && \
+    rm -rf hdf5*                        && \
+    unset HDF5_VERSION CMAKE_GENERATOR CMAKE_LINKER_TYP
+
+# Setup Fortitude
+# ENV PATH="/root/.local/bin:$PATH"
+# RUN dnf install -y cargo      && \
+#     uv tool install git+https://github.com/PlasmaFAIR/fortitude && \
+#     uv cache clean            && \
+#     rm -rf /root/.cargo       && \
+#     dnf remove  -y cargo      && \
+#     dnf autoremove            && \
+#     dnf clean all             && \
+#     rm -rf /var/log/dnf5.*
+RUN dnf install -y cargo      && \
+    cargo install --git https://github.com/PlasmaFAIR/fortitude fortitude --root /usr/local && \
+    rm -rf /root/.cargo       && \
+    dnf remove  -y cargo      && \
+    dnf autoremove            && \
+    dnf clean all             && \
+    rm -rf /var/log/dnf5.*
