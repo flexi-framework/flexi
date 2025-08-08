@@ -48,7 +48,7 @@ IF(LIBS_USE_MPI)
     FOREACH(DIR ${MPI_Fortran_INCLUDE_PATH})
       INCLUDE_DIRECTORIES(${DIR})
     ENDFOREACH()
-    LIST(PREPEND linkedlibs ${MPI_Fortran_LIBRARIES})
+    LIST(APPEND linkedlibs ${MPI_Fortran_LIBRARIES})
   ENDIF()
 
   MARK_AS_ADVANCED(FORCE MPI_LIBRARY MPI_EXTRA_LIBRARY)
@@ -121,7 +121,7 @@ MARK_AS_ADVANCED(FORCE LIBS_EXTERNAL_LIB_DIR)
 SET(LIBS_HDF5_CMAKE TRUE)
 
 # Set preferences for HDF5 library
-# SET(HDF5_USE_STATIC_LIBRARIES TRUE)
+SET(HDF5_USE_STATIC_LIBRARIES TRUE)
 IF (LIBS_USE_MPI)
   SET(HDF5_PREFER_PARALLEL TRUE)
   FIND_PROGRAM(HDF5_COMPILER h5pcc)
@@ -197,6 +197,28 @@ IF(NOT LIBS_BUILD_HDF5)
     ENDIF()
   ENDIF()
 
+  # If HDF5 Fortran library is not set, get it from the Fortran target
+  UNSET(GREP_RESULT)
+  IF("${HDF5_C_LIBRARY_hdf5_c}" STREQUAL "")
+    GET_PROPERTY(HDF5_Fortran_LIBRARY_hdf5_fortran TARGET hdf5::hdf5_fortran PROPERTY LOCATION)
+  ENDIF()
+
+  IF(NOT "${HDF5_C_LIBRARY_hdf5_c}" STREQUAL "")
+    IF(APPLE)
+      EXECUTE_PROCESS(COMMAND nm -gU      ${HDF5_C_LIBRARY_hdf5_c} COMMAND grep inflate OUTPUT_VARIABLE HDF5_USES_ZLIB RESULT_VARIABLE GREP_RESULT OUTPUT_STRIP_TRAILING_WHITESPACE)
+    ELSE()
+      EXECUTE_PROCESS(COMMAND readelf -Ws ${HDF5_C_LIBRARY_hdf5_c} COMMAND grep inflate OUTPUT_VARIABLE HDF5_USES_ZLIB RESULT_VARIABLE GREP_RESULT OUTPUT_STRIP_TRAILING_WHITESPACE)
+    ENDIF()
+  ELSE()
+    SET(GREP_RESULT 1)
+  ENDIF()
+
+  IF(GREP_RESULT EQUAL 0)
+    # HDF5 is linked against zlib, find it here
+    SET(ZLIB_USE_STATIC_LIBS "ON")
+    FIND_PACKAGE(ZLIB REQUIRED)
+  ENDIF()
+
   # Set build status to system
   SET(HDF5_BUILD_STATUS "system")
 ELSE()
@@ -237,7 +259,7 @@ ELSE()
 
   IF(HDF5_FOUND)
     # If re-running CMake, it might wrongly pick-up the system HDF5
-    IF(NOT EXISTS ${LIBS_HDF5_DIR}/lib/libhdf5.so)
+    IF(NOT EXISTS ${LIBS_HDF5_DIR}/lib/libhdf5.a)
       UNSET(HDF5_FOUND)
       SET(HDF5_VERSION     ${HDF5_STR})
     ENDIF()
@@ -356,7 +378,7 @@ IF(NOT LIBS_BUILD_MATH_LIB)
   # If library is specifically requested, it is required
   FIND_PACKAGE(LAPACK REQUIRED)
   IF (LAPACK_FOUND)
-    LIST(PREPEND linkedlibs ${LAPACK_LIBRARIES})
+    LIST(APPEND linkedlibs ${LAPACK_LIBRARIES})
     MESSAGE(STATUS "Compiling with system [BLAS/Lapack]")
   ENDIF()
 
@@ -427,7 +449,7 @@ ELSE()
         BUILD_BYPRODUCTS   ${LIBS_MATH_DIR}/lib/liblapack.a ${LIBS_MATH_DIR}/lib/libblas.a
       )
 
-      LIST(PREPEND SELFBUILTEXTERNALS ${LIBS_BUILD_MATH_LIB_VENDOR})
+      LIST(APPEND SELFBUILTEXTERNALS ${LIBS_BUILD_MATH_LIB_VENDOR})
     ENDIF()
   ELSEIF (LIBS_BUILD_MATH_LIB_VENDOR STREQUAL "OpenBLAS")
     # Check if math lib was already built
@@ -451,7 +473,7 @@ ELSE()
         INSTALL_COMMAND    ""
       )
 
-      LIST(PREPEND SELFBUILTEXTERNALS ${LIBS_BUILD_MATH_LIB_VENDOR})
+      LIST(APPEND SELFBUILTEXTERNALS ${LIBS_BUILD_MATH_LIB_VENDOR})
     ENDIF()
   ENDIF()
 
@@ -470,7 +492,7 @@ ELSE()
 
     # Actually add the math lib paths to the linking paths
     INCLUDE_DIRECTORIES (${MATH_LIB_LIBRARIES})
-    LIST(PREPEND linkedlibs ${LAPACK_LIBRARY} ${BLAS_LIBRARY})
+    LIST(APPEND linkedlibs ${LAPACK_LIBRARY} ${BLAS_LIBRARY})
     MESSAGE(STATUS "Compiling with self-built [LAPACK]")
   ELSEIF (LIBS_BUILD_MATH_LIB_VENDOR STREQUAL "OpenBLAS")
     # Set math lib paths
@@ -485,7 +507,7 @@ ELSE()
 
     # Actually add the math lib paths to the linking paths
     INCLUDE_DIRECTORIES (${MATH_LIB_LIBRARIES})
-    LIST(PREPEND linkedlibs ${LAPACK_LIBRARY}${BLAS_LIBRARY})
+    LIST(APPEND linkedlibs ${LAPACK_LIBRARY} ${BLAS_LIBRARY})
     MESSAGE(STATUS "Compiling with self-built [OpenBLAS]")
   ENDIF()
 ENDIF()
@@ -499,7 +521,7 @@ IF(LIBS_USE_PAPI)
   # If library is specifically requested, it is required
   FIND_PACKAGE(PAPI REQUIRED)
   ADD_COMPILE_DEFINITIONS(PAPI)
-  LIST(PREPEND linkedlibs ${PAPI_LIBRARIES})
+  LIST(APPEND linkedlibs ${PAPI_LIBRARIES})
   INCLUDE_DIRECTORIES(${PAPI_INCLUDE_DIRS})
   MESSAGE(STATUS "Compiling with [PAPI] benchmark support.")
 ENDIF()
