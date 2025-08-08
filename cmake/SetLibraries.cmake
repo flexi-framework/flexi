@@ -48,7 +48,7 @@ IF(LIBS_USE_MPI)
     FOREACH(DIR ${MPI_Fortran_INCLUDE_PATH})
       INCLUDE_DIRECTORIES(${DIR})
     ENDFOREACH()
-    LIST(APPEND linkedlibs ${MPI_Fortran_LIBRARIES})
+    LIST(PREPEND linkedlibs ${MPI_Fortran_LIBRARIES})
   ENDIF()
 
   MARK_AS_ADVANCED(FORCE MPI_LIBRARY MPI_EXTRA_LIBRARY)
@@ -277,7 +277,7 @@ ELSE()
     )
 
     # Add CMake HDF5 to the list of self-built externals
-    LIST(APPEND SELFBUILTEXTERNALS HDF5)
+    LIST(PREPEND SELFBUILTEXTERNALS HDF5)
 
     # Set HDF5 version and MPI support
     SET(HDF5_VERSION ${HDF5_STR})
@@ -356,7 +356,7 @@ IF(NOT LIBS_BUILD_MATH_LIB)
   # If library is specifically requested, it is required
   FIND_PACKAGE(LAPACK REQUIRED)
   IF (LAPACK_FOUND)
-    LIST(APPEND linkedlibs ${LAPACK_LIBRARIES})
+    LIST(PREPEND linkedlibs ${LAPACK_LIBRARIES})
     MESSAGE(STATUS "Compiling with system [BLAS/Lapack]")
   ENDIF()
 
@@ -427,11 +427,11 @@ ELSE()
         BUILD_BYPRODUCTS   ${LIBS_MATH_DIR}/lib/liblapack.a ${LIBS_MATH_DIR}/lib/libblas.a
       )
 
-      LIST(APPEND SELFBUILTEXTERNALS ${LIBS_BUILD_MATH_LIB_VENDOR})
+      LIST(PREPEND SELFBUILTEXTERNALS ${LIBS_BUILD_MATH_LIB_VENDOR})
     ENDIF()
   ELSEIF (LIBS_BUILD_MATH_LIB_VENDOR STREQUAL "OpenBLAS")
     # Check if math lib was already built
-    IF (NOT EXISTS "${LIBS_MATH_DIR}/libopenblas.a")
+    IF (NOT EXISTS "${LIBS_MATH_DIR}/lib/libopenblas.a")
       # Let CMake take care of download, configure and build
       EXTERNALPROJECT_ADD(${LIBS_BUILD_MATH_LIB_VENDOR}
         GIT_REPOSITORY     ${MATH_LIB_DOWNLOAD}
@@ -446,12 +446,12 @@ ELSE()
         # Set the CMake arguments for LAPACK
         CMAKE_ARGS         -DBUILD_STATIC_LIBS=ON -DBUILD_TESTING=OFF
         # Set the CMake arguments for OpenBLAS
-        BUILD_BYPRODUCTS   ${LIBS_MATH_DIR}/src/${LIBS_BUILD_MATH_LIB_VENDOR}/libopenblas.a
+        BUILD_BYPRODUCTS   ${LIBS_MATH_DIR}/src/${LIBS_BUILD_MATH_LIB_VENDOR}/lib/libopenblas.a
         BUILD_IN_SOURCE    TRUE
         INSTALL_COMMAND    ""
       )
 
-      LIST(APPEND SELFBUILTEXTERNALS ${LIBS_BUILD_MATH_LIB_VENDOR})
+      LIST(PREPEND SELFBUILTEXTERNALS ${LIBS_BUILD_MATH_LIB_VENDOR})
     ENDIF()
   ENDIF()
 
@@ -470,13 +470,14 @@ ELSE()
 
     # Actually add the math lib paths to the linking paths
     INCLUDE_DIRECTORIES (${MATH_LIB_LIBRARIES})
-    LIST(APPEND linkedlibs ${LAPACK_LIBRARY} ${BLAS_LIBRARY})
+    LIST(PREPEND linkedlibs ${LAPACK_LIBRARY} ${BLAS_LIBRARY})
     MESSAGE(STATUS "Compiling with self-built [LAPACK]")
   ELSEIF (LIBS_BUILD_MATH_LIB_VENDOR STREQUAL "OpenBLAS")
     # Set math lib paths
-    SET(MATH_LIB_LIBRARIES              ${LIBS_MATH_DIR}/src/${LIBS_BUILD_MATH_LIB_VENDOR})
+    SET(MATH_LIB_LIBRARIES              ${LIBS_MATH_DIR}/src/${LIBS_BUILD_MATH_LIB_VENDOR}/lib)
 
     UNSET(LAPACK_LIBRARY)
+    UNSET(BLAS_LIBRARY)
     UNSET(LAPACK_LIBRARIES)
 
     SET(LAPACK_LIBRARY                  ${MATH_LIB_LIBRARIES}/libopenblas.a)
@@ -484,7 +485,7 @@ ELSE()
 
     # Actually add the math lib paths to the linking paths
     INCLUDE_DIRECTORIES (${MATH_LIB_LIBRARIES})
-    LIST(APPEND linkedlibs ${LAPACK_LIBRARY} ${BLAS_LIBRARY})
+    LIST(PREPEND linkedlibs ${LAPACK_LIBRARY}${BLAS_LIBRARY})
     MESSAGE(STATUS "Compiling with self-built [OpenBLAS]")
   ENDIF()
 ENDIF()
@@ -498,7 +499,7 @@ IF(LIBS_USE_PAPI)
   # If library is specifically requested, it is required
   FIND_PACKAGE(PAPI REQUIRED)
   ADD_COMPILE_DEFINITIONS(PAPI)
-  LIST(APPEND linkedlibs ${PAPI_LIBRARIES})
+  LIST(PREPEND linkedlibs ${PAPI_LIBRARIES})
   INCLUDE_DIRECTORIES(${PAPI_INCLUDE_DIRS})
   MESSAGE(STATUS "Compiling with [PAPI] benchmark support.")
 ENDIF()
