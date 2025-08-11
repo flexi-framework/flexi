@@ -143,6 +143,12 @@ ENDIF()
 IF (NOT LIBS_BUILD_HDF5)
   FIND_PACKAGE(HDF5 QUIET COMPONENTS C Fortran)
 
+  # Could not find the static version, look for the shared library
+  IF(NOT HDF5_FOUND)
+    UNSET(HDF5_USE_STATIC_LIBRARIES)
+    FIND_PACKAGE(HDF5 QUIET COMPONENTS C Fortran)
+  ENDIF()
+
   IF (HDF5_FOUND)
     MESSAGE (STATUS "[HDF5] found in system libraries [${HDF5_DIR}]")
     SET(LIBS_BUILD_HDF5 OFF CACHE BOOL "Compile and build HDF5 library")
@@ -200,7 +206,7 @@ IF(NOT LIBS_BUILD_HDF5)
   # If HDF5 Fortran library is not set, get it from the Fortran target
   UNSET(GREP_RESULT)
   IF("${HDF5_C_LIBRARY_hdf5_c}" STREQUAL "")
-    GET_PROPERTY(HDF5_Fortran_LIBRARY_hdf5_fortran TARGET hdf5::hdf5_fortran PROPERTY LOCATION)
+    GET_PROPERTY(HDF5_C_LIBRARY_hdf5_c TARGET hdf5::hdf5 PROPERTY LOCATION)
   ENDIF()
 
   IF(NOT "${HDF5_C_LIBRARY_hdf5_c}" STREQUAL "")
@@ -216,7 +222,13 @@ IF(NOT LIBS_BUILD_HDF5)
   IF(GREP_RESULT EQUAL 0)
     # HDF5 is linked against zlib, find it here
     SET(ZLIB_USE_STATIC_LIBS "ON")
-    FIND_PACKAGE(ZLIB REQUIRED)
+    FIND_PACKAGE(ZLIB QUIET)
+
+    # Could not find the static version, look for the shared library
+    IF(NOT ZLIB_FOUND)
+      UNSET(ZLIB_USE_STATIC_LIBS)
+      FIND_PACKAGE(ZLIB REQUIRED)
+    ENDIF()
   ENDIF()
 
   # Set build status to system
