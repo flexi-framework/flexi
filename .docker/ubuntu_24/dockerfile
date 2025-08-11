@@ -17,7 +17,7 @@ RUN apt-get update && \
     # FLEXI environment
     apt-get install -y --no-install-recommends \
     git git-lfs wget curl tar bzip2 build-essential cmake cmake-curses-gui gfortran \
-    zlib1g-dev python3-dev python3-pip python3-venv libxft-dev mold vim nano \
+    zlib1g-dev python3-dev python3-pip python3-venv libxft-dev vim nano \
     # ParaView setup
     mesa-common-dev libglu1-mesa-dev libgl1-mesa-dev libegl1-mesa-dev \
     qtbase5-dev qt5-qmake libqt5x11extras5-dev libqt5opengl5-dev libqt5help5 qtbase5-dev-tools qttools5-dev qtxmlpatterns5-dev-tools libqt5svg5-dev && \
@@ -42,32 +42,32 @@ ENV CC=gcc \
     FCFLAGS=${CPU_PORTABLE_FLAGS}
 
 # Setup OpenBlas, ensure cross-platform portability by building library for multiple targets and detecting CPU at runtime (DYNAMIC_ARCH=ON)
-RUN cd /tmp && \
-    wget https://github.com/OpenMathLib/OpenBLAS/archive/refs/tags/v0.3.29.tar.gz && \
-    tar -xvf v0.3.29.tar.gz && \
-    cd OpenBLAS-0.3.29 && \
+RUN OPENBLAS_VERSION=0.3.30 && cd /tmp && \
+    wget https://github.com/OpenMathLib/OpenBLAS/archive/refs/tags/v${OPENBLAS_VERSION}.tar.gz && \
+    tar -xvf v${OPENBLAS_VERSION}.tar.gz && \
+    cd OpenBLAS-${OPENBLAS_VERSION} && \
     mkdir build && cd build && \
-    cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DDYNAMIC_ARCH=ON .. && \
+    cmake -DCMAKE_INSTALL_PREFIX=/opt -DDYNAMIC_ARCH=ON .. && \
     make -j$(nproc) && cmake --install . && \
-    cd /tmp && rm -rf OpenBLAS* && rm -rf v0.3.29.tar.gz
+    cd /tmp && rm -rf OpenBLAS* && rm -rf v${OPENBLAS_VERSION}.tar.gz
 
 # Setup OpenMPI
-RUN cd /tmp && \
-    wget https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-5.0.7.tar.bz2 && \
-    tar -xvf openmpi-5.0.7.tar.bz2 && \
-    cd openmpi-5.0.7 && \
-    ./configure --prefix=/usr/local && \
+RUN OPENMPI_VERSION=5.0.8 && cd /tmp && \
+    wget https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-${OPENMPI_VERSION}.tar.bz2 && \
+    tar -xvf openmpi-${OPENMPI_VERSION}.tar.bz2 && \
+    cd openmpi-${OPENMPI_VERSION} && \
+    ./configure --prefix=/opt && \
     make -j$(nproc) && make install && \
     ldconfig && \
     cd /tmp && rm -rf openmpi*
 
 # Setup HDF5
-RUN cd /tmp && \
-    wget https://github.com/HDFGroup/hdf5/releases/download/hdf5_1.14.4.3/hdf5-1.14.4-3.tar.gz && \
-    tar -xvf hdf5-1.14.4-3.tar.gz && \
-    cd hdf5-1.14.4-3 && \
+RUN HDF5_VERSION=1.14.5 && cd /tmp && \
+    wget https://github.com/HDFGroup/hdf5/releases/download/hdf5_${HDF5_VERSION}/hdf5-${HDF5_VERSION}.tar.gz && \
+    tar -xvf hdf5-${HDF5_VERSION}.tar.gz && \
+    cd hdf5-${HDF5_VERSION} && \
     mkdir build && cd build && \
-    cmake -DCMAKE_INSTALL_PREFIX=/usr/local \
+    cmake -DCMAKE_INSTALL_PREFIX=/opt \
         -DHDF5_BUILD_FORTRAN=ON \
         -DHDF5_ENABLE_PARALLEL=ON \
         .. && \
@@ -75,21 +75,21 @@ RUN cd /tmp && \
     cd /tmp && rm -rf hdf5*
 
 # Setup FFTW
-RUN cd /tmp && \
-    wget https://fftw.org/fftw-3.3.10.tar.gz && \
-    tar -xvf fftw-3.3.10.tar.gz && \
-    cd fftw-3.3.10 && \
-    ./configure --prefix=/usr/local && \
+RUN FFTW_VERSION=3.3.10 && cd /tmp && \
+    wget https://fftw.org/fftw-${FFTW_VERSION}.tar.gz && \
+    tar -xvf fftw-${FFTW_VERSION}.tar.gz && \
+    cd fftw-${FFTW_VERSION} && \
+    ./configure --prefix=/opt && \
     make -j$(nproc) && make install && \
     cd /tmp && rm -rf fftw*
 
 # Setup ParaView
 # apt-repository provides v5.11.2 which suffers from XML-parsing bug (https://discourse.paraview.org/t/i-cannot-read-a-vtp-file-i-could-open-yesterday-can-someone-try-to-open-it/13938)
 COPY FileParser_5_9_0.patch .
-RUN cd /tmp && \
-  wget https://www.paraview.org/files/v5.13/ParaView-v5.13.3.tar.gz && \
-  tar -xvf ParaView-v5.13.3.tar.gz && \
-  cd ParaView-v5.13.3 && \
+RUN PARAVIEW_VERSION=5.13.3 && cd /tmp && \
+  wget https://www.paraview.org/files/v${PARAVIEW_VERSION%??}/ParaView-v${PARAVIEW_VERSION}.tar.gz && \
+  tar -xvf ParaView-v${PARAVIEW_VERSION}.tar.gz && \
+  cd ParaView-v${PARAVIEW_VERSION} && \
   mv ../../FileParser_5_9_0.patch . && patch -p0 < FileParser_5_9_0.patch && \
   mkdir build && cd build/ && \
   cmake \
@@ -99,13 +99,17 @@ RUN cd /tmp && \
     -DPARAVIEW_USE_PYTHON=ON \
     -DVTK_MODULE_USE_EXTERNAL_VTK_hdf5=ON \
     -DHDF5_IS_PARALLEL=ON \
-    -DHDF5_DIR=/usr/local/cmake \
-    -DCMAKE_INSTALL_PREFIX=/usr/local ../ && \
+    -DHDF5_DIR=/opt/cmake \
+    -DCMAKE_INSTALL_PREFIX=/opt \
+    ../ && \
   make -j $(nproc) && make install && \
   cd /tmp && rm -rf ParaView*
 
 # Install FLEXI and HOPR/PyHope as user
 # -------------------------------------
+
+# FLEXI environment installed to /opt, hence include directory in PATH variable
+ENV PATH="/opt/bin:$PATH"
 
 # create new (non-root) user "nrg" and switch to it
 RUN useradd -ms /bin/bash nrg
