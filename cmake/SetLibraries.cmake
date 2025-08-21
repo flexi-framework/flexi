@@ -365,8 +365,10 @@ MARK_AS_ADVANCED(FORCE HDF5_hdf5_LIBRARY_RELEASE)
 MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_hdf5_fortran)
 MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_hdf5_fortran_RELEASE)
 
-# Restore the original PATH
-SET(ENV{PATH} "${ORIGINAL_PATH_ENV}")
+# Restore the original PATH - only if it has been modified above, i.e. ORIGINAL_PATH_ENV is actually defined
+IF(NOT "${HDF5_COMPILER}" STREQUAL "" AND NOT "${HDF5_COMPILER}" STREQUAL "HDF5_COMPILER-NOTFOUND")
+  SET(ENV{PATH} "${ORIGINAL_PATH_ENV}")
+ENDIF()
 
 
 # =========================================================================
