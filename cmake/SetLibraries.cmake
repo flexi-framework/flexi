@@ -334,10 +334,10 @@ IF(HDF5_VERSION VERSION_EQUAL "1.14")
   LIST(FILTER HDF5_INCLUDE_DIR EXCLUDE REGEX "src/H5FDsubfiling")
 ENDIF()
 
-# Actually add the HDF5 paths (system/self-built) to the linking paths
+# Actually add the HDF5 paths (system/self-built) to the linking paths, including the library containing dlopen/dlclose (usually -ldl on UNIX machines)
 # > INFO: We could also use the HDF5::HDF5/hdf5::hdf5/hdf5::hdf5_fortran targets here but they are not set before compiling self-built HDF5
 INCLUDE_DIRECTORIES(BEFORE ${HDF5_INCLUDE_DIR})
-LIST(PREPEND linkedlibs ${HDF5_Fortran_LIBRARIES} )
+LIST(PREPEND linkedlibs ${HDF5_Fortran_LIBRARIES} ${CMAKE_DL_LIBS})
 IF(${HDF5_IS_PARALLEL})
   MESSAGE(STATUS "Compiling with ${HDF5_BUILD_STATUS} [HDF5] (v${HDF5_VERSION}) with parallel support ${HDF5_MPI_VERSION}")
 ELSE()
