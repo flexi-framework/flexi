@@ -5,6 +5,13 @@
 # -----------------------------------------------------------------
 FROM ubuntu:24.04
 
+# Use timezone (TZ) of Berlin as default and suppress user-interaction during package installation (e.g. timezone configuration dialog of tzdata)
+# Set default locale for consistent build behavior and enabled non-ASCII keys (e.g. Umlaute): C = computer language, UTF-8 = utf8-encoding
+ENV TZ=Europe/Berlin \
+    DEBIAN_FRONTEND=noninteractive \
+    LC_ALL=C.UTF-8 \
+    LANG=C.UTF-8
+
 # Numerics research group
 LABEL maintainer="numerics@iag.uni-stuttgart.de"
 
@@ -17,20 +24,17 @@ RUN apt-get update && \
     # FLEXI environment
     apt-get install -y --no-install-recommends \
     git git-lfs wget curl tar bzip2 build-essential cmake cmake-curses-gui gfortran \
-    zlib1g-dev python3-dev python3-pip python3-venv libxft-dev vim nano \
+    zlib1g-dev python3-dev python3-pip python3-venv libxft-dev libxfixes3 vim nano tzdata tree \
     # ParaView setup
     mesa-common-dev libglu1-mesa-dev libgl1-mesa-dev libegl1-mesa-dev \
     qtbase5-dev qt5-qmake libqt5x11extras5-dev libqt5opengl5-dev libqt5help5 qtbase5-dev-tools qttools5-dev qtxmlpatterns5-dev-tools libqt5svg5-dev && \
     # reduce image size
     apt-get clean -y && apt-get autoremove -y --purge && rm -rf /var/lib/apt/lists/*
 
-# set default locale for consistent build behavior and enabled non-ASCII keys (e.g. Umlaute): C = computer language, UTF-8 = utf8-encoding
-ENV LC_ALL=C.UTF-8 \
-    LANG=C.UTF-8
-# disable CPU-specific optimizations to ensure portability of image:
+# Disable CPU-specific optimizations to ensure portability of image:
 # position-independent code (PIC) for shared libraries, compatibility with x86-64 processors, generic CPU scheduler
 ENV CPU_PORTABLE_FLAGS="-fPIC -march=x86-64 -mtune=generic"
-# Setup build evironment
+# Setup build environment
 ENV CC=gcc \
     CXX=g++ \
     FC=gfortran \
@@ -62,7 +66,7 @@ RUN OPENMPI_VERSION=5.0.8 && cd /tmp && \
     cd /tmp && rm -rf openmpi*
 
 # Setup HDF5
-RUN HDF5_VERSION=1.14.5 && cd /tmp && \
+RUN HDF5_VERSION=1.14.6 && cd /tmp && \
     wget https://github.com/HDFGroup/hdf5/releases/download/hdf5_${HDF5_VERSION}/hdf5-${HDF5_VERSION}.tar.gz && \
     tar -xvf hdf5-${HDF5_VERSION}.tar.gz && \
     cd hdf5-${HDF5_VERSION} && \
@@ -70,6 +74,8 @@ RUN HDF5_VERSION=1.14.5 && cd /tmp && \
     cmake -DCMAKE_INSTALL_PREFIX=/opt \
         -DHDF5_BUILD_FORTRAN=ON \
         -DHDF5_ENABLE_PARALLEL=ON \
+        -DHDF5_USE_ZLIB_STATIC=ON \
+        -DZLIB_USE_EXTERNAL=ON \
         .. && \
     make -j$(nproc) && cmake --install . && \
     cd /tmp && rm -rf hdf5*
@@ -84,7 +90,7 @@ RUN FFTW_VERSION=3.3.10 && cd /tmp && \
     cd /tmp && rm -rf fftw*
 
 # Setup ParaView
-# apt-repository provides v5.11.2 which suffers from XML-parsing bug (https://discourse.paraview.org/t/i-cannot-read-a-vtp-file-i-could-open-yesterday-can-someone-try-to-open-it/13938)
+# Ubuntu24 apt-repository provides v5.11.2 which suffers from XML-parsing bug (https://discourse.paraview.org/t/i-cannot-read-a-vtp-file-i-could-open-yesterday-can-someone-try-to-open-it/13938)
 COPY FileParser_5_9_0.patch .
 RUN PARAVIEW_VERSION=5.13.3 && cd /tmp && \
   wget https://www.paraview.org/files/v${PARAVIEW_VERSION%??}/ParaView-v${PARAVIEW_VERSION}.tar.gz && \
@@ -140,5 +146,8 @@ ENV PATH="/home/nrg/hopr/build/bin:$PATH"
 
 # Setup PyHope
 RUN cd ~ && \
-  pip install --no-cache-dir https://gitlab.iag.uni-stuttgart.de/libs/python-gmsh/-/raw/master/gmsh-4.13.1.post1-py3-none-linux_x86_64.whl && \
+  pip install --no-cache-dir https://gitlab.iag.uni-stuttgart.de/libs/python-gmsh/-/raw/master/gmsh-4.14.0.post1-py3-none-linux_x86_64.whl && \
   pip install pyhope
+
+# Set default shell
+CMD ["/bin/bash"]
