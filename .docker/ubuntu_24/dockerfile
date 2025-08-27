@@ -21,10 +21,13 @@ LABEL maintainer="numerics@iag.uni-stuttgart.de"
 # Setup required packages
 RUN apt-get update && \
     apt-get upgrade -y && \
-    # FLEXI environment
     apt-get install -y --no-install-recommends \
-    git git-lfs wget curl tar bzip2 build-essential cmake cmake-curses-gui gfortran \
-    zlib1g-dev python3-dev python3-pip python3-venv libxft-dev libxfixes3 vim nano tzdata tree \
+    # Utility
+    vim nano tzdata tree eog git git-lfs wget curl tar bzip2 build-essential \
+    # FLEXI environment
+    cmake cmake-curses-gui gfortran zlib1g-dev python3-dev python3-pip python3-venv \
+    # PyHOPE
+    libxft-dev libxfixes3 \
     # ParaView setup
     mesa-common-dev libglu1-mesa-dev libgl1-mesa-dev libegl1-mesa-dev \
     qtbase5-dev qt5-qmake libqt5x11extras5-dev libqt5opengl5-dev libqt5help5 qtbase5-dev-tools qttools5-dev qtxmlpatterns5-dev-tools libqt5svg5-dev && \
@@ -93,61 +96,64 @@ RUN FFTW_VERSION=3.3.10 && cd /tmp && \
 # Ubuntu24 apt-repository provides v5.11.2 which suffers from XML-parsing bug (https://discourse.paraview.org/t/i-cannot-read-a-vtp-file-i-could-open-yesterday-can-someone-try-to-open-it/13938)
 COPY FileParser_5_9_0.patch .
 RUN PARAVIEW_VERSION=5.13.3 && cd /tmp && \
-  wget https://www.paraview.org/files/v${PARAVIEW_VERSION%??}/ParaView-v${PARAVIEW_VERSION}.tar.gz && \
-  tar -xvf ParaView-v${PARAVIEW_VERSION}.tar.gz && \
-  cd ParaView-v${PARAVIEW_VERSION} && \
-  mv ../../FileParser_5_9_0.patch . && patch -p0 < FileParser_5_9_0.patch && \
-  mkdir build && cd build/ && \
-  cmake \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DPARAVIEW_USE_MPI=ON \
-    -DPARAVIEW_INSTALL_DEVELOPMENT_FILES=ON \
-    -DPARAVIEW_USE_PYTHON=ON \
-    -DVTK_MODULE_USE_EXTERNAL_VTK_hdf5=ON \
-    -DHDF5_IS_PARALLEL=ON \
-    -DHDF5_DIR=/opt/cmake \
-    -DCMAKE_INSTALL_PREFIX=/opt \
-    ../ && \
-  make -j $(nproc) && make install && \
-  cd /tmp && rm -rf ParaView*
+    wget https://www.paraview.org/files/v${PARAVIEW_VERSION%??}/ParaView-v${PARAVIEW_VERSION}.tar.gz && \
+    tar -xvf ParaView-v${PARAVIEW_VERSION}.tar.gz && \
+    cd ParaView-v${PARAVIEW_VERSION} && \
+    mv ../../FileParser_5_9_0.patch . && patch -p0 < FileParser_5_9_0.patch && \
+    mkdir build && cd build/ && \
+    cmake \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DPARAVIEW_USE_MPI=ON \
+      -DPARAVIEW_INSTALL_DEVELOPMENT_FILES=ON \
+      -DPARAVIEW_USE_PYTHON=ON \
+      -DVTK_MODULE_USE_EXTERNAL_VTK_hdf5=ON \
+      -DHDF5_IS_PARALLEL=ON \
+      -DHDF5_DIR=/opt/cmake \
+      -DCMAKE_INSTALL_PREFIX=/opt \
+      ../ && \
+    make -j $(nproc) && make install && \
+    cd /tmp && rm -rf ParaView*
 
 # Install FLEXI and HOPR/PyHope as user
 # -------------------------------------
 
 # FLEXI environment installed to /opt, hence include directory in PATH variable
-ENV PATH="/opt/bin:$PATH"
+# Set username of non-root user to "jovyan" (default of jupyter-notebooks)
+ENV PATH="/opt/bin:$PATH" \
+    NB_USER=jovyan
 
 # create new (non-root) user "nrg" and switch to it
-RUN useradd -ms /bin/bash nrg
-USER nrg
-WORKDIR /home/nrg
-COPY vimrc /home/nrg/.vimrc
+RUN useradd -ms /bin/bash ${NB_USER}
+USER ${NB_USER}
+WORKDIR /home/${NB_USER}
+COPY vimrc /home/${NB_USER}/.vimrc
 
 # create venv and enable it to allow for pip installations
 RUN python3 -m venv venv
-ENV PATH="/home/nrg/venv/bin:$PATH"
+ENV PATH="/home/${NB_USER}/venv/bin:$PATH"
 
 # Setup FLEXI
 RUN cd ~ && \
-  git clone https://github.com/flexi-framework/flexi.git && \
-  cd flexi  && \
-  # build all presets without CPU-specific optimizations to ensure portability
-  for PRESET in $(cmake --list-presets | sed -n 's/"\(.*\)"/\1/p'); do \
-    cmake -DFLEXI_INSTRUCTION='-march=x86-64 -mtune=generic' --preset $PRESET && cmake --build --preset $PRESET -j ${nproc}; \
-  done
+    git clone https://github.com/flexi-framework/flexi.git && \
+    cd flexi  && \
+    mv ../presets.patch . && git apply presets.patch && \
+    # build all presets without CPU-specific optimizations to ensure portability
+    for PRESET in $(cmake --list-presets | sed -n 's/"\(.*\)"/\1/p'); do \
+      cmake -DFLEXI_INSTRUCTION='-march=x86-64 -mtune=generic' --preset $PRESET && cmake --build --preset $PRESET -j ${nproc}; \
+    done
 
 # Setup HOPR
 RUN cd ~ && \
-  git clone https://github.com/hopr-framework/hopr.git && \
-  cd hopr && mkdir build && cd build && \
-  cmake -DLIBS_BUILD_HDF5=OFF -DHOPR_INSTRUCTION='-march=x86-64 -mtune=generic' ../ && \
-  make -j $(nproc)
-ENV PATH="/home/nrg/hopr/build/bin:$PATH"
+    git clone https://github.com/hopr-framework/hopr.git && \
+    cd hopr && mkdir build && cd build && \
+    cmake -DLIBS_BUILD_HDF5=OFF -DHOPR_INSTRUCTION='-march=x86-64 -mtune=generic' ../ && \
+    make -j $(nproc)
+ENV PATH="/home/${NB_USER}/hopr/build/bin:$PATH"
 
 # Setup PyHope
 RUN cd ~ && \
-  pip install --no-cache-dir https://gitlab.iag.uni-stuttgart.de/libs/python-gmsh/-/raw/master/gmsh-4.14.0.post1-py3-none-linux_x86_64.whl && \
-  pip install pyhope
+    pip install --no-cache-dir https://gitlab.iag.uni-stuttgart.de/libs/python-gmsh/-/raw/master/gmsh-4.14.0.post1-py3-none-linux_x86_64.whl && \
+    pip install pyhope
 
 # Set default shell
 CMD ["/bin/bash"]
