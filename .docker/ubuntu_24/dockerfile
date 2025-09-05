@@ -1,22 +1,38 @@
-# Load the base image
-# Ubuntu-based FLEXI environment including ParaView and HOPR/PyHope
-# build docker image with github namespace: docker build -t ghcr.io/flexi-framework/ubuntu24.04_gcc:2025.06_devel .
-# run docker image with X11-forwarding:     xhost +local:docker && docker run -it --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix ghcr.io/flexi-framework/ubuntu24.04_gcc:2025.06_devel
 # -----------------------------------------------------------------
+# Ubuntu-based FLEXI environment including ParaView and HOPR / PyHOPE
+# build docker image with github namespace: docker build -t ghcr.io/flexi-framework/ubuntu24.04_gcc:2025.08_devel .
+# run docker image with X11-forwarding:     xhost +local:docker && docker run -it --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix ghcr.io/flexi-framework/ubuntu24.04_gcc:2025.08_devel
+# -----------------------------------------------------------------
+
+# Load the base image
 FROM ubuntu:24.04
 
-# Use timezone (TZ) of Berlin as default and suppress user-interaction during package installation (e.g. timezone configuration dialog of tzdata)
-# Set default locale for consistent build behavior and enabled non-ASCII keys (e.g. Umlaute): C = computer language, UTF-8 = utf8-encoding
+# Numerics Research Group
+LABEL maintainer="Numerics Reseach Group, University of Stuttgart <numerics@iag.uni-stuttgart.de>"
+
+# Set name and user/group ID of non-root user to "jovyan" (default of Jupyter-notebooks)
+ARG NB_USER=jovyan
+ARG NB_UID=1001
+ARG NB_GID=1001
+
+# Configure system environment:
+# - Use timezone (TZ) of Berlin as default
+# - Suppress user-interaction during package installation (e.g. timezone configuration dialog of tzdata)
+# - Set default locale for consistent build behavior and enabled non-ASCII keys (e.g. Umlaute): C = computer language, UTF-8 = utf8-encoding
+# - Set bash as default shell (especially for the terminal in Jupyter notebooks)
 ENV TZ=Europe/Berlin \
     DEBIAN_FRONTEND=noninteractive \
     LC_ALL=C.UTF-8 \
-    LANG=C.UTF-8
+    LANG=C.UTF-8 \
+    SHELL=/bin/bash
 
-# Numerics research group
-LABEL maintainer="numerics@iag.uni-stuttgart.de"
 
+# -------------------------------
 # Setup FLEXI environment as root
 # -------------------------------
+
+# Install basic packages and libraries as root
+USER root
 
 # Setup required packages
 RUN apt-get update && \
@@ -25,7 +41,7 @@ RUN apt-get update && \
     # Utility
     vim nano tzdata tree eog git git-lfs wget curl tar bzip2 build-essential \
     # FLEXI environment
-    cmake cmake-curses-gui gfortran zlib1g-dev python3-dev python3-pip python3-venv \
+    cmake cmake-curses-gui gfortran zlib1g-dev python3-dev python3-pip python3-venv python-is-python3 \
     # PyHOPE
     libxft-dev libxfixes3 \
     # ParaView setup
@@ -34,10 +50,9 @@ RUN apt-get update && \
     # reduce image size
     apt-get clean -y && apt-get autoremove -y --purge && rm -rf /var/lib/apt/lists/*
 
-# Disable CPU-specific optimizations to ensure portability of image:
+# Setup build environment, disabling CPU-specific optimizations to ensure portability of image:
 # position-independent code (PIC) for shared libraries, compatibility with x86-64 processors, generic CPU scheduler
 ENV CPU_PORTABLE_FLAGS="-fPIC -march=x86-64 -mtune=generic"
-# Setup build environment
 ENV CC=gcc \
     CXX=g++ \
     FC=gfortran \
@@ -48,7 +63,7 @@ ENV CC=gcc \
     FFLAGS=${CPU_PORTABLE_FLAGS} \
     FCFLAGS=${CPU_PORTABLE_FLAGS}
 
-# Setup OpenBlas, ensure cross-platform portability by building library for multiple targets and detecting CPU at runtime (DYNAMIC_ARCH=ON)
+# Setup OpenBLAS, ensure cross-platform portability by building library for multiple targets and detecting CPU at runtime (DYNAMIC_ARCH=ON)
 RUN OPENBLAS_VERSION=0.3.30 && cd /tmp && \
     wget https://github.com/OpenMathLib/OpenBLAS/archive/refs/tags/v${OPENBLAS_VERSION}.tar.gz && \
     tar -xvf v${OPENBLAS_VERSION}.tar.gz && \
@@ -114,26 +129,29 @@ RUN PARAVIEW_VERSION=5.13.3 && cd /tmp && \
     make -j $(nproc) && make install && \
     cd /tmp && rm -rf ParaView*
 
-# Install FLEXI and HOPR/PyHope as user
-# -------------------------------------
+
+# ---------------------------------------
+# Install FLEXI and HOPR / PyHOPE as user
+# ---------------------------------------
+
+# Create new (non-root) user and switch to it
+RUN groupadd --gid ${NB_GID} ${NB_USER} && \
+    useradd  --gid ${NB_GID} --uid ${NB_UID} -m -s /bin/bash ${NB_USER}
+USER ${NB_USER}
 
 # FLEXI environment installed to /opt, hence include directory in PATH variable
-# Set username of non-root user to "jovyan" (default of jupyter-notebooks)
-ENV PATH="/opt/bin:$PATH" \
-    NB_USER=jovyan
+ENV PATH="/opt/bin:$PATH"
 
-# create new (non-root) user "nrg" and switch to it
-RUN useradd -ms /bin/bash ${NB_USER}
-USER ${NB_USER}
+# Set working directory when launching container and set up vim
 WORKDIR /home/${NB_USER}
 COPY vimrc /home/${NB_USER}/.vimrc
 
-# create venv and enable it to allow for pip installations
-RUN python3 -m venv venv
+# Create venv and enable it to allow for pip installations
+RUN python -m venv venv
 ENV PATH="/home/${NB_USER}/venv/bin:$PATH"
 
 # Setup FLEXI
-RUN cd ~ && \
+RUN cd /home/${NB_USER} && \
     git clone https://github.com/flexi-framework/flexi.git && \
     cd flexi  && \
     mv ../presets.patch . && git apply presets.patch && \
@@ -143,17 +161,15 @@ RUN cd ~ && \
     done
 
 # Setup HOPR
-RUN cd ~ && \
+RUN cd /home/${NB_USER} && \
     git clone https://github.com/hopr-framework/hopr.git && \
     cd hopr && mkdir build && cd build && \
     cmake -DLIBS_BUILD_HDF5=OFF -DHOPR_INSTRUCTION='-march=x86-64 -mtune=generic' ../ && \
     make -j $(nproc)
 ENV PATH="/home/${NB_USER}/hopr/build/bin:$PATH"
 
-# Setup PyHope
-RUN cd ~ && \
-    pip install --no-cache-dir https://gitlab.iag.uni-stuttgart.de/libs/python-gmsh/-/raw/master/gmsh-4.14.0.post1-py3-none-linux_x86_64.whl && \
-    pip install pyhope
-
-# Set default shell
-CMD ["/bin/bash"]
+# Setup PyHOPE
+RUN cd /home/${NB_USER} && \
+    pip install --no-cache-dir \
+    https://gitlab.iag.uni-stuttgart.de/libs/python-gmsh/-/raw/master/gmsh-4.14.0.post1-py3-none-linux_x86_64.whl \
+    pyhope
