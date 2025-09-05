@@ -154,7 +154,6 @@ ENV PATH="/home/${NB_USER}/venv/bin:$PATH"
 RUN cd /home/${NB_USER} && \
     git clone https://github.com/flexi-framework/flexi.git && \
     cd flexi  && \
-    mv ../presets.patch . && git apply presets.patch && \
     # build all presets without CPU-specific optimizations to ensure portability
     for PRESET in $(cmake --list-presets | sed -n 's/"\(.*\)"/\1/p'); do \
       cmake -DFLEXI_INSTRUCTION='-march=x86-64 -mtune=generic' --preset $PRESET && cmake --build --preset $PRESET -j ${nproc}; \
