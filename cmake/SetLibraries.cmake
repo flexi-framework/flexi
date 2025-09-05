@@ -121,7 +121,7 @@ MARK_AS_ADVANCED(FORCE LIBS_EXTERNAL_LIB_DIR)
 SET(LIBS_HDF5_CMAKE TRUE)
 
 # Set preferences for HDF5 library
-# SET(HDF5_USE_STATIC_LIBRARIES TRUE)
+SET(HDF5_USE_STATIC_LIBRARIES TRUE)
 IF (LIBS_USE_MPI)
   SET(HDF5_PREFER_PARALLEL TRUE)
   FIND_PROGRAM(HDF5_COMPILER h5pcc)
@@ -142,6 +142,12 @@ ENDIF()
 
 IF (NOT LIBS_BUILD_HDF5)
   FIND_PACKAGE(HDF5 QUIET COMPONENTS C Fortran)
+
+  # Could not find the static version, look for the shared library
+  IF(NOT HDF5_FOUND)
+    UNSET(HDF5_USE_STATIC_LIBRARIES)
+    FIND_PACKAGE(HDF5 QUIET COMPONENTS C Fortran)
+  ENDIF()
 
   IF (HDF5_FOUND)
     MESSAGE (STATUS "[HDF5] found in system libraries [${HDF5_DIR}]")
@@ -197,6 +203,34 @@ IF(NOT LIBS_BUILD_HDF5)
     ENDIF()
   ENDIF()
 
+  # If HDF5 Fortran library is not set, get it from the Fortran target
+  UNSET(GREP_RESULT)
+  IF("${HDF5_C_LIBRARY_hdf5_c}" STREQUAL "")
+    GET_PROPERTY(HDF5_C_LIBRARY_hdf5_c TARGET hdf5::hdf5 PROPERTY LOCATION)
+  ENDIF()
+
+  IF(NOT "${HDF5_C_LIBRARY_hdf5_c}" STREQUAL "")
+    IF(APPLE)
+      EXECUTE_PROCESS(COMMAND nm -gU      ${HDF5_C_LIBRARY_hdf5_c} COMMAND grep inflate OUTPUT_VARIABLE HDF5_USES_ZLIB RESULT_VARIABLE GREP_RESULT OUTPUT_STRIP_TRAILING_WHITESPACE)
+    ELSE()
+      EXECUTE_PROCESS(COMMAND readelf -Ws ${HDF5_C_LIBRARY_hdf5_c} COMMAND grep inflate OUTPUT_VARIABLE HDF5_USES_ZLIB RESULT_VARIABLE GREP_RESULT OUTPUT_STRIP_TRAILING_WHITESPACE)
+    ENDIF()
+  ELSE()
+    SET(GREP_RESULT 1)
+  ENDIF()
+
+  IF(GREP_RESULT EQUAL 0)
+    # HDF5 is linked against zlib, find it here
+    SET(ZLIB_USE_STATIC_LIBS "ON")
+    FIND_PACKAGE(ZLIB QUIET)
+
+    # Could not find the static version, look for the shared library
+    IF(NOT ZLIB_FOUND)
+      UNSET(ZLIB_USE_STATIC_LIBS)
+      FIND_PACKAGE(ZLIB REQUIRED)
+    ENDIF()
+  ENDIF()
+
   # Set build status to system
   SET(HDF5_BUILD_STATUS "system")
 ELSE()
@@ -237,7 +271,7 @@ ELSE()
 
   IF(HDF5_FOUND)
     # If re-running CMake, it might wrongly pick-up the system HDF5
-    IF(NOT EXISTS ${LIBS_HDF5_DIR}/lib/libhdf5.so)
+    IF(NOT EXISTS ${LIBS_HDF5_DIR}/lib/libhdf5.a)
       UNSET(HDF5_FOUND)
       SET(HDF5_VERSION     ${HDF5_STR})
     ENDIF()
@@ -277,7 +311,7 @@ ELSE()
     )
 
     # Add CMake HDF5 to the list of self-built externals
-    LIST(APPEND SELFBUILTEXTERNALS HDF5)
+    LIST(PREPEND SELFBUILTEXTERNALS HDF5)
 
     # Set HDF5 version and MPI support
     SET(HDF5_VERSION ${HDF5_STR})
@@ -300,10 +334,10 @@ IF(HDF5_VERSION VERSION_EQUAL "1.14")
   LIST(FILTER HDF5_INCLUDE_DIR EXCLUDE REGEX "src/H5FDsubfiling")
 ENDIF()
 
-# Actually add the HDF5 paths (system/self-built) to the linking paths
+# Actually add the HDF5 paths (system/self-built) to the linking paths, including the library containing dlopen/dlclose (usually -ldl on UNIX machines)
 # > INFO: We could also use the HDF5::HDF5/hdf5::hdf5/hdf5::hdf5_fortran targets here but they are not set before compiling self-built HDF5
 INCLUDE_DIRECTORIES(BEFORE ${HDF5_INCLUDE_DIR})
-LIST(PREPEND linkedlibs ${HDF5_Fortran_LIBRARIES} )
+LIST(PREPEND linkedlibs ${HDF5_Fortran_LIBRARIES} ${CMAKE_DL_LIBS})
 IF(${HDF5_IS_PARALLEL})
   MESSAGE(STATUS "Compiling with ${HDF5_BUILD_STATUS} [HDF5] (v${HDF5_VERSION}) with parallel support ${HDF5_MPI_VERSION}")
 ELSE()
@@ -331,8 +365,10 @@ MARK_AS_ADVANCED(FORCE HDF5_hdf5_LIBRARY_RELEASE)
 MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_hdf5_fortran)
 MARK_AS_ADVANCED(FORCE HDF5_Fortran_LIBRARY_hdf5_fortran_RELEASE)
 
-# Restore the original PATH
-SET(ENV{PATH} "${ORIGINAL_PATH_ENV}")
+# Restore the original PATH - only if it has been modified above, i.e. ORIGINAL_PATH_ENV is actually defined
+IF(NOT "${HDF5_COMPILER}" STREQUAL "" AND NOT "${HDF5_COMPILER}" STREQUAL "HDF5_COMPILER-NOTFOUND")
+  SET(ENV{PATH} "${ORIGINAL_PATH_ENV}")
+ENDIF()
 
 
 # =========================================================================
@@ -431,7 +467,7 @@ ELSE()
     ENDIF()
   ELSEIF (LIBS_BUILD_MATH_LIB_VENDOR STREQUAL "OpenBLAS")
     # Check if math lib was already built
-    IF (NOT EXISTS "${LIBS_MATH_DIR}/libopenblas.a")
+    IF (NOT EXISTS "${LIBS_MATH_DIR}/lib/libopenblas.a")
       # Let CMake take care of download, configure and build
       EXTERNALPROJECT_ADD(${LIBS_BUILD_MATH_LIB_VENDOR}
         GIT_REPOSITORY     ${MATH_LIB_DOWNLOAD}
@@ -446,7 +482,7 @@ ELSE()
         # Set the CMake arguments for LAPACK
         CMAKE_ARGS         -DBUILD_STATIC_LIBS=ON -DBUILD_TESTING=OFF
         # Set the CMake arguments for OpenBLAS
-        BUILD_BYPRODUCTS   ${LIBS_MATH_DIR}/src/${LIBS_BUILD_MATH_LIB_VENDOR}/libopenblas.a
+        BUILD_BYPRODUCTS   ${LIBS_MATH_DIR}/src/${LIBS_BUILD_MATH_LIB_VENDOR}/lib/libopenblas.a
         BUILD_IN_SOURCE    TRUE
         INSTALL_COMMAND    ""
       )
@@ -474,9 +510,10 @@ ELSE()
     MESSAGE(STATUS "Compiling with self-built [LAPACK]")
   ELSEIF (LIBS_BUILD_MATH_LIB_VENDOR STREQUAL "OpenBLAS")
     # Set math lib paths
-    SET(MATH_LIB_LIBRARIES              ${LIBS_MATH_DIR}/src/${LIBS_BUILD_MATH_LIB_VENDOR})
+    SET(MATH_LIB_LIBRARIES              ${LIBS_MATH_DIR}/src/${LIBS_BUILD_MATH_LIB_VENDOR}/lib)
 
     UNSET(LAPACK_LIBRARY)
+    UNSET(BLAS_LIBRARY)
     UNSET(LAPACK_LIBRARIES)
 
     SET(LAPACK_LIBRARY                  ${MATH_LIB_LIBRARIES}/libopenblas.a)
