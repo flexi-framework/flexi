@@ -96,14 +96,13 @@ SUBROUTINE CalcWalldistance()
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Walldistance_Vars
-USE MOD_Interpolation_Vars
 USE MOD_Mesh_Vars,          ONLY: Elem_xGP,nBCSides,nElems,nGlobalElems,offsetElem,Face_xGP
 USE MOD_Mesh_Vars,          ONLY: BoundaryType,BC,MeshFile,SideToElem
 USE MOD_HDF5_Output,        ONLY: WriteArray,WriteAttribute
 USE MOD_IO_HDF5
 USE MOD_VTK,                ONLY: WriteDataToVTK
 USE MOD_ChangeBasisByDim,   ONLY: ChangeBasisVolume
-USE MOD_Interpolation_Vars, ONLY: NodeType,NodeTypeVisu
+USE MOD_Interpolation_Vars, ONLY: NodeType,NodeTypeVisu,xGP,wBary
 USE MOD_Interpolation,      ONLY: GetVandermonde
 USE MOD_Basis,              ONLY: LagrangeInterpolationPolys
 ! IMPLICIT VARIABLE HANDLING

@@ -44,21 +44,19 @@ USE MOD_Spline    ,ONLY:GetSpline,GetEquiPoints,EvalSpline,EvalSplineDeriv,EvalE
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-TYPE(tPlane),POINTER,INTENT(IN) :: Plane
-INTEGER,INTENT(IN)              :: nCP
-REAL,INTENT(IN)                 :: height(nCP),fac
-REAL,INTENT(IN)                 :: xCP(3,nCP)
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
+! INPUT/OUTPUT VARIABLES
+TYPE(tPlane),POINTER,INTENT(INOUT) :: Plane
+INTEGER,INTENT(IN)                 :: nCP
+REAL,INTENT(IN)                    :: height(nCP),fac
+REAL,INTENT(IN)                    :: xCP(3,nCP)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                         :: nRP(2),i,j,iCP,iter
-REAL                            :: x_loc(3),s_loc,dx_loc(3)
-TYPE(tRPlist),POINTER           :: RPlist_tmp(:)
-REAL,ALLOCATABLE                :: xRP(:,:),xRP_tmp(:,:),NormVecRP(:,:),TangVecRP(:,:),dh(:)
-REAL,ALLOCATABLE                :: s(:),s_mod(:),s_equi(:),coeff(:,:,:)
-REAL                            :: h,t,height_loc,EquiErr
+INTEGER                            :: nRP(2),i,j,iCP,iter
+REAL                               :: x_loc(3),s_loc,dx_loc(3)
+TYPE(tRPlist),POINTER              :: RPlist_tmp(:)
+REAL,ALLOCATABLE                   :: xRP(:,:),xRP_tmp(:,:),NormVecRP(:,:),TangVecRP(:,:),dh(:)
+REAL,ALLOCATABLE                   :: s(:),s_mod(:),s_equi(:),coeff(:,:,:)
+REAL                               :: h,t,height_loc,EquiErr
 !===================================================================================================================================
 nRP=Plane%nRP(1:2)
 ALLOCATE(RPlist_tmp(nRP(1)))
@@ -170,25 +168,23 @@ USE MOD_Spline    ,ONLY:GetSpline,GetEquiPoints,EvalSpline,EvalSplineDeriv,EvalE
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-TYPE(tBox),POINTER,INTENT(IN)   :: Box
-INTEGER,INTENT(IN)              :: nCP
-INTEGER,INTENT(IN)              :: nSP
-REAL,INTENT(IN)                 :: height(nCP,nSP),fac
-REAL,INTENT(IN)                 :: xCP(3,nCP,nSP)
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
+! INPUT/OUTPUT VARIABLES
+TYPE(tBox),POINTER,INTENT(INOUT) :: Box
+INTEGER,INTENT(IN)               :: nCP
+INTEGER,INTENT(IN)               :: nSP
+REAL,INTENT(IN)                  :: height(nCP,nSP),fac
+REAL,INTENT(IN)                  :: xCP(3,nCP,nSP)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                         :: nRP(3),i,j,k,iCP,iSP,iter
-REAL                            :: x_loc(3),s_loc,dx_loc(3)
-TYPE(tRPlist),POINTER           :: RPlist_tmp(:,:)
-REAL,ALLOCATABLE                :: xRP(:,:,:),xRP_tmp(:,:,:),NormVecRP(:,:,:),TangVecRP(:,:,:),dh(:)
-REAL,ALLOCATABLE                :: s(:,:),s_mod(:),s_equi(:,:),coeff(:,:,:,:)
-REAL                            :: h,t,height_loc,EquiErr,EquiErrSum
-INTEGER,ALLOCATABLE             :: Points(:)
-INTEGER                         :: iBase
-REAL,ALLOCATABLE                :: xBase(:,:,:),heightBase(:,:),depth(:)
+INTEGER                          :: nRP(3),i,j,k,iCP,iSP,iter
+REAL                             :: x_loc(3),s_loc,dx_loc(3)
+TYPE(tRPlist),POINTER            :: RPlist_tmp(:,:)
+REAL,ALLOCATABLE                 :: xRP(:,:,:),xRP_tmp(:,:,:),NormVecRP(:,:,:),TangVecRP(:,:,:),dh(:)
+REAL,ALLOCATABLE                 :: s(:,:),s_mod(:),s_equi(:,:),coeff(:,:,:,:)
+REAL                             :: h,t,height_loc,EquiErr,EquiErrSum
+INTEGER,ALLOCATABLE              :: Points(:)
+INTEGER                          :: iBase
+REAL,ALLOCATABLE                 :: xBase(:,:,:),heightBase(:,:),depth(:)
 !===================================================================================================================================
 
 ! get resolution

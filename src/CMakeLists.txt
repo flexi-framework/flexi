@@ -253,20 +253,26 @@ ENDIF()
 SET(   FLEXI_TESTCASE   "default"      CACHE STRING
                         "Name of testcase which is used. Must be identical to directory name in testcase folder.")
 SET_PROPERTY(CACHE FLEXI_TESTCASE PROPERTY STRINGS ${TESTCASES})
+# Riemann2D needs special boundary conditions
+IF ("${FLEXI_TESTCASE}" STREQUAL "riemannd2d")
+  ADD_COMPILE_DEFINITIONS(TESTCASE_BC=1)
+ELSE()
+  ADD_COMPILE_DEFINITIONS(TESTCASE_BC=0)
+ENDIF()
 
 # =========================================================================
 # Unit test at end of compilation
 # =========================================================================
 # Check is unit tests can be activated
-IF(BUILD_TYPE_LC MATCHES "sanitize" AND LIBS_USE_MPI OR BUILD_TYPE_LC MATCHES "profile")
+IF(BUILD_TYPE_LC STREQUAL "sanitize" AND LIBS_USE_MPI OR BUILD_TYPE_LC STREQUAL "profile")
   SET(ACTIVATE_UNIT_TEST       OFF)
   # Store if we force-disabled the unit tests
   SET(UNIT_TEST_FORCE_DISABLED ON  CACHE BOOL "Force disable unit tests" FORCE)
   # Check if unit tests were previously activated
   IF(FLEXI_UNITTESTS)
-    IF (BUILD_TYPE_LC MATCHES "profile")
+    IF (BUILD_TYPE_LC STREQUAL "profile")
       MESSAGE(WARNING "Unit tests automatically disabled (FLEXI_UNITTESTS=OFF) with\n CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}\nas the tests will always fail due to memory errors returned from the profiling library.")
-    ELSEIF (LIBS_MPI_NAME MATCHES "OpenMPI")
+    ELSEIF (LIBS_MPI_NAME STREQUAL "OpenMPI")
       MESSAGE(WARNING "Unit tests automatically disabled (FLEXI_UNITTESTS=OFF) with\n CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}\n LIBS_USE_MPI = ${LIBS_USE_MPI}\nas the tests will always fail due to memory errors returned from the MPI library.")
     ENDIF()
     SET(FLEXI_UNITTESTS OFF)
@@ -474,8 +480,8 @@ ENDIF()
 # =========================================================================
 # Ctags
 # =========================================================================
-MARK_AS_ADVANCED(FORCE CTAGS_PATH)
 FIND_PROGRAM(CTAGS_PATH ctags-exuberant)
+MARK_AS_ADVANCED(FORCE CTAGS_PATH)
 IF(CTAGS_PATH)
   SET(             EQNS_WO_ACTUAL ${EQNSYSTEMS})
   LIST(REMOVE_ITEM EQNS_WO_ACTUAL ${FLEXI_EQNSYSNAME})

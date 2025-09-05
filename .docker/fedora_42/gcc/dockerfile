@@ -8,14 +8,23 @@ LABEL maintainer="numerics@iag.uni-stuttgart.de"
 RUN echo 'install_weak_deps=False' >> /etc/dnf/dnf.conf
 
 # Setup required packages
-RUN dnf makecache             && \
-    dnf update  -y            && \
-    dnf install -y git-core cmake gcc-c++ gcc-gfortran mpich-devel zlib-ng-devel openblas-devel hdf5-devel hdf5-mpich-devel && \
-    dnf install -y python3 uv && \
-    dnf install -y doxygen    && \
+RUN dnf makecache                 && \
+    dnf update  -y                && \
+    dnf install -y git-core          \
+      cmake ninja                    \
+      gcc-c++ gcc-gfortran           \
+      libasan libubsan               \
+      mold                           \
+      zlib-ng-devel                  \
+      openblas-devel                 \
+      mpich-devel                    \
+      fftw-devel fftw-mpich-devel    \
+      hdf5-devel hdf5-mpich-devel && \
+    dnf install -y python3 uv &&     \
+    dnf install -y doxygen    &&     \
     dnf install -y ruff       &&  `# Setup Ruff`      \
-    dnf autoremove            && \
-    dnf clean all             && \
+    dnf autoremove            &&     \
+    dnf clean all             &&     \
     rm -rf /var/log/dnf5.*
 
 # Set architecture argument
@@ -50,10 +59,17 @@ ENV MPI_BIN=/usr/lib64/mpich/bin           \
     PKG_CONFIG_PATH="/usr/lib64/mpich/lib/pkgconfig:${PKG_CONFIG_PATH}"
 
 # Setup Fortitude
-ENV PATH="/root/.local/bin:$PATH"
+# ENV PATH="/root/.local/bin:$PATH"
+# RUN dnf install -y cargo      && \
+#     uv tool install git+https://github.com/PlasmaFAIR/fortitude && \
+#     uv cache clean            && \
+#     rm -rf /root/.cargo       && \
+#     dnf remove  -y cargo      && \
+#     dnf autoremove            && \
+#     dnf clean all             && \
+#     rm -rf /var/log/dnf5.*
 RUN dnf install -y cargo      && \
-    uv tool install git+https://github.com/PlasmaFAIR/fortitude && \
-    uv cache clean            && \
+    cargo install --git https://github.com/PlasmaFAIR/fortitude fortitude --root /usr/local && \
     rm -rf /root/.cargo       && \
     dnf remove  -y cargo      && \
     dnf autoremove            && \

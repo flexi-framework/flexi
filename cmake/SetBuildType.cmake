@@ -14,7 +14,22 @@ IF (NOT CMAKE_BUILD_TYPE)
 ENDIF (NOT CMAKE_BUILD_TYPE)
 
 STRING(TOLOWER ${CMAKE_BUILD_TYPE} BUILD_TYPE_LC)
-IF (BUILD_TYPE_LC MATCHES "debug" OR BUILD_TYPE_LC MATCHES "sanitize")
+# Sanity check if the build type is known
+IF (BUILD_TYPE_LC STREQUAL "release" OR
+    BUILD_TYPE_LC STREQUAL "debug"   OR
+    BUILD_TYPE_LC STREQUAL "relwithdebinfo" OR
+    BUILD_TYPE_LC STREQUAL "profile")
+  # Do nothing
+ELSEIF(BUILD_TYPE_LC STREQUAL "sanitize")
+  IF (NOT CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
+    MESSAGE(FATAL_ERROR "Build type '${BUILD_TYPE_LC}' only valid with GNU compiler collection (GCC)")
+  ENDIF()
+ELSE()
+  MESSAGE(FATAL_ERROR "Build type '${BUILD_TYPE_LC}' is not valid")
+ENDIF()
+
+# Interprocedural optimization (IPO) / Link-time optimization (LTO)
+IF (BUILD_TYPE_LC STREQUAL "debug" OR BUILD_TYPE_LC STREQUAL "sanitize")
   ADD_COMPILE_DEFINITIONS("DEBUG")
 ELSE()
   IF (HASIPO)

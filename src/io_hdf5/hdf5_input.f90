@@ -63,7 +63,6 @@ iError = 0
 CALL H5ESET_AUTO_F(0, iError)
 ! Initialize FORTRAN predefined datatypes
 CALL H5OPEN_F(iError)
-print*,iError
 ! Create property list
 CALL H5PCREATE_F(H5P_FILE_ACCESS_F, Plist_ID, iError)
 #if USE_MPI

@@ -539,8 +539,11 @@ FUNCTION JamesonIndicator(U) RESULT(IndValue)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_Indicator_Vars     ,ONLY: IndVar,nIndVars
+USE MOD_Analyze_Vars       ,ONLY: wGPVol
 USE MOD_EOS_Vars           ,ONLY: sKappaM1,KappaM1,R
+USE MOD_FillMortar1        ,ONLY: U_Mortar1,Flux_Mortar1
+USE MOD_FV_Vars            ,ONLY: FV_Elems,FV_Elems_master,FV_Elems_slave
+USE MOD_Indicator_Vars     ,ONLY: IndVar,nIndVars
 USE MOD_Interpolation_Vars ,ONLY: L_Minus,L_Plus
 USE MOD_Mesh_Vars          ,ONLY: nElems,nSides
 USE MOD_Mesh_Vars          ,ONLY: firstMortarInnerSide,lastMortarInnerSide,firstMortarMPISide,lastMortarMPISide
@@ -548,14 +551,13 @@ USE MOD_Mesh_Vars          ,ONLY: firstBCSide,lastBCSide
 USE MOD_Mesh_Vars          ,ONLY: MortarType,ElemToSide
 USE MOD_Mesh_Vars          ,ONLY: sJ
 USE MOD_Mappings           ,ONLY: SideToVol
-USE MOD_Analyze_Vars       ,ONLY: wGPVol
 USE MOD_ProlongToFace1     ,ONLY: ProlongToFace1
 #if USE_MPI
-USE MOD_MPI_Vars           ,ONLY: MPIRequest_U,MPIRequest_Flux,nNbProcs
 USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
+USE MOD_MPI_Vars           ,ONLY: MPIRequest_U,MPIRequest_Flux,nNbProcs
 #endif
-USE MOD_FillMortar1        ,ONLY: U_Mortar1,Flux_Mortar1
-USE MOD_FV_Vars            ,ONLY: FV_Elems,FV_Elems_master,FV_Elems_slave
+! Signaling NaN
+USE, INTRINSIC :: IEEE_ARITHMETIC, ONLY : IEEE_VALUE, IEEE_SIGNALING_NAN
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -588,6 +590,10 @@ INTEGER                   :: DataSizeSide_loc
 !==================================================================================================================================
 ! Fill UJameson with conservative variable or pressure
 IndValue = -HUGE(1)
+
+! Technically, we will not reach the corners or the edges
+v = IEEE_VALUE(REAL(0.0, KIND(DP)), IEEE_SIGNALING_NAN)
+
 DO iVar = 1, nIndVars
   SELECT CASE (IndVar(iVar))
   CASE(1:PP_nVar)
@@ -846,6 +852,7 @@ USE MOD_Indicator_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
+SDEALLOCATE(IndVar)
 SDEALLOCATE(IndValue)
 SDEALLOCATE(FVBoundaryType)
 
