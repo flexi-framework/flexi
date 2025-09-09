@@ -164,18 +164,22 @@ IF(NOT LIBS_BUILD_HDF5)
   UNSET(HDF5_VERSION CACHE)
   UNSET(HDF5_DEFINITIONS)
   UNSET(HDF5_LIBRARIES)
-  UNSET(HDF5_Fortran_INCLUDE_DIR)
+  UNSET(HDF5_INCLUDE_DIR_FORTRAN)
   UNSET(HDF5_INCLUDE_DIR)
   UNSET(HDF5_DIFF_EXECUTABLE)
 
   # If library is specifically requested, it is required
   FIND_PACKAGE(HDF5 REQUIRED COMPONENTS C Fortran)
 
-  # Overwrite HDF5_INCLUDE_DIR set by FIND_PACKAGE(HDF5) by directory containing fortran module files (can be subdirectory of include or mod, depending on hdf5-version and config)
-  IF(HDF5_USE_STATIC_LIBRARIES)
-    GET_TARGET_PROPERTY(HDF5_INCLUDE_DIR hdf5_fortran-static INTERFACE_INCLUDE_DIRECTORIES)
-  ELSE()
-    GET_TARGET_PROPERTY(HDF5_INCLUDE_DIR hdf5_fortran-shared INTERFACE_INCLUDE_DIRECTORIES)
+  # If fortran module files cannot be found in the HDF5_INCLUDE_DIR set by FIND_PACKAGE(HDF5), obtain the correct path from the target properties (supposedly HDF5_INCLUDE_DIR_FORTRAN)
+  # > NOTE: Depending on HDF5 config (flag HDF5_INSTALL_MOD_FORTRAN) and version, mod-files can be located in include/ or mod/, or subdirectories
+  FIND_FILE(PATH_MODFILES h5a.mod ${HDF5_INCLUDE_DIR})
+  IF(NOT PATH_MODFILES)
+    IF(HDF5_USE_STATIC_LIBRARIES)
+      GET_TARGET_PROPERTY(HDF5_INCLUDE_DIR hdf5_fortran-static INTERFACE_INCLUDE_DIRECTORIES)
+    ELSE()
+      GET_TARGET_PROPERTY(HDF5_INCLUDE_DIR hdf5_fortran-shared INTERFACE_INCLUDE_DIRECTORIES)
+    ENDIF()
   ENDIF()
 
   # Check if HDF5 is parallel
