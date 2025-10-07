@@ -141,12 +141,14 @@ IF(NOT "${HDF5_COMPILER}" STREQUAL "" AND NOT "${HDF5_COMPILER}" STREQUAL "HDF5_
 ENDIF()
 
 IF (NOT LIBS_BUILD_HDF5)
-  FIND_PACKAGE(HDF5 QUIET COMPONENTS C Fortran)
+  # ParaView requires the HL libs but we cannot change the search later
+  FIND_PACKAGE(HDF5 QUIET COMPONENTS C Fortran HL)
 
   # Could not find the static version, look for the shared library
   IF(NOT HDF5_FOUND)
     UNSET(HDF5_USE_STATIC_LIBRARIES)
-    FIND_PACKAGE(HDF5 QUIET COMPONENTS C Fortran)
+    # ParaView requires the HL libs but we cannot change the search later
+    FIND_PACKAGE(HDF5 QUIET COMPONENTS C Fortran HL)
   ENDIF()
 
   IF (HDF5_FOUND)
@@ -169,7 +171,19 @@ IF(NOT LIBS_BUILD_HDF5)
   UNSET(HDF5_DIFF_EXECUTABLE)
 
   # If library is specifically requested, it is required
-  FIND_PACKAGE(HDF5 REQUIRED COMPONENTS C Fortran)
+  # > ParaView requires the HL libs but we cannot change the search later
+  FIND_PACKAGE(HDF5 REQUIRED COMPONENTS C Fortran HL)
+
+  # If fortran module files cannot be found in the HDF5_INCLUDE_DIR set by FIND_PACKAGE(HDF5), obtain the correct path from the target properties (supposedly HDF5_INCLUDE_DIR_FORTRAN)
+  # > NOTE: Depending on HDF5 config (flag HDF5_INSTALL_MOD_FORTRAN) and version, mod-files can be located in include/ or mod/, or subdirectories
+  FIND_FILE(PATH_MODFILES h5a.mod ${HDF5_INCLUDE_DIR})
+  IF(NOT PATH_MODFILES)
+    IF(HDF5_USE_STATIC_LIBRARIES)
+      GET_TARGET_PROPERTY(HDF5_INCLUDE_DIR hdf5_fortran-static INTERFACE_INCLUDE_DIRECTORIES)
+    ELSE()
+      GET_TARGET_PROPERTY(HDF5_INCLUDE_DIR hdf5_fortran-shared INTERFACE_INCLUDE_DIRECTORIES)
+    ENDIF()
+  ENDIF()
 
   # Check if HDF5 is parallel
   # > HDF5_IS_PARALLEL is set by FIND_PACKAGE(HDF5)
@@ -317,6 +331,7 @@ ELSE()
     SET(HDF5_VERSION ${HDF5_STR})
 
     # Set HDF5 paths
+    # > NOTE: For self-built HDF5, we use a specific version, of which we know the installation directory of the fortran module files
     SET(HDF5_INCLUDE_DIR       ${LIBS_HDF5_DIR}/include)
     SET(HDF5_DIFF_EXECUTABLE   ${LIBS_HDF5_DIR}/bin/h5diff)
       # WARNING: The order of the following libraries matters! They need to be listed from the most dependent to the least dependent.
