@@ -141,12 +141,14 @@ IF(NOT "${HDF5_COMPILER}" STREQUAL "" AND NOT "${HDF5_COMPILER}" STREQUAL "HDF5_
 ENDIF()
 
 IF (NOT LIBS_BUILD_HDF5)
-  FIND_PACKAGE(HDF5 QUIET COMPONENTS C Fortran)
+  # ParaView requires the HL libs but we cannot change the search later
+  FIND_PACKAGE(HDF5 QUIET COMPONENTS C Fortran HL)
 
   # Could not find the static version, look for the shared library
   IF(NOT HDF5_FOUND)
     UNSET(HDF5_USE_STATIC_LIBRARIES)
-    FIND_PACKAGE(HDF5 QUIET COMPONENTS C Fortran)
+    # ParaView requires the HL libs but we cannot change the search later
+    FIND_PACKAGE(HDF5 QUIET COMPONENTS C Fortran HL)
   ENDIF()
 
   IF (HDF5_FOUND)
@@ -169,7 +171,8 @@ IF(NOT LIBS_BUILD_HDF5)
   UNSET(HDF5_DIFF_EXECUTABLE)
 
   # If library is specifically requested, it is required
-  FIND_PACKAGE(HDF5 REQUIRED COMPONENTS C Fortran)
+  # > ParaView requires the HL libs but we cannot change the search later
+  FIND_PACKAGE(HDF5 REQUIRED COMPONENTS C Fortran HL)
 
   # If fortran module files cannot be found in the HDF5_INCLUDE_DIR set by FIND_PACKAGE(HDF5), obtain the correct path from the target properties (supposedly HDF5_INCLUDE_DIR_FORTRAN)
   # > NOTE: Depending on HDF5 config (flag HDF5_INSTALL_MOD_FORTRAN) and version, mod-files can be located in include/ or mod/, or subdirectories
