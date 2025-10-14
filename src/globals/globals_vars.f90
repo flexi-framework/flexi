@@ -26,8 +26,8 @@ PUBLIC
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 CHARACTER(LEN=6),PARAMETER :: ProgramName  = 'FLEXI'               !> name of this program
-INTEGER,PARAMETER          :: MajorVersion = 24                    !> FileVersion number saved in each hdf5 file with hdf5 header
-INTEGER,PARAMETER          :: MinorVersion = 12                    !> FileVersion number saved in each hdf5 file with hdf5 header
+INTEGER,PARAMETER          :: MajorVersion = 25                    !> FileVersion number saved in each hdf5 file with hdf5 header
+INTEGER,PARAMETER          :: MinorVersion = 10                    !> FileVersion number saved in each hdf5 file with hdf5 header
 INTEGER,PARAMETER          :: PatchVersion = 0                     !> FileVersion number saved in each hdf5 file with hdf5 header
 REAL,PARAMETER             :: FileVersionReal  = REAL(MajorVersion,8)+REAL(MinorVersion,8)/10.+REAL(PatchVersion,8)/100.
                                                                    !> OLD number saved in each hdf5 file with hdf5 header
