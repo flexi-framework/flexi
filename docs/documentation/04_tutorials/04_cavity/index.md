@@ -2,7 +2,7 @@
 # Lid-driven Cavity
 This tutorial describes how to set up and run the first non-trivial flow problem. The lid-driven cavity flow is a standard test case for numerical schemes, and a number of results have been published in literature, see, e.g., {cite}`ghia1982high`, {cite}`gao2016efficient`. This tutorial assumes that you have completed the previous tutorial, know how to edit files and post-process the solution with your favorite visualization tool, e.g., **ParaView**. Also, the later parts of the tutorial assume that you have access to a computer with an MPI-based parallelization with at least $4$ computing cores - otherwise, it will just take a lot longer :).
 
-This tutorial is divided into two sections. The [Basic](#sec:tut_cavity_basic) section introduces the setup process and guides you through running simulations, providing a solid foundation for using the code. The [Advanced](#sec:tut_cavity_advanced) section builds on this, offering insights into code modifications that enable more complex simulations and the addition of custom features. If you’re mainly interested in running the code as provided, feel free to skip the Advanced section or only explore the parts that interest you.
+This tutorial is divided into two sections. The [Basic](sec:tut_cavity_basic) section introduces the setup process and guides you through running simulations, providing a solid foundation for using the code. The [Advanced](sec:tut_cavity_advanced) section builds on this, offering insights into code modifications that enable more complex simulations and the addition of custom features. If you’re mainly interested in running the code as provided, feel free to skip the Advanced section or only explore the parts that interest you.
 
 ## Flow Description
 The flow under consideration is essentially incompressible and two-dimensional, but we will use the three-dimensional code for the compressible Navier-Stokes equations to solve it here. This is not the most efficient way to compute this flow, but it works well as an example how to set up and run a simulation in **FLEXI**. The computation is conducted in a three-dimensional, square domain with periodic boundary conditions in the "third" direction. The walls of the cavity are modeled as isothermal walls, and a fixed flow is prescribed at the upper boundary, i.e., the lid of the domain. For the Reynolds numbers investigated here, this generates a steady, vortical flow field in the cavity. {numref}`fig:cavity_re400_velmag` shows the resulting velocity field and streamlines for $Re = 400$.
@@ -423,18 +423,18 @@ In the following, {numref}`fig:cavity_re400_velcomp` and {numref}`fig:cavity_re4
 :name: fig:cavity_re400_velcomp
 :align: center
 :width: 70%
-:alt: Steady state solution of velocity magnitude of $Re=400$ lid driven cavity. Left: constant boundary condition, right: custom boundary condition.
+:alt: Steady state solution of velocity magnitude of $Re=400$ lid-driven cavity. Constant boundary condition (left) vs. custom boundary condition (right).
 
-Steady state solution of velocity magnitude of $Re=400$ lid driven cavity. Left: constant boundary condition, right: custom boundary condition.
+Steady state solution of velocity magnitude of $Re=400$ lid-driven cavity. Constant boundary condition (left) vs. custom boundary condition (right).
 ```
 
 ```{figure} ./figures/cavity_u_over_y_Re400_plot.jpg
 :name: fig:cavity_re400_u_over_y
 :align: center
 :width: 45%
-:alt: Evolution of wall velocities at the lower wall for $Re=400$ lid driven cavity simulations.
+:alt: Evolution of wall velocities at the lower wall for $Re=400$ lid-driven cavity simulations.
 
-Evolution of wall velocities at the lower wall for $Re=400$ lid driven cavity simulations.
+Evolution of wall velocities at the lower wall for $Re=400$ lid-driven cavity simulations.
 ```
 
 [hopr]:        https://hopr.readthedocs.io/en/latest/
