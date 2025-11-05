@@ -312,7 +312,6 @@ ELSE()
       GIT_PROGRESS       TRUE
       ${${GITSHALLOW}}
       PREFIX             ${LIBS_HDF5_DIR}
-      INSTALL_DIR        ${LIBS_HDF5_DIR}
       UPDATE_COMMAND     ""
       # HDF5 explicitely needs "make" to configure
       CMAKE_GENERATOR    "Unix Makefiles"
