@@ -1,12 +1,12 @@
 (sec:tut_dmr)=
 # Double Mach Reflection
 The Double Mach Reflection is a classical test case to investigate the abilities of a numerical scheme to represent shocks and contact discontinuities. It was proposed by Colella and Woodward {cite}`colella1984piecewise` and considers a Mach 10 oblique shock wave that hits a reflecting wall. The initial conditions are given by the Rankine-Hugoniot conditions
-\begin{equation}
+\begin{equation*}
 (\rho, v_1, v_2, p) =\\ \begin{cases} 
    \left(8.0, 8.25\cdot \cos(30^\circ), -8.25 \cdot \sin(30^\circ), 116.5 \right) & x < x_0 + \sqrt{\frac{1}{3}} y \\
    \left(1.4, 0.0, 0.0, 1.0\right) & x \ge x_0 + \sqrt{\frac{1}{3}} y 
 \end{cases},
-\end{equation}
+\end{equation*}
 where the wall at the bottom starts at $x_0= \frac{1}{6}$ and the computational domain $\Omega = [0,4] \times [0,1]$ is discretized by an equidistant Cartesian mesh. This tutorial is located in the folder `tutorials/dmr`.
 
 ## Mesh Generation
@@ -144,3 +144,5 @@ As the solution is always represented by DG polynomials. [posti_visu](tools-visu
 
 Distribution of the blending factor $\alpha$ between the DG and FV operators (top) and density (bottom) of Double Mach Reflection at $t=0.2$.
 ```
+
+[hopr]:        https://hopr.readthedocs.io/en/latest/

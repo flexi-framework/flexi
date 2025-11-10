@@ -66,3 +66,5 @@ For this one-dimensional test case, apply the `Plot Over Line` filter in **ParaV
 
 Solution of the Sod shock tube at $t=0.2$.
 ```
+
+[hopr]:        https://hopr.readthedocs.io/en/latest/
