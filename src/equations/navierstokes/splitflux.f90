@@ -921,16 +921,16 @@ REAL                                :: z1LogMean,z5LogMean,z1Mean
 REAL                                :: rhoHat,uHat,vHat,wHat,pHat,p2Hat,hHat
 !==================================================================================================================================
 ! Compute parameter vector for left and right state
-z_LL(1) = SQRT(U_LL(DENS)/U_LL(PRES))
-z_LL(2) = z_LL(1)*U_LL(VEL1)
-z_LL(3) = z_LL(1)*U_LL(VEL2)
-z_LL(4) = z_LL(1)*U_LL(VEL3)
-z_LL(5) = SQRT(U_LL(DENS)*U_LL(PRES))
-z_RR(1) = SQRT(U_RR(DENS)/U_RR(PRES))
-z_RR(2) = z_RR(1)*U_RR(VEL1)
-z_RR(3) = z_RR(1)*U_RR(VEL2)
-z_RR(4) = z_RR(1)*U_RR(VEL3)
-z_RR(5) = SQRT(U_RR(DENS)*U_RR(PRES))
+z_LL(1) = SQRT(U_LL(EXT_DENS)/U_LL(EXT_PRES))
+z_LL(2) = z_LL(1)*U_LL(EXT_VEL1)
+z_LL(3) = z_LL(1)*U_LL(EXT_VEL2)
+z_LL(4) = z_LL(1)*U_LL(EXT_VEL3)
+z_LL(5) = SQRT(U_LL(EXT_DENS)*U_LL(EXT_PRES))
+z_RR(1) = SQRT(U_RR(EXT_DENS)/U_RR(EXT_PRES))
+z_RR(2) = z_RR(1)*U_RR(EXT_VEL1)
+z_RR(3) = z_RR(1)*U_RR(EXT_VEL2)
+z_RR(4) = z_RR(1)*U_RR(EXT_VEL3)
+z_RR(5) = SQRT(U_RR(EXT_DENS)*U_RR(EXT_PRES))
 
 ! Compute averaged auxilliary variables
 CALL getLogMean(z_LL(1),z_RR(1),z1LogMean)
