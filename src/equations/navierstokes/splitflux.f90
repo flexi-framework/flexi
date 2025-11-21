@@ -737,7 +737,9 @@ REAL,DIMENSION(PP_nVar)                 :: hTilde                  ! flux in phy
 ! average velocities
 uMean = 0.5*(UPrimRef(VEL1) + UPrim(VEL1))
 vMean = 0.5*(UPrimRef(VEL2) + UPrim(VEL2))
+#if PP_dim == 3
 wMean = 0.5*(UPrimRef(VEL3) + UPrim(VEL3))
+#endif
 
 ! inverse temperature
 betaRef  = 0.5*URef(DENS)/UPrimRef(PRES)
@@ -819,7 +821,9 @@ REAL                                :: rhoLogMean,betaLogMean ! auxiliary variab
 ! average velocities
 uMean = 0.5*(U_LL(EXT_VEL1) + U_RR(EXT_VEL1))
 vMean = 0.5*(U_LL(EXT_VEL2) + U_RR(EXT_VEL2))
+#if PP_dim==3
 wMean = 0.5*(U_LL(EXT_VEL3) + U_RR(EXT_VEL3))
+#endif
 
 ! inverse temperature
 beta_LL = 0.5*U_LL(EXT_DENS)/U_LL(EXT_PRES)
@@ -838,7 +842,11 @@ HMean    = 0.5*sKappaM1/betaLogMean + pHatMean/rhoLogMean + &
 F(DENS) = rhoLogMean*uMean
 F(MOM1) = F(DENS)*uMean + pHatMean
 F(MOM2) = F(DENS)*vMean
+#if PP_dim==3
 F(MOM3) = F(DENS)*wMean
+#else
+F(MOM3) = 0.
+#endif
 F(ENER) = F(DENS)*HMean
 
 END SUBROUTINE SplitSurfaceFluxCH
@@ -869,12 +877,16 @@ REAL                                    :: rhoHat,uHat,vHat,wHat,pHat,p2Hat,hHat
 z(1) = SQRT(U(1)/UPrim(5))
 z(2) = z(1)*UPrim(2)
 z(3) = z(1)*UPrim(3)
+#if PP_dim==3
 z(4) = z(1)*UPrim(4)
+#endif
 z(5) = SQRT(U(1)*UPrim(5))
 zRef(1) = SQRT(URef(1)/UPrimRef(5))
 zRef(2) = zRef(1)*UPrimRef(2)
 zRef(3) = zRef(1)*UPrimRef(3)
+#if PP_dim==3
 zRef(4) = zRef(1)*UPrimRef(4)
+#endif
 zRef(5) = SQRT(URef(1)*UPrimRef(5))
 
 ! Compute averaged auxilliary variables
@@ -882,22 +894,34 @@ CALL getLogMean(z(1),zRef(1),z1LogMean)
 CALL getLogMean(z(5),zRef(5),z5LogMean)
 z1Mean  = 0.5*(z(1)+zRef(1))
 rhoHat  = z1Mean*z5LogMean
-uHat    = 0.5*(z(2)+zRef(2))/z1Mean
-vHat    = 0.5*(z(3)+zRef(3))/z1Mean
-wHat    = 0.5*(z(4)+zRef(4))/z1Mean
 pHat    = 0.5*(z(5)+zRef(5))/z1Mean
 p2Hat   = 1./(2.*Kappa)*(KappaP1 * z5LogMean/z1LogMean + KappaM1 * pHat)
-hHat    = Kappa*p2Hat/(rhoHat*KappaM1)+0.5*(uHat**2.+vHat**2.+wHat**2.)
+uHat    = 0.5*(z(2)+zRef(2))/z1Mean
+vHat    = 0.5*(z(3)+zRef(3))/z1Mean
+#if PP_dim==3
+wHat    = 0.5*(z(4)+zRef(4))/z1Mean
+hHat    = Kappa*p2Hat/(rhoHat*KappaM1)+0.5*(uHat**2+vHat**2+wHat**2)
+#else
+hHat    = Kappa*p2Hat/(rhoHat*KappaM1)+0.5*(uHat**2+vHat**2)
+#endif
 
 ! compute auxilery variables
 Meff(:) = 0.5*(MRef(:)+M(:))
+#if PP_dim==3
 qeff    = rhoHat*(uHat*Meff(1)+vHat*Meff(2)+wHat*Meff(3))
+#else
+qeff    = rhoHat*(uHat*Meff(1)+vHat*Meff(2))
+#endif
 
 ! compute flux
 Flux(1) = qeff
 Flux(2) = qeff*uHat + pHat*Meff(1)
 Flux(3) = qeff*vHat + pHat*Meff(2)
+#if PP_dim==3
 Flux(4) = qeff*wHat + pHat*Meff(3)
+#else
+Flux(4) = 0.
+#endif
 Flux(5) = qeff*hHat
 
 END SUBROUTINE SplitVolumeFluxIR
@@ -924,12 +948,16 @@ REAL                                :: rhoHat,uHat,vHat,wHat,pHat,p2Hat,hHat
 z_LL(1) = SQRT(U_LL(EXT_DENS)/U_LL(EXT_PRES))
 z_LL(2) = z_LL(1)*U_LL(EXT_VEL1)
 z_LL(3) = z_LL(1)*U_LL(EXT_VEL2)
+#if PP_dim==3
 z_LL(4) = z_LL(1)*U_LL(EXT_VEL3)
+#endif
 z_LL(5) = SQRT(U_LL(EXT_DENS)*U_LL(EXT_PRES))
 z_RR(1) = SQRT(U_RR(EXT_DENS)/U_RR(EXT_PRES))
 z_RR(2) = z_RR(1)*U_RR(EXT_VEL1)
 z_RR(3) = z_RR(1)*U_RR(EXT_VEL2)
+#if PP_dim==3
 z_RR(4) = z_RR(1)*U_RR(EXT_VEL3)
+#endif
 z_RR(5) = SQRT(U_RR(EXT_DENS)*U_RR(EXT_PRES))
 
 ! Compute averaged auxilliary variables
@@ -937,18 +965,26 @@ CALL getLogMean(z_LL(1),z_RR(1),z1LogMean)
 CALL getLogMean(z_LL(5),z_RR(5),z5LogMean)
 z1Mean  = 0.5*(z_LL(1)+z_RR(1))
 rhoHat  = z1Mean*z5LogMean
-uHat    = 0.5*(z_LL(2)+z_RR(2))/z1Mean
-vHat    = 0.5*(z_LL(3)+z_RR(3))/z1Mean
-wHat    = 0.5*(z_LL(4)+z_RR(4))/z1Mean
 pHat    = 0.5*(z_LL(5)+z_RR(5))/z1Mean
 p2Hat   = 1./(2.*Kappa)*(KappaP1 * z5LogMean/z1LogMean + KappaM1 * pHat)
-hHat    = Kappa*p2Hat/(rhoHat*KappaM1)+0.5*(uHat**2.+vHat**2.+wHat**2.)
+uHat    = 0.5*(z_LL(2)+z_RR(2))/z1Mean
+vHat    = 0.5*(z_LL(3)+z_RR(3))/z1Mean
+#if PP_dim==3
+wHat    = 0.5*(z_LL(4)+z_RR(4))/z1Mean
+hHat    = Kappa*p2Hat/(rhoHat*KappaM1)+0.5*(uHat**2+vHat**2+wHat**2)
+#else
+hHat    = Kappa*p2Hat/(rhoHat*KappaM1)+0.5*(uHat**2+vHat**2)
+#endif
 
 !compute flux
 F(1) = rhoHat*uHat
 F(2) = F(1)*uHat + pHat
 F(3) = F(1)*vHat
+#if PP_dim==3
 F(4) = F(1)*wHat
+#else
+F(4) = 0.
+#endif
 F(5) = F(1)*hHat
 END SUBROUTINE SplitSurfaceFluxIR
 
