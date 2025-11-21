@@ -1002,20 +1002,21 @@ REAL,INTENT(IN)  :: U_R   !< variables at the right surfaces
 REAL,INTENT(OUT) :: UMean !< resulting flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,PARAMETER   :: epsilon = 0.01
-REAL             :: chi,f,u,N ! auxiliary variables
+REAL,PARAMETER   :: sqrt_epsilon = 0.1
+REAL             :: chi,f,g,u ! auxiliary variables
 !==================================================================================================================================
 chi = U_L/U_R
-f = (chi-1)/(chi+1)
-u = f*f
+f   = (chi-1.)/(chi+1.)
 
-IF (u .LT. epsilon) THEN
-  N = 1.0+u/3.0+u*u/5.0+u*u*u/7.0
+! g == 2*F in Appendix B of Ismail and Roe (doi:10.1016/j.jcp.2009.04.021):
+IF(ABS(f)<sqrt_epsilon)THEN
+  u = f*f
+  g = 2. + 2./3.*u + 0.4*u*u + 2./7.*u*u*u
 ELSE
-  N = log(chi)/(2.*f)
+  g = LOG(chi)/f
 ENDIF
 
-UMean = (U_L+U_R)/(2.*N)
+UMean = (U_L+U_R)/g
 END SUBROUTINE getLogMean
 
 END MODULE MOD_SplitFlux
