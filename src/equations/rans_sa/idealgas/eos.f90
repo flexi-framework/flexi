@@ -36,22 +36,25 @@ INTERFACE PrimToCons
   MODULE PROCEDURE PrimToCons_Volume
 END INTERFACE
 
-INTERFACE ConsToEntropy
-  MODULE PROCEDURE ConsToEntropy
-  MODULE PROCEDURE ConsToEntropy_Volume
+#if PP_EntropyVars==1
+INTERFACE ConsToPrimToEntropy
+  MODULE PROCEDURE ConsToPrimToEntropy_Volume
 END INTERFACE
 
 INTERFACE EntropyToCons
   MODULE PROCEDURE EntropyToCons
   MODULE PROCEDURE EntropyToCons_Side
 END INTERFACE
+#endif
 
 PUBLIC:: DefineParametersEos
 PUBLIC:: InitEos
 PUBLIC:: ConsToPrim
 PUBLIC:: PrimToCons
-PUBLIC:: ConsToEntropy
+#if PP_EntropyVars==1
+PUBLIC:: ConsToPrimToEntropy
 PUBLIC:: EntropyToCons
+#endif
 PUBLIC:: PRESSURE_RIEMANN
 !==================================================================================================================================
 
@@ -96,6 +99,9 @@ USE MOD_Globals
 USE MOD_ReadInTools
 USE MOD_EOS_Vars      ,ONLY: Kappa,KappaM1,KappaP1,cp,cv
 USE MOD_EOS_Vars      ,ONLY: R,sKappaM1,sKappaP1
+#if PP_EntropyVars == 1
+USE MOD_EOS_Vars      ,ONLY: kappaM1_sKappaM1,kappa_kappaM1
+#endif
 #if PARABOLIC
 USE MOD_EOS_Vars      ,ONLY: mu0,Pr,KappaSpr
 #if PP_VISC == 1
@@ -130,6 +136,11 @@ KappaM1  = Kappa-1.
 sKappaM1 = 1./KappaM1
 KappaP1  = Kappa+1.
 sKappaP1 = 1./(KappaP1)
+#if PP_EntropyVars == 1
+kappaM1_sKappaM1 = KappaM1**sKappaM1
+kappa_kappaM1    = Kappa/(KappaM1)
+#endif
+
 IF(.NOT. UseNonDimensionalEqn)THEN
   R = GETREAL('R')
 ELSE
@@ -343,43 +354,104 @@ END DO
 END SUBROUTINE PrimToCons_Volume
 
 
+#if PP_EntropyVars==1
 !==================================================================================================================================
-!> Transformation from conservative variables U to entropy vector, dS/dU, S = -rho*s/(kappa-1), s=ln(p)-kappa*ln(rho)
+!> Transformation from primitive to entropy variables for a single state
 !==================================================================================================================================
-PPURE SUBROUTINE ConsToEntropy(entropy,cons)
+PPURE SUBROUTINE PrimToEntropy(entropy,prim)
 ! MODULES
-USE MOD_EOS_Vars,ONLY:KappaM1,kappa,sKappaM1
+USE MOD_EOS_Vars,ONLY:Kappa,sKappaM1
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-REAL,DIMENSION(PP_nVar),INTENT(IN)  :: cons    !< vector of conservative variables
-!----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-REAL,DIMENSION(PP_nVar),INTENT(OUT) :: entropy !< vector of entropy variables
+! INPUT/OUTPUT VARIABLES
+REAL,INTENT(IN)  :: prim(PP_nVarPrim) !< vector of primitive variables (density,velocities,temperature,pressure)
+REAL,INTENT(OUT) :: entropy(PP_nVar)  !< vector of entropy variables
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                                :: vel(3),s,p,rho_p
+REAL             :: s,rho_p
 !==================================================================================================================================
-vel(:) = cons(MOMV)/cons(DENS)
-p      = KappaM1*(cons(ENER)-0.5*SUM(cons(MOMV)*vel(:)))
-! entropy: log(p) - eq.γ * log(ρ)
-s      = LOG(p) - kappa*LOG(cons(DENS))
-rho_p  = cons(DENS)/p
-
+! entropy: log(p) - γ * log(ρ)
+s      = LOG(prim(PRES)) - kappa*LOG(prim(DENS))
+rho_p  = prim(DENS)/prim(PRES)
 ! Convert to entropy variables
-entropy(DENS)      = (kappa-s)*skappaM1 - rho_p * 0.5*SUM(vel**2)  ! (γ - s) / (γ - 1) - (ρu^2 + ρv^2 + ρw^2) / ρ / 2p,
-entropy(MOM1:MOM2) = rho_p*vel(1:2)        ! ρu / p
+entropy(DENS)      = (kappa-s)*skappaM1 - rho_p * 0.5*SUM(prim(VELV)*prim(VELV))  ! (γ - s) / (γ - 1) - (ρu^2 + ρv^2 + ρw^2) / 2p,
+entropy(MOM1:MOM2) = rho_p*prim(VEL1:VEL2)        ! ρu / p
 #if (PP_dim==3)
-entropy(MOM3)      = rho_p*vel(3)
+entropy(MOM3)      = rho_p*prim(VEL3)
 #else
 entropy(MOM3)      = 0.
 #endif
 entropy(ENER)      = - rho_p          ! -ρ / p
+! dynamic SA viscosity
+entropy(MUSA)      = prim(NUSA)*prim(DENS)
+END SUBROUTINE PrimToEntropy
 
-entropy(MUSA)      = cons(MUSA)
 
-END SUBROUTINE ConsToEntropy
+!==================================================================================================================================
+!> Transformation from conservative variables to primitive and entropy variables in the whole volume
+!==================================================================================================================================
+PPURE SUBROUTINE ConsToPrimToEntropy_Volume(Nloc,prim,entropy,cons)
+! MODULES
+USE MOD_Mesh_Vars,ONLY:nElems
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: Nloc                                                  !< local polynomial degree of solution representation
+REAL,INTENT(IN)    :: cons(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems) !< vector of conservative variables
+REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems) !< vector of primitive variables
+REAL,INTENT(OUT)   :: entropy(PP_nVar ,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems) !< vector of entropy variables
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: i,j,k,iElem
+!==================================================================================================================================
+DO iElem=1,nElems
+  DO k=0,ZDIM(Nloc); DO j=0,Nloc; DO i=0,Nloc
+    CALL ConsToPrim(prim(:,i,j,k,iElem),cons(:,i,j,k,iElem))
+    CALL PrimToEntropy(entropy(:,i,j,k,iElem),prim(:,i,j,k,iElem))
+  END DO; END DO; END DO! i,j,k=0,Nloc
+END DO ! iElem
+END SUBROUTINE ConsToPrimToEntropy_Volume
+
+
+!!==================================================================================================================================
+!!> Transformation from conservative variables U to entropy vector, dS/dU, S = -rho*s/(kappa-1), s=ln(p)-kappa*ln(rho)
+!!==================================================================================================================================
+!PPURE SUBROUTINE ConsToEntropy(entropy,cons)
+!! MODULES
+!USE MOD_EOS_Vars,ONLY:KappaM1,kappa,sKappaM1
+!! IMPLICIT VARIABLE HANDLING
+!IMPLICIT NONE
+!!----------------------------------------------------------------------------------------------------------------------------------
+!! INPUT VARIABLES
+!REAL,DIMENSION(PP_nVar),INTENT(IN)  :: cons    !< vector of conservative variables
+!!----------------------------------------------------------------------------------------------------------------------------------
+!! OUTPUT VARIABLES
+!REAL,DIMENSION(PP_nVar),INTENT(OUT) :: entropy !< vector of entropy variables
+!!----------------------------------------------------------------------------------------------------------------------------------
+!! LOCAL VARIABLES
+!REAL                                :: vel(3),s,p,rho_p
+!!==================================================================================================================================
+!vel(:) = cons(MOMV)/cons(DENS)
+!p      = KappaM1*(cons(ENER)-0.5*SUM(cons(MOMV)*vel(:)))
+!! entropy: log(p) - eq.γ * log(ρ)
+!s      = LOG(p) - kappa*LOG(cons(DENS))
+!rho_p  = cons(DENS)/p
+!
+!! Convert to entropy variables
+!entropy(DENS)      = (kappa-s)*skappaM1 - rho_p * 0.5*SUM(vel**2)  ! (γ - s) / (γ - 1) - (ρu^2 + ρv^2 + ρw^2) / ρ / 2p,
+!entropy(MOM1:MOM2) = rho_p*vel(1:2)        ! ρu / p
+!#if (PP_dim==3)
+!entropy(MOM3)      = rho_p*vel(3)
+!#else
+!entropy(MOM3)      = 0.
+!#endif
+!entropy(ENER)      = - rho_p          ! -ρ / p
+!
+!entropy(MUSA)      = cons(MUSA)
+!
+!END SUBROUTINE ConsToEntropy
 
 
 !==================================================================================================================================
@@ -387,7 +459,7 @@ END SUBROUTINE ConsToEntropy
 !==================================================================================================================================
 PPURE SUBROUTINE EntropyToCons(entropy,cons)
 ! MODULES
-USE MOD_EOS_Vars,ONLY:KappaM1,kappa,sKappaM1
+USE MOD_EOS_Vars,ONLY:KappaM1,kappa,sKappaM1,kappaM1_sKappaM1,kappa_kappaM1
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -398,18 +470,25 @@ REAL,DIMENSION(PP_nVar),INTENT(IN)   :: entropy !< vector of entropy variables
 REAL,DIMENSION(PP_nVar),INTENT(OUT)  :: cons    !< vector of conservative variables
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                                 :: s,entropy2(PP_nVar),rhoe
+REAL                                 :: s,entropy2(PP_nVar),rhoe,entropy2_ekin
 !==================================================================================================================================
 entropy2 = entropy*kappaM1
-s        = kappa - entropy2(DENS) + 0.5 * SUM(entropy2(MOMV)**2) / entropy2(ENER)
-rhoe     = (kappaM1 / ((-entropy2(ENER))**kappa))**(skappaM1) * EXP(-s*skappaM1)
+entropy2_ekin = 0.5 * SUM(entropy2(MMV2)*entropy2(MMV2)) / entropy2(ENER)
+! s        = kappa - entropy2(DENS) + 0.5 * SUM(entropy2(MOMV)**2) / entropy2(ENER)
+s        = kappa - entropy2(DENS) + entropy2_ekin
+!rhoe     = (kappaM1 / ((-entropy2(ENER))**kappa))**(skappaM1) * EXP(-s*skappaM1)
+!         = (kappaM1**sKappaM1) * (-entropy2(ENER))**(-kappa/kappaM1) * EXP(-s*skappaM1)
+rhoe     = kappaM1_sKappaM1 * (-entropy2(ENER))**(-kappa_kappaM1) * EXP(-s*sKappaM1)
 
 cons(DENS) = - rhoe * entropy2(ENER) ! ρ = -p * W[5]
-cons(MOMV) = rhoe * entropy2(MOMV)
-#if (PP_dim==2)
+cons(MOM1) = rhoe * entropy2(MOM1)
+cons(MOM2) = rhoe * entropy2(MOM2)
+#if PP_dim==3
+cons(MOM3) = rhoe * entropy2(MOM3)
+#else
 cons(MOM3) = 0.
 #endif
-cons(ENER) = rhoe * (1 - SUM(entropy2(MOMV)**2) * 0.5/ entropy2(ENER)) !sKappaM1*p+0.5*SUM(cons(MOMV)*vel)
+cons(ENER) = rhoe * (1. - entropy2_ekin) !sKappaM1*p+0.5*SUM(cons(MOMV)*vel)
 
 cons(MUSA) = entropy(MUSA)
 
@@ -439,6 +518,7 @@ DO iElem=1,nElems
   END DO; END DO; END DO
 END DO
 END SUBROUTINE ConsToEntropy_Volume
+#endif /* PP_EntropyVars==1 */
 
 
 !==================================================================================================================================
