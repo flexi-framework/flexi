@@ -46,7 +46,7 @@ We will now demonstrate these properties through numerical experiments using the
 In order to use the LinAdvDiff equations, the equation system must be specified during the configuration by setting `EQNSYSNAME=linearscalaradvection`. Since we do not consider diffusion in this tutorial, either turn off the parabolic terms through the build option `FLEXI_PARABOLIC=OFF` or simply specify a zero diffusion coefficient in the parameter file, `DiffC=0`. The required options are set automatically by compiling **FLEXI** with the `linadv` preset using the following commands.
 ```bash
 cmake -B build --preset linadv
-cmake --build build
+cmake --build build -j
 ```
 
 ## Mesh Generation

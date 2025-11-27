@@ -21,16 +21,16 @@ Depending on the dealiasing strategy used, [FLEXI][flexi] should be compiled eit
 
 ```{code-block} bash
 cmake -B build --preset tgv_overintegration
-cmake --build build
+cmake --build build -j
 ```
 ```{code-block} bash
 cmake -B build --preset tgv_split_lobatto
-cmake --build build
+cmake --build build -j
 ```
 or
 ```{code-block} bash
 cmake -B build --preset tgv_split_gauss
-cmake --build build
+cmake --build build -j
 ```
 respectively.
 

@@ -44,7 +44,7 @@ The build configurations used for the {ref}`Tutorials` are stored as *CMake pres
 ```bash
 mkdir build
 cmake -B build --preset <preset_name>
-cmake --build build
+cmake --build build -j
 ```
 ```{caution}
 CMake presets were introduced in CMake version 3.19. For earlier versions, **FLEXI** can only be configured manually.
@@ -55,7 +55,7 @@ To configure the code manually, you can use the CMake GUI, which displays brief 
 ```bash
 mkdir build
 ccmake -B build
-cmake --build build
+cmake --build build -j
 ```
 
 ## Parameter File

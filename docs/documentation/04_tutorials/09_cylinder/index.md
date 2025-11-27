@@ -10,7 +10,7 @@ The setup considered consists of a 2D rectangular domain with the primary flow i
 **FLEXI** should be compiled with the `cylinder` preset using the following commands.
 ```bash
 cmake -B build --preset cylinder
-cmake --build build
+cmake --build build -j
 ```
 
 ## Mesh Generation
