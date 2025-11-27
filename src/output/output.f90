@@ -341,7 +341,11 @@ IF(MPIRoot)THEN
 #ifdef INTEL
   OPEN(UNIT_stdOut,CARRIAGECONTROL='fortran')
 #endif
-  percent_time = (t-tStart) / (tEnd-tStart)
+  IF(tEnd.EQ.tStart)THEN  ! avoid division by zero, no further timesteps needed
+    percent_time = 1.
+  ELSE                    ! compute actual simulation progress
+    percent_time = (t-tStart) / (tEnd-tStart)
+  END IF
   percent_iter = REAL(iter) / REAL(maxIter)
   percent      = ABS(MAX(percent_time,percent_iter))
   ! ETA bar needs a tiny amount
@@ -349,7 +353,11 @@ IF(MPIRoot)THEN
 
   ! Calculate ETA with percent of current run
   ASSOCIATE(tBegin => MERGE(RestartTime,tStart,DoRestart))
-  percent_ETA  = (t-tBegin) / (tEnd-tBegin)
+  IF(tEnd.EQ.tBegin)THEN  ! avoid division by zero, no further timesteps needed
+    percent_ETA  = 1.
+  ELSE                    ! compute actual simulation progress
+    percent_ETA  = (t-tBegin) / (tEnd-tBegin)
+  END IF
   percent_ETA  = MAX(percent_ETA,percent_iter)
   END ASSOCIATE
 
