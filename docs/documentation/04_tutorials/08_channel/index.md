@@ -9,7 +9,7 @@ The flow is calculated in a plane channel with half-height $\delta=1$, streamwis
 **FLEXI** should be compiled with the `channel` preset using the following commands.
 ```bash
 cmake -B build --preset channel
-cmake --build build -j
+cmake --build build 
 ```
 
 ## Mesh Generation
@@ -93,12 +93,12 @@ FLEXI comes with some advanced optimizations in order to increase its computatio
 The option ``FLEXI_PERFORMANCE_PGO=ON`` enable link-time optimization (LTO), sometimes called profile-guided optimization (PGO). For LTO/PGO, the executable is first instrumented with profiling tools by the compiler and then executed on a relatively simple test case. The generated profiling data can be used by the compiler to identify bottlenecks and hotspots in the code that cannot be identified from the static source code analysis. Consequently, the executable is compiled a second time using the gathered profiling data to perform these additional optimizations. In **FLEXI**, this two-step compilation works as follows. First, **FLEXI** is compiled with the following options.
 ```bash
 cmake -B build -DFLEXI_PERFORMANCE=ON -DFLEXI_PERFORMANCE_OPTLIFT=ON -DFLEXI_PERFORMANCE_PGO=ON -DCMAKE_BUILD_TYPE=Profile
-cmake --build build -j
+cmake --build build 
 ```
 For this first step, **FLEXI** is compiled with `CMAKE_BUILD_TYPE=Profile` build type in order to activate the profiling. Then, **FLEXI** has to be executed on a simple test case. Here, the freestream tutorial {numref}`sec:tut_freestream` provides a good starting step. Finally, **FLEXI** is compiled a second time, but this time with the build type set to `CMAKE_BUILD_TYPE=Release`.
 ```bash
 cmake -B build -DFLEXI_PERFORMANCE=ON -DFLEXI_PERFORMANCE_OPTLIFT=ON -DFLEXI_PERFORMANCE_PGO=ON -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j
+cmake --build build 
 ```
 This setting incorporates the generated profiling data into the compilation process. Now, **FLEXI** can be executed as usual and should show a considerable performance improvement in comparison to the previous simulations.
 ```{important}

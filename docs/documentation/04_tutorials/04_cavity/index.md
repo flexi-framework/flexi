@@ -21,7 +21,7 @@ Contours of velocity magnitude for the Re = 400 lid-driven cavity case.
 **FLEXI** should be compiled with the `cavity` preset using the following commands.
 ```bash
 cmake -B build --preset cavity
-cmake --build build -j
+cmake --build build 
 ```
 
 (sec:tut_cavity_basic)=

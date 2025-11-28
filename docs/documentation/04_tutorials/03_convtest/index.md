@@ -44,7 +44,7 @@ Convergence test: Mesh and flow field solution of the density.
 **FLEXI** should be compiled with the `convtest_inviscid` preset using the following commands.
 ```bash
 cmake -B build --preset convtest_inviscid
-cmake --build build -j
+cmake --build build 
 ```
 
 ### Simulation Parameters
@@ -134,7 +134,7 @@ This manufactured solution can also be solved without considering the viscous te
 **FLEXI** should be compiled with the `convtest_viscous` preset using the following commands:
 ```bash
 cmake -B build --preset convtest_viscous
-cmake --build build -j
+cmake --build build 
 ```
 
 ### Simulation Parameters

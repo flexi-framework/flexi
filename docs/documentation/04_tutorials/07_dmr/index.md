@@ -30,7 +30,7 @@ The FV switching is enabled through the build option `FLEXI_FV=SWITCH`, the corr
 
 ```bash
 cmake -B build --preset dmr_fvswitch
-cmake --build build -j
+cmake --build build 
 ```
 
 #### Simulation Parameters

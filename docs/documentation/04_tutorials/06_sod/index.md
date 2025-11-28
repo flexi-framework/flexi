@@ -14,7 +14,7 @@ Therefore, [FLEXI][flexi] should be compiled either with the `sod` preset using 
 
 ```{code-block} bash
 cmake -B build --preset sod
-cmake --build build -j
+cmake --build build 
 ```
 
 ## Simulation Parameters

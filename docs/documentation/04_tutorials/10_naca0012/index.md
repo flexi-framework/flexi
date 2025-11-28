@@ -23,7 +23,7 @@ hopr parameter_hopr.ini
 **FLEXI** should be compiled with the `naca0012` preset using the following commands.
 ```{code-block} bash
 cmake -B build --preset naca0012
-cmake --build build -j
+cmake --build build 
 ```
 
 ## Simulation Parameters
