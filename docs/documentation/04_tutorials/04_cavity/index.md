@@ -26,7 +26,7 @@ cmake --build build
 
 (sec:tut_cavity_basic)=
 ## Basic Tutorial | Flow at Re=100
-The basic tutorial is contained in the `Basic_Re100` subfolder of the `tutorials\cavity` directory.
+The basic tutorial is contained in the `Basic_Re100` subfolder of the `tutorials/cavity` directory.
 
 ### Mesh Generation
 The domain of interest consists of a square 2D geometry. Although the flow field is two- dimensional, we will create a three-dimensional domain here and apply periodic boundary conditions in the z-direction. Also, we will only use one element in that direction to save computational costs. In the tutorial directory, we provide the necessary mesh files, along with a parameter files for **HOPR** to generate these meshes. You can recreate any mesh by running the following command. A full tutorial on how to run **HOPR** is available at the [HOPR documentation][hopr].
@@ -262,7 +262,7 @@ For simulation $1$, the agreement with literature results is fair. This is due t
 
 (sec:tut_cavity_advanced)=
 ## Advanced Tutorial | Flow at Re=400
-In this section, we build on the concepts covered in the basic tutorial. While the general setup of the simulation remains the same, we increase the Reynolds number, which requires a new, higher-resolution mesh to capture the finer flow details. Additionally, this part introduces basic code customization by showing how to add a new function for custom initial or boundary conditions. Before diving in, it is recommended that you have completed the basic tutorial, have access to at least four computational cores (or be prepared for longer run times), and be comfortable with the modern **Fortran** syntax. The basic tutorial is contained in the `Advanced_Re400` subfolder of the `tutorials\cavity` directory.
+In this section, we build on the concepts covered in the basic tutorial. While the general setup of the simulation remains the same, we increase the Reynolds number, which requires a new, higher-resolution mesh to capture the finer flow details. Additionally, this part introduces basic code customization by showing how to add a new function for custom initial or boundary conditions. Before diving in, it is recommended that you have completed the basic tutorial, have access to at least four computational cores (or be prepared for longer run times), and be comfortable with the modern **Fortran** syntax. The basic tutorial is contained in the `Advanced_Re400` subfolder of the `tutorials/cavity` directory.
 
 (sec:tut_cav_meshgen_adv)=
 ### Mesh Generation
