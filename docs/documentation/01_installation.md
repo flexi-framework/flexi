@@ -105,6 +105,10 @@ mkdir build
 cmake -B build
 cmake --build build
 ```
+The build process can be parallelised using
+```bash
+cmake --build build -j
+```
 Custom configuration of compiler options may be done using
 ```bash
 ccmake -B build
@@ -135,7 +139,7 @@ flexi parameter_flexi.ini
 ```
 Convert the output files to the *vtu* format by entering
 ```bash
-posti_visu cavity_State_0000000.200000000.h5
+posti_visu Tutorial_Cavity_Re100_mesh2x2_State_0000000.200000000.h5
 ```
 and visualize the generated files using, e.g., **ParaView**. Note that this conversion step requires enabling the `posti_visu` tool by toggling the `POSTI` flag in the CMake configuration (see section {ref}`sec:compile_flexi` above).
 
