@@ -64,6 +64,7 @@ CALL prms%CreateStringOption( 'VarNameAvg'       , "Names of variables to be tim
 CALL prms%CreateStringOption( 'VarNameFluc'      , "Names of variables for which Flucs (time-averaged&
                                                    & square of the variable) should be computed.&
                                                    & Required for computing actual fluctuations."      , multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('MomOrigin',      "Origin Location for Moment Calculation (x,y,z)", '(/0.0,0.0,0.0/)')                                                 
 END SUBROUTINE DefineParametersAnalyzeEquation
 
 
@@ -77,7 +78,7 @@ USE MOD_Preproc
 USE MOD_Analyze_Vars
 USE MOD_AnalyzeEquation_Vars
 USE MOD_Equation_Vars,      ONLY: StrVarNamesPrim,StrVarNames
-USE MOD_ReadInTools,        ONLY: GETLOGICAL
+USE MOD_ReadInTools,        ONLY: GETLOGICAL, GETREALARRAY
 USE MOD_Mesh_Vars,          ONLY: nBCs,BoundaryType,BoundaryName
 USE MOD_Output,             ONLY: InitOutputToFile
 USE MOD_Output_Vars,        ONLY: ProjectName
@@ -102,7 +103,7 @@ doWriteWallVelocity = GETLOGICAL('WriteWallVelocity')
 doWriteTotalStates  = GETLOGICAL('WriteTotalStates')
 doWriteResiduals    = GETLOGICAL('WriteResiduals')
 doCalcTimeAverage   = GETLOGICAL('CalcTimeAverage')
-
+MomOrigin           = GETREALARRAY('MomOrigin',3)
 ! Generate wallmap
 ALLOCATE(isWall(nBCs))
 DO i=1,nBCs
@@ -211,7 +212,7 @@ IF(doCalcResiduals)    CALL CalcResiduals(Residuals)
 
 
 IF(MPIRoot.AND.doCalcBodyforces)THEN
-  WRITE(UNIT_stdOut,*)'BodyForces (Pressure, Friction) : '
+  WRITE(UNIT_stdOut,*)'BodyForces (Pressure, Friction) BodyMoments (Pressure, Friction):: '
   WRITE(formatStr,'(A,I2,A)')'(A',maxlen,',6ES18.9)'
   DO i=1,nBCs
     IF(.NOT.isWall(i)) CYCLE

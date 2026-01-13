@@ -32,13 +32,13 @@ CONTAINS
 !==================================================================================================================================
 !> Control routine for CalcBodyforces
 !==================================================================================================================================
-SUBROUTINE CalcBodyForces(BodyForce,Fp,Fv)
+SUBROUTINE CalcBodyForces(BodyForce,Fp,Fv,BodyMoment,Mp,Mv)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_AnalyzeEquation_Vars,ONLY:isWall
+USE MOD_AnalyzeEquation_Vars,ONLY:isWall, MomOrigin
 USE MOD_DG_Vars,             ONLY:UPrim_master
-USE MOD_Mesh_Vars,           ONLY:NormVec,SurfElem,nBCSides,BC,nBCs
+USE MOD_Mesh_Vars,           ONLY:NormVec,SurfElem,nBCSides,BC,nBCs,Face_xGP
 #if PARABOLIC
 USE MOD_Lifting_Vars,        ONLY:gradUx_master,gradUy_master,gradUz_master
 #endif
@@ -49,62 +49,79 @@ IMPLICIT NONE
 REAL,INTENT(OUT)               :: Fp(3,nBCs)              !< integrated pressure force per wall BC
 REAL,INTENT(OUT)               :: Fv(3,nBCs)              !< integrated friction force per wall BC
 REAL,INTENT(OUT)               :: BodyForce(3,nBCs)       !< Sum of pressure/friction force
+REAL,INTENT(OUT)               :: Mp(3,nBCs)              !< integrated moments per wall BC due to pressure
+REAL,INTENT(OUT)               :: Mv(3,nBCs)              !< integrated moments per wall BC due to friction
+REAL,INTENT(OUT)               :: BodyMoment(3,nBCs)      !< Sum of moments about origin  
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                           :: Fp_loc(3)
+REAL                           :: Mp_loc(3)
 #if PARABOLIC
 REAL                           :: Fv_loc(3)
+REAL                           :: Mv_loc(3)
 #endif
 INTEGER                        :: SideID,iBC
 #if USE_MPI
-REAL                           :: Box(6,nBCs)
+REAL                           :: Box(12,nBCs)
 #endif /*USE_MPI*/
+REAL                           :: Mom_origin(3) 
+Mom_origin = MomOrigin
 !==================================================================================================================================
-! Calculate body forces  ! Attention: during the initialization phase no face data / gradients available!
+! Calculate body forces and moments  ! Attention: during the initialization phase no face data / gradients available!
 
 Fp=0.
 Fv=0.
 BodyForce=0.
+Mp=0.
+Mv=0.
+BodyMoment=0.
 DO SideID=1,nBCSides
   iBC=BC(SideID)
   IF(.NOT.isWall(iBC)) CYCLE
   ! Calculate pressure force (Euler wall / Navier-Stokes wall)
-  CALL CalcPressureForce(Fp_loc,UPrim_master(PRES,:,:,SideID),SurfElem(:,:,0,SideID),NormVec(:,:,:,0,SideID))
+  CALL CalcPressureForce(Fp_loc,Mp_loc,UPrim_master(PRES,:,:,SideID),SurfElem(:,:,0,SideID),NormVec(:,:,:,0,SideID),Face_xGP(:,:,:,0,SideID),Mom_origin)
   Fp(:,iBC)=Fp(:,iBC)+Fp_loc
+  Mp(:,iBC)=Mp(:,iBC)+Mp_loc
 #if PARABOLIC
   ! Calculate viscous force (Navier-Stokes wall)
   CALL CalcViscousForce(Fv_loc,                      &
+                        Mv_loc,                      &
                         UPrim_master(:,:,:,SideID),  &
                         gradUx_master(:,:,:,SideID), &
                         gradUy_master(:,:,:,SideID), &
                         gradUz_master(:,:,:,SideID), &
                         SurfElem(:,:,0,SideID),      &
-                        NormVec(:,:,:,0,SideID))
+                        NormVec(:,:,:,0,SideID),     &
+                        Face_xGP(:,:,:,0,SideID),    &
+                        Mom_origin)
   Fv(:,iBC)=Fv(:,iBC)+Fv_loc
+  Mv(:,iBC)=Mv(:,iBC)+Mv_loc
 #endif
 END DO
 
 #if USE_MPI
 Box(1:3,1:nBCs)=Fv; Box(4:6,1:nBCs)=Fp
+Box(7:9,1:nBCs)=Mv; Box(10:12,1:nBCs)=Mp
 IF(MPIRoot)THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE,Box,6*nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE,Box,12*nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
   Fv=Box(1:3,1:nBCs); Fp=Box(4:6,1:nBCs)
+  Mv=Box(7:9,1:nBCs); Mp=Box(10:12,1:nBCs)
   BodyForce=Fv+Fp
+  BodyMoment=Mv+Mp
 ELSE
-  CALL MPI_REDUCE(Box         ,0  ,6*nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(Box         ,0  ,12*nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 #else
 BodyForce=Fv+Fp
+BodyMoment=Mv+Mp
 #endif
 
 END SUBROUTINE CalcBodyForces
 
-
-
 !==================================================================================================================================
 !> Compute integral pressure force per face
 !==================================================================================================================================
-SUBROUTINE CalcPressureForce(Fp,p_Face,SurfElem,NormVec)
+SUBROUTINE CalcPressureForce(Fp,Mp,p_Face,SurfElem,NormVec,Face_xGP,Mom_origin)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Analyze_Vars,      ONLY:wGPSurf
@@ -116,15 +133,26 @@ REAL, INTENT(IN)               :: p_Face(0:PP_N,0:PP_NZ)        !< (IN) pressure
 REAL, INTENT(IN)               :: SurfElem(0:PP_N,0:PP_NZ)      !< (IN) face surface
 REAL, INTENT(IN)               :: NormVec(3,0:PP_N,0:PP_NZ)     !< (IN) face normal vectors
 REAL, INTENT(OUT)              :: Fp(3)                        !< (OUT) integrated pressure force
+REAL, INTENT(IN)               :: Face_xGP(3,0:PP_N,0:PP_NZ)   !< (IN) face grid point coordinates
+REAL, INTENT(IN)               :: Mom_origin(3)                !< (IN) moment origin
+REAL, INTENT(OUT)              :: Mp(3)                        !< (OUT) integrated pressure moment
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                           :: dA
+REAL                           :: dA, r(3), df(3)
 INTEGER                        :: i, j
 !==================================================================================================================================
 Fp=0.
+Mp=0.
 DO j=0,PP_NZ; DO i=0,PP_N
   dA=wGPSurf(i,j)*SurfElem(i,j)
+  ! Pressure Calc
   Fp=Fp+p_Face(i,j)*NormVec(:,i,j)*dA
+  ! Moment Calc
+  r=Face_xGP(:,i,j)-Mom_origin
+  df = p_Face(i,j)*NormVec(:,i,j)*dA
+  Mp(1) = Mp(1) + r(2)*df(3) - r(3)*df(2)
+  Mp(2) = Mp(2) + r(3)*df(1) - r(1)*df(3)
+  Mp(3) = Mp(3) + r(1)*df(2) - r(2)*df(1)
 END DO; END DO
 END SUBROUTINE CalcPressureForce
 
@@ -133,7 +161,7 @@ END SUBROUTINE CalcPressureForce
 !==================================================================================================================================
 !> Compute integral viscous force per face (only if compiled with parabolic terms)
 !==================================================================================================================================
-SUBROUTINE CalcViscousForce(Fv,UPrim_Face,gradUx_Face,gradUy_Face,gradUz_Face,SurfElem,NormVec)
+SUBROUTINE CalcViscousForce(Fv,Mv,UPrim_Face,gradUx_Face,gradUy_Face,gradUz_Face,SurfElem,NormVec,Face_xGP,Mom_origin)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Viscosity
@@ -148,16 +176,21 @@ REAL, INTENT(IN)               :: gradUy_Face(PP_nVarLifting,0:PP_N,0:PP_NZ) !< 
 REAL, INTENT(IN)               :: gradUz_Face(PP_nVarLifting,0:PP_N,0:PP_NZ) !< (IN) sln. gradients z-dir on face
 REAL, INTENT(IN)               :: SurfElem(0:PP_N,0:PP_NZ)                   !< (IN) face surface
 REAL, INTENT(IN)               :: NormVec(3,0:PP_N,0:PP_NZ)                  !< (IN) face normal vectors
-REAL, INTENT(OUT)              :: Fv(3)                                      !< (OUT) integrated pressure force
+REAL, INTENT(OUT)              :: Fv(3)                                      !< (OUT) integrated Viscous force
+REAL, INTENT(IN)               :: Face_xGP(3,0:PP_N,0:PP_NZ)                 !< (IN) face grid point coordinates    
+REAL, INTENT(IN)               :: Mom_origin(3)                              !< (IN) moment origin             
+REAL, INTENT(OUT)              :: Mv(3)                                      !< (OUT) integrated Viscous moment
+
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                           :: tau(3,3)                  ! Viscous stress tensor
 REAL                           :: muS
 REAL                           :: GradV(3,3),DivV,prim(PP_nVarPrim)
+REAL                           :: dfv(3), r(3)
 INTEGER                        :: i, j
 !==================================================================================================================================
 Fv       =0.
-
+Mv       =0.
 DO j=0,PP_NZ; DO i=0,PP_N
   ! calculate viscosity
   prim = UPrim_Face(:,i,j)
@@ -183,10 +216,16 @@ DO j=0,PP_NZ; DO i=0,PP_N
 #endif
   ! Calculate viscous force vector
   Fv=Fv+MATMUL(tau,NormVec(:,i,j))*wGPSurf(i,j)*SurfElem(i,j)
+  ! Calculate viscous moment vector
+  r=Face_xGP(:,i,j)-Mom_origin
+  dfv=MATMUL(tau,NormVec(:,i,j))*wGPSurf(i,j)*SurfElem(i,j)
+  Mv(1) = Mv(1) + r(2)*dfv(3) - r(3)*dfv(2)                
+  Mv(2) = Mv(2) + r(3)*dfv(1) - r(1)*dfv(3)
+  Mv(3) = Mv(3) + r(1)*dfv(2) - r(2)*dfv(1)
 END DO; END DO
 
 Fv=-Fv  ! Change direction to get the force acting on the wall
-
+Mv=-Mv
 END SUBROUTINE CalcViscousForce
 #endif /*PARABOLIC*/
 

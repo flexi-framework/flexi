@@ -234,7 +234,7 @@ Specifically, the following evaluations are possible:
 
 * ``CalcErrorNorms=T``: Calculate the $L_2$ and $L_\infty$ error norms based on the specified ``ExactFunc`` as reference. This evaluation is used for, e.g., convergence tests.
 
-* ``CalcBodyForces=T``: Calculate the pressure and viscous forces acting on every wall boundary condition (BC_TYPE=3,4 or 9) separately. The forces are written to *dat* files.
+* ``CalcBodyForces=T``: Calculate the pressure and viscous forces acting on every wall boundary condition (BC_TYPE=3,4 or 9) separately. Additionally calculates moments about a point set with the MomOrigin parameter. The forces and moments are written to *dat* files.
 
 * ``CalcBulkState=T``: Calculate the bulk quantities, such as the bulk velocity for the channel flow.
 
