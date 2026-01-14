@@ -79,19 +79,20 @@ DO SideID=1,nBCSides
   iBC=BC(SideID)
   IF(.NOT.isWall(iBC)) CYCLE
   ! Calculate pressure force (Euler wall / Navier-Stokes wall)
-  CALL CalcPressureForce(Fp_loc,Mp_loc,UPrim_master(PRES,:,:,SideID),SurfElem(:,:,0,SideID),NormVec(:,:,:,0,SideID),Face_xGP(:,:,0,SideID),Mom_origin)
+  CALL CalcPressureForce(Fp_loc,Mp_loc,UPrim_master(PRES,:,:,SideID),SurfElem(:,:,0,SideID),NormVec(:,:,:,0,SideID),Face_xGP(:,:,:,0,SideID),Mom_origin)
   Fp(:,iBC)=Fp(:,iBC)+Fp_loc
   Mp(:,iBC)=Mp(:,iBC)+Mp_loc
 #if PARABOLIC
   ! Calculate viscous force (Navier-Stokes wall)
   CALL CalcViscousForce(Fv_loc,                      &
+                        Mv_loc,                      &
                         UPrim_master(:,:,:,SideID),  &
                         gradUx_master(:,:,:,SideID), &
                         gradUy_master(:,:,:,SideID), &
                         gradUz_master(:,:,:,SideID), &
                         SurfElem(:,:,0,SideID),      &
-                        NormVec(:,:,:,0,SideID),
-                        Face_xGP(:,:,0,SideID),
+                        NormVec(:,:,:,0,SideID),     &
+                        Face_xGP(:,:,:,0,SideID),      &
                         Mom_origin)
   Fv(:,iBC)=Fv(:,iBC)+Fv_loc
   Mv(:,iBC)=Mv(:,iBC)+Mv_loc

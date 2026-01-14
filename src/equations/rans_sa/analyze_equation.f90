@@ -128,8 +128,8 @@ IF(MPIRoot)THEN
     DO i=1,nBCs
       IF(.NOT.isWall(i)) CYCLE
       FileName_BodyForce(i) = TRIM(ProjectName)//'_BodyForces_'//TRIM(BoundaryName(i))
-      CALL InitOutputToFile(FileName_BodyForce(i),TRIM(BoundaryName(i)),9,&
-           [CHARACTER(7) :: "x-Force","y-Force","z-Force","Fp_x","Fp_y","Fp_z","Fv_x","Fv_y","Fv_z"])
+      CALL InitOutputToFile(FileName_BodyForce(i),TRIM(BoundaryName(i)),18,&
+           [CHARACTER(8) :: "x-Force","y-Force","z-Force","Fp_x","Fp_y","Fp_z","Fv_x","Fv_y","Fv_z","x-Moment","y-Moment","z-Moment","Mp_x","Mp_y","Mp_z","Mv_x","Mv_y","Mv_z"])
     END DO
   END IF
   IF(doCalcWallVelocity.AND.doWriteWallVelocity)THEN
@@ -195,6 +195,7 @@ REAL,INTENT(IN)                 :: Time                              !< Current 
 ! LOCAL VARIABLES
 CHARACTER(LEN=40)               :: formatStr
 REAL,DIMENSION(3,nBCs)          :: Fv,Fp,BodyForce ! viscous/pressure/resulting body force
+REAL,DIMENSION(3,nBCs)          :: Mv,Mp,BodyMoment ! viscous/pressure/resulting body moment
 REAL,DIMENSION(PP_nVar,nBCs)    :: MeanFlux
 REAL,DIMENSION(4,nBCs)          :: meanTotals
 REAL,DIMENSION(nBCs)            :: meanV,maxV,minV
@@ -203,7 +204,7 @@ REAL                            :: Residuals(PP_nVar)
 INTEGER                         :: i
 !==================================================================================================================================
 ! Calculate derived quantities
-IF(doCalcBodyforces)   CALL CalcBodyforces(Bodyforce,Fp,Fv)
+IF(doCalcBodyforces)   CALL CalcBodyforces(Bodyforce,Fp,Fv,BodyMoment,Mp,Mv)
 IF(doCalcWallVelocity) CALL CalcWallVelocity(maxV,minV,meanV)
 IF(doCalcMeanFlux)     CALL CalcMeanFlux(MeanFlux)
 IF(doCalcBulkState)    CALL CalcBulkState(bulkPrim,bulkCons)
@@ -213,7 +214,7 @@ IF(doCalcResiduals)    CALL CalcResiduals(Residuals)
 
 IF(MPIRoot.AND.doCalcBodyforces)THEN
   WRITE(UNIT_stdOut,*)'BodyForces (Pressure, Friction) BodyMoments (Pressure, Friction):: '
-  WRITE(formatStr,'(A,I2,A)')'(A',maxlen,',6ES18.9)'
+  WRITE(formatStr,'(A,I2,A)')'(A',maxlen,',12ES18.9)'
   DO i=1,nBCs
     IF(.NOT.isWall(i)) CYCLE
     IF (doWriteBodyForces) &
