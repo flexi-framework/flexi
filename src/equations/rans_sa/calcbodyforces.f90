@@ -51,7 +51,7 @@ REAL,INTENT(OUT)               :: Fv(3,nBCs)              !< integrated friction
 REAL,INTENT(OUT)               :: BodyForce(3,nBCs)       !< Sum of pressure/friction force
 REAL,INTENT(OUT)               :: Mp(3,nBCs)              !< integrated moments per wall BC due to pressure
 REAL,INTENT(OUT)               :: Mv(3,nBCs)              !< integrated moments per wall BC due to friction
-REAL,INTENT(OUT)               :: BodyMoment(3,nBCs)      !< Sum of moments about origin  
+REAL,INTENT(OUT)               :: BodyMoment(3,nBCs)      !< Sum of moments about origin
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                           :: Fp_loc(3)
@@ -64,7 +64,7 @@ INTEGER                        :: SideID,iBC
 #if USE_MPI
 REAL                           :: Box(6,nBCs)
 #endif /*USE_MPI*/
-REAL                           :: Mom_origin(3) 
+REAL                           :: Mom_origin(3)
 Mom_origin = MomOrigin
 !==================================================================================================================================
 ! Calculate body forces  ! Attention: during the initialization phase no face data / gradients available!
@@ -177,9 +177,9 @@ REAL, INTENT(IN)               :: gradUz_Face(PP_nVarPrim,0:PP_N,0:PP_NZ) !< (IN
 REAL, INTENT(IN)               :: SurfElem(0:PP_N,0:PP_NZ)                !< (IN) face surface
 REAL, INTENT(IN)               :: NormVec(3,0:PP_N,0:PP_NZ)               !< (IN) face normal vectors
 REAL, INTENT(OUT)              :: Fv(3)                                  !< (OUT) integrated pressure force
-REAL, INTENT(IN)               :: Face_xGP(3,0:PP_N,0:PP_NZ)                 !< (IN) face grid point coordinates    
-REAL, INTENT(IN)               :: Mom_origin(3)                              !< (IN) moment origin             
-REAL, INTENT(OUT)              :: Mv(3)   
+REAL, INTENT(IN)               :: Face_xGP(3,0:PP_N,0:PP_NZ)                 !< (IN) face grid point coordinates
+REAL, INTENT(IN)               :: Mom_origin(3)                              !< (IN) moment origin
+REAL, INTENT(OUT)              :: Mv(3)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                           :: tau(3,3)                  ! Viscous stress tensor
@@ -218,7 +218,7 @@ DO j=0,PP_NZ; DO i=0,PP_N
   ! Calculate viscous moment vector
   r=Face_xGP(:,i,j)-Mom_origin
   dfv=MATMUL(tau,NormVec(:,i,j))*wGPSurf(i,j)*SurfElem(i,j)
-  Mv(1) = Mv(1) + r(2)*dfv(3) - r(3)*dfv(2)                
+  Mv(1) = Mv(1) + r(2)*dfv(3) - r(3)*dfv(2)
   Mv(2) = Mv(2) + r(3)*dfv(1) - r(1)*dfv(3)
   Mv(3) = Mv(3) + r(1)*dfv(2) - r(2)*dfv(1)
 END DO; END DO

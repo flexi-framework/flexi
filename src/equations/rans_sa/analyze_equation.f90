@@ -64,7 +64,7 @@ CALL prms%CreateStringOption( 'VarNameAvg'       , "Names of variables to be tim
 CALL prms%CreateStringOption( 'VarNameFluc'      , "Names of variables for which Flucs (time-averaged&
                                                    & square of the variable) should be computed.&
                                                    & Required for computing actual fluctuations."      , multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('MomOrigin',      "Origin Location for Moment Calculation (x,y,z)", '(/0.0,0.0,0.0/)')                                                 
+CALL prms%CreateRealArrayOption('MomOrigin',      "Origin Location for Moment Calculation (x,y,z)", '(/0.0,0.0,0.0/)')
 END SUBROUTINE DefineParametersAnalyzeEquation
 
 
