@@ -219,7 +219,7 @@ DO j=0,PP_NZ; DO i=0,PP_N
   ! Calculate viscous moment vector
   r=Face_xGP(:,i,j)-Mom_origin
   dfv=MATMUL(tau,NormVec(:,i,j))*wGPSurf(i,j)*SurfElem(i,j)
-  Mv(1) = Mv(1) + r(2)*dfv(3) - r(3)*dfv(2)              
+  Mv(1) = Mv(1) + r(2)*dfv(3) - r(3)*dfv(2)
   Mv(2) = Mv(2) + r(3)*dfv(1) - r(1)*dfv(3)
   Mv(3) = Mv(3) + r(1)*dfv(2) - r(2)*dfv(1)
 END DO; END DO
