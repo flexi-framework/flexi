@@ -62,7 +62,7 @@ REAL                           :: Mv_loc(3)
 #endif
 INTEGER                        :: SideID,iBC
 #if USE_MPI
-REAL                           :: Box(6,nBCs)
+REAL                           :: Box(12,nBCs)
 #endif /*USE_MPI*/
 REAL                           :: Mom_origin(3)
 Mom_origin = MomOrigin
