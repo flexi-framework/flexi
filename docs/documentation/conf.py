@@ -18,7 +18,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'FLEXI Documentation'
-copyright = '2025, Institute for Aerodynamics and Gas Dynamics (University of Stuttgart)'
+copyright = '2026, Institute for Aerodynamics and Gas Dynamics (University of Stuttgart)'
 author = 'Institute for Aerodynamics and Gas Dynamics (University of Stuttgart)'
 release = '25.10'
 

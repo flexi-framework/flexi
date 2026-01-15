@@ -1,5 +1,6 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2024 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2026 Prof. Andrea Beck
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
 ! Copyright (c) 2016-2017 Gregor Gassner (github.com/project-fluxo/fluxo)
 ! Copyright (c) 2016-2017 Florian Hindenlang (github.com/project-fluxo/fluxo)
 ! Copyright (c) 2016-2017 Andrew Winters (github.com/project-fluxo/fluxo)
