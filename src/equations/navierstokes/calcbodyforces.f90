@@ -200,7 +200,7 @@ DO j=0,PP_NZ; DO i=0,PP_N
   GradV(:,1)=gradUx_Face(LIFT_VELV,i,j)
   GradV(:,2)=gradUy_Face(LIFT_VELV,i,j)
 #if PP_dim==3
-  GradV(:,3)=gradUz_Face(LIFT_VELV,i,j) 
+  GradV(:,3)=gradUz_Face(LIFT_VELV,i,j)
 #else
   GradV(:,3)=0.
 #endif
