@@ -139,7 +139,7 @@ REAL, INTENT(IN)               :: Mom_origin(3)                !< (IN) moment or
 REAL, INTENT(OUT)              :: Mp(3)                        !< (OUT) integrated pressure moment
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                           :: dA, r(3), df(3)
+REAL                           :: dA, r_arm(3), df(3)
 INTEGER                        :: i, j
 !==================================================================================================================================
 Fp=0.
@@ -149,11 +149,11 @@ DO j=0,PP_NZ; DO i=0,PP_N
   ! Pressure Calc
   Fp=Fp+p_Face(i,j)*NormVec(:,i,j)*dA
   ! Moment Calc
-  r=Face_xGP(:,i,j)-Mom_origin
+  r_arm=Face_xGP(:,i,j)-Mom_origin
   df = p_Face(i,j)*NormVec(:,i,j)*dA
-  Mp(1) = Mp(1) + r(2)*df(3) - r(3)*df(2)
-  Mp(2) = Mp(2) + r(3)*df(1) - r(1)*df(3)
-  Mp(3) = Mp(3) + r(1)*df(2) - r(2)*df(1)
+  Mp(1) = Mp(1) + r_arm(2)*df(3) - r_arm(3)*df(2)
+  Mp(2) = Mp(2) + r_arm(3)*df(1) - r_arm(1)*df(3)
+  Mp(3) = Mp(3) + r_arm(1)*df(2) - r_arm(2)*df(1)
 END DO; END DO
 END SUBROUTINE CalcPressureForce
 
@@ -186,7 +186,7 @@ REAL, INTENT(OUT)              :: Mv(3)
 REAL                           :: tau(3,3)                  ! Viscous stress tensor
 REAL                           :: muS
 REAL                           :: GradV(3,3),DivV,prim(PP_nVarPrim)
-REAL                           :: r(3), dfv(3)
+REAL                           :: r_arm(3), dfv(3)
 INTEGER                        :: i, j
 !==================================================================================================================================
 Fv = 0.
@@ -217,11 +217,11 @@ DO j=0,PP_NZ; DO i=0,PP_N
   ! Calculate viscous force vector
   Fv=Fv+MATMUL(tau,NormVec(:,i,j))*wGPSurf(i,j)*SurfElem(i,j)
   ! Calculate viscous moment vector
-  r=Face_xGP(:,i,j)-Mom_origin
+  r_arm=Face_xGP(:,i,j)-Mom_origin
   dfv=MATMUL(tau,NormVec(:,i,j))*wGPSurf(i,j)*SurfElem(i,j)
-  Mv(1) = Mv(1) + r(2)*dfv(3) - r(3)*dfv(2)
-  Mv(2) = Mv(2) + r(3)*dfv(1) - r(1)*dfv(3)
-  Mv(3) = Mv(3) + r(1)*dfv(2) - r(2)*dfv(1)
+  Mv(1) = Mv(1) + r_arm(2)*dfv(3) - r_arm(3)*dfv(2)
+  Mv(2) = Mv(2) + r_arm(3)*dfv(1) - r_arm(1)*dfv(3)
+  Mv(3) = Mv(3) + r_arm(1)*dfv(2) - r_arm(2)*dfv(1)
 END DO; END DO
 
 Fv=-Fv  ! Change direction to get the force acting on the wall
