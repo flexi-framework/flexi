@@ -46,7 +46,7 @@ CHARACTER(LEN=255),ALLOCATABLE :: Filename_MeanFlux(:)    !< output files for me
 CHARACTER(LEN=255),ALLOCATABLE :: Filename_TotalStates(:) !< output files for total states per BC
 CHARACTER(LEN=255),ALLOCATABLE :: Filename_WallVel(:)     !< output files for wall velocities per BC
 CHARACTER(LEN=255)             :: Filename_Residuals      !< output file  for residuals
-
+REAL,ALLOCATABLE             :: MomOrigin(:)            !< Origin Location for Moment Calculation (x,y,z)
 ! Time averaging and fluctuation variables
 
 LOGICAL              :: doCalcTimeAverage   =.FALSE.      !< marks if time averaging should be performed

@@ -662,6 +662,9 @@ OpenMPI v5.x changed the output buffering behaviour. To see the status line on n
 * - VarNameFluc
   - 
   - Names of variables for which Flucs (time-averaged square of the variable) should be computed. Required for computing actual fluctuations.  
+* - MomOrigin
+  - (/0,0,0)
+  - Set origin to be used for calculating arm length in moment calculations.  
 ```
 
 ```{list-table} 
