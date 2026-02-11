@@ -120,13 +120,12 @@ DO iSide=1,nBCSides
         CALL Abort(__STAMP__,'No exactfunc defined for BC_TYPE',locType) ! Technically not a missing refstate but exactfunc
     END SELECT
   END IF
-#if FV_RECONSTRUCT
-  IF((locType.EQ.3).OR.(locType.EQ.4))THEN
-    ASSOCIATE(prim => RefStatePrim(:,locState))
 #if PARABOLIC
-    IF(VISCOSITY_PRIM(prim).LE.0.) &
-#endif
-    CALL Abort(__STAMP__,'No-slip BCs cannot be used without viscosity in case of FV-reconstruction!')
+  IF(locType.EQ.4)THEN
+    ! VISCOSITY_PRIM is a macro, keep the ASSOCIATE!
+    ASSOCIATE(prim => RefStatePrim(:,locState))
+      IF(VISCOSITY_PRIM(prim).LE.0.) &
+        CALL Abort(__STAMP__,'Isothermal wall requires a valid wall temperature!')
     END ASSOCIATE
   END IF
 #endif
