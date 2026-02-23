@@ -62,6 +62,7 @@ CALL prms%CreateStringOption( 'VarNameAvg'       , "Names of variables to be tim
 CALL prms%CreateStringOption( 'VarNameFluc'      , "Names of variables for which Flucs (time-averaged&
                                                    & square of the variable) should be computed.&
                                                    & Required for computing actual fluctuations."      , multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('MomOrigin',      "Origin Location for Moment Calculation (x,y,z)", '(/0.0,0.0,0.0/)')
 END SUBROUTINE DefineParametersAnalyzeEquation
 
 
@@ -75,7 +76,7 @@ USE MOD_Preproc
 USE MOD_Analyze_Vars
 USE MOD_AnalyzeEquation_Vars
 USE MOD_Equation_Vars,      ONLY: StrVarNamesPrim,StrVarNames
-USE MOD_ReadInTools,        ONLY: GETLOGICAL
+USE MOD_ReadInTools,        ONLY: GETLOGICAL, GETREALARRAY
 USE MOD_Mesh_Vars,          ONLY: nBCs,BoundaryType,BoundaryName
 USE MOD_Output,             ONLY: InitOutputToFile
 USE MOD_Output_Vars,        ONLY: ProjectName
@@ -98,7 +99,7 @@ doWriteMeanFlux     = GETLOGICAL('WriteMeanFlux')
 doWriteWallVelocity = GETLOGICAL('WriteWallVelocity')
 doWriteTotalStates  = GETLOGICAL('WriteTotalStates')
 doCalcTimeAverage   = GETLOGICAL('CalcTimeAverage')
-
+MomOrigin           = GETREALARRAY('MomOrigin',3)
 ! Generate wallmap
 ALLOCATE(isWall(nBCs))
 DO i=1,nBCs
@@ -123,8 +124,8 @@ IF(MPIRoot)THEN
     DO i=1,nBCs
       IF(.NOT.isWall(i)) CYCLE
       FileName_BodyForce(i) = TRIM(ProjectName)//'_BodyForces_'//TRIM(BoundaryName(i))
-      CALL InitOutputToFile(FileName_BodyForce(i),TRIM(BoundaryName(i)),9,&
-           [CHARACTER(7) :: "x-Force","y-Force","z-Force","Fp_x","Fp_y","Fp_z","Fv_x","Fv_y","Fv_z"])
+      CALL InitOutputToFile(FileName_BodyForce(i),TRIM(BoundaryName(i)),18,&
+           [CHARACTER(8) :: "x-Force","y-Force","z-Force","Fp_x","Fp_y","Fp_z","Fv_x","Fv_y","Fv_z","x-Moment","y-Moment","z-Moment","Mp_x","Mp_y","Mp_z","Mv_x","Mv_y","Mv_z"])
     END DO
   END IF
   IF(doCalcWallVelocity.AND.doWriteWallVelocity)THEN
@@ -186,6 +187,7 @@ REAL,INTENT(IN)                 :: Time                              !< Current 
 ! LOCAL VARIABLES
 CHARACTER(LEN=40)               :: formatStr
 REAL,DIMENSION(3,nBCs)          :: Fv,Fp,BodyForce ! viscous/pressure/resulting body force
+REAL,DIMENSION(3,nBCs)          :: Mv,Mp,BodyMoment ! viscous/pressure/resulting body moment
 REAL,DIMENSION(PP_nVar,nBCs)    :: MeanFlux
 REAL,DIMENSION(4,nBCs)          :: meanTotals
 REAL,DIMENSION(nBCs)            :: meanV,maxV,minV
@@ -193,7 +195,7 @@ REAL                            :: BulkPrim(PP_nVarPrim),BulkCons(PP_nVar)
 INTEGER                         :: i
 !==================================================================================================================================
 ! Calculate derived quantities
-IF(doCalcBodyforces)   CALL CalcBodyforces(Bodyforce,Fp,Fv)
+IF(doCalcBodyforces)   CALL CalcBodyforces(Bodyforce,Fp,Fv,BodyMoment,Mp,Mv)
 IF(doCalcWallVelocity) CALL CalcWallVelocity(maxV,minV,meanV)
 IF(doCalcMeanFlux)     CALL CalcMeanFlux(MeanFlux)
 IF(doCalcBulkState)    CALL CalcBulkState(bulkPrim,bulkCons)
@@ -201,13 +203,13 @@ IF(doCalcTotalStates)  CALL CalcKessel(meanTotals)
 
 IF(MPIRoot)THEN
   IF(doCalcBodyforces)THEN
-    WRITE(UNIT_stdOut,*)'BodyForces (Pressure, Friction) : '
-    WRITE(formatStr,'(A,I2,A)')'(A',maxlen,',6ES18.9)'
+    WRITE(UNIT_stdOut,*)'BodyForces (Pressure, Friction) BodyMoments (Pressure, Friction): '
+    WRITE(formatStr,'(A,I2,A)')'(A',maxlen,',12ES18.9)'
     DO i=1,nBCs
       IF(.NOT.isWall(i)) CYCLE
       IF (doWriteBodyForces) &
-        CALL OutputToFile(FileName_BodyForce(i),(/Time/),(/9,1/),(/BodyForce(:,i),Fp(:,i),Fv(:,i)/))
-      WRITE(UNIT_stdOut,formatStr) ' '//TRIM(BoundaryName(i)),Fp(:,i),Fv(:,i)
+        CALL OutputToFile(FileName_BodyForce(i),(/Time/),(/18,1/),(/BodyForce(:,i),Fp(:,i),Fv(:,i),BodyMoment(:,i),Mp(:,i),Mv(:,i)/))
+      WRITE(UNIT_stdOut,formatStr) ' '//TRIM(BoundaryName(i)),Fp(:,i),Fv(:,i),Mp(:,i),Mv(:,i)
     END DO
   END IF
 
@@ -447,7 +449,7 @@ REAL,INTENT(OUT)               :: maxV(nBCs)          !< Maximum of wall velocit
 REAL,INTENT(OUT)               :: minV(nBCs)          !< Minimum of wall velocity per boundary
 REAL,INTENT(OUT)               :: meanV(nBCs)         !< Mean of wall velocity per boundary
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
+! LOCAL VARIABLES,
 REAL                           :: dA,Vel(3),locV
 INTEGER                        :: iSide,i,j,iBC
 !==================================================================================================================================

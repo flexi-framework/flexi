@@ -12,7 +12,7 @@ hopr parameter_hopr.ini
 **FLEXI** should be compiled with the `freestream` preset using the following commands.
 ```bash
 cmake -B build --preset freestream
-cmake --build build
+cmake --build build -j
 ```
 
 ## Simulation Parameters

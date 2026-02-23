@@ -24,6 +24,10 @@ mkdir build
 cmake -B build
 cmake --build build
 ```
+To build **FLEXI** in parallel with all cores:
+```bash
+cmake --build build -j
+```
 Custom configurations can be generated with
 ```bash
 ccmake -B build
