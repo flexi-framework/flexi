@@ -440,7 +440,7 @@ END SUBROUTINE ConsToPrimToEntropy_Volume
 !rho_p  = cons(DENS)/p
 !
 !! Convert to entropy variables
-!entropy(DENS)      = (kappa-s)*skappaM1 - rho_p * 0.5*SUM(vel**2)  ! (γ - s) / (γ - 1) - (ρu^2 + ρv^2 + ρw^2) / ρ / 2p,
+!entropy(DENS)      = (kappa-s)*skappaM1 - rho_p * 0.5*SUM(vel**2)  ! (γ - s) / (γ - 1) - (ρu^2 + ρv^2 + ρw^2) / 2p,
 !entropy(MOM1:MOM2) = rho_p*vel(1:2)        ! ρu / p
 !#if (PP_dim==3)
 !entropy(MOM3)      = rho_p*vel(3)
@@ -496,32 +496,6 @@ END SUBROUTINE EntropyToCons
 
 
 !==================================================================================================================================
-!> Transformation from primitive to conservative variables in the whole volume
-!==================================================================================================================================
-PPURE SUBROUTINE ConsToEntropy_Volume(Nloc,entropy,cons)
-! MODULES
-USE MOD_Mesh_Vars,ONLY:nElems
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: Nloc                                                  !< local polynomial degree of solution representation
-REAL,INTENT(OUT)   :: entropy(PP_nVar,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)  !< vector of entropy variables
-REAL,INTENT(IN)    :: cons(PP_nVar   ,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)  !< vector of conservative variables
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER            :: i,j,k,iElem
-!==================================================================================================================================
-DO iElem=1,nElems
-  DO k=0,ZDIM(Nloc); DO j=0,Nloc; DO i=0,Nloc
-    CALL ConsToEntropy(entropy(:,i,j,k,iElem),cons(:,i,j,k,iElem))
-  END DO; END DO; END DO
-END DO
-END SUBROUTINE ConsToEntropy_Volume
-#endif /* PP_EntropyVars==1 */
-
-
-!==================================================================================================================================
 !> Transformation from primitive to conservative variables on a single side
 !==================================================================================================================================
 PPURE SUBROUTINE EntropyToCons_Side(Nloc,entropy,cons)
@@ -541,6 +515,7 @@ DO q=0,ZDIM(Nloc); DO p=0,Nloc
   CALL EntropyToCons(entropy(:,p,q),cons(:,p,q))
 END DO; END DO ! p,q=0,Nloc
 END SUBROUTINE EntropyToCons_Side
+#endif /* PP_EntropyVars==1 */
 
 
 !==================================================================================================================================
