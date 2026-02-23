@@ -104,13 +104,13 @@ DO SideID=firstSideID,lastSideID
 #ifdef SPLIT_DG
       ! Get the right metric terms
       SELECT CASE(locSideID)
-        CASE(XI_MINUS  ) ; Metrics => Metrics_fTilde(:,:,:,:,ElemID,0); idx = 1; Leg = L_minus; LegHat = L_HatMinus
-        CASE(ETA_MINUS ) ; Metrics => Metrics_gTilde(:,:,:,:,ElemID,0); idx = 2; Leg = L_minus; LegHat = L_HatMinus
-        CASE(XI_PLUS )   ; Metrics => Metrics_fTilde(:,:,:,:,ElemID,0); idx = 1; Leg = L_plus; LegHat = L_HatPlus
-        CASE(ETA_PLUS)   ; Metrics => Metrics_gTilde(:,:,:,:,ElemID,0); idx = 2; Leg = L_plus; LegHat = L_HatPlus
+        CASE(XI_MINUS  ) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_fTilde(:,:,:,:,ElemID,0); idx = 1; Leg = L_minus; LegHat = L_HatMinus
+        CASE(ETA_MINUS ) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_gTilde(:,:,:,:,ElemID,0); idx = 2; Leg = L_minus; LegHat = L_HatMinus
+        CASE(XI_PLUS )   ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_fTilde(:,:,:,:,ElemID,0); idx = 1; Leg = L_plus; LegHat = L_HatPlus
+        CASE(ETA_PLUS)   ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_gTilde(:,:,:,:,ElemID,0); idx = 2; Leg = L_plus; LegHat = L_HatPlus
 #if PP_dim == 3
-        CASE(ZETA_MINUS) ; Metrics => Metrics_hTilde(:,:,:,:,ElemID,0); idx = 3; Leg = L_minus; LegHat = L_HatMinus
-        CASE(ZETA_PLUS)  ; Metrics => Metrics_hTilde(:,:,:,:,ElemID,0); idx = 3; Leg = L_plus; LegHat = L_HatPlus
+        CASE(ZETA_MINUS) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_hTilde(:,:,:,:,ElemID,0); idx = 3; Leg = L_minus; LegHat = L_HatMinus
+        CASE(ZETA_PLUS)  ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_hTilde(:,:,:,:,ElemID,0); idx = 3; Leg = L_plus; LegHat = L_HatPlus
 #endif
       END SELECT
 #endif
@@ -124,7 +124,7 @@ DO SideID=firstSideID,lastSideID
           ! Similar to prolong to face of the two-point flux
           CALL SplitDGVolume_pointer(U(:,ijk(1),ijk(2),ijk(3),ElemID)     ,UPrim(:,ijk(1),ijk(2),ijk(3) ,ElemID),     &
                                      U_master(:,p,q,SideID)               ,UPrim_master(:,p,q,SideID),                &
-                                     Metrics(:,ijk(1)+1,ijk(2)+1,ijk(3)+1),Ja_face(idx,:,p,q,SideID),FluxB(:,ijk(idx)))
+                                     Metrics(:,ijk(1),ijk(2),ijk(3)),Ja_face(idx,:,p,q,SideID),FluxB(:,ijk(idx)))
           ! Sum up the split flux: \sum_k l_k(-1/1)
           FluxB_sum = FluxB_sum + FluxB(:,ijk(idx)) * Leg(ijk(idx))
         END DO
@@ -176,13 +176,13 @@ DO SideID=firstSideID,lastSideID
 #ifdef SPLIT_DG
       ! Get the right metric terms
       SELECT CASE(nblocSideID)
-        CASE(XI_MINUS  ) ; Metrics => Metrics_fTilde(:,:,:,:,nbElemID,0); idx = 1; Leg = L_minus; LegHat = L_HatMinus
-        CASE(ETA_MINUS ) ; Metrics => Metrics_gTilde(:,:,:,:,nbElemID,0); idx = 2; Leg = L_minus; LegHat = L_HatMinus
-        CASE(XI_PLUS )   ; Metrics => Metrics_fTilde(:,:,:,:,nbElemID,0); idx = 1; Leg = L_plus; LegHat = L_HatPlus
-        CASE(ETA_PLUS)   ; Metrics => Metrics_gTilde(:,:,:,:,nbElemID,0); idx = 2; Leg = L_plus; LegHat = L_HatPlus
+        CASE(XI_MINUS  ) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_fTilde(:,:,:,:,nbElemID,0); idx = 1; Leg = L_minus; LegHat = L_HatMinus
+        CASE(ETA_MINUS ) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_gTilde(:,:,:,:,nbElemID,0); idx = 2; Leg = L_minus; LegHat = L_HatMinus
+        CASE(XI_PLUS )   ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_fTilde(:,:,:,:,nbElemID,0); idx = 1; Leg = L_plus; LegHat = L_HatPlus
+        CASE(ETA_PLUS)   ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_gTilde(:,:,:,:,nbElemID,0); idx = 2; Leg = L_plus; LegHat = L_HatPlus
 #if PP_dim == 3
-        CASE(ZETA_MINUS) ; Metrics => Metrics_hTilde(:,:,:,:,nbElemID,0); idx = 3; Leg = L_minus; LegHat = L_HatMinus
-        CASE(ZETA_PLUS)  ; Metrics => Metrics_hTilde(:,:,:,:,nbElemID,0); idx = 3; Leg = L_plus; LegHat = L_HatPlus
+        CASE(ZETA_MINUS) ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_hTilde(:,:,:,:,nbElemID,0); idx = 3; Leg = L_minus; LegHat = L_HatMinus
+        CASE(ZETA_PLUS)  ; Metrics(1:3,0:PP_N,0:PP_N,0:PP_NZ) => Metrics_hTilde(:,:,:,:,nbElemID,0); idx = 3; Leg = L_plus; LegHat = L_HatPlus
 #endif
       END SELECT
 #endif
@@ -197,7 +197,7 @@ DO SideID=firstSideID,lastSideID
           ! Similar to prolong to face of the two-point flux
           CALL SplitDGVolume_pointer(U(:,ijk(1),ijk(2),ijk(3),nbElemID)   ,UPrim(:,ijk(1),ijk(2),ijk(3) ,nbElemID),    &
                                      U_slave(:,p,q,SideID)                ,UPrim_slave(:,p,q,SideID) ,                 &
-                                     Metrics(:,ijk(1)+1,ijk(2)+1,ijk(3)+1),Ja_slave(idx,:,p,q,SideID),FluxB(:,ijk(idx)))
+                                     Metrics(:,ijk(1),ijk(2),ijk(3)),Ja_slave(idx,:,p,q,SideID),FluxB(:,ijk(idx)))
           FluxB_sum = FluxB_sum + FluxB(:,ijk(idx)) * Leg(ijk(idx))
         END DO
         ! Apply the resulting SurfInt in a line-wise manner to the interior DOFs, s.a.
@@ -641,20 +641,33 @@ INTEGER,INTENT(IN) :: locSideID
 REAL,INTENT(INOUT) :: Ut(TP_nVar,0:Nloc,0:Nloc,0:ZDIM(Nloc))
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER            :: i,j,k
 !==================================================================================================================================
 SELECT CASE(locSideID)
   CASE(XI_MINUS)
-    Ut(:,0,:,:)   =Ut(:,0,:,:)   +Flux*FV_w_inv(0)
+    DO k=0,ZDIM(Nloc); DO j=0,Nloc
+      Ut(:,0,j,k) =Ut(:,0,j,k)      +Flux(:,j,k)*FV_w_inv(0)
+    END DO; END DO
   CASE(ETA_MINUS)
-    Ut(:,:,0,:)   =Ut(:,:,0,:)   +Flux*FV_w_inv(0)
+    DO k=0,ZDIM(Nloc); DO i=0,Nloc
+      Ut(:,i,0,k) =Ut(:,i,0,k)      +Flux(:,i,k)*FV_w_inv(0)
+    END DO; END DO
   CASE(ZETA_MINUS)
-    Ut(:,:,:,0)   =Ut(:,:,:,0)   +Flux*FV_w_inv(0)
+    DO j=0,Nloc; DO i=0,Nloc
+      Ut(:,i,j,0) =Ut(:,i,j,0)      +Flux(:,i,j)*FV_w_inv(0)
+    END DO; END DO
   CASE(XI_PLUS)
-    Ut(:,Nloc,:,:)=Ut(:,Nloc,:,:)+Flux*FV_w_inv(Nloc)
+    DO k=0,ZDIM(Nloc); DO j=0,Nloc
+      Ut(:,Nloc,j,k) =Ut(:,Nloc,j,k)+Flux(:,j,k)*FV_w_inv(Nloc)
+    END DO; END DO
   CASE(ETA_PLUS)
-    Ut(:,:,Nloc,:)=Ut(:,:,Nloc,:)+Flux*FV_w_inv(Nloc)
+    DO k=0,ZDIM(Nloc); DO i=0,Nloc
+      Ut(:,i,Nloc,k) =Ut(:,i,Nloc,k)+Flux(:,i,k)*FV_w_inv(Nloc)
+    END DO; END DO
   CASE(ZETA_PLUS)
-    Ut(:,:,:,Nloc)=Ut(:,:,:,Nloc)+Flux*FV_w_inv(Nloc)
+    DO j=0,Nloc; DO i=0,Nloc
+      Ut(:,i,j,Nloc) =Ut(:,i,j,Nloc)+Flux(:,i,j)*FV_w_inv(Nloc)
+  END DO; END DO
 END SELECT !locSideID
 
 END SUBROUTINE SurfInt_FV
@@ -694,46 +707,59 @@ REAL,INTENT(INOUT) :: Ut(TP_nVar,0:Nloc,0:Nloc,0:ZDIM(Nloc)) !< Time derivative 
 #if (PP_NodeType==1 || (PP_NodeType==2 && defined(EXACT_MM)))
 INTEGER            :: l
 #endif
+INTEGER :: i,j,k
 !==================================================================================================================================
 SELECT CASE(locSideID)
 #if (PP_NodeType==1 || (PP_NodeType==2 && defined(EXACT_MM)))
-  CASE(XI_MINUS)
-    DO l=0,Nloc
-      Ut(:,l,:,:) =Ut(:,l,:,:)   +Flux*L_hatMinus(l)
-    END DO
-  CASE(ETA_MINUS)
-    DO l=0,Nloc
-      Ut(:,:,l,:) =Ut(:,:,l,:)   +Flux*L_hatMinus(l)
-    END DO
-  CASE(ZETA_MINUS)
-    DO l=0,Nloc
-      Ut(:,:,:,l) =Ut(:,:,:,l)   +Flux*L_hatMinus(l)
-    END DO
-  CASE(XI_PLUS)
-    DO l=0,Nloc
-      Ut(:,l,:,:) =Ut(:,l,:,:)   +Flux*L_hatPlus(l)
-    END DO
-  CASE(ETA_PLUS)
-    DO l=0,Nloc
-      Ut(:,:,l,:) =Ut(:,:,l,:)   +Flux*L_hatPlus(l)
-    END DO
-  CASE(ZETA_PLUS)
-    DO l=0,Nloc
-      Ut(:,:,:,l) =Ut(:,:,:,l)   +Flux*L_hatPlus(l)
-    END DO
+   CASE(XI_MINUS)
+     DO k=0,ZDIM(Nloc); DO j=0,Nloc; DO l=0,Nloc
+       Ut(:,l,j,k) =Ut(:,l,j,k)     +Flux(:,j,k)*L_hatMinus(l)
+     END DO; END DO; END DO
+   CASE(ETA_MINUS)
+     DO k=0,ZDIM(Nloc); DO l=0,Nloc; DO i=0,Nloc
+       Ut(:,i,l,k) =Ut(:,i,l,k)     +Flux(:,i,k)*L_hatMinus(l)
+     END DO; END DO; END DO
+   CASE(ZETA_MINUS)
+     DO l=0,Nloc; DO j=0,Nloc; DO i=0,Nloc
+       Ut(:,i,j,l) =Ut(:,i,j,l)     +Flux(:,i,j)*L_hatMinus(l)
+     END DO; END DO; END DO
+   CASE(XI_PLUS)
+     DO k=0,ZDIM(Nloc); DO j=0,Nloc; DO l=0,Nloc
+       Ut(:,l,j,k) =Ut(:,l,j,k)     +Flux(:,j,k)*L_hatPlus(l)
+     END DO; END DO; END DO
+   CASE(ETA_PLUS)
+     DO k=0,ZDIM(Nloc); DO l=0,Nloc; DO i=0,Nloc
+       Ut(:,i,l,k) =Ut(:,i,l,k)     +Flux(:,i,k)*L_hatPlus(l)
+     END DO; END DO; END DO
+   CASE(ZETA_PLUS)
+     DO l=0,Nloc; DO j=0,Nloc; DO i=0,Nloc
+       Ut(:,i,j,l) =Ut(:,i,j,l)     +Flux(:,i,j)*L_hatPlus(l)
+     END DO; END DO; END DO
 #elif (PP_NodeType==2 && !defined(EXACT_MM))
   CASE(XI_MINUS)
-    Ut(:,0,:,:)   =Ut(:,0,:,:)   +Flux*L_hatMinus
+    DO k=0,ZDIM(Nloc); DO j=0,Nloc
+      Ut(:,0,j,k) =Ut(:,0,j,k)      +Flux(:,j,k)*L_hatMinus
+    END DO; END DO
   CASE(ETA_MINUS)
-    Ut(:,:,0,:)   =Ut(:,:,0,:)   +Flux*L_hatMinus
+    DO k=0,ZDIM(Nloc); DO i=0,Nloc
+      Ut(:,i,0,k) =Ut(:,i,0,k)      +Flux(:,i,k)*L_hatMinus
+    END DO; END DO
   CASE(ZETA_MINUS)
-    Ut(:,:,:,0)   =Ut(:,:,:,0)   +Flux*L_hatMinus
+    DO j=0,Nloc; DO i=0,Nloc
+      Ut(:,i,j,0) =Ut(:,i,j,0)      +Flux(:,i,j)*L_hatMinus
+    END DO; END DO
   CASE(XI_PLUS)
-    Ut(:,Nloc,:,:)=Ut(:,Nloc,:,:)+Flux*L_hatPlus
+    DO k=0,ZDIM(Nloc); DO j=0,Nloc
+      Ut(:,Nloc,j,k) =Ut(:,Nloc,j,k)+Flux(:,j,k)*L_hatPlus
+    END DO; END DO
   CASE(ETA_PLUS)
-    Ut(:,:,Nloc,:)=Ut(:,:,Nloc,:)+Flux*L_hatPlus
+    DO k=0,ZDIM(Nloc); DO i=0,Nloc
+      Ut(:,i,Nloc,k) =Ut(:,i,Nloc,k)+Flux(:,i,k)*L_hatPlus
+    END DO; END DO
   CASE(ZETA_PLUS)
-    Ut(:,:,:,Nloc)=Ut(:,:,:,Nloc)+Flux*L_hatPlus
+    DO j=0,Nloc; DO i=0,Nloc
+      Ut(:,i,j,Nloc) =Ut(:,i,j,Nloc)+Flux(:,i,j)*L_hatPlus
+  END DO; END DO
 #endif
 END SELECT !locSideID
 

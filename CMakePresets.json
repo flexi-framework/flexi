@@ -383,7 +383,6 @@
         "FLEXI_PERFORMANCE_IPO": "ON",
         "FLEXI_POLYNOMIAL_DEGREE": "N",
         "FLEXI_PP_LIMITER": "OFF",
-        "FLEXI_PROLONG_ENTROPY": "ON",
         "FLEXI_SPLIT_DG": "ON",
         "FLEXI_TESTCASE": "taylorgreenvortex",
         "FLEXI_UNITTESTS": "ON",
