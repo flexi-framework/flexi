@@ -406,7 +406,7 @@ DO iElem=1,nElems
     DO dd=1,3
       CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,JaVol(dd,1:3,l,0:PP_N,0:PP_NZ),FV_Ja_Face(dd,:,:,:))
 #if VOLINT_VISC
-      CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,dXVol(dd,1:3,l,0:PP_N,0:PP_NZ),dXFace(dd,:,:,:))
+      CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_FV,dXVol(dd,1:3,l,0:PP_N,0:PP_NZ),dXFace(dd,:,:,:))
 #endif /*VOLINT_VISC*/
     END DO
     ! use metrics to build normal/tangential vectors and surelem at the inner interfaces/slices
@@ -450,7 +450,7 @@ DO iElem=1,nElems
     DO dd=1,3
       CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,JaVol(dd,1:3,0:PP_N,l,0:PP_NZ),FV_Ja_Face(dd,:,:,:))
 #if VOLINT_VISC
-      CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,dXVol(dd,1:3,0:PP_N,l,0:PP_NZ),dXFace(dd,:,:,:))
+      CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_FV,dXVol(dd,1:3,0:PP_N,l,0:PP_NZ),dXFace(dd,:,:,:))
 #endif /*VOLINT_VISC*/
     END DO
     ! use metrics to build normal/tangential vectors and surelem at the inner interfaces/slices
@@ -495,7 +495,7 @@ DO iElem=1,nElems
     DO dd=1,3
       CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,JaVol(dd,1:3,0:PP_N,0:PP_N,l),FV_Ja_Face(dd,:,:,:))
 #if VOLINT_VISC
-      CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,dXVol(dd,1:3,0:PP_N,0:PP_N,l),dXFace(dd,:,:,:))
+      CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_FV,dXVol(dd,1:3,0:PP_N,0:PP_N,l),dXFace(dd,:,:,:))
 #endif /*VOLINT_VISC*/
     END DO
     ! use metrics to build normal/tangential vectors and surelem at the inner interfaces/slices
