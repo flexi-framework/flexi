@@ -1,22 +1,22 @@
-(ToolsOverview)=
+(sec:ToolsOverview)=
 # Tools Overview
 
-This section gives an overview over the additional tools contained in the **FLEXI** repository. It also provides references to the tutorials where they are used as reference.
-<!--There are two different kinds of tools:-->
+This section gives an overview over the additional tools contained in the **FLEXI** repository. It also lists the tutorials where they are used as reference.
+There are two different kinds of tools:
 
-<!--* **POSTI**-tools can be compiled together with **FLEXI** given the according `cmake` options.-->
-<!--* In the `tools` folder, a collection of shell and python scripts can be found, which are mainly used to manage **FLEXI** runs and **FLEXI** output files.-->
+* **POSTI**-tools can be compiled together with **FLEXI** given the according `cmake` options.
+* In the `tools` folder, a collection of shell and Python scripts can be found, which are mainly used to manage **FLEXI** runs and **FLEXI** output files.
+
 
 ## POSTI Tools
 
-<!--The **POSTI** tools are mostly documented in and in the tutorials [NACA0012](#NACA0012). Here, an overview is given together with references to the respective tutorials. -->
 The different **POSTI** tools are used to further post-process the simulation results obtained with **FLEXI**. They can be compiled together with **FLEXI** given the according `cmake` option. A list and description for the input parameters of the associated **POSTI** tools can be displayed with the command
 ```bash
 [posti_toolname] --help
 ```
 
-(tools-visualization)=
-### POSTI_VISU
+(subsec:tools-visualization)=
+### Visualization
 
 `POSTI_VISU` converts **FLEXI** StateFiles, TimeAverage, and BaseFlow files from the HDF5 format to the ParaView readable `.vtu` (single) or `.pvtu` (parallel) format. 
 
@@ -73,7 +73,7 @@ In the following all available variables that can be used for visualization are 
 Density, MomentumX, MomentumY, MomentumZ, EnergyStagnationDensity, VelocityX, VelocityY, VelocityZ, Pressure, Temperature, VelocityMagnitude, VelocitySound, Mach, EnergyStagnation  ,EnthalpyStagnation  ,Entropy  ,TotalTemperature  ,TotalPressure  ,PressureTimeDeriv  ,VorticityX  ,VorticityY  ,VorticityZ  ,VorticityMagnitude  ,NormalizedHelicity  ,Lambda2  ,Dilatation  ,QCriterion  ,Schlieren  ,WallFrictionX  ,WallFrictionY  ,WallFrictionZ  ,WallFrictionMagnitude  ,WallHeatTransfer  ,x+  ,y+  z+  
 ``` 
 
-The practical application of `POSTI_VISU` can be practiced in the following tutorials. [](sec:tut_linadv), [](sec:tut_freestream), [](sec:tut_cavity), [](sec:tut_sod), [](sec:tut_dmr), [](Cylinder), [](NACA0012)
+The practical application of `POSTI_VISU` can be practiced in the following tutorials: [](sec:tut_linadv), [](sec:tut_freestream), [](sec:tut_cavity), [](sec:tut_sod), [](sec:tut_dmr), [](Cylinder), [](NACA0012)
 
 
 
@@ -87,10 +87,10 @@ The practical application of `POSTI_VISU` can be practiced in the following tuto
 
 
 
-(sec:swap_mesh)=
-### POSTI_SWAPMESH
+(subsec:swap_mesh)=
+### Mesh Swaps
 
-The `POSTI_SWAPMESH` tool interpolates the solution of a StateFile or a TimeAverage file from one mesh to another, or from one polynomial degree to another. To do so, the parametric coordinates of the interpolation points of the new state are searched in the old mesh. For non-equal elements, a Newton algorithm is used to find the parametric coordinates of the interpolation points. Based on the found parametric coordinates, a high-order interpolation to the interpolation points in the new mesh is performed. Non-conforming meshes are allowed. A reference state can be given for areas in the target mesh which are not covered by the original mesh. The project name and therefore the file name is based on the original project name with '_newMesh' appended, the original file is therefore not overwritten. 
+The `POSTI_SWAPMESH` tool interpolates the solution of a StateFile or a TimeAverage file from one mesh to another, or from one polynomial degree to another. To do so, the parametric coordinates of the interpolation points of the new state are searched in the old mesh. For non-equal elements, a Newton algorithm is used to find the parametric coordinates of the interpolation points. Based on the found parametric coordinates, a high-order interpolation to the interpolation points in the new mesh is performed. Non-conforming meshes are allowed. A reference state can be given for areas in the target mesh which are not covered by the original mesh. The project name and therefore the file name is based on the original project name with `_newMesh` appended, the original file is therefore not overwritten.
 
 For serial execution, the `POSTI_SWAPMESH` tool is invoked by entering
 ```bash
@@ -103,8 +103,6 @@ An example of the `POSTI_SWAPMESH` tool can be found in
 ```bash
 ./flexi/ini/swapmesh
 ```
-
-
 
 
 ```{list-table} POSTI_SWAPMESH parameters.
@@ -158,7 +156,7 @@ An example of the `POSTI_SWAPMESH` tool can be found in
 ```
 
 
-(tools-recordpoints)=
+(subsec:tools-recordpoints)=
 ### Recordpoints
 
 For investigations with a high temporal resolution, such as frequency analyses, it is generally not practical to write complete state files with a high output frequency. Among other things, this would generate a considerable memory requirement and unnecessarily slow down the simulation due to frequent I/O operations. 
@@ -172,7 +170,7 @@ The **POSTI** tools available for this are:
 To use the **POSTI** tools, the compile flag `POSTI` and the compile flag associated with the respective tool must be activated.
 
 
-(tools-recordpoints_prepare)=
+(subsec:tools-recordpoints_prepare)=
 #### POSTI_RP_PREPARE
 
 <!--ToDo's: complete possible values in table, describe in more detail the functionalities Groupname GroupID, ..., how does the RP file looks like, parallel execution???-->
@@ -366,7 +364,7 @@ Exemplary applications of `POSTI_RP_PREPARE` can be found in the following tutor
 Sample parameter files can also be found here.
 
 
-(tools-recordpoints_visu)=
+(subsec:tools-recordpoints_visu)=
 #### POSTI_RP_VISUALIZE
 <!--ToDo's: complete possible values in table, describe in more detail the structure of the written file, mention the output format (paraview/hdf5), give for certain functionalities example recorpoint files (e.g. derived quantities, FFT, ...)  -->
 
@@ -555,10 +553,10 @@ Exemplary applications of `POSTI_RP_PREPARE` can be found in the following tutor
 Sample parameter files can also be found here.
 
 
-(tools-recordpoints_evaluate)=
+(subsec:tools-recordpoints_evaluate)=
 #### POSTI_RP_EVALUATE
 
-The POSTI_RP_EVALUATE tool can be used to extract data for a given simulation at the defined positions for a given RP_DefFile. For this purpose, the recordpoints can be defined as described in section [POSTI_RP_PREPARE](tools-recordpoints_prepare) and the data can be extracted. It is possible to extract data not only form StateFiles but also e.g. from TimeAverageFiles. By default, the data set `DG_Solution` is read, which can be used to extract data from StateFiles. To extract data from TimeAverageFiles, a corresponding data set like `Mean` or `Fluc` needs to be specified in the parameter file option `RecordpointsDataSetName`.
+The POSTI_RP_EVALUATE tool can be used to extract data for a given simulation at the defined positions for a given RP_DefFile. For this purpose, the recordpoints can be defined as described in section [POSTI_RP_PREPARE](subsec:tools-recordpoints_prepare) and the data can be extracted. It is possible to extract data not only form StateFiles but also e.g. from TimeAverageFiles. By default, the data set `DG_Solution` is read, which can be used to extract data from StateFiles. To extract data from TimeAverageFiles, a corresponding data set like `Mean` or `Fluc` needs to be specified in the parameter file option `RecordpointsDataSetName`.
 Using the following command the data can be extracted at the recordpoint positions:
 
 ```bash
@@ -569,7 +567,7 @@ The tool also runs in parallel by prepending `mpirun -np <no. processors>` to th
 ```bash
 mpirun -np <no. processors> posti_evaluaterecordpoints [parameter.ini] <solutionfiles>
 ```
-After the execution of the `posti_evaluaterecordpoints` tool, a `ProjectName_RP_*.h5` file is written. This file is similar to the recordpoint files written during runtime. Therefore, these files can be visualized as described in section [POSTI_RP_VISUALIZE](tools-recordpoints_visu).
+After the execution of the `posti_evaluaterecordpoints` tool, a `ProjectName_RP_*.h5` file is written. This file is similar to the recordpoint files written during runtime. Therefore, these files can be visualized as described in section [](subsec:tools-recordpoints_visu).
 
 ```{important}
 The MPI-parallel HDF5 implementation internally uses a signed 32-bit integer, restricting the maximum chunk size to $2\, GB$ per thread. When post-processing with activated `LIBS_USE_MPI` flag, especially with large cases and large files as is often the case with TimeAverage files, the file size of approximately $2\, GB$ per core must not be exceeded. In this case, the number of cores used must be increased for MPI-parallel executable **POSTI** tools, or **POSTI** must be compiled with `LIBS_USE_MPI=OFF`.
@@ -611,89 +609,132 @@ The available parameters can also be listed by using the help function
 posti_evaluaterecordpoints --help
 ```
 
-<!--## TODO:-->
-<!------------------------------------------------------------------------------------------------->
-<!--**posti_swapmesh**-->
-<!----------------------------------- -------------------------------------------------------------->
-<!--This tool interpolates the solution in a state file from one mesh to another or from one polynomial degree to another. It is based on high-order interpolation and a Newton coordinate search algorithm. Non-conforming meshes are allowed. A reference state can be given for areas in the target mesh which are not covered by the original mesh.-->
 
-<!--Basic usage: `posti_swapmesh [parameter.ini] [statefile.h5]`-->
+(subsec:time_averaging)=
+### Time Averaging
 
-<!--Further info / usage examples: `ini/swapmesh` folder-->
+The following tools allow to handle either time-averaged high-frequency data averaged during the simulation or averages the states files written by **FLEXI** over time.
 
-<!--(tools-recordpoints)=-->
-<!--### Record points-->
+#### POSTI_MERGETIMEAVERAGES
 
-<!--The following tools allow to sample high-frequency data in **FLEXI** at certain points, lines or areas in the computational domain, from defining the location of the recordpoints to visualization.-->
+The POSTI_MERGETIMEAVERAGES tool averages several **FLEXI** *State* or *TimeAverage* files. If *TimeAverage* files are the input, each file is weighted with its time averaging period. *State* files are all weighted equally. All HDF5 data sets are averaged and no additional parameter file is required.
 
-<!-------------------------------------------------------------------------------------------------->
-<!--**posti_preparerecordpoints**-->
-<!----------------------------------- -------------------------------------------------------------->
-<!--It record values at a set of physical points over time with a higher temporal sampling rate than the state file output interval given in the parameter file of **FLEXI**. It has an own parmeter file where the record point coordinates and the **FLEXI** mesh file are defined. Finally, an additional `.h5` file is created, whose path is passed to **FLEXI** as an additional parameter.-->
+The basic usage of this tool is as follows, with the three optional flags detailed in the table below.
 
-<!--Basic usage: `posti_preparerecordpoints [parameter_prepareRP.ini]`-->
+```bash
+posti_mergetimeaverages --start=[starttime] --end=[endtime] --coarsen=[factor] [inputfile1.h5 inputfile2.h5 ...]
+```
 
-<!--Further info / usage examples: \ref{sec:postiRecordpoints}-->
+```{list-table} Optional flags of POSTI_MERGETIMEAVERAGES.
+:header-rows: 1
+:name: tab:postimergetimeavg_flags
+:align: center
+:width: 100%
+:widths: 25 25 50
+* - Flag
+  - Default Value
+  - Description
+* - start
+  - $-\infty$
+  - Start time for time averaging. Input files with a timestamp prior to the start time are skipped.
+* - end
+  - $+\infty$
+  - End time for time averaging. Input files with a timestamp after the end time are skipped.
+* - coarsen
+  -
+  - Number of successive input files to consider for one time average. Default is to consider all input files.
+```
 
-<!-------------------------------------------------------------------------------------------------->
-<!--**posti_visualizerecordpoints**-->
-<!----------------------------------- -------------------------------------------------------------->
-<!--This tool performs the post-processing of the `*_RP_*` files written by **FLEXI**. It merges several time steps and allows to output values over time or spectra.-->
 
-<!--Basic usage: `posti_visualizerecordpoints [parameter_visuRP.ini] [projectname_RP_*.h5]`-->
+#### POSTI_CALCFLUCTUATIONS
+The POSTI_CALCFLUCTUATIONS tool calculates fluctuations from the `Mean` and `MeanSquare` given in the (merged) *TimeAverage* files. Fluctuations are then written into an additional data set in the same HDF5 file. All applicable fluctuations are calculated and no additional parameter file is required. This results in the following basic usage of the tool:
 
-<!--Further info / usage examples: \ref{sec:postiRecordpoints}-->
+```bash
+posti_calcfluctuations [timeavgfile1.h5 timeavgfile2.h5 ...]
+```
+<!--NOTE: Due to a rendering bug in Firefox with overline/underline, we use the angle brackets <> to denote the average operator -->
+<!--see:  https://bugzilla.mozilla.org/show_bug.cgi?id=1741887 -->
 
-<!-------------------------------------------------------------------------------------------------->
-<!--**posti_evaluaterecordpoints**-->
-<!----------------------------------- -------------------------------------------------------------->
-<!--This tool can evaluate the values at recorpoints a posteriori from existing statefiles. Can be used if the recordpoints have not been set during the simulation, but will only give coarse temporal resolution.-->
+In general, the total value of a variable $U$ can be split into the temporal mean $u$ and the fluctuating part $u'$, that is $U = u+u'$ with $u=<U>$ and $<u'>=0$. During a simulation with `CalcTimeAverage=T`, **FLEXI** will write two data sets: the mean of a variable, $<U>$, and the mean of the squared variable, $<UU>$. To compute the fluctuations, i.e. the mean of the squared fluctuations $<u'u'>$, based on these two quantities, we make use of the following relation:
+\begin{gather}
+<UU> = <(u+u')(u+u')> = <uu> + <2uu'> + <u'u'> = uu + <u'u'> \\
+\Rightarrow \quad <u'u'> = <UU> - uu
+\end{gather}
 
-<!--Basic usage: `posti_evaluaterecordpoints [parameter.ini] [statefile.h5]`-->
 
-<!--Further info / usage examples: No tutorials so far-->
+#### POSTI_CHANNEL_FFT
 
-<!--(sec:time_averaging)=-->
-<!--### Time averaging-->
+The POSTI_CHANNEL_FFT tool calculates the mean velocity and Reynolds stress profiles of the turbulent channel flow test case by averaging both in the direction parallel to the wall and by averaging the upper and lower half of the channel. Furthermore, kinetic energy spectra dependent on the distance to the wall are computed.
 
-<!--The following tools allow to handle either time-averaged high-frequency data averaged during the simulation or averages the states files written by **FLEXI** over time.-->
+The tool relies on a separate parameter file and comes with the basic usage
+```bash
+posti_channel_fft [parameter_channelfft.ini] [statefile1.h5 statefile2.h5 ...]
+```
 
-<!------------------------------------------------------------------------------------------------->
-<!--**posti_mergetimeaverages**-->
-<!----------------------------------- -------------------------------------------------------------->
-<!--This tool averages several **FLEXI** `State` or `TimeAverage` files. If `TimeAverage` files are the input, each files is weighted with its time averaging period. `State` files are all weighted equally. All HDF5 data sets are averaged and no additional parameter file is required.-->
+The available parameters can be displayed by passing the `--help` flag and are listed in the table below.
+```{list-table} POSTI_CHANNEL_FFT parameters.
+:header-rows: 1
+:name: tab:postichannelfft_parameters
+:align: center
+:width: 100%
+:widths: 25 25 50
+* - Parameter
+  - Possible Values
+  - Description
+* - N
+  -
+  - Polynomial degree of computation to represent to solution.
+* - GroupSize
+  - 0 / 2 / 4 / ... (no. procs per node)
+  - Defines the size of MPI subgroups, used to e.g. perform grouped IO, where group master collects and outputs data.
+* - gatheredWrite
+  - T / F
+  - Set true to activate gathered HDF5 IO for parallel computations. Only local group masters will write data after gathering from local slaves.
+* - MeshFile
+  - MeshFileName.h5
+  - (relative) path to meshfile (mandatory).
+* - useCurveds
+  - T / F
+  - Controls usage of high-order information in mesh. Turn off to discard high-order data and treat curved meshes as linear meshes.
+* - interpolateFromTree
+  - T / F
+  - For non-conforming meshes, built by refinement from a tree structure, the metrics can be built from the tree geometry if it is contained in the mesh. Can improve free-stream preservation.
+* - meshScale
+  -
+  - Scale the mesh by this factor (shrink for <1.0 / enlarge for >1.0).
+* - meshdeform
+  - T / F
+  - Apply simple sine-shaped deformation on cartesion mesh (for testing).
+* - crossProductMetrics
+  - T / F
+  - Compute mesh metrics using cross product form. Caution: in this case free-stream preservation is only guaranteed for N=3*NGeo.
+* - debugmesh
+  - 0 / 3
+  - Output file with visualization and debug information for the mesh: 0 = no  visualization, 3 = Paraview binary
+* - BoundaryName
+  -
+  - Names of boundary conditions to be set (must be present in the mesh!). For each BoundaryName a BoundaryType needs to be specified.
+* - BoundaryType
+  - (BC_TYPE,BC_STATE)
+  - Type of boundary conditions to be set.
+* - writePartitionInfo
+  - T / F
+  - Write information about MPI partitions into a file.
+* - NGeoOverride
+  - -1 / 1 / 2 / ...
+  - Override switch for NGeo. Interpolate mesh to different NGeo: <1 = off, >0 = interpolate
+* - OutputFormat
+  - 0 / 2
+  - Choose the main format for output: 0 = Tecplot, 2 = HDF5
+* - NCalc
+  -
+  - Polynomial degree to perform DFFT on.
+* - Re_tau
+  -
+  - Reynolds number based on friction velocity and channel half height.
+```
 
-<!--Basic usage: `posti_mergetimeaverages [statefile1.h5 statefile2.h5 ...]`-->
-
-<!--Further info / usage examples: No tutorials so far-->
-
-<!------------------------------------------------------------------------------------------------->
-<!--**posti_calcfluctuations**-->
-<!----------------------------------- -------------------------------------------------------------->
-<!--This tool calculates fluctuations from the `Mean` and `MeanSquare` given in the (merged) `TimeAverage` files. Fluctuations are then written into an additional data set in the same HDF5 file. All applicable fluctuations are calculated and no additional parameter file is required.-->
-<!--During the simulation, **FLEXI** will write two data sets: The mean value of a variable and the mean of the square of the variable. We can then use the following equality to calculate fluctuations (=mean of the square of the fluctuations):-->
-
-<!--$\overline{(UU)} = \overline{(u+u')(u+u')} = \overline{(uu)} + \overline{2uu'} + \overline{u'u'} = uu + \overline{u'u'}$-->
-
-<!--where we split the total value of a variable U in the mean u and the fluctuating part u'.-->
-<!--Thus, with the stored $UU$ and $u=U$ we then calculate the fluctuations in here as:-->
-
-<!--$\overline{u'u'} = \overline{UU} - uu$-->
-
-<!--Basic usage: `posti_calcfluctuations [statefile1.h5 statefile2.h5 ...]`-->
-
-<!--Further info / usage examples: No tutorials so far-->
-
-<!--### Fast Fourier Transform-->
-<!--TODO:-->
-<!------------------------------------------------------------------------------------------------->
-<!--**posti_channel_fft**-->
-<!----------------------------------- -------------------------------------------------------------->
-<!--This tool calculates the mean velocity and Reynolds stress profiles of the turbulent channel flow test case by averaging both in the direction parallel to the wall and by averaging the upper and lower half of the channel. Furthermore, kinetic energy spectra dependent on the distance to the wall are computed.-->
-
-<!--Basic usage: `posti_channel_fft [parameter_channelfft.ini] [statefile1.h5 statefile2.h5 ...]`-->
-
-<!--Further info / usage examples: TODO-->
+An exemplary application of the POSTI_CHANNEL_FFT tool, along with a sample parameter file, can be found in the tutorial [](PTCF).
 
 <!----->
 <!------------------------------------------------------------------------------------------------->

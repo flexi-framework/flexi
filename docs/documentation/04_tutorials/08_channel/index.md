@@ -1,4 +1,4 @@
-(sec:tut_ptcf)=
+(PTCF)=
 # Plane Turbulent Channel Flow
 This tutorial describes how to set up and run the test case of a turbulent flow in a plane channel geometry.  We will learn how to use the split-form DG method to guarantee non-linear stability of the turbulent flow simulation. In a second step, we add the sub-grid scale (SGS) model of Smagorinsky combined with Van Driest type damping to run stable wall-bounded turbulent flows with explicit small scale dissipation. This tutorial is located in the folder `tutorials/channel`.
 
@@ -85,7 +85,7 @@ In a second step, we run **FLEXI** with the SGS model by Smagorinsky and Van Dri
 Mean velocity and Reynolds stress profiles (left) as well as turbulent energy spectra close to the centre of the channel (right) of a LES with Smagorinsky's model and van Driest damping at $Re_{\tau}=180$.
 ```
 
-(sec:tut_ptcf_performance)=
+(PTCF_performance)=
 ## Performance Improvements
 FLEXI comes with some advanced optimizations in order to increase its computational efficiency for compute-intensive simulations. As these optimizations require user intervention, they are disabled by default and appear once the CMake flag `FLEXI_PERFORMANCE=ON` is set. The first option `FLEXI_PERFORMANCE_OPTLIFT` optimizes the computation of the parabolic terms of the applied equation system by omitting terms not relevant for the lifting procedure. However, POSTI is not available if this option is enabled.
 

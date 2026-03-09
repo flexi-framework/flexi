@@ -63,12 +63,7 @@ flexi parameter_flexi_switch.ini
 This test case generates $11$ state files name `dmr_SWITCH_State_<TIMESTAMP>.h5` for $t=0.0, 0.02, \ldots, 0.20$.
 
 ### Visualization
-**FLEXI** relies on [ParaView](https://www.paraview.org) for visualization. In order to visualize the **FLEXI** solution, its format has to be converted from the HDF5 format into another format suitable for **Paraview**. **FLEXI** provides a post-processing tool [posti_visu](tools-visualization) which generates files in VTK format with the following command.
-```bash
-posti_visu parameter_postiVisu.ini parameter_flexi_switch.ini dmr_SWITCH_State_0000000.*
-```
-[posti_visu](tools-visualization) generates two types of files which can be loaded into **ParaView**. *vtu* files contain either DG or the FV part of the solution. The *vtm*-files combine the DG and FV *vtu*-file of every timestamp. It is thus recommended to load the *vtm*-files into **ParaView**. The result at $t=0.2$ should look like in figure {numref}`fig:dmr_result_switch`.
-
+**FLEXI** relies on [ParaView](https://www.paraview.org) for visualization. In order to visualize the **FLEXI** solution, its format has to be converted from the HDF5 format into another format suitable for **Paraview**. **FLEXI** provides a post-processing tool [posti_visu](subsec:tools-visualization) which generates files in VTK format with the following command.  ```bash posti_visu parameter_postiVisu.ini parameter_flexi_switch.ini dmr_SWITCH_State_0000000.* ``` [posti_visu](subsec:tools-visualization) generates two types of files which can be loaded into **ParaView**. *vtu* files contain either DG or the FV part of the solution. The *vtm*-files combine the DG and FV *vtu*-file of every timestamp. It is thus recommended to load the *vtm*-files into **ParaView**. The result at $t=0.2$ should look like in figure {numref}`fig:dmr_result_switch`.
 ```{figure} ./figures/dmr_paraview_visualization_switch.jpg
 :name: fig:dmr_result_switch
 :align: center
@@ -79,7 +74,7 @@ Distribution of DG and FV elements (top) and density (bottom) of Double Mach Ref
 ```
 
 ### Finite Volume Blending
-Next, we will investigate the blending approach. In this tutorial we use an entropy-stable split formulation to ensure the stability of the FV blending approach, with more details on the split formulation given later in section {ref}`sec:tut_ptcf`. For the FV sub-cell blending, the elements are not switched completely to the FV operator, but instead the DG operator $R_{DG}$ and FV operator $R_{FV}$ are blended as
+Next, we will investigate the blending approach. In this tutorial we use an entropy-stable split formulation to ensure the stability of the FV blending approach, with more details on the split formulation given later in section [](PTCF). For the FV sub-cell blending, the elements are not switched completely to the FV operator, but instead the DG operator $R_{DG}$ and FV operator $R_{FV}$ are blended as
 ```{math}
 R = \alpha R_{FV} + (1-\alpha) R_{DG}
 ```
@@ -130,11 +125,11 @@ flexi parameter_flexi_blend.ini
 This test case generates $11$ state files name `dmr_BLEND_State_<TIMESTAMP>.h5` for $t=0.0, 0.02, \ldots, 0.20$.
 
 ### Visualization
-**FLEXI** relies on [ParaView](https://www.paraview.org) for visualization. In order to visualize the **FLEXI** solution, its format has to be converted from the HDF5 format into another format suitable for **Paraview**. **FLEXI** provides a post-processing tool [posti_visu](tools-visualization) which generates files in VTK format with the following command.
+**FLEXI** relies on [ParaView](https://www.paraview.org) for visualization. In order to visualize the **FLEXI** solution, its format has to be converted from the HDF5 format into another format suitable for **Paraview**. **FLEXI** provides a post-processing tool [posti_visu](subsec:tools-visualization) which generates files in VTK format with the following command.
 ```bash
 posti_visu parameter_postiVisu.ini parameter_flexi_blend.ini dmr_BLEND_State_0000000.*
 ```
-As the solution is always represented by DG polynomials. [posti_visu](tools-visualization) generated only the DG part of the solution. Thus, load the generated *vtm*-files into **ParaView**. The result at $t=0.2$ should look like in figure {numref}`fig:dmr_result_blend`.
+As the solution is always represented by DG polynomials. [posti_visu](subsec:tools-visualization) generated only the DG part of the solution. Thus, load the generated *vtm*-files into **ParaView**. The result at $t=0.2$ should look like in figure {numref}`fig:dmr_result_blend`.
 
 ```{figure} ./figures/dmr_paraview_visualization_blend.jpg
 :name: fig:dmr_result_blend

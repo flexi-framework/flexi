@@ -146,7 +146,7 @@ freestream
 ```
 
 ## Visualization
-**FLEXI** relies on [ParaView](https://www.paraview.org) for visualization. In order to visualize the **FLEXI** solution, its format has to be converted from the HDF5 format into another format suitable for **Paraview**. **FLEXI** provides a post-processing tool [posti_visu](tools-visualization) which generates files in VTK format with the following command.
+**FLEXI** relies on [ParaView](https://www.paraview.org) for visualization. In order to visualize the **FLEXI** solution, its format has to be converted from the HDF5 format into another format suitable for **Paraview**. **FLEXI** provides a post-processing tool [posti_visu](subsec:tools-visualization) which generates files in VTK format with the following command.
 ```bash
 posti_visu parameter_postiVisu.ini parameter_flexi.ini cartbox_State_0*
 ```

@@ -133,5 +133,5 @@ Some options are dependent on others being enabled (or disabled), such that the 
   - enable to lift only the gradients of the variables in the flux function of the selected equation system<br/> improves the performance for `FLEXI_PARABOLIC=ON`, but cannot be used if posti tool-set is built (`POSTI=ON`)
 * - `FLEXI_PERFORMANCE_PGO`
   - on / off
-  - enables profile-guided optimization (PGO) for compilation, currently only supported with GNU compiler<br/> the required two-step compilation process is detailed in section {ref}`sec:tut_ptcf_performance`
+  - enables profile-guided optimization (PGO) for compilation, currently only supported with GNU compiler<br/> the required two-step compilation process is detailed in section [](PTCF_performance)
 ```
