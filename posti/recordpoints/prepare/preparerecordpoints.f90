@@ -43,7 +43,7 @@ USE MOD_Output_Vars,        ONLY:ProjectName,doPrintStatusLine
 USE MOD_MPI,                ONLY:FinalizeMPI
 #endif /*USE_MPI*/
 #if FV_ENABLED
-USE MOD_FV_Basis,           ONLY:InitFV_Basis,FinalizeFV_Basis
+USE MOD_FV_Basis,           ONLY:InitFV_Basis,FinalizeFV_Basis,DefineParametersFV_Basis
 #endif /*FV_ENABLED*/
 ! Recordpoints
 USE MOD_HDF5_OutputRP
@@ -90,7 +90,9 @@ CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
 CALL DefineParametersOutput()
 CALL DefineParametersMesh()
-
+# if FV_ENABLED
+CALL DefineParametersFV_Basis()
+#endif
 ! check for command line argument --help or --markdown
 IF (doPrintHelp.GT.0) THEN
   CALL PrintDefaultParameterFile(doPrintHelp.EQ.2, Args(1))
