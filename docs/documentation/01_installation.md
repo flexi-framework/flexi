@@ -144,4 +144,9 @@ posti_visu Tutorial_Cavity_Re100_mesh2x2_State_0000000.200000000.h5
 and visualize the generated files using, e.g., **ParaView**. Note that this conversion step requires enabling the `posti_visu` tool by toggling the `POSTI` flag in the CMake configuration (see section {ref}`sec:compile_flexi` above).
 
 
+```{seealso}
+The _Docker_ image in the GitHub container registry provides a complete **FLEXI** environment with **HOPR** / **PyHOPE**, ParaView and all dependencies already installed. It also contains the pre-built `flexi` and `posti_visu` executables for each tutorial. The corresponding _Dockerfile_ in `.docker/ubuntu_24` may thus serve as reference for a local **FLEXI** installation.
+```
+
+
 [^1]: Package can be automatically installed through **FLEXI** as compiler option.

@@ -9,8 +9,7 @@ hopr parameter_hopr.ini
 ```
 
 ## Build Configuration
-This example requires the Finite Volume (FV) shock capturing and the Euler equations. In this tutorial, we will investigate the shock capturing based on switching the DG representation to FV sub-cells. 
-Therefore, [FLEXI][flexi] should be compiled either with the `sod` preset using the following command
+This example requires the Finite Volume (FV) shock capturing and the Euler equations (build options `FLEXI_EQNSYSNAME=navierstokes` and `FLEXI_PARABOLIC=OFF`). In this tutorial, we will investigate the shock capturing based on switching the DG representation to FV sub-cells, which is activated through the build option `FLEXI_FV=SWITCH`. All necessary build options are stored in the `sod` preset, such that **FLEXI** can be compiled by using the following command.
 
 ```{code-block} bash
 cmake -B build --preset sod
@@ -61,7 +60,7 @@ For this one-dimensional test case, apply the `Plot Over Line` filter in **ParaV
 ```{figure} ./figures/sod_paraview_visualization.jpg
 :name: fig:sod_result
 :align: center
-:width: 70%
+:width: 50%
 :alt: Solution of the Sod shock tube at $t=0.2$.
 
 Solution of the Sod shock tube at $t=0.2$.

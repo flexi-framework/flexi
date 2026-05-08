@@ -26,7 +26,7 @@ The first variant of the FV sub-cell approach **switches** DG elements into the 
 In the switching-based shock capturing, the element-local solution is either given in DG representation (`FV_Elems=0`) or interpolated to piecewise constant FV sub-cells (`FV_Elems=1`). 
 
 #### Build Configuration
-The FV switching is enabled through the build option `FLEXI_FV=SWITCH`, the corresponding CMake preset `cmd_fvswitch` is applied by running
+The FV switching is enabled through the build option `FLEXI_FV=SWITCH`. The corresponding CMake preset `dmr_fvswitch`, which selects the two-dimensional Euler equations (`FLEXI_EQNSYSNAME=navierstokes`,`FLEXI_PARABOLIC=OFF`,`FLEXI_2D=ON`), is applied by running
 
 ```bash
 cmake -B build --preset dmr_fvswitch
@@ -81,7 +81,7 @@ R = \alpha R_{FV} + (1-\alpha) R_{DG}
 with the blending coefficient $\alpha$. Instead of switching between a DG and a FV discretization, the blending allows a continuous transition between the DG and FV operators. The blending factor is computed based on the indicator proposed by {cite}`hennemann2021provably`, which is parameter-free and does not require any parameters to be tuned by the user. 
 
 #### Build Configuration
-The FV blending is enabled through the build option `FLEXI_FV=BLEND`. The FV blending requires selecting the Gauss-Lobatto node set by setting `FLEXI_NODETYPE=GAUSS-LOBATTO` and to enable the split-form DG with ``FLEXI_SPLIT_DG=ON``.  **FLEXI** should be compiled using the `dmr_fvblend` present.
+The FV blending is enabled through the build option `FLEXI_FV=BLEND`. The FV blending requires selecting the Gauss-Lobatto node set by setting `FLEXI_NODETYPE=GAUSS-LOBATTO` and to enable the split-form DG with ``FLEXI_SPLIT_DG=ON``. These build options are stored in the `dmr_fvblend` present, such that **FLEXI** can be compiled through the command
 ```bash
 cmake -B build --preset dmr_fvblend
 cmake --build build

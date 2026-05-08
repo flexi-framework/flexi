@@ -9,7 +9,7 @@ hopr parameter_hopr.ini
 ```
 
 ## Build Configuration
-**FLEXI** should be compiled with the `freestream` preset using the following commands.
+**FLEXI** should be compiled with the `freestream` preset, which selects the Navier-Stokes equations (`FLEXI_EQNSYSNAME=navierstokes`, `FLEXI_PARABOLIC=ON`), by using the following commands.
 ```bash
 cmake -B build --preset freestream
 cmake --build build -j

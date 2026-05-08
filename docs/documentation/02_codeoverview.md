@@ -84,7 +84,7 @@ Some options are dependent on others being enabled (or disabled), such that the 
   - on / off
   - set to *on* to run two-dimensional simulations, in this case you have to provide a mesh that consists of only one layer of elements in the third dimension
 * - `FLEXI_EQNSYSNAME`
-  - linearscalaradvection / navierstokes / rans_sa
+  - linearscalaradvection / burgers / navierstokes / rans_sa
   - linear scalar advection-diffusion equation / Navier--Stokes equations / Reynolds-averaged Navier--Stokes equations using Spalart--Allmaras turbulence model
 * - `FLEXI_FV`
   - off / switch / blend

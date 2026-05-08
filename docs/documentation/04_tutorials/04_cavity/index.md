@@ -18,7 +18,7 @@ Contours of velocity magnitude for the Re = 400 lid-driven cavity case.
 ```
 
 ### Compiler Options
-**FLEXI** should be compiled with the `cavity` preset using the following commands.
+**FLEXI** should be compiled with the `cavity` preset, which selects the Navier-Stokes equations through `FLEXI_EQNSYSNAME=navierstokes` and `FLEXI_PARABOLIC=ON`, by using the following commands.
 ```bash
 cmake -B build --preset cavity
 cmake --build build 
@@ -185,7 +185,7 @@ We proceed by running the code with the following command.
 ```bash
 flexi parameter_flexi.ini
 ```
-If **FLEXI** was compiled with MPI support, it can also be run in parallel with the following command. Here, `<NUM_PROCS>` is an integer denoting the number of processes to be used in parallel.
+If **FLEXI** was compiled with MPI support (`LIBS_USE_MPI=ON`), it can also be run in parallel with the following command. Here, `<NUM_PROCS>` is an integer denoting the number of processes to be used in parallel.
 ```bash
 mpirun -np <NUM_PROCS> flexi parameter_flexi.ini
 ```

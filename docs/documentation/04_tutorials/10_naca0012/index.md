@@ -20,7 +20,7 @@ hopr parameter_hopr.ini
 ```
 
 ## Build Configuration
-**FLEXI** should be compiled with the `naca0012` preset using the following commands.
+**FLEXI** should be compiled with the `naca0012` preset using the following commands. This preset selects the Navier-Stokes equations (`FLEXI_EQNSYSNAME=navierstokes`, `FLEXI_PARABOLIC=ON`) and enables the post-processing tools for probing, the so-called _record points_ (`POSTI_RP_PREPARE=ON`, `POSTI_RP_VISUALIZE=ON`).
 ```{code-block} bash
 cmake -B build --preset naca0012
 cmake --build build 
