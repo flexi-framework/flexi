@@ -76,30 +76,30 @@ ENV CC="icx" \
     F90="ifx" \
     TBBROOT="/opt/intel/oneapi/tbb/2021.10.0" \
     ONEAPI_ROOT="/opt/intel/oneapi" \
-    I_MPI_ROOT="/opt/intel/oneapi/mpi/2021.16" \
+    I_MPI_ROOT="/opt/intel/oneapi/mpi/2021.18" \
     FI_PROVIDER_PATH="/opt/intel/oneapi/mpi/2021.10.0/libfabric/lib/prov:/usr/lib64/libfabric" \
     CMAKE_PREFIX_PATH="/opt/intel/oneapi/tbb/2021.10.0/:\
 /opt/intel/oneapi/compiler/2023.2.1/linux/IntelDPCPP" \
     PKG_CONFIG_PATH="/opt/intel/oneapi/tbb/2021.10.0/lib/pkgconfig:\
-/opt/intel/oneapi/mpi/2021.16/lib/pkgconfig:\
+/opt/intel/oneapi/mpi/2021.18/lib/pkgconfig:\
 /opt/intel/oneapi/compiler/2023.2.1/lib/pkgconfig:\
 /opt/intel/oneapi/tbb/2021.10.0/lib/pkgconfig:\
 /opt/intel/oneapi/compiler/2023.2.1/lib/pkgconfig:\
 ${PKG_CONFIG_PATH}" \
-    CPLUS_INCLUDE_PATH="/opt/intel/oneapi/mpi/2021.16/include" \
-    C_INCLUDE_PATH="/opt/intel/oneapi/mpi/2021.16/include" \
+    CPLUS_INCLUDE_PATH="/opt/intel/oneapi/mpi/2021.18/include" \
+    C_INCLUDE_PATH="/opt/intel/oneapi/mpi/2021.18/include" \
     CMPLR_ROOT="/opt/intel/oneapi/compiler/2023.2.1" \
     OCL_ICD_FILENAMES="libintelocl_emu.so:libalteracl.so:/opt/intel/oneapi/compiler/2023.2.1/linux/lib/x64/libintelocl.so" \
     LIBRARY_PATH="/opt/intel/oneapi/tbb/2021.10.0/lib/intel64/gcc4.8:\
-/opt/intel/oneapi/mpi/2021.16/lib:\
+/opt/intel/oneapi/mpi/2021.18/lib:\
 /opt/intel/oneapi/compiler/2023.2.1/linux/compiler/lib/intel64_lin:\
 /opt/intel/oneapi/compiler/2023.2.1/linux/lib:\
 /opt/intel/oneapi/mpi/2021.10.0/libfabric/lib:\
 /opt/intel/oneapi/mpi/2021.10.0/lib/release:\
 /opt/intel/oneapi/mpi/2021.10.0/lib" \
     LD_LIBRARY_PATH="/opt/intel/oneapi/tbb/2021.10.0/lib/intel64/gcc4.8:\
-/opt/intel/oneapi/mpi/2021.16/opt/mpi/libfabric/lib:\
-/opt/intel/oneapi/mpi/2021.16/lib:\
+/opt/intel/oneapi/mpi/2021.18/opt/mpi/libfabric/lib:\
+/opt/intel/oneapi/mpi/2021.18/lib:\
 /opt/intel/oneapi/debugger/2023.2.0/gdb/intel64/lib:\
 /opt/intel/oneapi/debugger/2023.2.0/libipt/intel64/lib:\
 /opt/intel/oneapi/debugger/2023.2.0/dep/lib:\
@@ -111,7 +111,7 @@ ${PKG_CONFIG_PATH}" \
 /opt/intel/oneapi/mpi/2021.10.0/lib/release:\
 /opt/intel/oneapi/mpi/2021.10.0/lib:\
 ${LD_LIBRARY_PATH}" \
-    PATH="/opt/intel/oneapi/mpi/2021.16/bin:\
+    PATH="/opt/intel/oneapi/mpi/2021.18/bin:\
 /opt/intel/oneapi/dev-utilities/2021.10.0/bin:\
 /opt/intel/oneapi/debugger/2023.2.0/gdb/intel64/bin:\
 /opt/intel/oneapi/compiler/2023.2.1/linux/lib/oclfpga/bin:\
