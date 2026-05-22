@@ -16,11 +16,11 @@
 
 You can find detailed installation instructions, the extensive documentation and several tutorial cases for FLEXI [here][flexi].
 
-[FLEXI][flexi] is Copyright (C) 2010-2022 Prof. Claus-Dieter Munz, Copyright (C) 2022-2024 Prof. Andrea Beck, and is released under the **GNU General Public License v3.0**. For the full license terms see the included [license file](LICENSE.md).
+[FLEXI][flexi] is Copyright (C) 2010-2022 Prof. Claus-Dieter Munz, Copyright (C) 2022-2026 Prof. Andrea Beck, and is released under the **GNU General Public License v3.0**. For the full license terms see the included [license file](LICENSE.md).
 
 Numerous people have worked on and with [FLEXI][flexi] over the last years. We would like to thank all these [contributors](CONTRIBUTORS.md) for their efforts they spent on building [FLEXI][flexi].
  
-In case you have questions regarding [FLEXI][flexi] or want to contribute yourself by either reporting bugs, requesting features or adding somthing different to the project, feel free to open an issue or pull request.
+In case you have questions regarding [FLEXI][flexi] or want to contribute yourself by either reporting bugs, requesting features or adding something different to the project, feel free to open an issue or pull request.
 
 # Cite
 [FLEXI][flexi] is a scientific project. If you use FLEXI for publications or presentations in science, please support the project by citing it. As general reference, please cite
@@ -46,7 +46,7 @@ To refer to specific applications and features, you can also cite the appropriat
 # Quick Start Guide
 For a more detailed installation instructions, please see the [online documentation][readthedocs] or the [userguide][userguide].
 
-[FLEXI][flexi] is tested for various Linux distributions including Ubuntu, OpenSUSE, CentOS, or Arch. ƎLexi also runs on macOS. For the installation, you require the following dependencies:
+[FLEXI][flexi] is tested for various Linux distributions including Ubuntu, Fedora, OpenSUSE, CentOS, or Arch. ƎLexi also runs on macOS. For the installation, you require the following dependencies:
 
 | Package          | Required | Installed by FLEXI |
 |:-----------------|:--------:|:------------------:|

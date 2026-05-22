@@ -172,6 +172,13 @@ COPY vimrc /home/${NB_USER}/.vimrc
 RUN python -m venv venv
 ENV PATH="/home/${NB_USER}/venv/bin:$PATH"
 
+# Avoid ParaView warnings:
+# - Create runtime directory for Qt applications manually under default path to avoid warning when building ParaView plugin
+# - Enforce software rendering (Mesa) to avoid warning when launching ParaView
+ENV XDG_RUNTIME_DIR=/tmp/runtime-${NB_USER} \
+    LIBGL_ALWAYS_SOFTWARE=TRUE
+RUN mkdir ${XDG_RUNTIME_DIR} && chmod 700 ${XDG_RUNTIME_DIR}
+
 # Setup FLEXI
 RUN cd /home/${NB_USER} && \
     git clone https://github.com/flexi-framework/flexi.git && \
