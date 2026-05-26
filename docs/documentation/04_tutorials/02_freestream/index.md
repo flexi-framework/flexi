@@ -9,7 +9,7 @@ hopr parameter_hopr.ini
 ```
 
 ## Build Configuration
-**FLEXI** should be compiled with the `freestream` preset using the following commands.
+**FLEXI** should be compiled with the `freestream` preset, which selects the Navier-Stokes equations (`FLEXI_EQNSYSNAME=navierstokes`, `FLEXI_PARABOLIC=ON`), by using the following commands.
 ```bash
 cmake -B build --preset freestream
 cmake --build build -j
@@ -146,7 +146,7 @@ freestream
 ```
 
 ## Visualization
-**FLEXI** relies on [ParaView](https://www.paraview.org) for visualization. In order to visualize the **FLEXI** solution, its format has to be converted from the HDF5 format into another format suitable for **Paraview**. **FLEXI** provides a post-processing tool [posti_visu](tools-visualization) which generates files in VTK format with the following command.
+**FLEXI** relies on [ParaView](https://www.paraview.org) for visualization. In order to visualize the **FLEXI** solution, its format has to be converted from the HDF5 format into another format suitable for **Paraview**. **FLEXI** provides a post-processing tool [posti_visu](subsec:tools-visualization) which generates files in VTK format with the following command.
 ```bash
 posti_visu parameter_postiVisu.ini parameter_flexi.ini cartbox_State_0*
 ```

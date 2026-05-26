@@ -1,7 +1,8 @@
 # -----------------------------------------------------------------
 # Ubuntu-based FLEXI environment including ParaView and HOPR / PyHOPE
-# build docker image with github namespace: docker build -t ghcr.io/flexi-framework/ubuntu24.04_gcc:2025.08_devel .
-# run docker image with X11-forwarding:     xhost +local:docker && docker run -it --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix ghcr.io/flexi-framework/ubuntu24.04_gcc:2025.08_devel
+# build docker image with github namespace: docker build -t ghcr.io/flexi-framework/ubuntu24.04_gcc:2025.10.0 .
+# run docker image with X11-forwarding:     xhost +local:docker && docker run -it --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix ghcr.io/flexi-framework/ubuntu24.04_gcc:2025.10.0
+# obtain image from github packages:        docker pull ghcr.io/flexi-framework/ubuntu24.04_gcc:v2025.10.0
 # -----------------------------------------------------------------
 
 # Load the base image

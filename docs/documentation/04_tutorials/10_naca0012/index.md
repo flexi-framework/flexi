@@ -20,7 +20,7 @@ hopr parameter_hopr.ini
 ```
 
 ## Build Configuration
-**FLEXI** should be compiled with the `naca0012` preset using the following commands.
+**FLEXI** should be compiled with the `naca0012` preset using the following commands. This preset selects the Navier-Stokes equations (`FLEXI_EQNSYSNAME=navierstokes`, `FLEXI_PARABOLIC=ON`) and enables the post-processing tools for probing, the so-called _record points_ (`POSTI_RP_PREPARE=ON`, `POSTI_RP_VISUALIZE=ON`).
 ```{code-block} bash
 cmake -B build --preset naca0012
 cmake --build build 
@@ -123,7 +123,7 @@ During the computation, we get output like the following.
 In our case, the wall velocity is on average at about $3\%$ of the freestream velocity, reaching a peak of $60\%$. This peak typically occurs at the quasi-singularity at the trailing edge. To decrease this deviation from the theoretical no-slip condition, either the wall-normal mesh size must be decreased or the polynomial degree increased. It is important to note that both of these measures will, besides increasing the number of degrees of freedom, *decrease the time step*, which directly affects the computational time. Thus, it is important to achieve an acceptable trade-off between the acceptable error and the computational time. In this tutorial, the observed slip velocity is deemed uncritical and we proceed with the same resolution.
 
 ### Visualization
-**FLEXI** relies on [ParaView](https://www.paraview.org) for its visualization. To visualize the **FLEXI** solution, it must be converted from the HDF5 format into a format suitable for **Paraview**. **FLEXI** provides a post-processing tool [posti_visu](#tools-visualization) which generates files in VTK format when running the following command.
+**FLEXI** relies on [ParaView](https://www.paraview.org) for its visualization. To visualize the **FLEXI** solution, it must be converted from the HDF5 format into a format suitable for **Paraview**. **FLEXI** provides a post-processing tool [posti_visu](subsec:tools-visualization) which generates files in VTK format when running the following command.
 ```{code-block} bash
 mpirun -np 4 posti_visu parameter_postiVisu.ini parameter_flexi.ini NACA0012_Re5000_AoA8_State_0000000.0*
 ```

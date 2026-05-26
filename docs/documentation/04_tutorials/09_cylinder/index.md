@@ -7,7 +7,7 @@ In this tutorial, the simulation around a two-dimensional circular cylinder at $
 The setup considered consists of a 2D rectangular domain with the primary flow in $x$-direction, from left to right. Being a 2D plane, it corresponds to the "look-down" view upon the domain and the cylinder. The imposed flow is sufficiently fast for the wake of the cylinder to turn from a laminar flow to a street of shed vortices. It is the goal of the dynamic mode decomposition to analyze the primary oscillation frequencies present in these shed vortices.
 
 ## Build Configuration
-**FLEXI** should be compiled with the `cylinder` preset using the following commands.
+**FLEXI** should be compiled with the `cylinder` preset by using the following command. This preset selects the two-dimensional Navier-Stokes equations (`FLEXI_EQNSYSNAME=navierstokes`, `FLEXI_PARABOLIC=ON`, `FLEXI_2D=ON`) and enables the post-processing tools for dynamic mode decomposition (`POSTI_DMD=ON`) and record point visualization (`POSTI_RP_VISUALIZE=ON`).
 ```bash
 cmake -B build --preset cylinder
 cmake --build build 
@@ -70,7 +70,7 @@ Resulting lift forces on the cylinder.
 ```
 
 ### Evaluation of the Separation Angle
-The mean separation angle is evaluated using the record point tool as described in {ref}`tools-recordpoints`. The simulation setup already contains the record points set and output of the record points during the simulation is enabled by the default parameter file. The record points set contains probes distributed along a plane within the boundary layer of the upper cylinder side. For the calculation of the separation angle, we want to use the **Plane_doBLProps** functionality within the **posti_visualizerecordpoints** tool. In addition to the namesake visualization functionality, this tool has options to analyze the boundary layer properties such as the wall friction to estimate the separation point. The required parameters are already set in the `parameter_visualizeRecordpoints.ini` file. Thus, you can directly invoke the tool by running the following command.
+The mean separation angle is evaluated using the record point tool as described in [](subsec:tools-recordpoints). The simulation setup already contains the record points set and output of the record points during the simulation is enabled by the default parameter file. The record points set contains probes distributed along a plane within the boundary layer of the upper cylinder side. For the calculation of the separation angle, we want to use the **Plane_doBLProps** functionality within the **posti_visualizerecordpoints** tool. In addition to the namesake visualization functionality, this tool has options to analyze the boundary layer properties such as the wall friction to estimate the separation point. The required parameters are already set in the `parameter_visualizeRecordpoints.ini` file. Thus, you can directly invoke the tool by running the following command.
 ```ini
 posti_visualizerecordpoints parameter_visualizeRecordpoints.ini Cylinder_Re200_RP_*
 ```

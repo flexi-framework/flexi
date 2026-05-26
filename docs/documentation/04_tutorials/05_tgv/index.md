@@ -17,7 +17,7 @@ The initial condition to the (TGV) is a sinus distribution in the $u$ and $v$ ve
 We use a mesh with $4$ cells per direction for the tutorial. In case you want to generate other meshes, the parameter file for [HOPR][hopr] is included in the tutorial directory (`parameter_hopr.ini`), together with the default mesh. Using $4$ cells with a polynomial degree of $N = 7$ results in a typical large eddy setup of $32$ degrees of freedom (DOF) per direction.
 
 ## Compiler Options
-Depending on the dealiasing strategy used, [FLEXI][flexi] should be compiled either with the `tgv_overintegration`, `tgv_split_lobatto` or `tgv_split_gauss` preset using the following commands
+Depending on the dealiasing strategy used, [FLEXI][flexi] should be compiled either with the `tgv_overintegration`, `tgv_split_lobatto` or `tgv_split_gauss` preset using the following commands. They all select the Navier-Stokes equations (`FLEXI_EQNSYSNAME=navierstokes`,`FLEXI_PARABOLIC=ON`) with the TGV testcase (`FLEXI_TESTCASE=taylorgreenvortex`) and enable the explicit eddy viscosity through `FLEXI_EDDYVISCOSITY=ON` (the actual model is specified via the parameter file, see below).
 
 ```{code-block} bash
 cmake -B build --preset tgv_overintegration
@@ -27,12 +27,11 @@ cmake --build build
 cmake -B build --preset tgv_split_lobatto
 cmake --build build 
 ```
-or
 ```{code-block} bash
 cmake -B build --preset tgv_split_gauss
 cmake --build build 
 ```
-respectively.
+Compared to the first preset, the last two enable the split-DG formulation through `FLEXI_SPLIT_DG=ON`, while choosing the Gauß-Lobatto or Gauß node set via `FLEXI_NODETYPE=GAUSS-LOBATTO` and `FLEXI_NODETYPE=GAUSS`, respectively.
 
 ## Simulation Parameters
 The parameter file to run the simulation is supplied as `parameter_flexi.ini`.
@@ -124,7 +123,7 @@ Incompressible dissipation rate of the Taylor--Green vortex over time.
 ```
 
 ### Part I: Crashing Simulation
-First, we run [FLEXI][flexi] without any kind of dealiasing technique. For this, use the [FLEXI][flexi] version compiled with the preset `tgv_overintegration`. We will find that the code crashes, once scale production becomes relevant. The same holds for the split form DGSEM if used with the `SD` split flux and the preset `tgv_split_lobatto` or `tgv_split_lobatto`- You can compare your result to the `crash_no_dealiasing.csv` file in the tutorial folder.
+First, we run [FLEXI][flexi] without any kind of dealiasing technique. For this, use the [FLEXI][flexi] version compiled with the preset `tgv_overintegration`. We will find that the code crashes, once scale production becomes relevant. The same holds for the split form DGSEM if used with the `SD` split flux and the preset `tgv_split_lobatto` or `tgv_split_gauss`- You can compare your result to the `crash_no_dealiasing.csv` file in the tutorial folder.
 ```{figure} ./figures/tgv_nodealiasing.jpg
 :align: center
 :width: 500px

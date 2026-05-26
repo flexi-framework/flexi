@@ -41,7 +41,7 @@ Convergence test: Mesh and flow field solution of the density.
 ```
 
 ### Compiler Options
-**FLEXI** should be compiled with the `convtest_inviscid` preset using the following commands.
+**FLEXI** should be compiled with the `convtest_inviscid` preset, which selects the Euler equations through `FLEXI_EQNSYSNAME=navierstokes` and `FLEXI_PARABOLIC=OFF`, by using the following commands.
 ```bash
 cmake -B build --preset convtest_inviscid
 cmake --build build 
@@ -131,7 +131,7 @@ This manufactured solution can also be solved without considering the viscous te
 ```
 
 ### Compiler Options
-**FLEXI** should be compiled with the `convtest_viscous` preset using the following commands:
+**FLEXI** should be compiled with the `convtest_viscous` preset, which includes the parabolic terms of the Navier-Stokes equations through `FLEXI_PARABOLIC=ON`, by using the following command.
 ```bash
 cmake -B build --preset convtest_viscous
 cmake --build build 

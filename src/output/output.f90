@@ -1,6 +1,6 @@
 !=================================================================================================================================
 ! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
-! Copyright (c) 2022-2024 Prof. Andrea Beck
+! Copyright (c) 2022-2026 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
@@ -341,7 +341,11 @@ IF(MPIRoot)THEN
 #ifdef INTEL
   OPEN(UNIT_stdOut,CARRIAGECONTROL='fortran')
 #endif
-  percent_time = (t-tStart) / (tEnd-tStart)
+  IF(tEnd.EQ.tStart)THEN  ! avoid division by zero, no further timesteps needed
+    percent_time = 1.
+  ELSE                    ! compute actual simulation progress
+    percent_time = (t-tStart) / (tEnd-tStart)
+  END IF
   percent_iter = REAL(iter) / REAL(maxIter)
   percent      = ABS(MAX(percent_time,percent_iter))
   ! ETA bar needs a tiny amount
@@ -349,7 +353,11 @@ IF(MPIRoot)THEN
 
   ! Calculate ETA with percent of current run
   ASSOCIATE(tBegin => MERGE(RestartTime,tStart,DoRestart))
-  percent_ETA  = (t-tBegin) / (tEnd-tBegin)
+  IF(tEnd.EQ.tBegin)THEN  ! avoid division by zero, no further timesteps needed
+    percent_ETA  = 1.
+  ELSE                    ! compute actual simulation progress
+    percent_ETA  = (t-tBegin) / (tEnd-tBegin)
+  END IF
   percent_ETA  = MAX(percent_ETA,percent_iter)
   END ASSOCIATE
 

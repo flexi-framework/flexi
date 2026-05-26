@@ -15,7 +15,7 @@ import subprocess
 from extract_userblock import get_userblock, get_part
 from distutils import spawn
 
-parser = argparse.ArgumentParser(description='Rebuild code revision from userblock data' +
+parser = argparse.ArgumentParser(description='Rebuild code revision from userblock data ' +
                                              'contained in HDF5 state file.')
 parser.add_argument('dir'  , help='Name of empty directory where the rebuild will take place')
 parser.add_argument('state', help='HDF5 state file containing userblock')

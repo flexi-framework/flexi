@@ -1,4 +1,4 @@
-(sec:tut_ptcf)=
+(PTCF)=
 # Plane Turbulent Channel Flow
 This tutorial describes how to set up and run the test case of a turbulent flow in a plane channel geometry.  We will learn how to use the split-form DG method to guarantee non-linear stability of the turbulent flow simulation. In a second step, we add the sub-grid scale (SGS) model of Smagorinsky combined with Van Driest type damping to run stable wall-bounded turbulent flows with explicit small scale dissipation. This tutorial is located in the folder `tutorials/channel`.
 
@@ -6,7 +6,7 @@ This tutorial describes how to set up and run the test case of a turbulent flow 
 The flow is calculated in a plane channel with half-height $\delta=1$, streamwise ($x$-coordinate) length $2\pi$ and span ($z$-coordinate) width $\pi$ with periodic boundaries in the $x$- and $z$-directions as well as no-slip walls at the top and the bottom of the domain. As initial conditions, an analytical mean turbulent velocity profile a constant density of $\rho=1$ is used. We superimpose sinus perturbations in the $u$, $v$ and $w$ velocity components which lead to rapid production of turbulent flow structures. Since the wall friction would slow down the flow over time, a source term imposing a constant pressure gradient $\frac{dp}{dx}=-1$ is added as a volume source. While the test case is incompressible in principle, we solve it here in a compressible setting. The chosen Mach number with respect to the bulk velocity in the field is $Ma=0.1$, matching the Moser channel test case {cite}`moser1999direct`. In this setting, the wall friction velocity $\tau$ will always be equal to $1$. We can define a Reynolds number based on the channel half-height and the wall friction velocity as $Re_{\tau}=1/\nu$.
 
 ## Build Configuration
-**FLEXI** should be compiled with the `channel` preset using the following commands.
+**FLEXI** should be compiled with the `channel` preset by using the commands below. This preset selects the Navier-Stokes equations (`FLEXI_EQNSYSNAME=navierstokes`, `FLEXI_PARABOLIC=ON`) with the testcase `FLEXI_TESTCASE=channel` and the corresponding FFT post-processing tool `POSTI_CHANNEL_FFT=ON`. Furthermore, it enables the split-DG formulation (`FLEXI_SPLIT_DG=ON`) and chooses the Gauß-Lobatto node set (`FLEXI_NODETYPE=GAUSS-LOBATTO`).
 ```bash
 cmake -B build --preset channel
 cmake --build build 
@@ -18,7 +18,7 @@ We use a Cartesian mesh with $4$ cells per direction for the tutorial. The mesh 
 ## Simulation Parameters
 The simulation setup is defined in `parameter_flexi.ini`. In this tutorial, we are not interested in the flow visualization of the instantaneous state files. Instead, we post-process consecutive, instantaneous state files with the `posti_channel_fft` tool. As an output, we receive mean velocity and Reynolds stress profiles as well as turbulent energy spectra at different locations normal to the channel wall.
 
-###### Interpolation / Discretization Parameters
+### Interpolation / Discretization Parameters
 ```ini
 ! ============================================================ !
 ! SplitDG
@@ -27,7 +27,7 @@ SplitDG       = PI     ! SplitDG formulation to be used: SD, MO, DU, KG, PI
 ```
 In this tutorial, we use the split-form DG method to guarantee non-linear stability of the turbulent channel flow simulation. As already specified in the CMake options, the ``FLEXI_SPLIT_DG`` option has to be switched `ON` in combination with the `FLEXI_NODETYPE=GAUSS-LOBATTO`. **FLEXI** provides several distinct split-flux formulations. Therefore, a specific split flux formulation has to be chosen during runtime. In this tutorial, the pre-defined split-flux formulation by Pirozzoli {cite}`pirozzoli2010` is used, which results in a kinetic energy preserving DG scheme.
 
-###### Sub-Grid Scale Modeling
+### Sub-Grid Scale Modeling
 ```ini
 ! ============================================================ !
 ! LES MODEL
@@ -51,7 +51,7 @@ mpirun -np <NUM_PROCS> flexi parameter_flexi.ini
 ```{important}
 **FLEXI** uses an element-based domain decomposition approach for parallelization. Consequently, the minimum load per process is *one* grid element, i.e. do not use more processes than grid elements!
 ```
-Once the simulation has completed, the generated state files can be post-processed via the `posti_channel_fft` tool which was build by the `POSTI_CHANNEL_FFT` CMake option. To run the post-processing, the standard command is
+Once the simulation has completed, the generated state files can be post-processed via the `posti_channel_fft` tool which was built by the `POSTI_CHANNEL_FFT` CMake option. To run the post-processing, the standard command is
 ```bash
 posti_channel_fft parameter_channel_fft.ini <State1 State2 ...>
 ```
@@ -85,7 +85,7 @@ In a second step, we run **FLEXI** with the SGS model by Smagorinsky and Van Dri
 Mean velocity and Reynolds stress profiles (left) as well as turbulent energy spectra close to the centre of the channel (right) of a LES with Smagorinsky's model and van Driest damping at $Re_{\tau}=180$.
 ```
 
-(sec:tut_ptcf_performance)=
+(PTCF_performance)=
 ## Performance Improvements
 FLEXI comes with some advanced optimizations in order to increase its computational efficiency for compute-intensive simulations. As these optimizations require user intervention, they are disabled by default and appear once the CMake flag `FLEXI_PERFORMANCE=ON` is set. The first option `FLEXI_PERFORMANCE_OPTLIFT` optimizes the computation of the parabolic terms of the applied equation system by omitting terms not relevant for the lifting procedure. However, POSTI is not available if this option is enabled.
 
