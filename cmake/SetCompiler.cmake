@@ -147,6 +147,20 @@ ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
     SET (FLEXI_COMPILE_FLAGS "${NINJA_COLOR_DIAGNOSTICS} -allow nofpp_comments -assume bscc")
   ENDIF()
 
+# NVIDIA Compiler
+ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "NVHPC")
+  SET (CMAKE_Fortran_FLAGS_RELEASE   "${CMAKE_Fortran_FLAGS}     -O4 -r8 -Mpreprocess ${FLEXI_INSTRUCTION}")
+  SET (CMAKE_Fortran_FLAGS_PROFILE   "${CMAKE_Fortran_FLAGS} -pg -O4 -r8 -Mpreprocess ${FLEXI_INSTRUCTION} ")
+  SET (CMAKE_Fortran_FLAGS_DEBUG     "${CMAKE_Fortran_FLAGS} -g  -O0 -r8 -Mpreprocess")
+  # Compile flags depend on the generator
+  IF(NOT "${CMAKE_GENERATOR}" STREQUAL "Ninja")
+    # add flags only for compiling not linking!
+    SET (FLEXI_COMPILE_FLAGS "-xf95-cpp-input")
+  ELSE()
+    # Trailing white space required in case variable is unset!
+    SET (FLEXI_COMPILE_FLAGS "${NINJA_COLOR_DIAGNOSTICS} ")
+  ENDIF()
+
 # Cray Compiler
 ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Cray")
   # set Flags
