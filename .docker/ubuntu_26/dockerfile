@@ -91,11 +91,11 @@ RUN HDF5_VERSION=2.1.1 && cd /tmp && \
     cd hdf5-${HDF5_VERSION} && \
     mkdir build && cd build && \
     cmake -DCMAKE_INSTALL_PREFIX=/opt \
-        -DHDF5_BUILD_FORTRAN=ON \
-        -DHDF5_ENABLE_PARALLEL=ON \
-        -DHDF5_USE_ZLIB_STATIC=ON \
-        -DZLIB_USE_EXTERNAL=ON \
-        .. && \
+          -DHDF5_BUILD_FORTRAN=ON \
+          -DHDF5_ENABLE_PARALLEL=ON \
+          -DHDF5_USE_ZLIB_STATIC=ON \
+          -DZLIB_USE_EXTERNAL=ON \
+          .. && \
     make -j$(nproc) && cmake --install . && \
     cd /tmp && rm -rf hdf5*
 
@@ -132,22 +132,21 @@ RUN CGNS_VERSION=4.5.2 && cd /tmp && \
 
 # Setup ParaView
 COPY FileParser_5_9_0.patch .
-RUN PARAVIEW_VERSION=6.1.0 && cd /tmp && \
+RUN PARAVIEW_VERSION=6.1.1 && cd /tmp && \
     wget https://www.paraview.org/files/v${PARAVIEW_VERSION%??}/ParaView-v${PARAVIEW_VERSION}.tar.gz && \
     tar -xvf ParaView-v${PARAVIEW_VERSION}.tar.gz && \
     cd ParaView-v${PARAVIEW_VERSION} && \
     mv ../../FileParser_5_9_0.patch . && patch -p0 < FileParser_5_9_0.patch && \
     mkdir build && cd build/ && \
-    cmake \
-      -DCMAKE_BUILD_TYPE=Release \
-      -DPARAVIEW_USE_MPI=ON \
-      -DPARAVIEW_INSTALL_DEVELOPMENT_FILES=ON \
-      -DPARAVIEW_USE_PYTHON=ON \
-      -DVTK_MODULE_USE_EXTERNAL_VTK_hdf5=ON \
-      -DHDF5_IS_PARALLEL=ON \
-      -DHDF5_DIR=/opt/cmake \
-      -DCMAKE_INSTALL_PREFIX=/opt \
-      ../ && \
+    cmake -DCMAKE_BUILD_TYPE=Release \
+          -DPARAVIEW_USE_MPI=ON \
+          -DPARAVIEW_INSTALL_DEVELOPMENT_FILES=ON \
+          -DPARAVIEW_USE_PYTHON=ON \
+          -DVTK_MODULE_USE_EXTERNAL_VTK_hdf5=ON \
+          -DHDF5_IS_PARALLEL=ON \
+          -DHDF5_DIR=/opt/cmake \
+          -DCMAKE_INSTALL_PREFIX=/opt \
+          ../ && \
     make -j $(nproc) && make install && \
     cd /tmp && rm -rf ParaView*
 
@@ -199,7 +198,7 @@ ENV PATH="/home/${NB_USER}/hopr/build/bin:$PATH"
 # Setup PyHOPE
 # > NOTE: Install editable from GitHub repository (instead of PyPI) to provide tutorials for verification run and as examples
 RUN cd /home/${NB_USER} && \
-    pip install --no-cache-dir https://gitlab.iag.uni-stuttgart.de/libs/python-gmsh/-/raw/master/gmsh-4.15.1.post1-py3-none-linux_x86_64.whl && \
+    pip install --no-cache-dir https://gitlab.iag.uni-stuttgart.de/libs/python-gmsh/-/raw/master/gmsh-4.15.2.post1-py3-none-linux_x86_64.whl && \
     git clone https://github.com/hopr-framework/PyHOPE.git && \
     pip install --no-cache-dir -e PyHOPE && \
     cd PyHOPE && pyhope --verify
