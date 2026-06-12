@@ -32,6 +32,10 @@ Provided the mesh file has been set up, its location must be specified in the **
 MeshFile=path/to/mesh/file.h5
 ```
 
+```{tip}
+The development of **HOPR** has become less active, in favor of its successor project **PyHOPE** (Python High-Order Preprocessing Environment). **PyHOPE** shares the same input/output format and can be regarded as drop-in replacement in most scenarios, allowing to replace the above command by `pyhope parameter_hopr.ini` throughout this documentation. It is available on [GitHub](https://github.com/hopr-framework/PyHOPE) and can be installed from [PyPI](https://pypi.org/project/PyHOPE/).
+```
+
 (subsec:solver_settings)=
 ## Build Configuration
 

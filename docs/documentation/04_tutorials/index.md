@@ -1,7 +1,7 @@
 (Tutorials)=
 # Tutorials
 
-This chapter provides a detailed overview of flow simulations with **FLEXI**, assuming familiarity with setting compiler options and code compilation. The path to all executables is omitted here. We assume you have either symlinked **flexi**, **hopr**, and all posti tools into the runtime directory or call these executables at their relative location.
+This chapter provides a detailed overview of flow simulations with **FLEXI**, assuming familiarity with setting compiler options and code compilation. The path to all executables is omitted here. We assume you have either symlinked **flexi**, **hopr** (or **pyhope**), and all **posti** tools into the runtime directory or call these executables at their relative location.
 
 Each tutorial directory contains the necessary .ini files - `parameter_hopr.ini`, `parameter_flexi.ini`, `parameter_postiVisu.ini` - as well as the mesh file `*_mesh.h5` in HDF5 format (generated with **HOPR**).
 ```{code-block} bash
