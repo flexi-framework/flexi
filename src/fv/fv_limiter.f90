@@ -227,13 +227,13 @@ REAL,INTENT(IN)  :: sR(PP_nVarPrim) !< right slope
 REAL,INTENT(OUT) :: s(PP_nVarPrim)  !< limited slope
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,PARAMETER :: beta = 2.0d0
+REAL,PARAMETER :: beta = 2.0
 REAL :: s1(PP_nVarPrim),s2(PP_nVarPrim)
 !==================================================================================================================================
-  s1 = sign(1.0d0, sR)
-  s2 = sign(1.0d0, sL)
-  s = 0.5d0*(s1*max(0.0d0, min(beta*sR*s1, sL*s1)) + &
-             s2*max(0.0d0, min(beta*sL*s2, sR*s2)))
+  s1 = sign(1.0, sR)
+  s2 = sign(1.0, sL)
+  s = 0.5*(s1*max(0.0, min(beta*sR*s1, sL*s1)) + &
+           s2*max(0.0, min(beta*sL*s2, sR*s2)))
 END SUBROUTINE GMinMod
 
 
@@ -254,7 +254,7 @@ REAL,INTENT(OUT) :: s(PP_nVarPrim)  !< limited slope
 REAL :: d(PP_nVarPrim)
 !==================================================================================================================================
   d = sL**2 + sL*sR + sR**2
-  s = (d/(d**2 + 1.0d-28))*1.5d0*sL*sR*(sL + sR)
+  s = (d/(d**2 + 1.E-28))*1.5*sL*sR*(sL + sR)
 END SUBROUTINE Ospre
 
 

@@ -24,10 +24,10 @@ PUBLIC
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-REAL,PARAMETER        :: PP_RealTolerance = EPSILON(1.0D0) !< machine precision
-REAL,PARAMETER        :: PP_Pi = ACOS(REAL(-1.0,KIND=DP))   !< Pi up to machine accuracy
+REAL,PARAMETER        :: PP_RealTolerance = EPSILON(REAL(1.0,KIND=DP)) !< machine precision
+REAL,PARAMETER        :: PP_Pi = ACOS(REAL(-1.0,KIND=DP))              !< Pi up to machine accuracy
 #if PP_N == N
-INTEGER               :: PP_N                              !< polynomial degree
+INTEGER               :: PP_N                                          !< polynomial degree
 #endif
 
 !==================================================================================================================================
