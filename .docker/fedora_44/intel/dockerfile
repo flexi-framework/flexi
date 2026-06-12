@@ -1,5 +1,5 @@
 # Load the base image
-FROM fedora:42
+FROM fedora:44
 
 # Numerics research group
 LABEL maintainer="numerics@iag.uni-stuttgart.de"
@@ -19,7 +19,7 @@ RUN dnf makecache                 && \
       zlib-ng-devel zlib-ng-compat-devel && \
     dnf install -y python3 uv &&     \
     dnf install -y doxygen    &&     \
-    dnf install -y ruff       &&  `# Setup Ruff` \
+    dnf install -y ruff       &&     \
     dnf autoremove            &&     \
     dnf clean all             &&     \
     rm -rf /var/log/dnf5.*
@@ -135,7 +135,7 @@ ENV MPICC="mpiicc" \
     I_MPI_FC="ifx"
 
 # Setup OpenBlas
-RUN export OPENBLAS_VERSION="0.3.30"    && \
+RUN export OPENBLAS_VERSION="0.3.33"    && \
     export CMAKE_GENERATOR="Ninja"      && \
     export CMAKE_LINKER_TYPE="MOLD"     && \
     cd /tmp                             && \
