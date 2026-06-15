@@ -252,7 +252,7 @@ reggie_download:
       policy: pull-push
   script:
     # Install Reggie
-    - uv pip install git+https://github.com/piclas-framework/reggie2.0.git
+    - uv pip install git+https://github.com/reggie-framework/reggie.git
     # Check Reggie
     - reggie --help
 
