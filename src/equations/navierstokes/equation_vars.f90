@@ -41,9 +41,9 @@ INTEGER,ALLOCATABLE  :: BCSideID(:,:)  !< array storing side IDs of sides with d
 REAL                 :: s43            !< precomputed 4./3.
 REAL                 :: s23            !< precomputed 2./3.
 
-CHARACTER(LEN=255),DIMENSION(5),PARAMETER :: StrVarNames =&
+CHARACTER(LEN=255),DIMENSION(PP_nVar),PARAMETER :: StrVarNames =&
   (/ CHARACTER(LEN=255) :: 'Density','MomentumX','MomentumY','MomentumZ','EnergyStagnationDensity'/) !< conservative variable names
-CHARACTER(LEN=255),DIMENSION(6),PARAMETER :: StrVarNamesPrim=&
+CHARACTER(LEN=255),DIMENSION(PP_nVarPrim),PARAMETER :: StrVarNamesPrim=&
   (/ CHARACTER(LEN=255) :: 'Density','VelocityX','VelocityY','VelocityZ','Pressure','Temperature'/) !< primitive variable names
 
 LOGICAL           :: EquationInitIsDone=.FALSE.

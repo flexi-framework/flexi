@@ -79,9 +79,9 @@ LOGICAL           :: doSADebug          !< Turn debug output on or off (default:
 
 
 
-CHARACTER(LEN=255),DIMENSION(6),PARAMETER :: StrVarNames =&
+CHARACTER(LEN=255),DIMENSION(PP_nVar),PARAMETER :: StrVarNames =&
   (/ CHARACTER(LEN=255) :: 'Density','MomentumX','MomentumY','MomentumZ','EnergyStagnationDensity','muTilde'/) !< conservative variable names
-CHARACTER(LEN=255),DIMENSION(7),PARAMETER :: StrVarNamesPrim=&
+CHARACTER(LEN=255),DIMENSION(PP_nVarPrim),PARAMETER :: StrVarNamesPrim=&
   (/ CHARACTER(LEN=255) :: 'Density','VelocityX','VelocityY','VelocityZ','Pressure','Temperature','nuTilde'/) !< primitive variable names
 
 LOGICAL           :: EquationInitIsDone=.FALSE.
