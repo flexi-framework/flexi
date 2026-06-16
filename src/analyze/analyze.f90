@@ -368,9 +368,8 @@ IF (PID_kill.LE.0) RETURN
 IF (nCalcPID.GE.1) THEN
   nCalcPID = nCalcPID - 1
   RETURN
-ELSE
-  nCalcPID = nCalcPIDMax - 1
 END IF
+nCalcPID = nCalcPIDMax - 1
 
 ! Get calculation time per DOF
 PIDTimeEnd = FLEXITIME()

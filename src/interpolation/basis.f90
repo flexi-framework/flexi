@@ -389,12 +389,10 @@ REAL                      :: cheb_tmp          ! temporary variable for evaluati
 IF(N_in .EQ. 0) THEN
   xGP=0.
   IF(PRESENT(wGP))wGP=2.
-  RETURN
 ELSEIF(N_in.EQ.1)THEN
   xGP(0)=-sqrt(1./3.)
   xGP(N_in)=-xGP(0)
   IF(PRESENT(wGP))wGP=1.
-  RETURN
 ELSE ! N_in>1
   cheb_tmp=2.*atan(1.)/REAL(N_in+1) ! pi/(2N+2)
   DO iGP=0,(N_in+1)/2-1 !since points are symmetric, only left side is computed
@@ -428,13 +426,14 @@ ELSE ! N_in>1
       wGP(N_in-iGP)=wGP(iGP)
     END IF
   END DO !iGP
+
+  IF(mod(N_in,2) .EQ. 0) THEN
+    xGP(N_in/2)=0.
+    CALL LegendrePolynomialAndDerivative(N_in+1,xGP(N_in/2),L_Np1,Lder_Np1)
+    !IF(PRESENT(wGP))wGP(N_in/2)=2./(Lder_Np1*Lder_Np1) !if Legendre not normalized
+    IF(PRESENT(wGP))wGP(N_in/2)=(2.*N_in+3)/(Lder_Np1*Lder_Np1)
+  END IF ! (mod(N_in,2) .EQ. 0)
 END IF ! N_in
-IF(mod(N_in,2) .EQ. 0) THEN
-  xGP(N_in/2)=0.
-  CALL LegendrePolynomialAndDerivative(N_in+1,xGP(N_in/2),L_Np1,Lder_Np1)
-  !IF(PRESENT(wGP))wGP(N_in/2)=2./(Lder_Np1*Lder_Np1) !if Legendre not normalized
-  IF(PRESENT(wGP))wGP(N_in/2)=(2.*N_in+3)/(Lder_Np1*Lder_Np1)
-END IF ! (mod(N_in,2) .EQ. 0)
 END SUBROUTINE LegendreGaussNodesAndWeights
 
 
