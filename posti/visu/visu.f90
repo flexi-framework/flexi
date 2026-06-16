@@ -425,17 +425,27 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL :: Time,SimulationTime,mins,secs,hours,days
+REAL    :: Time,SimulationTime,mins,secs,hours,days
+INTEGER :: postiunit
 !===================================================================================================================================
 
 IF(MPIRoot)THEN
   IF(FILEEXISTS('.posti.ini'))THEN
+<<<<<<< Updated upstream
     OPEN(UNIT=31, FILE='.posti.ini', STATUS='old')
     CLOSE(31, STATUS='delete')
   END IF
   IF(FILEEXISTS('.flexi.ini'))THEN
     OPEN(UNIT=31, FILE='.flexi.ini', STATUS='old')
     CLOSE(31, STATUS='delete')
+=======
+    OPEN(NEWUNIT=postiunit, FILE='.posti.ini', STATUS='old',ACTION='WRITE')
+    CLOSE(postiunit, STATUS='delete')
+  END IF
+  IF(FILEEXISTS('.flexi.ini'))THEN
+    OPEN(NEWUNIT=postiunit, FILE='.flexi.ini', STATUS='old',ACTION='WRITE')
+    CLOSE(postiunit, STATUS='delete')
+>>>>>>> Stashed changes
   END IF
 END IF
 

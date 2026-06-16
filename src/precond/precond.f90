@@ -428,7 +428,7 @@ INTEGER,INTENT(IN)                                     :: iElem     !< current e
 REAL               :: dummy
 CHARACTER(LEN=255) :: Filename
 CHARACTER(LEN=17)  :: strfmt
-INTEGER            :: r,s
+INTEGER            :: r,s,debugunit
 !===================================================================================================================================
 ! output of BlockPrecond, no inverse
 IF(DebugMatrix.GE.1)THEN
@@ -439,11 +439,15 @@ IF(DebugMatrix.GE.1)THEN
 #endif
   WRITE(strfmt,'(A1,I4,A12)')'(',nDOFVarElem,'(1X,E23.16))'
   WRITE(UNIT_stdOut,*)'Debug Precond (no Inverse) to:',TRIM(Filename)
-  OPEN (UNIT=103,FILE=TRIM(Filename),STATUS='REPLACE')
+<<<<<<< Updated upstream
+  OPEN (NEWUNIT=checkunit,FILE=TRIM(Filename),STATUS='REPLACE')
+=======
+  OPEN (NEWUNIT=debugunit,FILE=TRIM(Filename),STATUS='REPLACE',ACTION='WRITE')
+>>>>>>> Stashed changes
   DO r=1,nDOFVarElem
-    WRITE(103,strfmt)Ploc(r,:)
+    WRITE(debugunit,strfmt)Ploc(r,:)
   END DO
-  CLOSE(103)
+  CLOSE(debugunit)
 END IF !DebugMatrix >=1
 
 ! output of Inverse
@@ -451,11 +455,15 @@ IF(DebugMatrix.GE.2)THEN
   WRITE(Filename,'(A,I2.2,A,I4.4,A)')'Precond_',PreCondType,'_InvMat_', iElem,'.dat'
   WRITE(strfmt,'(A1,I4,A12)')'(',nDOFVarElem,'(1X,E23.16))'
   WRITE(UNIT_stdOut,*)'Debug Precond to:',TRIM(Filename)
-  OPEN (UNIT=103,FILE=TRIM(Filename),STATUS='REPLACE')
+<<<<<<< Updated upstream
+  OPEN (NEWUNIT=checkunit,FILE=TRIM(Filename),STATUS='REPLACE')
+=======
+  OPEN (NEWUNIT=debugunit,FILE=TRIM(Filename),STATUS='REPLACE',ACTION='WRITE')
+>>>>>>> Stashed changes
   DO r=1,nDOFVarElem
-    WRITE(103,strfmt)invPloc(r,:)
+    WRITE(debugunit,strfmt)invPloc(r,:)
   END DO
-  CLOSE(103)
+  CLOSE(debugunit)
 END IF !DebugMatrix >= 2
 
 ! sanity check of inverse
