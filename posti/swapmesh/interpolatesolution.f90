@@ -117,9 +117,8 @@ DO iElemNew=1,nElemsNew
       ! If no reference state was given, the program already aborted
       Utmp(:,ii,jj,kk)=RefState
       CYCLE
-    ELSE
-      Utmp(:,ii,jj,kk)=0.
     END IF
+    Utmp(:,ii,jj,kk)=0.
 
     iElemOld = InterToElem(ii,jj,kk,iElemNew)
     DO k=0,ZDIM(NState)
