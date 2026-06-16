@@ -27,7 +27,7 @@ PRIVATE
 !> General, abstract OPTION
 !================================================
 TYPE,PUBLIC  :: OPTION
-  CLASS(OPTION),POINTER :: next         !< pointer to next option, used for a linked list of options
+  CLASS(OPTION),POINTER :: next => NULL() !< pointer to next option, used for a linked list of options
   CHARACTER(LEN=255)    :: name         !< name of the option, case-insensitive (part before '=' in parameter file)
   CHARACTER(LEN=1000)   :: description  !< comment in parameter file, after '!' character
   CHARACTER(LEN=255)    :: section      !< section to which the option belongs. Not mandatory.
