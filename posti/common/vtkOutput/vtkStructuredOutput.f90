@@ -121,7 +121,7 @@ IF(nPoints.GT.0) THEN
   lf = char(10)
 
   ! Write file
-  OPEN(UNIT=ivtk,FILE=TRIM(FileName),ACCESS='STREAM')
+  OPEN(UNIT=ivtk,FILE=TRIM(FileName),ACCESS='STREAM',ACTION="WRITE")
   ! Write header
   Buffer='<?xml version="1.0"?>'//lf;WRITE(ivtk) TRIM(Buffer)
   Buffer='<VTKFile type="StructuredGrid" version="0.1" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)
@@ -200,7 +200,7 @@ DO iLine=1,nLines
   lf = char(10)
 
   ! Write file
-  OPEN(UNIT=ivtk,FILE=TRIM(FileName),ACCESS='STREAM')
+  OPEN(UNIT=ivtk,FILE=TRIM(FileName),ACCESS='STREAM',ACTION='WRITE')
   ! Write header
   Buffer='<?xml version="1.0"?>'//lf;WRITE(ivtk) TRIM(Buffer)
   Buffer='<VTKFile type="StructuredGrid" version="0.1" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)
@@ -279,7 +279,7 @@ DO iPlane=1, nPlanes
   lf = char(10)
 
   ! Write file
-  OPEN(UNIT=ivtk,FILE=TRIM(FileName),ACCESS='STREAM')
+  OPEN(UNIT=ivtk,FILE=TRIM(FileName),ACCESS='STREAM',ACTION='WRITE')
   ! Write header
   Buffer='<?xml version="1.0"?>'//lf;WRITE(ivtk) TRIM(Buffer)
   Buffer='<VTKFile type="StructuredGrid" version="0.1" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)
@@ -358,7 +358,7 @@ DO iBox=1, nBoxes
   lf = char(10)
 
   ! Write file
-  OPEN(UNIT=ivtk,FILE=TRIM(FileName),ACCESS='STREAM')
+  OPEN(UNIT=ivtk,FILE=TRIM(FileName),ACCESS='STREAM',ACTION='WRITE')
   ! Write header
   Buffer='<?xml version="1.0"?>'//lf;WRITE(ivtk) TRIM(Buffer)
   Buffer='<VTKFile type="StructuredGrid" version="0.1" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)
@@ -455,7 +455,7 @@ CHARACTER(LEN=255) :: FileStringOut
 !===================================================================================================================================
 FileStringOut=TRIM(ProjectName)//'_RPVisu.vtm'
 ! write multiblock file
-OPEN(UNIT=ivtk,FILE=TRIM(FileStringOut),ACCESS='STREAM')
+OPEN(UNIT=ivtk,FILE=TRIM(FileStringOut),ACCESS='STREAM',ACTION='WRITE')
 ! Line feed character
 lf = char(10)
 Buffer='<VTKFile type="vtkMultiBlockDataSet" version="1.0" byte_order="LittleEndian" header_type="UInt64">'//lf

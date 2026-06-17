@@ -439,11 +439,7 @@ IF(DebugMatrix.GE.1)THEN
 #endif
   WRITE(strfmt,'(A1,I4,A12)')'(',nDOFVarElem,'(1X,E23.16))'
   WRITE(UNIT_stdOut,*)'Debug Precond (no Inverse) to:',TRIM(Filename)
-<<<<<<< Updated upstream
-  OPEN (NEWUNIT=checkunit,FILE=TRIM(Filename),STATUS='REPLACE')
-=======
   OPEN (NEWUNIT=debugunit,FILE=TRIM(Filename),STATUS='REPLACE',ACTION='WRITE')
->>>>>>> Stashed changes
   DO r=1,nDOFVarElem
     WRITE(debugunit,strfmt)Ploc(r,:)
   END DO
@@ -455,11 +451,7 @@ IF(DebugMatrix.GE.2)THEN
   WRITE(Filename,'(A,I2.2,A,I4.4,A)')'Precond_',PreCondType,'_InvMat_', iElem,'.dat'
   WRITE(strfmt,'(A1,I4,A12)')'(',nDOFVarElem,'(1X,E23.16))'
   WRITE(UNIT_stdOut,*)'Debug Precond to:',TRIM(Filename)
-<<<<<<< Updated upstream
-  OPEN (NEWUNIT=checkunit,FILE=TRIM(Filename),STATUS='REPLACE')
-=======
   OPEN (NEWUNIT=debugunit,FILE=TRIM(Filename),STATUS='REPLACE',ACTION='WRITE')
->>>>>>> Stashed changes
   DO r=1,nDOFVarElem
     WRITE(debugunit,strfmt)invPloc(r,:)
   END DO

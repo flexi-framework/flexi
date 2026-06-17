@@ -100,19 +100,11 @@ ELSE IF(STRICMP(GetFileExtension(Args(1)),'h5')) THEN
   postifile = ".posti.ini"
   IF(MPIRoot)THEN
     IF(FILEEXISTS(postifile))THEN
-<<<<<<< Updated upstream
-      OPEN(UNIT=31, FILE=postifile, STATUS="old")
-      CLOSE(31, STATUS="delete")
-    END IF
-    OPEN (UNIT=31, FILE=postifile, STATUS="new")
-    CLOSE (UNIT=31)
-=======
       OPEN(NEWUNIT=postiunit, FILE=postifile, STATUS="old",ACTION="WRITE")
       CLOSE(postiunit, STATUS="delete")
     END IF
     OPEN(NEWUNIT=postiunit, FILE=postifile, STATUS="new",ACTION="WRITE")
     CLOSE(postiunit)
->>>>>>> Stashed changes
   END IF
 ELSE
   CALL CollectiveStop(__STAMP__,&
