@@ -266,13 +266,13 @@ REAL,INTENT(IN)         :: PolyY(PolyN)
 LOGICAL,INTENT(INOUT)   :: Inside
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                 :: i,j,InOrOut
+INTEGER                 :: i,j,In_On_Out
 REAL                    :: xj,yj,xi,yi
 LOGICAL                 :: ix , iy , jx , jy
 !===================================================================================================================================
 
 Inside = .FALSE.
-InOrOut = -1
+In_On_Out = -1  ! point is inside (+1) / on (0) / outside (-1) polygon
 
 DO i=1,PolyN
   xi = PolyX(i) - PointX
@@ -280,7 +280,7 @@ DO i=1,PolyN
 
   ! CHECK WHETHER THE POINT IN QUESTION IS AT THIS VERTEX.
   IF ( xi.EQ.0.0 .AND. yi.EQ.0.0 ) THEN
-     InOrOut = 0
+     In_On_Out = 0
      RETURN
   ENDIF
 
@@ -298,12 +298,12 @@ DO i=1,PolyN
 
   ! CHECK WHETHER (PointX,PointY) IS ON VERTICAL SIDE OF POLYGON.
   IF ( xi.EQ.0.0 .AND. xj.EQ.0.0 .AND. ix.NEQV.iy ) THEN
-    InOrOut = 0
+    In_On_Out = 0
     RETURN
   ENDIF
   ! CHECK WHETHER (PointX,PointY) IS ON HORIZONTAL SIDE OF POLYGON.
   IF ( yi.EQ.0.0 .AND. yj.EQ.0.0 .AND. ix.NEQV.iy ) THEN
-    InOrOut = 0
+    In_On_Out = 0
     RETURN
   ENDIF
 
@@ -316,16 +316,16 @@ DO i=1,PolyN
     IF ( (yi*xj-xi*yj)/(xj-xi).LT.0.0 ) THEN
       CYCLE
     ELSEIF ( (yi*xj-xi*yj)/(xj-xi).EQ.0.0 ) THEN
-      InOrOut = 0
+      In_On_Out = 0
       RETURN
     ELSE
-      InOrOut = -InOrOut
+      In_On_Out = -In_On_Out
     ENDIF
   ELSE
-    InOrOut = -InOrOut
+    In_On_Out = -In_On_Out
   ENDIF
 END DO
-IF (InOrOut .GE. 0) Inside = .TRUE.
+IF (In_On_Out .GE. 0) Inside = .TRUE.
 
 END SUBROUTINE PointInPoly
 
