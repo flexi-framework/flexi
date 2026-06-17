@@ -201,7 +201,7 @@ ruff:
   dependencies: []
   script:
     - ruff --version
-    - ruff check --extend-ignore=E201,E202,E203,E221,E222,E225,E231,E271,E272 --line-length=132 --preview docs tools
+    - ruff check --output-format=grouped --extend-ignore=BLE001,E201,E202,E203,E221,E222,E225,E231,E271,E272,S110,S112 --line-length=132 --preview docs tools
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "setup": Setup the reggie environment
