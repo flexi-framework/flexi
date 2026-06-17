@@ -62,7 +62,7 @@ for i in range(len(lambdaDMD[1])):
         amplogPositiv.append(amplog[i])
 
 plt.scatter([i/(2*np.pi) for i in lambdaDMDimag], lambdaDMDreal, s=[40.*(i+.4) for i in amplogPositiv] , c=[40.*(i+.4) for i in amplogPositiv], marker='o')
-labels = ['Mode%d\n f=%.2f' % (i+1, lambdaDMDimag[i]/(2*np.pi)) for i in range(len(lambdaDMDreal))]
+labels = [f'Mode{i+1}\n f={lambdaDMDimag[i]/(2*np.pi):.2f}' for i in range(len(lambdaDMDreal))]
 plt.axhline(y=0.0, color='k', linestyle='--')
 # j=0
 for label, x, y in zip(labels, [i/(2*np.pi) for i in lambdaDMDimag], lambdaDMDreal):

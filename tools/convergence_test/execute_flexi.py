@@ -8,7 +8,7 @@ def execute_flexi(flexi_path, prm_path, projectname, analyze_fcts=None, log=True
     if mpi_procs == 1 :
         cmd = []
     else :
-        cmd = ["mpirun", "-np", "%d" % mpi_procs]
+        cmd = ["mpirun", "-np", f"{mpi_procs}"]
     cmd.append(flexi_path)
     cmd.append(prm_path)
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
