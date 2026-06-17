@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # ************************************************************************************
 #
 # Description:  This script contains routines to extract userblock data from an HDF5

@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 # modify the parameterfile given by 'path'
 # 'properties' must be a map containing the properties to change
 def modify_prm(path, properties) :

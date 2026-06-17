@@ -1,4 +1,3 @@
-#!/usr/bin/python
 #************************************************************************************
 #
 # Description:  This script will rebuild a specific code configuration from

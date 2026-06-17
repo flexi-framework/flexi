@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 # each analyze-function takes the output-lines of a flexi-run
 
 # extract the L2 error of the last timestep
