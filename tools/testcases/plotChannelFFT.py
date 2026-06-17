@@ -1,7 +1,8 @@
 import argparse
-import numpy as np
+
 import h5py
 import matplotlib.pyplot as plt
+import numpy as np
 
 parser = argparse.ArgumentParser(description='ChannelFFT plotting routine')
 optional = parser._action_groups.pop()
@@ -29,8 +30,8 @@ if not args.noProfiles :
         ax2.plot(meanSquares[0],meanSquares[i], '--',label=VarNames[i])
 
     ax1.set_xlabel('$y^+$',fontsize = 16)
-    ax1.set_ylabel('$\overline{u\'u\'}^+$,$\overline{v\'v\'}^+$,$\overline{w\'w\'}^+$,$\overline{u\'v\'}^+$',fontsize = 16)
-    ax2.set_ylabel('$\overline{u}^+$',fontsize = 16)
+    ax1.set_ylabel('$\\overline{u\'u\'}^+$,$\\overline{v\'v\'}^+$,$\\overline{w\'w\'}^+$,$\\overline{u\'v\'}^+$',fontsize = 16)
+    ax2.set_ylabel(r'$\overline{u}^+$',fontsize = 16)
     ax1.set_xlim(0,max(meanSquares[0]))
     ax1.legend(fontsize=12)
     ax2.legend(fontsize=12)

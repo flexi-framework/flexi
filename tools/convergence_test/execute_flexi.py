@@ -1,8 +1,7 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
-import subprocess
 import io
+import subprocess
 
 
 def execute_flexi(flexi_path, prm_path, projectname, analyze_fcts=None, log=True, mpi_procs=1) :

@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-# -*- coding: utf8 -*-
 
-import os
-import sys
-import shutil
 import argparse
+import os
+import shutil
 import subprocess
+import sys
 
 FILETYPES = ['.pvtu', '.vtu', '.plt', '.vtm', '.h5']
 """Supported filetypes for rendering with ParaView."""

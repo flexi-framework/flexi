@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # modify the parameterfile given by 'path'
 # 'properties' must be a map containing the properties to change

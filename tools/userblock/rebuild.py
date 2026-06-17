@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 #************************************************************************************
 #
 # Description:  This script will rebuild a specific code configuration from
@@ -9,11 +8,12 @@
 #
 #************************************************************************************
 
-import os
 import argparse
+import os
 import subprocess
-from extract_userblock import get_userblock, get_part
 from distutils import spawn
+
+from extract_userblock import get_part, get_userblock
 
 parser = argparse.ArgumentParser(description='Rebuild code revision from userblock data ' +
                                              'contained in HDF5 state file.')

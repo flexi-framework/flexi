@@ -28,7 +28,7 @@ def get_userblock(filename, userblock) :
 
             # Exit on userblock not exist
             if linesread == 1 and not line.startswith('{[(') :
-                print('Error: HDF5 state file {:s} contains no userblock.'.format(filename))
+                print(f'Error: HDF5 state file {filename:s} contains no userblock.')
                 exit(1)
 
             # Exit on end of userblock
@@ -40,9 +40,8 @@ def get_userblock(filename, userblock) :
                 c = line[i]
                 if ord(c) == 0   :
                     continue
-                if ord(c) == 137 :
-                    if line[i+1:i+4] == 'HDF' :
-                        HDFfound = True
+                if ord(c) == 137 and line[i+1:i+4] == 'HDF' :
+                    HDFfound = True
             if HDFfound :
                 break
 

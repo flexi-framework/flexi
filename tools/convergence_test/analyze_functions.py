@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 # each analyze-function takes the output-lines of a flexi-run
 

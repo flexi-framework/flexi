@@ -1,12 +1,11 @@
 #!/usr/bin/python
-# -*- coding: utf8 -*-
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
-import shutil
 
 parser = argparse.ArgumentParser(description='Merge pictures to movie')
 parser.add_argument('-t','--trim', help='Trim pictures before merge', action='store_true')
