@@ -13,8 +13,8 @@ args   = parser.parse_args()
 # -------------------------------------------------------------------------------------
 # Data ReadIn
 # -------------------------------------------------------------------------------------
-dmdFile = open(args.dmdFile, "r")
-dmdData = dmdFile.readlines()
+with open(args.dmdFile, "r") as dmdFile:
+    dmdData = dmdFile.readlines()
 values  = []
 for line in dmdData[12:]:
     values.append(line.split())

@@ -74,9 +74,8 @@ subprocess.call(cmd, shell=True)
 # apply simple diff
 git_diff = get_part(userblock, "GIT DIFF")
 if git_diff :
-    f = open("diff_patch", 'w')
-    f.write(git_diff)
-    f.close()
+    with open("diff_patch", 'w') as f:
+        f.write(git_diff)
     try:
         subprocess.call("patch -p1 < diff_patch", shell=True)
     except Exception:
@@ -87,18 +86,16 @@ if git_diff :
 if not os.path.exists("ini"):
     os.mkdir("ini")
 ini = get_part(userblock, "INIFILE")
-f = open(os.path.join("ini", "parameter.ini"), 'w')
-f.write(ini)
-f.close()
+with open(os.path.join("ini", "parameter.ini"), 'w') as f:
+    f.write(ini)
 
 # configure
 builddir = "build"
 if not os.path.exists(builddir):
     os.mkdir(builddir)
 cmake = get_part(userblock, "CMAKE")
-f = open(os.path.join(builddir, "config.cmake"), 'w')
-f.write(cmake)
-f.close()
+with open(os.path.join(builddir, "config.cmake"), 'w') as f:
+    f.write(cmake)
 
 cmakepath = spawn.find_executable("cmake")
 if not cmakepath:

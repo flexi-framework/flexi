@@ -26,10 +26,9 @@ def execute_flexi(flexi_path, prm_path, projectname, analyze_fcts=None, log=True
 
     if log :
         log_path = projectname + ".log"
-        f = open(log_path, 'a')
-        for line in lines :
-            f.write(line)
-        f.close()
+        with open(log_path, 'a') as f:
+            for line in lines :
+                f.write(line)
 
     if analyze_fcts :
         results = []
