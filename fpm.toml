@@ -99,6 +99,10 @@ ignore            = ["C003",    # C003: implicit-external-procedures
 "src/readintools/*.f90"                             = ["C181"]           # iostat argument 'stat' is overwritten before being checked in this scope
 # POSTI too
 "posti/**/*_vars.f90"                               = ["C132"]           # Vars files need to be public
-"posti/common/fftw/fftw.f90"                        = ["C132"]           # FFTW needs to be public
+"posti/common/fftw/fftw.f90"                        = ["C132",           # FFTW needs to be public
+                                                       "MOD031"]         # Include statement is deprecated, use modules instead
 "posti/recordpoints/prepare/parameters.f90"         = ["C132"]           # Vars files need to be public
 "posti/recordpoints/visualize/parameters.f90"       = ["C132"]           # Vars files need to be public
+"posti/dmd/dmd.f90"                                 = ["S254"]           # Unnecessary else-if after `exit` statement  > disabled for readability
+"posti/visu/calc.f90"                               = ["C061",           # Argument missing attribute > disabled because of false positive with PreProcessor
+                                                       "C141"]           # 'cycle' statement in named 'do' loop missing label > disabled because of false positives with PreProcessor
