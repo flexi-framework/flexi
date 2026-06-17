@@ -8,7 +8,7 @@ homepage    = "https://www.flexi-project.org"
 # Author and copyright information
 author      = "Numerics Research Group"
 maintainer  = "numerics@iag.uni-stuttgart.de"
-copyright   = "2010-2022 Prof. Claus-Dieter Munz, 2022-2024 Prof. Andrea Beck"
+copyright   = "2010-2022 Prof. Claus-Dieter Munz, 2022-2026 Prof. Andrea Beck"
 
 # Library configuration
 source-dir  = "src"
@@ -43,27 +43,60 @@ suffixes          = ["f90", "t90"]
 [extra.fortitude.check]
 select            = ["C", "E", "MOD", "OB", "PORT", "S"]
 ignore            = ["C003",    # C003: implicit-external-procedures
+                     "C011",    # C011: missing default case may not handle all values
                      "C021",    # C021: no-real-suffix
                      "C022",    # C022: implicit-real-kind
+                     "C031",    # C031: magic number in array size
                      "C121",    # C121: use-all
+                     "C142",    # C142: 'cycle' statement in unlabelled 'do' loop
+                     "C143",    # C143: 'end if' statement in named 'if' block missing label  > disabled because of false positives with PreProcessor
+                     "C152",    # C152: line continuation in inline if-statement is misleading
+                     "C183",    # C183: 'iostat' used without 'iomsg'   > disabled because errors are usually handled separately via ABORT
                      "E001",    # E001: syntax-error   > disabled because of false positives with PreProcessor
-                     "S001",    # S001: line-too-long
                      "MOD011",  # MOD011: old-style-array-literal
                      "MOD021",  # MOD021: deprecated-relational-operator
+                     "S001",    # S001: line-too-long
+                     "S081",    # S081: unnecessary semicolon   > disabled because of false positives "END DO; END DO"
+	                   "S082", 	  # S082: multiple statements per line    > sometimes used on purpose to improve readability
                      "S102",    # S102: incorrect-space-before-comment
+                     "S103",    # S103: missing space around `::`
+                     "S104",    # S104: should be 0 space after the opening bracket   > sometimes used on purpose for alignment
                      "S201",    # S201: superfluous-implicit-none
+                     "S211",    # S211: multiple modules in one file, split into one module per file  > disabled because of false positives due to templating (t90-files)
+                     "S221",    # S221: function missing result() specifier
+                     "S231",    # S231: missing space in ELSEIF / ENDIF
+                     "S241",    # S241: string uses single quotes but double quotes preferred
+                     "S262",    # S262: mixed declaration of scalar(s) and array
                     ]
 [extra.fortitude.check.per-file-ignores]
 "src/**/*_vars.f90"                                 = ["C132"]           # Vars files need to be public
-"src/globals/globals.f90"                           = ["C132"]           # Globals needs to public
+"src/globals/globals.f90"                           = ["C132",           # Globals needs to public
+                                                       "S255",           # Unnecessary else after `error stop` statement > disabled for readability
+                                                       "C181"]           # iostat argument 'stat' is not checked in this scope.
 "src/globals/lapack.f90"                            = ["T041"]           # LAPACK needs assumed size variables
 "src/io_hdf5/io_hdf5.f90"                           = ["C131"]           # HDF5 needs to be public
-"src/io_hdf5/hdf5_output.f90"                       = ["T041"]           # Userblock needs assumed size variables
-"src/output/output.f90"                             = ["T041"]           # Userblock needs assumed size variables
+"src/io_hdf5/hdf5_output.f90"                       = ["T041",           # Userblock needs assumed size variables
+                                                       "C061",           # Argument missing intent attribute > disabled because of false positives with PreProcessor
+                                                       "C191"]           # Code following `RETURN` is unreachable > disabled because of false positives with PreProcessor
+"src/output/output.f90"                             = ["T041",           # Userblock needs assumed size variables
+                                                       "C181"]           # iostat argument 'stat' is overwritten before being checked in this scope
 "src/globals/preprocessing.f90"                     = ["C132"]           # PreProc needs to be public
 "src/readintools/isovaryingstring.f90"              = ["T042"]           # ISO Varying String needs assumed size variables
 "src/readintools/stringtools.f90"                   = ["T042"]           # ISO Varying String needs assumed size variables
 "src/testcase/*/testcase.f90"                       = ["T041"]           # Test case needs assumed size variables
+"src/flexilib.f90"                                  = ["E011"]           # Invalid character '´'
+"src/analyze/analyze.f90"                           = ["C061"]           # Argument missing intent attribute > disabled because of false positives with PreProcessor
+"src/equations/navierstokes/analyze_equation.f90"   = ["C061"]           # Argument missing intent attribute > disabled because of false positives with PreProcessor
+"src/equations/rans_sa/analyze_equation.f90"        = ["C061"]           # Argument missing intent attribute > disabled because of false positives with PreProcessor
+"src/implicit/implicit.f90"                         = ["C061"]           # Argument missing intent attribute > disabled because of false positives with PreProcessor
+"src/mesh/metrics.f90"                              = ["C061"]           # Argument missing intent attribute > disabled because of false positives with PreProcessor
+"src/areas/areas.f90"                               = ["S252",           # Unnecessary else after `return` statement   > disabled for readability
+                                                       "S253"]           # Unnecessary else-if after `cycle` statement > disabled for readability
+"src/mesh/mesh_readin.f90"                          = ["S254"]           # Unnecessary else-if after `exit` statement  > disabled for readability
+"src/mesh/prepare_mesh.f90"                         = ["S254"]           # Unnecessary else-if after `exit` statement  > disabled for readability
+"src/indicator/indicator.f90"                       = ["S061"]           # END statement should be named > disabled because of false positives with PreProcessor
+"src/precond/jac_ex/jac_ex_reconstruction.f90"      = ["S061"]           # END statement should be named > disabled because of false positives with PreProcessor
+"src/readintools/*.f90"                             = ["C181"]           # iostat argument 'stat' is overwritten before being checked in this scope
 # POSTI too
 "posti/**/*_vars.f90"                               = ["C132"]           # Vars files need to be public
 "posti/common/fftw/fftw.f90"                        = ["C132"]           # FFTW needs to be public
