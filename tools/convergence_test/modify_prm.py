@@ -20,9 +20,9 @@ def modify_prm(path, properties) :
                 # change property
                 tmp = tmp[1].split("!")
                 if len(tmp) > 1 :
-                    lines[i] = "%s= %s !%s" % (prop, str(value), tmp[1])
+                    lines[i] = f"{prop}= {value!s} !{tmp[1]}"
                 else :
-                    lines[i] = "%s= %s\n" % (prop, str(value))
+                    lines[i] = f"{prop}= {value!s}\n"
     # write parameter file
     f = open(path, 'w')
     for line in lines :

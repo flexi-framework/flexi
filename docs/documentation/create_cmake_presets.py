@@ -38,7 +38,7 @@ with open(os.path.join(args.build_dir,CMakeCache_file),'r') as file:
         # extract configured build options
         # given in the form FLEXI_<BUILD_OPTION>:<TYPE>=<DEFAULT>, for example: FLEXI_2D:BOOL=OFF
         # note that line string ends with EOL, hence omit last character when checking with 'endswith' method
-        if line.startswith('FLEXI_') or line.startswith('LIBS_BUILD_') or line.startswith('CMAKE_BUILD_TYPE') or (line.startswith('POSTI') and line[:-1].endswith('ON')):
+        if line.startswith(('FLEXI_', 'LIBS_BUILD_', 'CMAKE_BUILD_TYPE')) or (line.startswith('POSTI') and line[:-1].endswith('ON')):
             # skip unconfigured options (internal cache entries)
             if 'INTERNAL' in line:
                 continue

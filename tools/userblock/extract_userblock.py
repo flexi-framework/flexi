@@ -9,6 +9,7 @@
 
 import argparse
 import subprocess
+import sys
 
 
 # extract userblock from HDF5 state file
@@ -29,7 +30,7 @@ def get_userblock(filename, userblock) :
             # Exit on userblock not exist
             if linesread == 1 and not line.startswith('{[(') :
                 print(f'Error: HDF5 state file {filename:s} contains no userblock.')
-                exit(1)
+                sys.exit(1)
 
             # Exit on end of userblock
             if line.startswith('{[( END USERBLOCK )]}') :
@@ -63,7 +64,7 @@ def get_userblock(filename, userblock) :
                         userblock_compressed = fc.read(filesize)
                     except Exception:
                         print('Error: Could not extract compressed data.')
-                        exit(1)
+                        sys.exit(1)
                     # Write the compressed data
                     fcw = open(filenametar, 'wb')
                     fcw.write(userblock_compressed)
@@ -74,14 +75,14 @@ def get_userblock(filename, userblock) :
                         subprocess.call("tar -xJf " + filenametar, shell=True)
                     except Exception:
                         print('Error while extracting userblock data.')
-                        exit(1)
+                        sys.exit(1)
 
                     # Read the compressed data
                     try :
                         userblock = get_userblock(filenamec.strip(), userblock)
                     except Exception:
                         print('Error while reading compressed userblock data.')
-                        exit(1)
+                        sys.exit(1)
                     continue
 
             # everything ok

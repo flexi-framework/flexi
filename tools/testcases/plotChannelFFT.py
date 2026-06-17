@@ -43,7 +43,7 @@ if not args.noSpectra:
         FileName = args.projectName+"_EnergySpectra_"+dim+"_"+time+'.h5'
         h5file = h5py.File(FileName, 'r')
         VarNames = h5file.attrs["VarNames"]
-        for DatasetName in h5file.keys():
+        for DatasetName in h5file:
             energySpectra = np.transpose(np.array(h5file[DatasetName]))
             for i,Spec in enumerate(energySpectra[1:]):
                 plt.loglog(energySpectra[0][1:],Spec[1:],label=VarNames[i+1])

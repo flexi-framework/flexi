@@ -72,8 +72,8 @@ for label, x, y in zip(labels, [i/(2*np.pi) for i in lambdaDMDimag], lambdaDMDre
         label,
         xy=(x, y), xytext=(0, -20),
         textcoords='offset points', ha='center', va='top',
-        bbox      =dict(boxstyle  ='round,pad=0.5', fc='yellow', alpha=0.1),
-        arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0'))
+        bbox      ={'boxstyle': 'round,pad=0.5', 'fc': 'yellow', 'alpha': 0.1},
+        arrowprops={'arrowstyle': '->', 'connectionstyle': 'arc3,rad=0'})
 
 plt.xlabel(r'$\omega_i/2\pi$', fontsize=18)
 plt.ylabel(r'$\omega_r$', fontsize=18)

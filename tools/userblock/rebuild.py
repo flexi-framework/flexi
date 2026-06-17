@@ -11,6 +11,7 @@
 import argparse
 import os
 import subprocess
+import sys
 from distutils import spawn
 
 from extract_userblock import get_part, get_userblock
@@ -28,7 +29,7 @@ else :
     if os.listdir(args.dir) != []:  # is dir empty?
         print(os.listdir(args.dir))
         print("Rebuild directory is not empty => exit!")
-        exit(1)
+        sys.exit(1)
 
 # get svn
 try:
@@ -36,7 +37,7 @@ try:
     userblock = get_userblock(args.state, userblock)
 except Exception:
     print('Error while extracting userblock.')
-    exit(1)
+    sys.exit(1)
 git_url = get_part(userblock, "GIT URL")
 git_url = git_url.strip()
 
@@ -80,7 +81,7 @@ if git_diff :
         subprocess.call("patch -p1 < diff_patch", shell=True)
     except Exception:
         print('Error while patching source code.')
-        exit(1)
+        sys.exit(1)
 
 # write ini file
 if not os.path.exists("ini"):
@@ -102,18 +103,18 @@ f.close()
 cmakepath = spawn.find_executable("cmake")
 if not cmakepath:
     print('CMake not found, configuring not possible.')
-    exit(1)
+    sys.exit(1)
 
 os.chdir(builddir)
 try:
     p = subprocess.call(["cmake", "-C", "config.cmake" , "../"])
 except Exception:
     print('Error while configuring the build.')
-    exit(1)
+    sys.exit(1)
 
 # make
 try:
     p = subprocess.call(["make", "-j"])
 except Exception:
     print('Error while compiling the code.')
-    exit(1)
+    sys.exit(1)

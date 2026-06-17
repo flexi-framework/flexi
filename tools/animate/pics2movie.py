@@ -22,7 +22,7 @@ tmpdir = tempfile.mkdtemp()
 try :
     ext = os.path.splitext(args.pictures[0])[1]
 except Exception:
-    exit(1)
+    sys.exit(1)
 
 cmd = ['identify']
 cmd.append('-format')
@@ -35,7 +35,7 @@ dimension = p.stdout.read().strip()
 i = 0
 for p in args.pictures :
     i = i+1
-    sys.stdout.write('\r%05.2f %% Process: %s' % (100.0 * i / len(args.pictures), p))
+    sys.stdout.write(f'\r{100.0 * i / len(args.pictures):05.2f} % Process: {p}')
     sys.stdout.flush()
     if args.trim :
         cmd = ['convert']
@@ -54,11 +54,11 @@ sys.stdout.write('\n')
 
 print('Generate movie ....')
 cmd = ['mencoder']
-cmd.append('mf://%s/*%s' % (tmpdir ,ext))
+cmd.append(f'mf://{tmpdir}/*{ext}')
 cmd.append('-mf')
 cmd.append('fps=%d' % args.fps)
 cmd.append('-o')
-cmd.append('%s' % args.output)
+cmd.append(f'{args.output}')
 cmd.append('-ovc')
 if args.codec == "mp4" :
     cmd.append('lavc')

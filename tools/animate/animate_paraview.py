@@ -29,9 +29,7 @@ def parse_commandline_args():
 
 def command_available(command):
     """Check if command is available."""
-    if shutil.which(command):
-        return True
-    return False
+    return bool(shutil.which(command))
 
 
 def run_command(cmd, abort_on_fail=False):
@@ -60,13 +58,13 @@ def main(args):
 
     plotfiles = [f for f in args.plotfiles if (os.path.splitext(f)[1] in FILETYPES) ]
 
-    has_h5_plotfiles = any([(os.path.splitext(f)[1] == '.h5') for f in plotfiles])
+    has_h5_plotfiles = any((os.path.splitext(f)[1] == '.h5') for f in plotfiles)
     if has_h5_plotfiles and not args.reader :
         sys.exit("Please specifiy path to reader plugin (e.g. '-r path/to/libvisuReader.so') if input is HDF5!")
 
     for i, p in enumerate(plotfiles):
         # print progress
-        sys.stdout.write('\r%05.2f %% Animate: %s' % (100. * i / len(plotfiles), p))
+        sys.stdout.write(f'\r{100. * i / len(plotfiles):05.2f} % Animate: {p}')
         sys.stdout.flush()
         # get output filename
         of = os.path.splitext(os.path.basename(p))[0]    # get filename, remove extension
