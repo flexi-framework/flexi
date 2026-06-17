@@ -112,7 +112,7 @@ DO iArg=1,nDataFiles
   IF(InputDataFile(iExt+1:iExt+2) .NE. 'h5') &
     CALL CollectiveStop(__STAMP__,'ERROR - Invalid file extension!')
   ! Read in main attributes from given HDF5 State File
-  WRITE(UNIT_stdOut,*) "READING DATA FROM RP FILE """,TRIM(InputDataFile), """"
+  WRITE(UNIT_stdOut,*) 'READING DATA FROM RP FILE "',TRIM(InputDataFile),'"'
   IF(iArg.EQ.1) THEN
     CALL ReadRPData(InputDataFile,firstFile=.TRUE.)
   ELSE
