@@ -12,8 +12,7 @@ def execute_flexi(flexi_path, prm_path, projectname, analyze_fcts=None, log=True
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     lines = []
     while p.poll() is None :
-        for line in io.TextIOWrapper(p.stdout, encoding="utf-8"):
-            lines.append(line)
+        lines += list(io.TextIOWrapper(p.stdout, encoding="utf-8"))
     if p.wait() != 0 :
         for line in lines :
             print(line)
