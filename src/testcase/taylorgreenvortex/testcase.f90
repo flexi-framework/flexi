@@ -183,11 +183,11 @@ USE MOD_Testcase_Vars, ONLY: rho0,U0,p0,T0,IniConstDens
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)                 :: x(3)        !< position in physical coordinates
-REAL,INTENT(IN)                 :: tIn         !< current simulation time
-REAL,INTENT(OUT)                :: Resu(5)     !< exact fuction evaluated at tIn, returning state in conservative variables
-REAL,INTENT(OUT)                :: Resu_t(5)   !< first time deriv of exact fuction
-REAL,INTENT(OUT)                :: Resu_tt(5)  !< second time deriv of exact fuction
+REAL,INTENT(IN)                 :: x(3)              !< position in physical coordinates
+REAL,INTENT(IN)                 :: tIn               !< current simulation time
+REAL,INTENT(OUT)                :: Resu(PP_nVar)     !< exact fuction evaluated at tIn, returning state in conservative variables
+REAL,INTENT(OUT)                :: Resu_t(PP_nVar)   !< first time deriv of exact fuction
+REAL,INTENT(OUT)                :: Resu_tt(PP_nVar)  !< second time deriv of exact fuction
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL            :: prim(PP_nVarPrim)

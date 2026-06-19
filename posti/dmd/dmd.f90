@@ -622,7 +622,7 @@ IF (Connected) THEN
   END DO
 END IF
 FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DMD_Spec',Time_State))//'.dat'
-OPEN(FileUnit_DMD,FILE=Filename,STATUS="REPLACE")
+OPEN(FileUnit_DMD,FILE=Filename,STATUS="REPLACE",ACTION="WRITE")
 WRITE(FileUnit_DMD,*)'TITLE = "DMD Spectrum"'
 WRITE(FileUnit_DMD,'(a)')'VARIABLES ="realAlpha"'
 WRITE(FileUnit_DMD,'(a)')'"imagAlpha"'

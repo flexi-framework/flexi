@@ -41,7 +41,7 @@ END TYPE tGroup
 
 TYPE tPoint                                                       !< Data type representing a single point
   INTEGER                          :: GroupID       !< ID of the group the point belongs to
-  TYPE(tRP),POINTER                :: RP            !< Pointer to the record points that makes up the single point
+  TYPE(tRP),POINTER                :: RP => NULL()  !< Pointer to the record points that makes up the single point
 END TYPE tPoint
 
 TYPE tLine                                                         !< Data type representing a single line
@@ -83,11 +83,11 @@ TYPE tRP                                                            !< Data type
 END TYPE tRP
 
 TYPE tRPlist                                                        !< Data structure to store list of all the record points
-  TYPE(tRP),POINTER                :: RP           !< Pointer to the record point data structure
+  TYPE(tRP),POINTER                :: RP => NULL() !< Pointer to the record point data structure
 END TYPE tRPlist
 
 TYPE tRP_Ptr                                                        !< Data structure for pointers to record points
-  TYPE(tRP),POINTER                :: RP           !< node pointer
+  TYPE(tRP),POINTER                :: RP => NULL() !< node pointer
 END TYPE tRP_Ptr
 
 

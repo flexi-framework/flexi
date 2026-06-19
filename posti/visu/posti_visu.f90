@@ -44,7 +44,7 @@ USE MOD_VTK                   ,ONLY: WriteParallelVTK
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: iArg,iVar,iExt
+INTEGER                        :: iArg,iVar,iExt,postiunit
 CHARACTER(LEN=255),TARGET      :: prmfile
 CHARACTER(LEN=255),TARGET      :: postifile
 CHARACTER(LEN=255),TARGET      :: statefile
@@ -100,11 +100,11 @@ ELSE IF(STRICMP(GetFileExtension(Args(1)),'h5')) THEN
   postifile = ".posti.ini"
   IF(MPIRoot)THEN
     IF(FILEEXISTS(postifile))THEN
-      OPEN(UNIT=31, FILE=postifile, STATUS="old")
-      CLOSE(31, STATUS="delete")
+      OPEN(NEWUNIT=postiunit, FILE=postifile, STATUS="old",ACTION="WRITE")
+      CLOSE(postiunit, STATUS="delete")
     END IF
-    OPEN (UNIT=31, FILE=postifile, STATUS="new")
-    CLOSE (UNIT=31)
+    OPEN(NEWUNIT=postiunit, FILE=postifile, STATUS="new",ACTION="WRITE")
+    CLOSE(postiunit)
   END IF
 ELSE
   CALL CollectiveStop(__STAMP__,&

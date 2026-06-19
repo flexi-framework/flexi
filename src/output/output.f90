@@ -339,7 +339,7 @@ END IF
 
 IF(MPIRoot)THEN
 #ifdef INTEL
-  OPEN(UNIT_stdOut,CARRIAGECONTROL='fortran')
+  OPEN(UNIT_stdOut,CARRIAGECONTROL='fortran',ACTION='WRITE')
 #endif
   IF(tEnd.EQ.tStart)THEN  ! avoid division by zero, no further timesteps needed
     percent_time = 1.
@@ -705,6 +705,7 @@ IF(file_exists)THEN ! File exists and append data
        STATUS   = 'OLD'              , &
        POSITION = 'APPEND'           , &
        RECL     = 50000              , &
+       ACTION   = 'READ'             , &
        IOSTAT = stat                 )
   IF(stat.NE.0)THEN
     WRITE(UNIT_stdOut,'(A)') ' File '//TRIM(FileName_loc)// ' is invalid. Rewriting file...'
@@ -796,6 +797,7 @@ IF(.NOT.file_exists)THEN ! No restart create new file
        FILE   = TRIM(FileName_loc) ,&
        STATUS = 'UNKNOWN'          ,&
        ACCESS = 'SEQUENTIAL'       ,&
+       ACTION = 'WRITE'            ,&
        IOSTAT = stat               )
   IF (stat.NE.0) CALL Abort(__STAMP__,'ERROR: cannot open '//TRIM(FileName_loc))
 
@@ -856,6 +858,7 @@ OPEN(NEWUNIT  = ioUnit             , &
      STATUS   = 'OLD'              , &
      POSITION = 'APPEND'           , &
      RECL     = 50000              , &
+     ACTION   = 'WRITE'            , &
      IOSTAT = openStat             )
 IF (openStat.NE.0) CALL Abort(__STAMP__,'ERROR: cannot open '//TRIM(FileName_loc))
 

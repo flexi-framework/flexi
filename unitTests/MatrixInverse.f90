@@ -29,6 +29,7 @@ USE MOD_Mathtools ,ONLY: INVERSE_LU
 USE MOD_Mathtools ,ONLY: getSPDInverse
 #endif
 USE MOD_Mathtools ,ONLY: INVERSE
+USE ieee_arithmetic
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -99,7 +100,7 @@ IF(debug)THEN
   END DO ! i = 1, nDim
 END IF ! debug
 
-IF(ANY(ISNAN(MATMUL(A,AInv))))THEN
+IF(ANY(IEEE_IS_NAN(MATMUL(A,AInv))))THEN
   CALL abort(__STAMP__,'MATMUL(A,AInv) has NaNs')
 END IF
 
@@ -152,7 +153,7 @@ IF(debug)THEN
   END DO ! i = 1, nDim
 END IF ! debug
 
-IF(ANY(ISNAN(MATMUL(A,AInv))))THEN
+IF(ANY(IEEE_IS_NAN(MATMUL(A,AInv))))THEN
   CALL abort(__STAMP__,'MATMUL(A,AInv) has NaNs')
 END IF
 
@@ -213,7 +214,7 @@ IF(debug)THEN
   END DO ! i = 1, nDim2
 END IF ! debug
 
-IF(ANY(ISNAN(MATMUL(B,BInv))))THEN
+IF(ANY(IEEE_IS_NAN(MATMUL(B,BInv))))THEN
   CALL abort(__STAMP__,'MATMUL(B,BInv) has NaNs')
 END IF
 

@@ -396,7 +396,7 @@ IF((.NOT.PostiParallel_loc.AND.MPIRoot).OR.PostiParallel_loc)THEN
   lf = char(10)
 
   ! Write file
-  OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString_loc),ACCESS='STREAM')
+  OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString_loc),ACCESS='STREAM',ACTION='WRITE')
   ! Write header
   Buffer='<?xml version="1.0"?>'//lf;WRITE(ivtk) TRIM(Buffer)
   ! This version is important for high-order elements because ParaView automatically converts the node numbering when switching from VTK8 to VTK9 convention
@@ -634,12 +634,12 @@ IF (MPIRoot) THEN
     ! write '.vtu">'//multiblock file
     IF (PRESENT(OutputDirectory)) THEN
       IF (TRIM(OutputDirectory).NE.'') THEN
-        OPEN(NEWUNIT=ivtk,FILE=TRIM(OutputDirectory)//'/'//TRIM(FileString)//'.pvd',STATUS='REPLACE',ACCESS='STREAM')
+        OPEN(NEWUNIT=ivtk,FILE=TRIM(OutputDirectory)//'/'//TRIM(FileString)//'.pvd',STATUS='REPLACE',ACCESS='STREAM',ACTION='WRITE')
       ELSE
-        OPEN(NEWUNIT=ivtk,FILE=                            TRIM(FileString)//'.pvd',STATUS='REPLACE',ACCESS='STREAM')
+        OPEN(NEWUNIT=ivtk,FILE=                            TRIM(FileString)//'.pvd',STATUS='REPLACE',ACCESS='STREAM',ACTION='WRITE')
       END IF
     ELSE
-      OPEN(NEWUNIT=ivtk,FILE=                            TRIM(FileString)//'.pvd',STATUS='REPLACE',ACCESS='STREAM')
+      OPEN(NEWUNIT=ivtk,FILE=                            TRIM(FileString)//'.pvd',STATUS='REPLACE',ACCESS='STREAM',ACTION='WRITE')
     END IF
     ! Line feed character
     lf = char(10)
@@ -653,7 +653,7 @@ IF (MPIRoot) THEN
     CLOSE(ivtk)
   ELSE
     ! write '.vtu">'//multiblock file
-    OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString)//'.vtm',STATUS='REPLACE',ACCESS='STREAM')
+    OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString)//'.vtm',STATUS='REPLACE',ACCESS='STREAM',ACTION='WRITE')
     ! Line feed character
     lf = char(10)
     Buffer='<VTKFile type="vtkMultiBlockDataSet" version="1.0" byte_order="LittleEndian" header_type="UInt64">'//lf
@@ -696,12 +696,12 @@ IF (MPIRoot) THEN
   ! write multiblock file
   IF (PRESENT(OutputDirectory)) THEN
     IF (TRIM(OutputDirectory).NE.'') THEN
-      OPEN(NEWUNIT=ivtk,FILE=TRIM(OutputDirectory)//'/'//TRIM(FileString)//'.pvtu',STATUS='REPLACE',ACCESS='STREAM')
+      OPEN(NEWUNIT=ivtk,FILE=TRIM(OutputDirectory)//'/'//TRIM(FileString)//'.pvtu',STATUS='REPLACE',ACCESS='STREAM',ACTION='WRITE')
     ELSE
-      OPEN(NEWUNIT=ivtk,FILE=                            TRIM(FileString)//'.pvtu',STATUS='REPLACE',ACCESS='STREAM')
+      OPEN(NEWUNIT=ivtk,FILE=                            TRIM(FileString)//'.pvtu',STATUS='REPLACE',ACCESS='STREAM',ACTION='WRITE')
     END IF
   ELSE
-    OPEN(NEWUNIT=ivtk,FILE=                            TRIM(FileString)//'.pvtu',STATUS='REPLACE',ACCESS='STREAM')
+    OPEN(NEWUNIT=ivtk,FILE=                            TRIM(FileString)//'.pvtu',STATUS='REPLACE',ACCESS='STREAM',ACTION='WRITE')
   END IF
   ! Line feed character
   lf = char(10)

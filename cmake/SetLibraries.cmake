@@ -192,6 +192,12 @@ IF(NOT LIBS_BUILD_HDF5)
 
   # Check if HDF5 is parallel
   # > HDF5_IS_PARALLEL is set by FIND_PACKAGE(HDF5)
+  # > NOTE: As of HDF5 v2.0.0 the library variables have been renamed: HDF5_ENABLE_PARALLEL to configure the HDF5 installation, HDF5_PROVIDES_PARALLEL to query the state of the installation.
+  #         This has been adopted by FindHDF5 as of CMake v4.3.0, for earlier CMake versions we need to account for it manually (cf. https://gitlab.kitware.com/cmake/cmake/-/merge_requests/11573)
+  IF(${CMAKE_VERSION} VERSION_LESS "4.3.0" AND ${HDF5_VERSION} VERSION_GREATER_EQUAL "2.0.0")
+    SET(HDF5_IS_PARALLEL ${HDF5_PROVIDES_PARALLEL})
+  ENDIF()
+
   IF(LIBS_USE_MPI)
     IF(NOT HDF5_IS_PARALLEL)
       MESSAGE(FATAL_ERROR "HDF5 is not built with parallel support. Please install a parallel version of HDF5 or build it yourself.")

@@ -286,10 +286,10 @@ DO
   IF (end_position == 0) THEN
     substrings(substring_count) = string(start_position:)
     EXIT
-  ELSE
-    substrings(substring_count) = string(start_position : start_position + end_position - 2)
-    start_position = start_position + end_position
   END IF
+
+  substrings(substring_count) = string(start_position : start_position + end_position - 2)
+  start_position = start_position + end_position
 END DO
 END SUBROUTINE split_string
 

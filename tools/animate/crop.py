@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf8 -*-
 
 import argparse
 import os
@@ -15,7 +14,7 @@ args = parser.parse_args()
 try :
     ext = os.path.splitext(args.pictures[0])[1]
 except Exception:
-    exit(1)
+    sys.exit(1)
 
 cmd = ['identify']
 cmd.append('-format')
@@ -28,7 +27,7 @@ dimension = p.stdout.read().strip()
 i = 0
 for p in args.pictures :
     i = i+1
-    sys.stdout.write('\r%05.2f %% Process: %s' % (100.0 * i / len(args.pictures), p))
+    sys.stdout.write(f'\r{100.0 * i / len(args.pictures):05.2f} % Process: {p}')
     sys.stdout.flush()
     cmd = ['convert']
     cmd.append(p)

@@ -33,7 +33,7 @@ omega     = [2.4,4.0,5.6,9.6]
 fig,axs   = plt.subplots(2,2)
 fig.set_size_inches(16,9)
 for n in range(len(filename)):
-    def fn_A(x):
+    def fn_A(x,n=n):
         return numpy.cos(omega[n] / advvel * (x - advvel * t))   # redefine analytical solution for amplitude (real part of solution)
 
     PlotSolution(filename[n],numpy.ravel(axs)[n],plotlabel[n],fn_A)

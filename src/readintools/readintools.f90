@@ -618,15 +618,14 @@ DO WHILE (ASSOCIATED(current))
         ! option already set, but is not a multiple option
         SWRITE(UNIT_stdOut,'(A,A,A)') 'Option "', TRIM(name), '" is already set, but is not a multiple option!'
         STOP
-      ELSE
-        ! create new instance of multiple option
-        ALLOCATE(newopt, source=current%opt)
-        CALL newopt%parse(rest)
-        newopt%isSet = .TRUE.
-        ! insert option
-        CALL insertOption(current, newopt)
-        RETURN
       END IF
+      ! create new instance of multiple option
+      ALLOCATE(newopt, source=current%opt)
+      CALL newopt%parse(rest)
+      newopt%isSet = .TRUE.
+      ! insert option
+      CALL insertOption(current, newopt)
+      RETURN
     END IF
     ! parse option
     IF(LEN_TRIM(rest).NE.0)THEN
@@ -1476,13 +1475,12 @@ IF (MPIRoot) THEN
     IF (.NOT.iniFound) THEN
       ! if not found cycle (other userblock stuff)
       CYCLE
-    ELSE
-      ! if found and string starts with {[(, than this is the beginning of another userblock entry
-      ! => finish reading of inifile
-      tmp = CHAR(extract(aStr,1,3))
-      IF (STRICMP(tmp, "{[(")) THEN
-        EXIT
-      END IF
+    END IF
+    ! if found and string starts with {[(, than this is the beginning of another userblock entry
+    ! => finish reading of inifile
+    tmp = CHAR(extract(aStr,1,3))
+    IF (STRICMP(tmp, "{[(")) THEN
+      EXIT
     END IF
     WRITE(iniUnit,'(A)') CHAR(aStr)
   END DO

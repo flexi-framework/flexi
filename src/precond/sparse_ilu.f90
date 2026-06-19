@@ -68,7 +68,7 @@ DO iElem=1,nElems
 END DO
 
 ! machine accuracy
-epsZero=EPSILON(0.0d0)
+epsZero=EPSILON(0.0)
 
 SWRITE(UNIT_stdOut,'(A)')' INIT ILU0 DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')

@@ -85,7 +85,7 @@ REAL,POINTER                   :: UOut(:,:,:,:,:)
 #if PP_dim == 2
 REAL,ALLOCATABLE               :: UOutTmp(:,:,:,:,:)
 #endif
-REAL                           :: Utmp(5,0:PP_N,0:PP_N,0:PP_NZ)
+REAL                           :: Utmp(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL                           :: JN(1,0:PP_N,0:PP_N,0:PP_NZ),JOut(1,0:NOut,0:NOut,0:ZDIM(NOut))
 INTEGER                        :: iElem,i,j,k
 INTEGER                        :: nVal(5)

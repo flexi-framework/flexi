@@ -1,12 +1,11 @@
 #!/usr/bin/python
-# -*- coding: utf8 -*-
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
-import shutil
 
 parser = argparse.ArgumentParser(description='Merge pictures to movie')
 parser.add_argument('-t','--trim', help='Trim pictures before merge', action='store_true')
@@ -23,7 +22,7 @@ tmpdir = tempfile.mkdtemp()
 try :
     ext = os.path.splitext(args.pictures[0])[1]
 except Exception:
-    exit(1)
+    sys.exit(1)
 
 cmd = ['identify']
 cmd.append('-format')
@@ -36,7 +35,7 @@ dimension = p.stdout.read().strip()
 i = 0
 for p in args.pictures :
     i = i+1
-    sys.stdout.write('\r%05.2f %% Process: %s' % (100.0 * i / len(args.pictures), p))
+    sys.stdout.write(f'\r{100.0 * i / len(args.pictures):05.2f} % Process: {p}')
     sys.stdout.flush()
     if args.trim :
         cmd = ['convert']
@@ -55,20 +54,20 @@ sys.stdout.write('\n')
 
 print('Generate movie ....')
 cmd = ['mencoder']
-cmd.append('mf://%s/*%s' % (tmpdir ,ext))
+cmd.append(f'mf://{tmpdir}/*{ext}')
 cmd.append('-mf')
-cmd.append('fps=%d' % args.fps)
+cmd.append(f'fps={args.fps}')
 cmd.append('-o')
-cmd.append('%s' % args.output)
+cmd.append(f'{args.output}')
 cmd.append('-ovc')
 if args.codec == "mp4" :
     cmd.append('lavc')
     cmd.append('-lavcopts')
-    cmd.append('vcodec=msmpeg4v2:vbitrate=%d' % args.bitrate)
+    cmd.append(f'vcodec=msmpeg4v2:vbitrate={args.bitrate}')
 elif args.codec == "h264" :
     cmd.append('x264')
     cmd.append('-x264encopts')
-    cmd.append('preset=veryslow:tune=film:crf=15:frameref=15:fast_pskip=0:bitrate=%d:threads=auto' % args.bitrate)
+    cmd.append(f'preset=veryslow:tune=film:crf=15:frameref=15:fast_pskip=0:bitrate={args.bitrate}:threads=auto')
 p = subprocess.Popen(cmd)
 p.wait()
 print('done')

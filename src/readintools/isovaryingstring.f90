@@ -422,7 +422,6 @@ contains
 
 ! Finish
 
-    return
 
   END SUBROUTINE op_assign_CH_VS
 
@@ -439,7 +438,6 @@ contains
 
 ! Finish
 
-    return
 
   END SUBROUTINE op_assign_VS_CH
 
@@ -464,7 +462,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION op_concat_VS_VS
 
@@ -483,7 +480,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION op_concat_CH_VS
 
@@ -502,7 +498,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION op_concat_VS_CH
 
@@ -520,7 +515,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION op_eq_VS_VS
 
@@ -539,7 +533,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION op_eq_CH_VS
 
@@ -558,7 +551,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION op_eq_VS_CH
 
@@ -576,7 +568,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION op_ne_VS_VS
 
@@ -595,7 +586,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION op_ne_CH_VS
 
@@ -614,7 +604,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION op_ne_VS_CH
 
@@ -632,7 +621,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION op_lt_VS_VS
 
@@ -651,7 +639,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION op_lt_CH_VS
 
@@ -670,7 +657,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION op_lt_VS_CH
 
@@ -688,7 +674,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION op_le_VS_VS
 
@@ -707,7 +692,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION op_le_CH_VS
 
@@ -726,7 +710,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION op_le_VS_CH
 
@@ -744,7 +727,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION op_ge_VS_VS
 
@@ -763,7 +745,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION op_ge_CH_VS
 
@@ -782,7 +763,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION op_ge_VS_CH
 
@@ -800,7 +780,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION op_gt_VS_VS
 
@@ -819,7 +798,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION op_gt_CH_VS
 
@@ -838,7 +816,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION op_gt_VS_CH
 
@@ -855,7 +832,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION adjustl_
 
@@ -872,7 +848,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION adjustr_
 
@@ -893,7 +868,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION len_
 
@@ -914,7 +888,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION len_trim_
 
@@ -936,7 +909,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION char_auto
 
@@ -955,7 +927,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION char_fixed
 
@@ -973,7 +944,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION iachar_
 
@@ -991,7 +961,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION ichar_
 
@@ -1011,7 +980,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION index_VS_VS
 
@@ -1031,7 +999,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION index_CH_VS
 
@@ -1051,7 +1018,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION index_VS_CH
 
@@ -1069,7 +1035,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION lge_VS_VS
 
@@ -1088,7 +1053,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION lge_CH_VS
 
@@ -1107,7 +1071,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION lge_VS_CH
 
@@ -1125,7 +1088,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION lgt_VS_VS
 
@@ -1144,7 +1106,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION lgt_CH_VS
 
@@ -1163,7 +1124,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION lgt_VS_CH
 
@@ -1181,7 +1141,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION lle_VS_VS
 
@@ -1200,7 +1159,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION lle_CH_VS
 
@@ -1219,7 +1177,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION lle_VS_CH
 
@@ -1237,7 +1194,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION llt_VS_VS
 
@@ -1256,7 +1212,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION llt_CH_VS
 
@@ -1275,7 +1230,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION llt_VS_CH
 
@@ -1293,7 +1247,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION repeat_
 
@@ -1313,7 +1266,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION scan_VS_VS
 
@@ -1333,7 +1285,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION scan_CH_VS
 
@@ -1353,7 +1304,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION scan_VS_CH
 
@@ -1370,7 +1320,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION trim_
 
@@ -1390,7 +1339,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION verify_VS_VS
 
@@ -1410,7 +1358,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION verify_CH_VS
 
@@ -1430,7 +1377,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION verify_VS_CH
 
@@ -1457,7 +1403,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION var_str_
 
@@ -1493,7 +1438,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION var_str_c_ptr
 
@@ -1546,7 +1490,6 @@ contains
 
 ! Finish (end-of-record)
 
-    return
 
   END SUBROUTINE get_
 
@@ -1600,7 +1543,6 @@ contains
 
 ! Finish (end-of-record)
 
-    return
 
   END SUBROUTINE get_unit
 
@@ -1621,7 +1563,6 @@ contains
 
 ! Finish
 
-    return
 
   END SUBROUTINE get_set_VS
 
@@ -1679,7 +1620,6 @@ contains
 
 ! Finish
 
-    return
 
   END SUBROUTINE get_set_CH
 
@@ -1701,7 +1641,6 @@ contains
 
 ! Finish
 
-    return
 
   END SUBROUTINE get_unit_set_VS
 
@@ -1760,7 +1699,6 @@ contains
 
 ! Finish
 
-    return
 
   END SUBROUTINE get_unit_set_CH
 
@@ -1815,7 +1753,6 @@ contains
 
 ! Finish
 
-    return
 
   END SUBROUTINE put_unit_VS
 
@@ -1838,7 +1775,6 @@ contains
 
 ! Finish
 
-    return
 
   END SUBROUTINE put_unit_CH
 
@@ -1856,7 +1792,6 @@ contains
 
 ! Finish
 
-    return
 
   END SUBROUTINE put_line_VS
 
@@ -1878,7 +1813,6 @@ contains
 
 ! Finish
 
-    return
 
   END SUBROUTINE put_line_CH
 
@@ -1897,7 +1831,6 @@ contains
 
 ! Finish
 
-    return
 
   END SUBROUTINE put_line_unit_VS
 
@@ -1920,7 +1853,6 @@ contains
 
 ! Finish
 
-    return
 
   END SUBROUTINE put_line_unit_CH
 
@@ -1939,7 +1871,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION extract_VS
 
@@ -1973,7 +1904,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION extract_CH
 
@@ -1992,7 +1922,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION insert_VS_VS
 
@@ -2011,7 +1940,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION insert_CH_VS
 
@@ -2030,7 +1958,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION insert_VS_CH
 
@@ -2054,7 +1981,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION insert_CH_CH
 
@@ -2073,7 +1999,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION remove_VS
 
@@ -2111,7 +2036,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION remove_CH
 
@@ -2131,7 +2055,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION replace_VS_VS_auto
 
@@ -2151,7 +2074,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION replace_CH_VS_auto
 
@@ -2171,7 +2093,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION replace_VS_CH_auto
 
@@ -2191,7 +2112,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION replace_CH_CH_auto
 
@@ -2212,7 +2132,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION replace_VS_VS_fixed
 
@@ -2235,7 +2154,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION replace_CH_VS_fixed
 
@@ -2256,7 +2174,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION replace_VS_CH_fixed
 
@@ -2287,7 +2204,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION replace_CH_CH_fixed
 
@@ -2310,7 +2226,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION replace_VS_VS_VS_target
 
@@ -2333,7 +2248,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION replace_CH_VS_VS_target
 
@@ -2356,7 +2270,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION replace_VS_CH_VS_target
 
@@ -2379,7 +2292,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION replace_CH_CH_VS_target
 
@@ -2402,7 +2314,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION replace_VS_VS_CH_target
 
@@ -2425,7 +2336,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION replace_CH_VS_CH_target
 
@@ -2448,7 +2358,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION replace_VS_CH_CH_target
 
@@ -2532,7 +2441,6 @@ contains
 
 ! Finish
 
-    return
 
   END FUNCTION replace_CH_CH_CH_target
 
@@ -2552,7 +2460,6 @@ contains
 
 ! Finish
 
-    return
 
   END SUBROUTINE split_VS
 
@@ -2601,7 +2508,6 @@ contains
 
 ! Finish
 
-    return
 
   END SUBROUTINE split_CH
 
