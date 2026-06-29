@@ -24,6 +24,10 @@ mkdir build
 cmake -B build
 cmake --build build
 ```
+To build **FLEXI** in parallel with all cores:
+```bash
+cmake --build build -j
+```
 Custom configurations can be generated with
 ```bash
 ccmake -B build
@@ -32,8 +36,10 @@ including the installation of the third-party packages mentioned above (LAPACK/O
 
 ## Mesh Generation
 
-For the generation of high-order meshes the standalone mesh generator **HOPR** is required, creating **FLEXI** compatible mesh files in HDF5 format. Simple, structured meshes can be directly generated in **HOPR** using the integrated mesh generator, while the processing of complex geometries can be a based on external meshes in CGNS or GMSH format. In any case, a parameter file for the mesh generation and modification is required. **HOPR** is available on [GitHub](https://github.com/hopr-framework/hopr/releases) and can be compiled using CMake or by simply downloading the provided AppImage.
+For the generation of high-order meshes the standalone mesh generator **HOPR** (High-Order Preprocessor) is required, creating **FLEXI** compatible mesh files in HDF5 format. Simple, structured meshes can be directly generated in **HOPR** using the integrated mesh generator, while the processing of complex geometries can be a based on external meshes in CGNS or GMSH format. In any case, a parameter file for the mesh generation and modification is required. **HOPR** is available on [GitHub](https://github.com/hopr-framework/hopr/releases) and can be compiled using CMake or by simply downloading the provided AppImage.
 For an in-depth description we refer to the [**HOPR** documentation](https://hopr.readthedocs.io/en/latest/).
+
+Note that the development of **HOPR** has become less active, in favor of its successor project **PyHOPE** (Python High-Order Preprocessing Environment). **PyHOPE** shares the same input/output format and can be regarded as drop-in replacement in most scenarios, including this documentation. It is available under the same [GitHub](https://github.com/hopr-framework/PyHOPE) project and can be installed from [PyPI](https://pypi.org/project/PyHOPE/).
 
 ## Running FLEXI
 
@@ -47,4 +53,4 @@ flexi parameter_flexi.ini [Restart_State.h5]
 Further details concerning the capabilities of **FLEXI** and the application to small testcases, including e.g., the flow around a [NACA0012](NACA0012) airfoil, are included in the [tutorials](Tutorials).
 
 ## Tools
-**FLEXI** comes with a comprehensive [postprocessing](ToolsOverview) toolchain, such as, e.g., the [interpolation](sec:swap_mesh) between different meshes, the [time averaging](sec:time_averaging) of solution files, and the [animation](sec:animate_tool). Most importantly, it includes the `posti_visu` tool to convert the solution files from the custom *h5* format to *vtu* files readable by **ParaView**, as covered in the [workflow section](subsec:post_processing).
+**FLEXI** comes with a comprehensive [postprocessing](sec:ToolsOverview) toolchain, such as, e.g., the [interpolation](subsec:swap_mesh) between different meshes, the [time averaging](subsec:time_averaging) of solution files, and the [animation](subsec:animate_tool). Most importantly, it includes the `posti_visu` tool to convert the solution files from the custom *h5* format to *vtu* files readable by **ParaView**, as covered in the [workflow section](subsec:post_processing).

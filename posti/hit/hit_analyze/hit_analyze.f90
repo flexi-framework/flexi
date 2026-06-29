@@ -1,6 +1,6 @@
 !=================================================================================================================================
 ! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
-! Copyright (c) 2022-2024 Prof. Andrea Beck
+! Copyright (c) 2022-2026 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
@@ -150,7 +150,7 @@ FileName=TIMESTAMP(TRIM(ProjectName_HDF5)//'_EnergySpectrum',Time_HDF5)
 FileName=TRIM(FileName)//'.dat'
 
 ! Open file and write header
-OPEN(FileUnit,FILE=FileName,STATUS="REPLACE")
+OPEN(FileUnit,FILE=FileName,STATUS="REPLACE",ACTION="WRITE")
 WRITE(FileUnit,'(a)') 'TITLE     = "Energy Spectrum "'
 WRITE(FileUnit,'(a)') 'VARIABLES = "Wavenumber k" "E(k)"'
 
@@ -252,10 +252,10 @@ FileName=TRIM(ProjectName_HDF5)//'_Dissrate.dat'
 ! Check if file exists to either...
 IF (FileExists(FileName)) THEN
   ! ... open either in append mode
-  OPEN(FileUnit,FILE=Filename,STATUS="UNKNOWN",POSITION="APPEND")
+  OPEN(FileUnit,FILE=Filename,STATUS="UNKNOWN",POSITION="APPEND",ACTION="WRITE")
 ELSE
   ! ... or create new file with header
-  OPEN( FileUnit,FILE=Filename,STATUS="REPLACE")
+  OPEN( FileUnit,FILE=Filename,STATUS="REPLACE",ACTION="WRITE")
   WRITE(FileUnit,'(A)') 'TITLE     = "Dissipation Rate and other turbulent data "'
   WRITE(FileUnit,'(A)') 'VARIABLES = "Time" "Ekin" "EkinWave" "Dissipation" "KolmogorovLength" "KolmogorovLength*K"&
     & "TaylorMicroScale" "TaylorMicroScale*K" "Int_Length" "Int_Length*K" "U_RMS" "Re_lambda"'

@@ -1,6 +1,6 @@
 !=================================================================================================================================
 ! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
-! Copyright (c) 2022-2024 Prof. Andrea Beck
+! Copyright (c) 2022-2026 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
@@ -43,9 +43,9 @@ CHARACTER(LEN=255)             :: Filename_Bulk           !< output file  for bu
 CHARACTER(LEN=255),ALLOCATABLE :: Filename_MeanFlux(:)    !< output files for mean flux per BC
 CHARACTER(LEN=255),ALLOCATABLE :: Filename_TotalStates(:) !< output files for total states per BC
 CHARACTER(LEN=255),ALLOCATABLE :: Filename_WallVel(:)     !< output files for wall velocities per BC
+REAL                 :: MomOrigin(3)                      !< Origin Location for Moment Calculation (x,y,z)
 
 ! Time averaging and fluctuation variables
-
 LOGICAL              :: doCalcTimeAverage   =.FALSE.      !< marks if time averaging should be performed
 LOGICAL              :: doCalcFluctuations  =.FALSE.      !< marks if time fluctuations should be computed
 REAL   ,ALLOCATABLE  :: UAvg(:,:,:,:,:)                   !< time averaged solution U

@@ -43,10 +43,10 @@ As seen in the plot, the dissipation properties of higher-order approximations a
 We will now demonstrate these properties through numerical experiments using the linear scalar advection equation.
 
 ## Build Configuration
-In order to use the LinAdvDiff equations, the equation system must be specified during the configuration by setting `EQNSYSNAME=linearscalaradvection`. Since we do not consider diffusion in this tutorial, either turn off the parabolic terms through the build option `FLEXI_PARABOLIC=OFF` or simply specify a zero diffusion coefficient in the parameter file, `DiffC=0`. The required options are set automatically by compiling **FLEXI** with the `linadv` preset using the following commands.
+In order to use the LinAdvDiff equations, the equation system must be specified during the configuration by setting `FLEXI_EQNSYSNAME=linearscalaradvection`. Since we do not consider diffusion in this tutorial, either turn off the parabolic terms through the build option `FLEXI_PARABOLIC=OFF` or simply specify a zero diffusion coefficient in the parameter file, `DiffC=0`. Finally, as two-dimensional simulations are sufficient for this tutorial, the build option `FLEXI_2D=ON` can be set. The required options are set automatically by compiling **FLEXI** with the `linadv` preset using the following commands.
 ```bash
 cmake -B build --preset linadv
-cmake --build build
+cmake --build build 
 ```
 
 ## Mesh Generation

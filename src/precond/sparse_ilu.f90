@@ -1,6 +1,6 @@
 !=================================================================================================================================
 ! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
-! Copyright (c) 2022-2024 Prof. Andrea Beck
+! Copyright (c) 2022-2026 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
@@ -68,7 +68,7 @@ DO iElem=1,nElems
 END DO
 
 ! machine accuracy
-epsZero=EPSILON(0.0d0)
+epsZero=EPSILON(0.0)
 
 SWRITE(UNIT_stdOut,'(A)')' INIT ILU0 DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')

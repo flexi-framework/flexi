@@ -1,6 +1,6 @@
 !=================================================================================================================================
 ! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
-! Copyright (c) 2022-2024 Prof. Andrea Beck
+! Copyright (c) 2022-2026 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
@@ -676,7 +676,6 @@ DO i=1,nVarList
     RETURN
   END IF
 END DO
-RETURN
 END FUNCTION GETMAPBYNAME
 
 

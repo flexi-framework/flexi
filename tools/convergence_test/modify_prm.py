@@ -1,10 +1,8 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
-
 # modify the parameterfile given by 'path'
 # 'properties' must be a map containing the properties to change
 def modify_prm(path, properties) :
-    lines = open(path, 'r').readlines()
+    with open(path, 'r') as f:
+        lines = f.readlines()
     # iterate over all lines of parameter file
     for i in range(len(lines)) :
         line = lines[i]
@@ -21,18 +19,18 @@ def modify_prm(path, properties) :
                 # change property
                 tmp = tmp[1].split("!")
                 if len(tmp) > 1 :
-                    lines[i] = "%s= %s !%s" % (prop, str(value), tmp[1])
+                    lines[i] = f"{prop}= {value!s} !{tmp[1]}"
                 else :
-                    lines[i] = "%s= %s\n" % (prop, str(value))
+                    lines[i] = f"{prop}= {value!s}\n"
     # write parameter file
-    f = open(path, 'w')
-    for line in lines :
-        f.write(line)
-    f.close()
+    with open(path, 'w') as f:
+        for line in lines :
+            f.write(line)
 
 
 def read_prm(path, param) :
-    lines = open(path, 'r').readlines()
+    with open(path, 'r') as f:
+        lines = f.readlines()
     # iterate over all lines of parameter file
     for line in lines :
         # split line at '='. Before is the property

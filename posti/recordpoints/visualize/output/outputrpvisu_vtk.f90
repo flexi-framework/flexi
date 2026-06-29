@@ -1,6 +1,6 @@
 !=================================================================================================================================
 ! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
-! Copyright (c) 2022-2024 Prof. Andrea Beck
+! Copyright (c) 2022-2026 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
@@ -313,7 +313,7 @@ lf = char(10)
 ! Points
 IF (nPointsOutput.GT.0) THEN
   FileNamePVD=TRIM(FileName)//'_Points.pvd'
-  OPEN(UNIT=ivtk,FILE=TRIM(FileNamePVD),ACCESS='STREAM')
+  OPEN(UNIT=ivtk,FILE=TRIM(FileNamePVD),ACCESS='STREAM',ACTION='WRITE')
   ! Write header
   Buffer='<?xml version="1.0"?>'//lf;WRITE(ivtk) TRIM(Buffer)
   Buffer='<VTKFile type="Collection" version="0.1" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)
@@ -342,7 +342,7 @@ IF (nLinesOutput.GT.0) THEN
   IF(.NOT.OutputGroup(Line%GroupID)) CYCLE
     iLinesOutput = iLinesOutput + 1
     FileNamePVD=TRIM(FileName)//'_'//TRIM(RPLines(iLinesOutput)%name)//'.pvd'
-    OPEN(UNIT=ivtk,FILE=TRIM(FileNamePVD),ACCESS='STREAM')
+    OPEN(UNIT=ivtk,FILE=TRIM(FileNamePVD),ACCESS='STREAM',ACTION='WRITE')
     ! Write header
     Buffer='<?xml version="1.0"?>'//lf;WRITE(ivtk) TRIM(Buffer)
     Buffer='<VTKFile type="Collection" version="0.1" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)
@@ -372,7 +372,7 @@ IF (nPlanesOutput.GT.0) THEN
   IF(.NOT.OutputGroup(Plane%GroupID)) CYCLE
     iPlanesOutput = iPlanesOutput + 1
     FileNamePVD=TRIM(FileName)//'_'//TRIM(RPPlanes(iPlanesOutput)%name)//'.pvd'
-    OPEN(UNIT=ivtk,FILE=TRIM(FileNamePVD),ACCESS='STREAM')
+    OPEN(UNIT=ivtk,FILE=TRIM(FileNamePVD),ACCESS='STREAM',ACTION='WRITE')
     ! Write header
     Buffer='<?xml version="1.0"?>'//lf;WRITE(ivtk) TRIM(Buffer)
     Buffer='<VTKFile type="Collection" version="0.1" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)
@@ -402,7 +402,7 @@ IF (nBoxesOutput.GT.0) THEN
   IF(.NOT.OutputGroup(Box%GroupID)) CYCLE
     iBoxesOutput = iBoxesOutput + 1
     FileNamePVD=TRIM(FileName)//'_'//TRIM(RPBoxes(iBoxesOutput)%name)//'.pvd'
-    OPEN(UNIT=ivtk,FILE=TRIM(FileNamePVD),ACCESS='STREAM')
+    OPEN(UNIT=ivtk,FILE=TRIM(FileNamePVD),ACCESS='STREAM',ACTION='WRITE')
     ! Write header
     Buffer='<?xml version="1.0"?>'//lf;WRITE(ivtk) TRIM(Buffer)
     Buffer='<VTKFile type="Collection" version="0.1" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)

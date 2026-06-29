@@ -1,9 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf8 -*-
-
 import argparse
-import numpy as np
+
 import matplotlib.pyplot as plt
+import numpy as np
 
 # matplotlib.interactive(True)
 parser = argparse.ArgumentParser(description='Plot DMD data 1.Eigenvalues, 2.Ritzspectrum')
@@ -13,8 +11,8 @@ args   = parser.parse_args()
 # -------------------------------------------------------------------------------------
 # Data ReadIn
 # -------------------------------------------------------------------------------------
-dmdFile = open(args.dmdFile, "r")
-dmdData = dmdFile.readlines()
+with open(args.dmdFile, "r") as dmdFile:
+    dmdData = dmdFile.readlines()
 values  = []
 for line in dmdData[12:]:
     values.append(line.split())
@@ -39,8 +37,8 @@ plt.subplot(211)
 circle1=plt.Circle((0, 0), 1., color='k',fill=False)
 plt.scatter(sigmaDMD[0],sigmaDMD[1], s=[40.*(i+.4) for i in amplog] , c=[40.*(i+.4) for i in amplog], marker='o')
 
-plt.xlabel('$\sigma_r$', fontsize=18)
-plt.ylabel('$\sigma_i$', fontsize=18)
+plt.xlabel(r'$\sigma_r$', fontsize=18)
+plt.ylabel(r'$\sigma_i$', fontsize=18)
 plt.axis('equal')
 plt.axis([-1.4, 1.4, -1.4, 1.4])
 plt.gcf().gca().add_artist(circle1)
@@ -62,7 +60,7 @@ for i in range(len(lambdaDMD[1])):
         amplogPositiv.append(amplog[i])
 
 plt.scatter([i/(2*np.pi) for i in lambdaDMDimag], lambdaDMDreal, s=[40.*(i+.4) for i in amplogPositiv] , c=[40.*(i+.4) for i in amplogPositiv], marker='o')
-labels = ['Mode%d\n f=%.2f' % (i+1, lambdaDMDimag[i]/(2*np.pi)) for i in range(len(lambdaDMDreal))]
+labels = [f'Mode{i+1}\n f={lambdaDMDimag[i]/(2*np.pi):.2f}' for i in range(len(lambdaDMDreal))]
 plt.axhline(y=0.0, color='k', linestyle='--')
 # j=0
 for label, x, y in zip(labels, [i/(2*np.pi) for i in lambdaDMDimag], lambdaDMDreal):
@@ -72,11 +70,11 @@ for label, x, y in zip(labels, [i/(2*np.pi) for i in lambdaDMDimag], lambdaDMDre
         label,
         xy=(x, y), xytext=(0, -20),
         textcoords='offset points', ha='center', va='top',
-        bbox      =dict(boxstyle  ='round,pad=0.5', fc='yellow', alpha=0.1),  # noqa: E251
-        arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0'))
+        bbox      ={'boxstyle': 'round,pad=0.5', 'fc': 'yellow', 'alpha': 0.1},
+        arrowprops={'arrowstyle': '->', 'connectionstyle': 'arc3,rad=0'})
 
-plt.xlabel('$\omega_i/2\pi$', fontsize=18)
-plt.ylabel('$\omega_r$', fontsize=18)
+plt.xlabel(r'$\omega_i/2\pi$', fontsize=18)
+plt.ylabel(r'$\omega_r$', fontsize=18)
 # plt.xlim(0,6000)
 # plt.ylim(-600,100)
 plt.grid()
@@ -102,7 +100,7 @@ def computeNRoomFreqs(n, c, geo):
     # # return freq
 
 
-class room(object):
+class room:
     def __init__(self, x, y, z):
         self.x = x
         self.y = y

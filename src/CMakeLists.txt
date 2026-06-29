@@ -253,20 +253,26 @@ ENDIF()
 SET(   FLEXI_TESTCASE   "default"      CACHE STRING
                         "Name of testcase which is used. Must be identical to directory name in testcase folder.")
 SET_PROPERTY(CACHE FLEXI_TESTCASE PROPERTY STRINGS ${TESTCASES})
+# Riemann2D needs special boundary conditions
+IF ("${FLEXI_TESTCASE}" STREQUAL "riemannd2d")
+  ADD_COMPILE_DEFINITIONS(TESTCASE_BC=1)
+ELSE()
+  ADD_COMPILE_DEFINITIONS(TESTCASE_BC=0)
+ENDIF()
 
 # =========================================================================
 # Unit test at end of compilation
 # =========================================================================
 # Check is unit tests can be activated
-IF(BUILD_TYPE_LC MATCHES "sanitize" AND LIBS_USE_MPI OR BUILD_TYPE_LC MATCHES "profile")
+IF(BUILD_TYPE_LC STREQUAL "sanitize" AND LIBS_USE_MPI OR BUILD_TYPE_LC STREQUAL "profile")
   SET(ACTIVATE_UNIT_TEST       OFF)
   # Store if we force-disabled the unit tests
   SET(UNIT_TEST_FORCE_DISABLED ON  CACHE BOOL "Force disable unit tests" FORCE)
   # Check if unit tests were previously activated
   IF(FLEXI_UNITTESTS)
-    IF (BUILD_TYPE_LC MATCHES "profile")
+    IF (BUILD_TYPE_LC STREQUAL "profile")
       MESSAGE(WARNING "Unit tests automatically disabled (FLEXI_UNITTESTS=OFF) with\n CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}\nas the tests will always fail due to memory errors returned from the profiling library.")
-    ELSEIF (LIBS_MPI_NAME MATCHES "OpenMPI")
+    ELSEIF (LIBS_MPI_NAME STREQUAL "OpenMPI")
       MESSAGE(WARNING "Unit tests automatically disabled (FLEXI_UNITTESTS=OFF) with\n CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}\n LIBS_USE_MPI = ${LIBS_USE_MPI}\nas the tests will always fail due to memory errors returned from the MPI library.")
     ENDIF()
     SET(FLEXI_UNITTESTS OFF)
@@ -309,7 +315,14 @@ FUNCTION(add_exec target)
 ENDFUNCTION()
 
 FUNCTION(add_lib_shared target)
-  ADD_LIBRARY(          ${target} SHARED ${ARGN})
+  # The FLEXI executable and all the tools link a shared lib (libflexishared) instead of a static one (libflexistatic) in order to reduce the size of build folder, simplify dependency handling and speed up linking (see #14848c95d).
+  # However, creating an executable that links libflexishared which, in turn, links libflexistatic, inhibits profiling. In particular, it can cause segfaults as the profiling-supported code may be called before the shared lib has been fully initialized.
+  # Therefore, if BUILD_TYPE=Profile, the executables need to link only static libs, i.e. this function then actually creates a static library target, still named libflexishared (see also https://doc.ecoscentric.com/gnutools/doc/gprof/Compiling.html)
+  IF(BUILD_TYPE_LC STREQUAL "profile")
+    ADD_LIBRARY(        ${target} STATIC ${ARGN})
+  ELSE()
+    ADD_LIBRARY(        ${target} SHARED ${ARGN})
+  ENDIF()
   TARGET_LINK_LIBRARIES(${target} libflexistatic userblocklib stacksizelib ${linkedlibs})
   SET_TARGET_PROPERTIES(${target} PROPERTIES PREFIX ""
                                              COMPILE_FLAGS   ${FLEXI_COMPILE_FLAGS}
@@ -319,7 +332,7 @@ FUNCTION(add_lib_shared target)
   INSTALL(TARGETS ${target} LIBRARY PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
                                                 GROUP_READ GROUP_EXECUTE
                                                 WORLD_READ WORLD_EXECUTE
-                            DESTINATION lib)
+                            DESTINATION ${CMAKE_INSTALL_LIBDIR})
   STRING(TOUPPER ${target} TARGETUP)
   ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --cyan "SUCCESS: ${TARGETUP} BUILD COMPLETE!")
   # Strip shared library when building in release mode, except on macOS
@@ -352,7 +365,6 @@ FILE(GLOB_RECURSE flexiF90 ./src/interpolation/*.f90
                            ./src/implicit/*.f90
                            ./src/areas/*.f90
                            ./src/testcase/${FLEXI_TESTCASE}/*.f90
-                           # ./src/flexilib.f90
                            ./unitTests/unittest.f90
                            ./unitTests/unittest_vars.f90)
 
@@ -474,8 +486,8 @@ ENDIF()
 # =========================================================================
 # Ctags
 # =========================================================================
-MARK_AS_ADVANCED(FORCE CTAGS_PATH)
 FIND_PROGRAM(CTAGS_PATH ctags-exuberant)
+MARK_AS_ADVANCED(FORCE CTAGS_PATH)
 IF(CTAGS_PATH)
   SET(             EQNS_WO_ACTUAL ${EQNSYSTEMS})
   LIST(REMOVE_ITEM EQNS_WO_ACTUAL ${FLEXI_EQNSYSNAME})

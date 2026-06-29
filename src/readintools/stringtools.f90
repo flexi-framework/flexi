@@ -1,6 +1,6 @@
 !=================================================================================================================================
 ! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
-! Copyright (c) 2022-2024 Prof. Andrea Beck
+! Copyright (c) 2022-2026 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
@@ -286,10 +286,10 @@ DO
   IF (end_position == 0) THEN
     substrings(substring_count) = string(start_position:)
     EXIT
-  ELSE
-    substrings(substring_count) = string(start_position : start_position + end_position - 2)
-    start_position = start_position + end_position
   END IF
+
+  substrings(substring_count) = string(start_position : start_position + end_position - 2)
+  start_position = start_position + end_position
 END DO
 END SUBROUTINE split_string
 

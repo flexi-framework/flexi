@@ -9,12 +9,11 @@ hopr parameter_hopr.ini
 ```
 
 ## Build Configuration
-This example requires the Finite Volume (FV) shock capturing and the Euler equations. In this tutorial, we will investigate the shock capturing based on switching the DG representation to FV sub-cells. 
-Therefore, [FLEXI][flexi] should be compiled either with the `sod` preset using the following command
+This example requires the Finite Volume (FV) shock capturing and the Euler equations (build options `FLEXI_EQNSYSNAME=navierstokes` and `FLEXI_PARABOLIC=OFF`). In this tutorial, we will investigate the shock capturing based on switching the DG representation to FV sub-cells, which is activated through the build option `FLEXI_FV=SWITCH`. All necessary build options are stored in the `sod` preset, such that **FLEXI** can be compiled by using the following command.
 
 ```{code-block} bash
 cmake -B build --preset sod
-cmake --build build
+cmake --build build 
 ```
 
 ## Simulation Parameters
@@ -50,19 +49,21 @@ flexi parameter_flexi.ini
 This test case generates $5$ state files name `sod_State_>TIMESTAMP>.h5` for $t=0.0, 0.05, 0.10, 0.15, 0.20$. 
 
 ### Visualization
-**FLEXI** relies on [ParaView](https://www.paraview.org) for visualization. In order to visualize the **FLEXI** solution, its format has to be converted from the HDF5 format into another format suitable for **Paraview**. **FLEXI** provides a post-processing tool [posti_visu](tools-visualization) which generates files in VTK format with the following command.
+**FLEXI** relies on [ParaView](https://www.paraview.org) for visualization. In order to visualize the **FLEXI** solution, its format has to be converted from the HDF5 format into another format suitable for **Paraview**. **FLEXI** provides a post-processing tool [posti_visu](subsec:tools-visualization) which generates files in VTK format with the following command.
 ```bash
 posti_visu parameter_postiVisu.ini parameter_flexi.ini sod_State_0*
 ```
-[posti_visu](tools-visualization) generates two types of files which can be loaded into **ParaView**. *vtu* files contain either DG or the FV part of the solution. The *vtm*-files combine the DG and FV *vtu*-file of every timestamp. It is thus recommended to load the *vtm*-files into **ParaView**.
+[posti_visu](subsec:tools-visualization) generates two types of files which can be loaded into **ParaView**. *vtu* files contain either DG or the FV part of the solution. The *vtm*-files combine the DG and FV *vtu*-file of every timestamp. It is thus recommended to load the *vtm*-files into **ParaView**.
 
 For this one-dimensional test case, apply the `Plot Over Line` filter in **ParaView**. When setting up the filter, choose the `X Axis` as the line direction to create a line plot of the variable values along this axis. The resulting plot should resemble the one shown in {numref}`fig:sod_result`.
 
 ```{figure} ./figures/sod_paraview_visualization.jpg
 :name: fig:sod_result
 :align: center
-:width: 70%
+:width: 50%
 :alt: Solution of the Sod shock tube at $t=0.2$.
 
 Solution of the Sod shock tube at $t=0.2$.
 ```
+
+[hopr]:        https://hopr.readthedocs.io/en/latest/

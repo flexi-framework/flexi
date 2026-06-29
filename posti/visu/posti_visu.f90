@@ -1,6 +1,6 @@
 !=================================================================================================================================
 ! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
-! Copyright (c) 2022-2024 Prof. Andrea Beck
+! Copyright (c) 2022-2026 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
@@ -44,7 +44,7 @@ USE MOD_VTK                   ,ONLY: WriteParallelVTK
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: iArg,iVar,iExt
+INTEGER                        :: iArg,iVar,iExt,postiunit
 CHARACTER(LEN=255),TARGET      :: prmfile
 CHARACTER(LEN=255),TARGET      :: postifile
 CHARACTER(LEN=255),TARGET      :: statefile
@@ -100,11 +100,11 @@ ELSE IF(STRICMP(GetFileExtension(Args(1)),'h5')) THEN
   postifile = ".posti.ini"
   IF(MPIRoot)THEN
     IF(FILEEXISTS(postifile))THEN
-      OPEN(UNIT=31, FILE=postifile, STATUS="old")
-      CLOSE(31, STATUS="delete")
+      OPEN(NEWUNIT=postiunit, FILE=postifile, STATUS="old",ACTION="WRITE")
+      CLOSE(postiunit, STATUS="delete")
     END IF
-    OPEN (UNIT=31, FILE=postifile, STATUS="new")
-    CLOSE (UNIT=31)
+    OPEN(NEWUNIT=postiunit, FILE=postifile, STATUS="new",ACTION="WRITE")
+    CLOSE(postiunit)
   END IF
 ELSE
   CALL CollectiveStop(__STAMP__,&

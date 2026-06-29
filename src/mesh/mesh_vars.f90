@@ -1,6 +1,6 @@
 !=================================================================================================================================
 ! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
-! Copyright (c) 2022-2024 Prof. Andrea Beck
+! Copyright (c) 2022-2026 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
@@ -171,12 +171,12 @@ LOGICAL          :: CrossProductMetrics        !< Compute metrics in cross-produ
 
 !> Intermediate data type for side pointers (mesh readin only)
 TYPE tSidePtr
-  TYPE(tSide),POINTER          :: sp              !< side pointer
+  TYPE(tSide),POINTER          :: sp => NULL()    !< side pointer
 END TYPE tSidePtr
 
 !> Intermediate data type for element pointers (mesh readin only)
 TYPE tElemPtr
-  TYPE(tElem),POINTER          :: ep              !< Local element pointer
+  TYPE(tElem),POINTER          :: ep => NULL()    !< Local element pointer
 END TYPE tElemPtr
 
 !> Element data type, containing element mesh information (mesh readin only)
@@ -198,8 +198,8 @@ TYPE tSide
   INTEGER                      :: nMortars        !< number of slave mortar sides associated with master mortar
   INTEGER                      :: MortarType      !< type of mortar: Type1 : 1-4 , Type 2: 1-2 in eta, Type 2: 1-2 in xi
   TYPE(tSidePtr),POINTER       :: MortarSide(:)   !< array of side pointers to slave mortar sides
-  TYPE(tElem),POINTER          :: Elem            !< pointer to connected element
-  TYPE(tSide),POINTER          :: connection      !< pointer to connected neighbour side
+  TYPE(tElem),POINTER          :: Elem       => NULL() !< pointer to connected element
+  TYPE(tSide),POINTER          :: connection => NULL() !< pointer to connected neighbour side
 END TYPE tSide
 
 !----------------------------------------------------------------------------------------------------------------------------------

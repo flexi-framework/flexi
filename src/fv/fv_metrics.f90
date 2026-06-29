@@ -1,6 +1,6 @@
 !=================================================================================================================================
 ! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
-! Copyright (c) 2022-2024 Prof. Andrea Beck
+! Copyright (c) 2022-2026 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
@@ -406,7 +406,7 @@ DO iElem=1,nElems
     DO dd=1,3
       CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,JaVol(dd,1:3,l,0:PP_N,0:PP_NZ),FV_Ja_Face(dd,:,:,:))
 #if VOLINT_VISC
-      CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,dXVol(dd,1:3,l,0:PP_N,0:PP_NZ),dXFace(dd,:,:,:))
+      CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_FV,dXVol(dd,1:3,l,0:PP_N,0:PP_NZ),dXFace(dd,:,:,:))
 #endif /*VOLINT_VISC*/
     END DO
     ! use metrics to build normal/tangential vectors and surelem at the inner interfaces/slices
@@ -450,7 +450,7 @@ DO iElem=1,nElems
     DO dd=1,3
       CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,JaVol(dd,1:3,0:PP_N,l,0:PP_NZ),FV_Ja_Face(dd,:,:,:))
 #if VOLINT_VISC
-      CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,dXVol(dd,1:3,0:PP_N,l,0:PP_NZ),dXFace(dd,:,:,:))
+      CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_FV,dXVol(dd,1:3,0:PP_N,l,0:PP_NZ),dXFace(dd,:,:,:))
 #endif /*VOLINT_VISC*/
     END DO
     ! use metrics to build normal/tangential vectors and surelem at the inner interfaces/slices
@@ -495,7 +495,7 @@ DO iElem=1,nElems
     DO dd=1,3
       CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,JaVol(dd,1:3,0:PP_N,0:PP_N,l),FV_Ja_Face(dd,:,:,:))
 #if VOLINT_VISC
-      CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,dXVol(dd,1:3,0:PP_N,0:PP_N,l),dXFace(dd,:,:,:))
+      CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_FV,dXVol(dd,1:3,0:PP_N,0:PP_N,l),dXFace(dd,:,:,:))
 #endif /*VOLINT_VISC*/
     END DO
     ! use metrics to build normal/tangential vectors and surelem at the inner interfaces/slices

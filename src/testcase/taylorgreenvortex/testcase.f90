@@ -1,6 +1,6 @@
 !=================================================================================================================================
 ! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
-! Copyright (c) 2022-2024 Prof. Andrea Beck
+! Copyright (c) 2022-2026 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
@@ -35,9 +35,11 @@ PUBLIC:: ExactFuncTestcase
 PUBLIC:: TestcaseSource
 PUBLIC:: CalcForcing
 PUBLIC:: AnalyzeTestcase
+#if TESTCASE_BC
 PUBLIC:: GetBoundaryFluxTestcase
 PUBLIC:: GetBoundaryFVgradientTestcase
 PUBLIC:: Lifting_GetBoundaryFluxTestcase
+#endif /*TESTCASE_BC*/
 !==================================================================================================================================
 
 CONTAINS
@@ -181,11 +183,11 @@ USE MOD_Testcase_Vars, ONLY: rho0,U0,p0,T0,IniConstDens
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)                 :: x(3)        !< position in physical coordinates
-REAL,INTENT(IN)                 :: tIn         !< current simulation time
-REAL,INTENT(OUT)                :: Resu(5)     !< exact fuction evaluated at tIn, returning state in conservative variables
-REAL,INTENT(OUT)                :: Resu_t(5)   !< first time deriv of exact fuction
-REAL,INTENT(OUT)                :: Resu_tt(5)  !< second time deriv of exact fuction
+REAL,INTENT(IN)                 :: x(3)              !< position in physical coordinates
+REAL,INTENT(IN)                 :: tIn               !< current simulation time
+REAL,INTENT(OUT)                :: Resu(PP_nVar)     !< exact fuction evaluated at tIn, returning state in conservative variables
+REAL,INTENT(OUT)                :: Resu_t(PP_nVar)   !< first time deriv of exact fuction
+REAL,INTENT(OUT)                :: Resu_tt(PP_nVar)  !< second time deriv of exact fuction
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL            :: prim(PP_nVarPrim)
@@ -523,6 +525,7 @@ REAL, OPTIONAL,INTENT(IN) :: optionalREAL,optionalREAL2
 END SUBROUTINE DO_NOTHING
 
 
+#if TESTCASE_BC
 !==================================================================================================================================
 !> Empty placeholder routine
 !==================================================================================================================================
@@ -551,6 +554,9 @@ REAL,INTENT(IN)      :: TangVec2(  3,0:Nloc,0:ZDIM(Nloc))  !< tangential2 vector
 REAL,INTENT(IN)      :: Face_xGP(  3,0:Nloc,0:ZDIM(Nloc))  !< positions of surface flux points
 REAL,INTENT(OUT)     :: Flux(PP_nVar,0:Nloc,0:ZDIM(Nloc))  !< resulting boundary fluxes
 !==================================================================================================================================
+CALL Abort(__STAMP__, 'Invalid boundary condition for testcase "default"')
+Flux = 0.
+
 END SUBROUTINE GetBoundaryFluxTestcase
 
 
@@ -569,6 +575,9 @@ REAL,INTENT(IN)    :: t                                        !< current time (
 REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ) !< primitive solution from the inside
 REAL,INTENT(OUT)   :: gradU       (PP_nVarPrim,0:PP_N,0:PP_NZ) !< FV boundary gradient
 !==================================================================================================================================
+CALL Abort(__STAMP__, 'Invalid boundary condition for testcase "default"')
+gradU = 0.
+
 END SUBROUTINE GetBoundaryFVgradientTestcase
 
 
@@ -584,6 +593,10 @@ REAL,INTENT(IN)    :: t                                        !< current time (
 REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ) !< primitive solution from the inside
 REAL,INTENT(OUT)   :: Flux(     PP_nVarLifting,0:PP_N,0:PP_NZ) !< lifting boundary flux
 !==================================================================================================================================
+CALL Abort(__STAMP__, 'Invalid boundary condition for testcase "default"')
+Flux = 0.
+
 END SUBROUTINE Lifting_GetBoundaryFluxTestcase
+#endif /*TESTCASE_BC*/
 
 END MODULE MOD_TestCase

@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # ************************************************************************************
 #
 # Description:  This script contains routines to extract userblock data from an HDF5
@@ -9,6 +8,7 @@
 
 import argparse
 import subprocess
+import sys
 
 
 # extract userblock from HDF5 state file
@@ -28,8 +28,8 @@ def get_userblock(filename, userblock) :
 
             # Exit on userblock not exist
             if linesread == 1 and not line.startswith('{[(') :
-                print('Error: HDF5 state file {:s} contains no userblock.'.format(filename))
-                exit(1)
+                print(f'Error: HDF5 state file {filename:s} contains no userblock.')
+                sys.exit(1)
 
             # Exit on end of userblock
             if line.startswith('{[( END USERBLOCK )]}') :
@@ -40,9 +40,8 @@ def get_userblock(filename, userblock) :
                 c = line[i]
                 if ord(c) == 0   :
                     continue
-                if ord(c) == 137 :
-                    if line[i+1:i+4] == 'HDF' :
-                        HDFfound = True
+                if ord(c) == 137 and line[i+1:i+4] == 'HDF' :
+                    HDFfound = True
             if HDFfound :
                 break
 
@@ -64,25 +63,24 @@ def get_userblock(filename, userblock) :
                         userblock_compressed = fc.read(filesize)
                     except Exception:
                         print('Error: Could not extract compressed data.')
-                        exit(1)
+                        sys.exit(1)
                     # Write the compressed data
-                    fcw = open(filenametar, 'wb')
-                    fcw.write(userblock_compressed)
-                    fcw.close()
+                    with open(filenametar, 'wb') as fcw:
+                        fcw.write(userblock_compressed)
 
                     # Extract the compressed data
                     try :
                         subprocess.call("tar -xJf " + filenametar, shell=True)
                     except Exception:
                         print('Error while extracting userblock data.')
-                        exit(1)
+                        sys.exit(1)
 
                     # Read the compressed data
                     try :
                         userblock = get_userblock(filenamec.strip(), userblock)
                     except Exception:
                         print('Error while reading compressed userblock data.')
-                        exit(1)
+                        sys.exit(1)
                     continue
 
             # everything ok

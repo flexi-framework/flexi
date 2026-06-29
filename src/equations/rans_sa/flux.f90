@@ -1,6 +1,6 @@
 !=================================================================================================================================
 ! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
-! Copyright (c) 2022-2024 Prof. Andrea Beck
+! Copyright (c) 2022-2026 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
@@ -291,15 +291,15 @@ USE MOD_EddyVisc_Vars,ONLY: muSGS
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PRIM,0:PP_N_xi,0:PP_N_eta,0:PP_N_zeta),INTENT(IN)           :: UPrim                !< Solution vector
-!> Gradients in x,y,z directions
-REAL,DIMENSION(PP_nVarLifting,0:PP_N_xi,0:PP_N_eta,0:PP_N_zeta),INTENT(IN) :: gradUx,gradUy,gradUz
-!> Physical fluxes in x,y,z directions
-REAL,DIMENSION(CONS,0:PP_N_xi,0:PP_N_eta,0:PP_N_zeta),INTENT(OUT)          :: f,g,h
-INTEGER,INTENT(IN)                                                         :: iElem                !< element index in global array
 INTEGER,INTENT(IN)                                                         :: PP_N_xi
 INTEGER,INTENT(IN)                                                         :: PP_N_eta
 INTEGER,INTENT(IN)                                                         :: PP_N_zeta
+REAL,DIMENSION(PRIM,0:PP_N_xi,0:PP_N_eta,0:PP_N_zeta),INTENT(IN)           :: UPrim                !< Solution vector
+!> Gradients in x,y,z directions
+REAL,DIMENSION(PP_nVarLifting,0:PP_N_xi ,0:PP_N_eta,0:PP_N_zeta),INTENT(IN):: gradUx,gradUy,gradUz
+!> Physical fluxes in x,y,z directions
+REAL,DIMENSION(CONS,0:PP_N_xi,0:PP_N_eta,0:PP_N_zeta),INTENT(OUT)          :: f,g,h
+INTEGER,INTENT(IN)                                                         :: iElem                !< element index in global array
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: i,j,k

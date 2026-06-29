@@ -1,6 +1,6 @@
 !=================================================================================================================================
 ! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
-! Copyright (c) 2022-2024 Prof. Andrea Beck
+! Copyright (c) 2022-2026 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
@@ -154,8 +154,10 @@ END IF
 
 ! check if the distribution of DG/FV elements has changed
 changedFV_Elems=.TRUE.
-IF (ALLOCATED(FV_Elems_old).AND.(SIZE(FV_Elems_loc).EQ.SIZE(FV_Elems_old))) THEN
-  changedFV_Elems = .NOT.ALL(FV_Elems_loc.EQ.FV_Elems_old)
+IF (ALLOCATED(FV_Elems_old)) THEN
+  IF (SIZE(FV_Elems_loc).EQ.SIZE(FV_Elems_old)) THEN
+    changedFV_Elems = .NOT.ALL(FV_Elems_loc.EQ.FV_Elems_old)
+  END IF
 END IF
 SDEALLOCATE(FV_Elems_old)
 ALLOCATE(FV_Elems_old(1:nElems))
@@ -315,8 +317,10 @@ END DO
 
 ! check if any varnames changed
 changedVarNames = .TRUE.
-IF (ALLOCATED(mapAllVarsToSurfVisuVars_old).AND.(SIZE(mapAllVarsToSurfVisuVars).EQ.SIZE(mapAllVarsToSurfVisuVars_old))) THEN
-  changedVarNames = .NOT.ALL(mapAllVarsToSurfVisuVars.EQ.mapAllVarsToSurfVisuVars_old)
+IF (ALLOCATED(mapAllVarsToSurfVisuVars_old)) THEN
+  IF (SIZE(mapAllVarsToSurfVisuVars).EQ.SIZE(mapAllVarsToSurfVisuVars_old)) THEN
+    changedVarNames = .NOT.ALL(mapAllVarsToSurfVisuVars.EQ.mapAllVarsToSurfVisuVars_old)
+  END IF
 END IF
 SDEALLOCATE(mapAllVarsToSurfVisuVars_old)
 ALLOCATE(mapAllVarsToSurfVisuVars_old(1:nVarAll))
@@ -367,9 +371,11 @@ doSurfVisu = nBCNamesVisu.GT.0
 
 ! check if any boundary changed
 changedBCnames = .TRUE.
-IF (ALLOCATED(mapAllBCNamesToVisuBCNames_old).AND.(SIZE(mapAllBCNamesToVisuBCNames).EQ.SIZE(mapAllBCNamesToVisuBCNames_old))) THEN
-  changedBCnames = .NOT.ALL(mapAllBCNamesToVisuBCNames.EQ.mapAllBCNamesToVisuBCNames_old)
-  IF (ALL(mapAllBCNamesToVisuBCNames_old.EQ.0) .AND. changedBCNames) changedStateFile = .TRUE.
+IF (ALLOCATED(mapAllBCNamesToVisuBCNames_old)) THEN
+  IF (SIZE(mapAllBCNamesToVisuBCNames).EQ.SIZE(mapAllBCNamesToVisuBCNames_old)) THEN
+    changedBCnames = .NOT.ALL(mapAllBCNamesToVisuBCNames.EQ.mapAllBCNamesToVisuBCNames_old)
+    IF (ALL(mapAllBCNamesToVisuBCNames_old.EQ.0) .AND. changedBCNames) changedStateFile = .TRUE.
+  END IF
 END IF
 SDEALLOCATE(mapAllBCNamesToVisuBCNames_old)
 ALLOCATE(mapAllBCNamesToVisuBCNames_old(1:nBCNamesAll))

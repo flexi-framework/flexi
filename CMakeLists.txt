@@ -3,7 +3,7 @@
 # =========================================================================
 SET(PROJECT_NAME "FLEXI")
 SET(PROJECT_DESC "A high order discontinuous Galerkin framework for hyperbolic–parabolic conservation laws")
-SET(PROJECT_VER  "24.12")
+SET(PROJECT_VER  "25.10")
 SET(PROJECT_URL  "https://www.flexi-project.org")
 
 # =========================================================================
@@ -105,10 +105,10 @@ ENDIF()
 # =========================================================================
 # Output paths
 # =========================================================================
-SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
-SET(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include)
-SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
-SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
+SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}")     # build/bin
+SET(CMAKE_Fortran_MODULE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_INSTALL_INCLUDEDIR}") # build/include
+SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")     # build/lib
+SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")     # build/lib
 
 # Set custom install dir (needs to be done after project has been defined!)
 # MARK_AS_ADVANCED(FORCE CMAKE_INSTALL_PREFIX)
@@ -126,7 +126,7 @@ INCLUDE(SetBuildType)
 # =========================================================================
 # append relative filename-macro for __FILENAME__ in __STAMP__ of abort function (see flexi.h)
 # subst replacement is GNU make specific
-IF("${CMAKE_GENERATOR}" MATCHES "Unix Makefiles")
+IF("${CMAKE_GENERATOR}" STREQUAL "Unix Makefiles")
 SET(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -D__FILENAME__='\"$(subst ${CMAKE_SOURCE_DIR}/,,$(abspath $<))\"'")
 ENDIF()
 

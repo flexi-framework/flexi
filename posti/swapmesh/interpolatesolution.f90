@@ -1,6 +1,6 @@
 !=================================================================================================================================
 ! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
-! Copyright (c) 2022-2024 Prof. Andrea Beck
+! Copyright (c) 2022-2026 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
@@ -117,9 +117,8 @@ DO iElemNew=1,nElemsNew
       ! If no reference state was given, the program already aborted
       Utmp(:,ii,jj,kk)=RefState
       CYCLE
-    ELSE
-      Utmp(:,ii,jj,kk)=0.
     END IF
+    Utmp(:,ii,jj,kk)=0.
 
     iElemOld = InterToElem(ii,jj,kk,iElemNew)
     DO k=0,ZDIM(NState)

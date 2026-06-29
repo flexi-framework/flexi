@@ -1,6 +1,6 @@
 !=================================================================================================================================
 ! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
-! Copyright (c) 2022-2024 Prof. Andrea Beck
+! Copyright (c) 2022-2026 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
@@ -273,7 +273,9 @@ USE MOD_MPI                 ,ONLY: StartExchange_FV_Elems
 USE MOD_FV_Vars             ,ONLY: gradUxi,gradUeta,gradUzeta
 #if VOLINT_VISC
 USE MOD_FV_Vars             ,ONLY: gradUxi_central,gradUeta_central,gradUzeta_central
+#if USE_MPI
 USE MOD_FV_Vars             ,ONLY: FV_surf_gradU_master,FV_surf_gradU_slave
+#endif /*USE_MPI*/
 USE MOD_FV_Reconstruction   ,ONLY: FV_SurfCalcGradients_Parabolic
 #endif /* VOLINT_VISC */
 USE MOD_FV_Vars             ,ONLY: FV_surf_gradU,FV_multi_master,FV_multi_slave
@@ -289,7 +291,7 @@ USE MOD_TimeDisc_Vars       ,ONLY: CurrentStage
 #endif
 #if PP_EntropyVars==1
 USE MOD_DG_Vars             ,ONLY: V,V_slave,V_master
-USE MOD_EOS                 ,ONLY: ConsToEntropy
+USE MOD_EOS                 ,ONLY: ConsToPrimToEntropy
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -327,12 +329,11 @@ REAL,INTENT(IN)                 :: t                      !< Current time
 ! 1. Filter the solution vector if applicable, filter_pointer points to cut-off filter or LAF filter (see filter.f90)
 IF(FilterType.GT.0) CALL Filter_Pointer(U,FilterMat)
 
-! 2. Convert Volume solution to primitive
+! 2. Convert Volume solution to primitive (and entropy variables)
+#if PP_EntropyVars == 0
 CALL ConsToPrim(PP_N,UPrim,U)
-
-! Compute entropy variables
-#if PP_EntropyVars == 1
-Call ConsToEntropy(PP_N,V,U)
+#else
+CALL ConsToPrimToEntropy(PP_N,UPrim,V,U)
 #endif
 
 ! 3. Prolong the solution to the face integration points for flux computation (and do overlapping communication)

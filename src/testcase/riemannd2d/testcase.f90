@@ -1,6 +1,6 @@
 !=================================================================================================================================
 ! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
-! Copyright (c) 2022-2024 Prof. Andrea Beck
+! Copyright (c) 2022-2026 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
@@ -687,11 +687,11 @@ USE MOD_Equation_Vars ,ONLY: RefStateCons
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)                 :: x(3)        !< position in physical coordinates
-REAL,INTENT(IN)                 :: tIn         !< current simulation time
-REAL,INTENT(OUT)                :: Resu(5)     !< exact fuction evaluated at tIn, returning state in conservative variables
-REAL,INTENT(OUT)                :: Resu_t(5)   !< first time deriv of exact fuction
-REAL,INTENT(OUT)                :: Resu_tt(5)  !< second time deriv of exact fuction
+REAL,INTENT(IN)                 :: x(3)              !< position in physical coordinates
+REAL,INTENT(IN)                 :: tIn               !< current simulation time
+REAL,INTENT(OUT)                :: Resu(PP_nVar)     !< exact fuction evaluated at tIn, returning state in conservative variables
+REAL,INTENT(OUT)                :: Resu_t(PP_nVar)   !< first time deriv of exact fuction
+REAL,INTENT(OUT)                :: Resu_tt(PP_nVar)  !< second time deriv of exact fuction
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================

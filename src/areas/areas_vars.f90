@@ -1,6 +1,6 @@
 !=================================================================================================================================
 ! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
-! Copyright (c) 2022-2024 Prof. Andrea Beck
+! Copyright (c) 2022-2026 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
@@ -64,7 +64,7 @@ END TYPE tArea
 
 ! This type is used to create an array of pointers, pointing to each of the created areas (to loop over them)
 TYPE tAreaList
-  TYPE(tArea),POINTER                 :: pArea              !< Pointer to the area
+  TYPE(tArea),POINTER                 :: pArea => NULL()    !< Pointer to the area
 END TYPE tAreaList
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES

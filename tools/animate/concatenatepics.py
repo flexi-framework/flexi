@@ -1,6 +1,3 @@
-#!/usr/bin/python
-# -*- coding: utf8 -*-
-
 import argparse
 import os
 import subprocess
@@ -24,19 +21,17 @@ for a,b in zip(sorted(args.pics), sorted(args.appends)) :
     af=os.path.basename(a)
     bf=os.path.basename(b)
     for i in range(len(af)) :
-        if not first  :
-            if af[i] != bf[i] :
-                first = i
-                break
+        if not first and af[i] != bf[i]  :
+            first = i
+            break
 
     for i in range(len(af)) :
-        if not last  :
-            if af[len(af)-1-i] != bf[len(bf)-1-i] :
-                last = i
-                break
+        if not last and af[len(af)-1-i] != bf[len(bf)-1-i]  :
+            last = i
+            break
     filename =os.path.join(os.getcwd() ,af[0:len(af)-last] + '_' + bf[first:len(bf)-last] + af[len(af)-last:])
     no = no+1
-    sys.stdout.write('\r%05.2f %% Process: %s and %s' % (100.0 * no / len(args.pics), a, b))
+    sys.stdout.write(f'\r{100.0 * no / len(args.pics):05.2f} % Process: {a} and {b}')
     sys.stdout.flush()
 
     cmd = ['convert']

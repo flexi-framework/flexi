@@ -1,6 +1,6 @@
 !=================================================================================================================================
 ! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
-! Copyright (c) 2022-2024 Prof. Andrea Beck
+! Copyright (c) 2022-2026 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
@@ -41,7 +41,7 @@ END TYPE tGroup
 
 TYPE tPoint                                                       !< Data type representing a single point
   INTEGER                          :: GroupID       !< ID of the group the point belongs to
-  TYPE(tRP),POINTER                :: RP            !< Pointer to the record points that makes up the single point
+  TYPE(tRP),POINTER                :: RP => NULL()  !< Pointer to the record points that makes up the single point
 END TYPE tPoint
 
 TYPE tLine                                                         !< Data type representing a single line
@@ -83,11 +83,11 @@ TYPE tRP                                                            !< Data type
 END TYPE tRP
 
 TYPE tRPlist                                                        !< Data structure to store list of all the record points
-  TYPE(tRP),POINTER                :: RP           !< Pointer to the record point data structure
+  TYPE(tRP),POINTER                :: RP => NULL() !< Pointer to the record point data structure
 END TYPE tRPlist
 
 TYPE tRP_Ptr                                                        !< Data structure for pointers to record points
-  TYPE(tRP),POINTER                :: RP           !< node pointer
+  TYPE(tRP),POINTER                :: RP => NULL() !< node pointer
 END TYPE tRP_Ptr
 
 

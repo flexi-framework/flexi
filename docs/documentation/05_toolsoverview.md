@@ -1,22 +1,24 @@
-(ToolsOverview)=
+(sec:ToolsOverview)=
 # Tools Overview
 
-This section gives an overview over the additional tools contained in the **FLEXI** repository. It also provides references to the tutorials where they are used as reference.
-<!--There are two different kinds of tools:-->
+This section gives an overview over the additional tools contained in the **FLEXI** repository. It also lists the tutorials where they are used as reference.
+There are two different kinds of tools:
 
-<!--* **POSTI**-tools can be compiled together with **FLEXI** given the according `cmake` options.-->
-<!--* In the `tools` folder, a collection of shell and python scripts can be found, which are mainly used to manage **FLEXI** runs and **FLEXI** output files.-->
+* **POSTI**-tools can be compiled together with **FLEXI** given the according `cmake` options.
+* In the `tools` folder, a collection of shell and Python scripts can be found, which are mainly used to manage **FLEXI** runs and **FLEXI** output files.
+
 
 ## POSTI Tools
 
-<!--The **POSTI** tools are mostly documented in and in the tutorials [NACA0012](#NACA0012). Here, an overview is given together with references to the respective tutorials. -->
 The different **POSTI** tools are used to further post-process the simulation results obtained with **FLEXI**. They can be compiled together with **FLEXI** given the according `cmake` option. A list and description for the input parameters of the associated **POSTI** tools can be displayed with the command
 ```bash
 [posti_toolname] --help
 ```
 
-(tools-visualization)=
-### POSTI_VISU
+(subsec:tools-visualization)=
+### Visualization
+
+#### POSTI_VISU
 
 `POSTI_VISU` converts **FLEXI** StateFiles, TimeAverage, and BaseFlow files from the HDF5 format to the ParaView readable `.vtu` (single) or `.pvtu` (parallel) format. 
 
@@ -73,24 +75,34 @@ In the following all available variables that can be used for visualization are 
 Density, MomentumX, MomentumY, MomentumZ, EnergyStagnationDensity, VelocityX, VelocityY, VelocityZ, Pressure, Temperature, VelocityMagnitude, VelocitySound, Mach, EnergyStagnation  ,EnthalpyStagnation  ,Entropy  ,TotalTemperature  ,TotalPressure  ,PressureTimeDeriv  ,VorticityX  ,VorticityY  ,VorticityZ  ,VorticityMagnitude  ,NormalizedHelicity  ,Lambda2  ,Dilatation  ,QCriterion  ,Schlieren  ,WallFrictionX  ,WallFrictionY  ,WallFrictionZ  ,WallFrictionMagnitude  ,WallHeatTransfer  ,x+  ,y+  z+  
 ``` 
 
-The practical application of `POSTI_VISU` can be practiced in the following tutorials. [](sec:tut_linadv), [](sec:tut_freestream), [](sec:tut_cavity), [](sec:tut_sod), [](sec:tut_dmr), [](Cylinder), [](NACA0012)
+The practical application of `POSTI_VISU` is demonstrated in the following tutorials: [](sec:tut_linadv), [](sec:tut_freestream), [](sec:tut_cavity), [](sec:tut_sod), [](sec:tut_dmr), [](Cylinder), [](NACA0012)
 
 
 
-<!------------------------------------------------------------------------------------------------->
-<!--**Paraview plugin**-->
-<!----------------------------------- -------------------------------------------------------------->
-<!--A ParaView reader based on `posti_visu` to load **FLEXI** state files in ParaView. Provides the interface to adjust `posti_visu` parameters in the ParaView GUI. Requires to build ParaView from source.-->
+#### ParaView Plugin
 
-<!--Basic usage: `libVisuReader.so` is loaded as a Plugin in ParaView-->
+The **FLEXI** framework comes with a ParaView reader based on `posti_visu` to load the custom HDF5 state files directly into ParaView. It provides an interface to adjust the aforementioned `posti_visu` parameters in the ParaView GUI interactively. The plugin can be enabled through the compile flag `POSTI_VISU_PARAVIEW=ON`, but requires ParaView to be built from source.
+
+In order to visualize the HDF5 state files, you need to load the compiled library `build/lib/visuReader/visuReader.so` via the ParaView menu _Tools_ > _Manage Plugins ..._ > _Load New ..._. Upon opening a **FLEXI** state file, this will show the _Properties_ tab, as on the left in the screenshot below. The plugin allows you, for example, to modify parameters like `NVisu`, to select the variables for visualization and to display the imposed boundary conditions.
+
+```{figure} ./figures/ParaViewPlugin_DMR_FVswitch.png
+:name: fig:ParaViewPlugin
+:align: center
+:width: 40%
+:alt: ParaView plugin to visualize the custom HDF5 state files of FLEXI directly (see Properties tab).
+
+ParaView plugin to visualize the custom HDF5 state files of **FLEXI** directly (see _Properties_ tab).
+```
+
+```{tip}
+Compiling ParaView from source may take 1-2 hours, depending on the system, and is prone to unmet dependencies errors. The _Docker_ image in the GitHub container registry provides a complete **FLEXI** environment with **HOPR** / **PyHOPE**, ParaView and all dependencies pre-installed. The corresponding _Dockerfile_ in `.docker/ubuntu_24/` may serve as reference for a local **FLEXI** installation.
+```
 
 
+(subsec:swap_mesh)=
+### Mesh Swapping
 
-
-(sec:swap_mesh)=
-### POSTI_SWAPMESH
-
-The `POSTI_SWAPMESH` tool interpolates the solution of a StateFile or a TimeAverage file from one mesh to another, or from one polynomial degree to another. To do so, the parametric coordinates of the interpolation points of the new state are searched in the old mesh. For non-equal elements, a Newton algorithm is used to find the parametric coordinates of the interpolation points. Based on the found parametric coordinates, a high-order interpolation to the interpolation points in the new mesh is performed. Non-conforming meshes are allowed. A reference state can be given for areas in the target mesh which are not covered by the original mesh. The project name and therefore the file name is based on the original project name with '_newMesh' appended, the original file is therefore not overwritten. 
+The `POSTI_SWAPMESH` tool interpolates the solution of a StateFile or a TimeAverage file from one mesh to another, or from one polynomial degree to another. To do so, the parametric coordinates of the interpolation points of the new state are searched in the old mesh. For non-equal elements, a Newton algorithm is used to find the parametric coordinates of the interpolation points. Based on the found parametric coordinates, a high-order interpolation to the interpolation points in the new mesh is performed. Non-conforming meshes are allowed. A reference state can be given for areas in the target mesh which are not covered by the original mesh. The project name and therefore the file name is based on the original project name with `_newMesh` appended, the original file is therefore not overwritten.
 
 For serial execution, the `POSTI_SWAPMESH` tool is invoked by entering
 ```bash
@@ -103,8 +115,6 @@ An example of the `POSTI_SWAPMESH` tool can be found in
 ```bash
 ./flexi/ini/swapmesh
 ```
-
-
 
 
 ```{list-table} POSTI_SWAPMESH parameters.
@@ -158,7 +168,7 @@ An example of the `POSTI_SWAPMESH` tool can be found in
 ```
 
 
-(tools-recordpoints)=
+(subsec:tools-recordpoints)=
 ### Recordpoints
 
 For investigations with a high temporal resolution, such as frequency analyses, it is generally not practical to write complete state files with a high output frequency. Among other things, this would generate a considerable memory requirement and unnecessarily slow down the simulation due to frequent I/O operations. 
@@ -172,7 +182,7 @@ The **POSTI** tools available for this are:
 To use the **POSTI** tools, the compile flag `POSTI` and the compile flag associated with the respective tool must be activated.
 
 
-(tools-recordpoints_prepare)=
+(subsec:tools-recordpoints_prepare)=
 #### POSTI_RP_PREPARE
 
 <!--ToDo's: complete possible values in table, describe in more detail the functionalities Groupname GroupID, ..., how does the RP file looks like, parallel execution???-->
@@ -366,7 +376,7 @@ Exemplary applications of `POSTI_RP_PREPARE` can be found in the following tutor
 Sample parameter files can also be found here.
 
 
-(tools-recordpoints_visu)=
+(subsec:tools-recordpoints_visu)=
 #### POSTI_RP_VISUALIZE
 <!--ToDo's: complete possible values in table, describe in more detail the structure of the written file, mention the output format (paraview/hdf5), give for certain functionalities example recorpoint files (e.g. derived quantities, FFT, ...)  -->
 
@@ -555,10 +565,10 @@ Exemplary applications of `POSTI_RP_PREPARE` can be found in the following tutor
 Sample parameter files can also be found here.
 
 
-(tools-recordpoints_evaluate)=
+(subsec:tools-recordpoints_evaluate)=
 #### POSTI_RP_EVALUATE
 
-The POSTI_RP_EVALUATE tool can be used to extract data for a given simulation at the defined positions for a given RP_DefFile. For this purpose, the recordpoints can be defined as described in section [POSTI_RP_PREPARE](tools-recordpoints_prepare) and the data can be extracted. It is possible to extract data not only form StateFiles but also e.g. from TimeAverageFiles. By default, the data set `DG_Solution` is read, which can be used to extract data from StateFiles. To extract data from TimeAverageFiles, a corresponding data set like `Mean` or `Fluc` needs to be specified in the parameter file option `RecordpointsDataSetName`.
+The POSTI_RP_EVALUATE tool can be used to extract data for a given simulation at the defined positions for a given RP_DefFile. For this purpose, the recordpoints can be defined as described in section [POSTI_RP_PREPARE](subsec:tools-recordpoints_prepare) and the data can be extracted. It is possible to extract data not only form StateFiles but also e.g. from TimeAverageFiles. By default, the data set `DG_Solution` is read, which can be used to extract data from StateFiles. To extract data from TimeAverageFiles, a corresponding data set like `Mean` or `Fluc` needs to be specified in the parameter file option `RecordpointsDataSetName`.
 Using the following command the data can be extracted at the recordpoint positions:
 
 ```bash
@@ -569,7 +579,7 @@ The tool also runs in parallel by prepending `mpirun -np <no. processors>` to th
 ```bash
 mpirun -np <no. processors> posti_evaluaterecordpoints [parameter.ini] <solutionfiles>
 ```
-After the execution of the `posti_evaluaterecordpoints` tool, a `ProjectName_RP_*.h5` file is written. This file is similar to the recordpoint files written during runtime. Therefore, these files can be visualized as described in section [POSTI_RP_VISUALIZE](tools-recordpoints_visu).
+After the execution of the `posti_evaluaterecordpoints` tool, a `ProjectName_RP_*.h5` file is written. This file is similar to the recordpoint files written during runtime. Therefore, these files can be visualized as described in section [](subsec:tools-recordpoints_visu).
 
 ```{important}
 The MPI-parallel HDF5 implementation internally uses a signed 32-bit integer, restricting the maximum chunk size to $2\, GB$ per thread. When post-processing with activated `LIBS_USE_MPI` flag, especially with large cases and large files as is often the case with TimeAverage files, the file size of approximately $2\, GB$ per core must not be exceeded. In this case, the number of cores used must be increased for MPI-parallel executable **POSTI** tools, or **POSTI** must be compiled with `LIBS_USE_MPI=OFF`.
@@ -611,203 +621,197 @@ The available parameters can also be listed by using the help function
 posti_evaluaterecordpoints --help
 ```
 
-<!--## TODO:-->
-<!------------------------------------------------------------------------------------------------->
-<!--**posti_swapmesh**-->
-<!----------------------------------- -------------------------------------------------------------->
-<!--This tool interpolates the solution in a state file from one mesh to another or from one polynomial degree to another. It is based on high-order interpolation and a Newton coordinate search algorithm. Non-conforming meshes are allowed. A reference state can be given for areas in the target mesh which are not covered by the original mesh.-->
 
-<!--Basic usage: `posti_swapmesh [parameter.ini] [statefile.h5]`-->
-
-<!--Further info / usage examples: `ini/swapmesh` folder-->
-
-<!--(tools-recordpoints)=-->
-<!--### Record points-->
-
-<!--The following tools allow to sample high-frequency data in **FLEXI** at certain points, lines or areas in the computational domain, from defining the location of the recordpoints to visualization.-->
-
-<!-------------------------------------------------------------------------------------------------->
-<!--**posti_preparerecordpoints**-->
-<!----------------------------------- -------------------------------------------------------------->
-<!--It record values at a set of physical points over time with a higher temporal sampling rate than the state file output interval given in the parameter file of **FLEXI**. It has an own parmeter file where the record point coordinates and the **FLEXI** mesh file are defined. Finally, an additional `.h5` file is created, whose path is passed to **FLEXI** as an additional parameter.-->
-
-<!--Basic usage: `posti_preparerecordpoints [parameter_prepareRP.ini]`-->
-
-<!--Further info / usage examples: \ref{sec:postiRecordpoints}-->
-
-<!-------------------------------------------------------------------------------------------------->
-<!--**posti_visualizerecordpoints**-->
-<!----------------------------------- -------------------------------------------------------------->
-<!--This tool performs the post-processing of the `*_RP_*` files written by **FLEXI**. It merges several time steps and allows to output values over time or spectra.-->
-
-<!--Basic usage: `posti_visualizerecordpoints [parameter_visuRP.ini] [projectname_RP_*.h5]`-->
-
-<!--Further info / usage examples: \ref{sec:postiRecordpoints}-->
-
-<!-------------------------------------------------------------------------------------------------->
-<!--**posti_evaluaterecordpoints**-->
-<!----------------------------------- -------------------------------------------------------------->
-<!--This tool can evaluate the values at recorpoints a posteriori from existing statefiles. Can be used if the recordpoints have not been set during the simulation, but will only give coarse temporal resolution.-->
-
-<!--Basic usage: `posti_evaluaterecordpoints [parameter.ini] [statefile.h5]`-->
-
-<!--Further info / usage examples: No tutorials so far-->
-
-<!--(sec:time_averaging)=-->
-<!--### Time averaging-->
-
-<!--The following tools allow to handle either time-averaged high-frequency data averaged during the simulation or averages the states files written by **FLEXI** over time.-->
-
-<!------------------------------------------------------------------------------------------------->
-<!--**posti_mergetimeaverages**-->
-<!----------------------------------- -------------------------------------------------------------->
-<!--This tool averages several **FLEXI** `State` or `TimeAverage` files. If `TimeAverage` files are the input, each files is weighted with its time averaging period. `State` files are all weighted equally. All HDF5 data sets are averaged and no additional parameter file is required.-->
-
-<!--Basic usage: `posti_mergetimeaverages [statefile1.h5 statefile2.h5 ...]`-->
-
-<!--Further info / usage examples: No tutorials so far-->
-
-<!------------------------------------------------------------------------------------------------->
-<!--**posti_calcfluctuations**-->
-<!----------------------------------- -------------------------------------------------------------->
-<!--This tool calculates fluctuations from the `Mean` and `MeanSquare` given in the (merged) `TimeAverage` files. Fluctuations are then written into an additional data set in the same HDF5 file. All applicable fluctuations are calculated and no additional parameter file is required.-->
-<!--During the simulation, **FLEXI** will write two data sets: The mean value of a variable and the mean of the square of the variable. We can then use the following equality to calculate fluctuations (=mean of the square of the fluctuations):-->
-
-<!--$\overline{(UU)} = \overline{(u+u')(u+u')} = \overline{(uu)} + \overline{2uu'} + \overline{u'u'} = uu + \overline{u'u'}$-->
-
-<!--where we split the total value of a variable U in the mean u and the fluctuating part u'.-->
-<!--Thus, with the stored $UU$ and $u=U$ we then calculate the fluctuations in here as:-->
-
-<!--$\overline{u'u'} = \overline{UU} - uu$-->
-
-<!--Basic usage: `posti_calcfluctuations [statefile1.h5 statefile2.h5 ...]`-->
-
-<!--Further info / usage examples: No tutorials so far-->
-
-<!--### Fast Fourier Transform-->
-<!--TODO:-->
-<!------------------------------------------------------------------------------------------------->
-<!--**posti_channel_fft**-->
-<!----------------------------------- -------------------------------------------------------------->
-<!--This tool calculates the mean velocity and Reynolds stress profiles of the turbulent channel flow test case by averaging both in the direction parallel to the wall and by averaging the upper and lower half of the channel. Furthermore, kinetic energy spectra dependent on the distance to the wall are computed.-->
-
-<!--Basic usage: `posti_channel_fft [parameter_channelfft.ini] [statefile1.h5 statefile2.h5 ...]`-->
-
-<!--Further info / usage examples: TODO-->
-
-<!----->
-<!------------------------------------------------------------------------------------------------->
-<!--**posti_init_hit**-->
-<!----------------------------------- -------------------------------------------------------------->
-<!--Brief description                  No description so far-->
-
-<!--Basic usage                        `posti_visu [parameter.ini] [statefile.h5]`-->
-
-<!--Further info / usage example       No tutorials so far-->
-<!------------------------------------------------------------------------------------------------->
-
-
-
-<!--[>===========================================================================================================================<]-->
-
-
-<!--## Tools folder-->
-
-<!--The scripts provided in the `tools` folder are generally not part of the tutorials.-->
-<!--They are briefly described below. The path to the python files (of the form `$FLEXIROOT/tools/SUBDIR/`) is omitted in the following.-->
-<!--For most python tools, possible arguments and syntax can be shown with the `-h` argument:-->
-<!--```bash-->
-<!--python3 [toolname.py] -h-->
-<!--```-->
-<!--(sec:animate_tool)=-->
-<!--### Animate tool-->
-
-<!--The python script **animate_paraview.py** creates movies from a series of state files using `PvBatch`, a GUI-less interface to ParaView.-->
-<!--You need ParaView installed on your system (details can be found in the ParaView [>- TODO <] section) and the directory containing the `PvBatch` executable needs to be a part of your `$PATH`. Before running this script, you have to visualize your **FLEXI** state file with ParaView and save the current view via `Save State...`, e.g. under the name `pvstate.pvsm`. You also need the `MEncoder` tool installed. The basic command to run the script is-->
-<!--```bash-->
-<!--python3 animate_paraview.py -l [pvstate.pvsm] -r [path_to_posti_paraview_plugin] [statefile1.h5 statefile2.h5 ...]-->
-<!--```-->
-<!--Apart from the movie file, the script also outputs a `.png`-file for each HDF5 file given as input.-->
-<!--In order to visualize a set of `.vtu`-files, e.g., from the `posti_visu` output, omit the `-r` argument and pass `.vtu`-files instead of `.h5`-files. Further options can be shown with the `-h` argument.-->
-
-<!--There are further tools for image handling in this folder:-->
-
-<!--The tool **concatenatepics.py** stitches several pairs of images (e.g. creates a time series of stitched images from two time series of images). A possible command could look like this (*Further options can be shown with the `-h` argument*):-->
-<!--```bash-->
-<!--python3 concatenatepics.py -d e -p left*.png  -a right*.png-->
-<!--```-->
-<!--The tool **crop.py** crops several images to the same size. Simply pass all images as arguments:-->
-<!--```bash-->
-<!--python3 crop.py [image*.png]-->
-<!--```-->
-<!--The script **pics2movie.py** creates a movie from several images using the `mencoder` tool (which is also done as part of the `animate_paraview.py` script. Basic usage is again-->
-<!--```bash-->
-<!--python3 pics2movie.py [image*.png]-->
-<!--```-->
-<!--and further options can again be shown with the `-h` argument.-->
-
-
-<!--[>...........................................................................................................................<]-->
-
-<!--### Convergence test tool-->
-
-<!--The python scripts `convergence.py` and `convergence_grid.py` provide automated convergence tests for p- and h-convergence, respectively.-->
-<!--The basic command is-->
-<!--```bash-->
-<!--python3 convergence.py flexi [parameter.ini]-->
-<!--```-->
-<!--where `convergence` can be replaced by `convergence_grid` for h-convergence. Further options can again be shown with the `-h` option.-->
-
-<!--Note that for h-convergence, the mesh names are hard-coded to the form `CART_HEX_PERIODIC_MORTAR_XXX_2D_mesh.h5`, where `XXX` denotes the number of elements in each direction, and `MORTAR` and `2D` are optional. The polynomial degree in the parameter file is *always* overwritten by the one passed to the script as an optional argument, with a default value of 3, if no such argument is passed. [>-TODO: change this in the script<]-->
-
-
-<!--[>...........................................................................................................................<]-->
-
-<!--### Userblock tool-->
-
-<!--The `userblock` contains complete information about a **FLEXI** run (git branch of the repository, differences to that branch, `cmake` configuration and parameter file) and is prepended to every `.h5` state file. The parameter file is prepended in ASCII format, the rest is binary and is generated automatically during the build process with the `generate_userblock.sh` script. It can be extracted and printed using the `extract_userblock.py` script. Its basic usage is-->
-<!--```bash-->
-<!--python3 extract_userblock.py -XXX [statefile.h5]-->
-<!--```-->
-<!--where `-XXX` can be replaced by-->
-
-<!--* `-s` to show all available parts of the userblock (such as `CMAKE` or `GIT BRANCH`)-->
-<!--* `-a` to print the complete userblock-->
-<!--* `-p [part]` to print one of the parts listed with the `-s` command.-->
-
-<!--The second python tool in this folder is `rebuild.py`. It extracts the userblock from a state file and builds a **FLEXI** repository and binary identical to the one that the state file was created with. In order to do so, it clones a **FLEXI** git repository, checks out the given branch, applies the stored changes to the git `HEAD` and builds **FLEXI** with the stored `cmake` options. If run with the parameter file given in the `INIFILE` part of the userblock, this binary should reproduce the same results/behavior (possible remaining sources of different output are for example differences in restart files, compilers, linked libraries or machines). The basic usage is-->
-<!--```bash-->
-<!--python3 rebuild.py [dir] [statefile.h5]-->
-<!--```-->
-<!--where `dir` is an empty directory that the repository is cloned into and where the `flexi` executable is built. `statefile.h5` is the state file whose userblock is used to rebuild the `flexi` executable. Help can be shown via `-h` for both userblock scripts.-->
-
-
-<!--[>...........................................................................................................................<]-->
-
-<!--### Other scripts-->
-
-<!--#### Sort files scripts-->
-
-<!--The `sortfiles.sh` script sorts all `.h5`-files in subfolders `State`, `BaseFlow`, `TimeAvg` and `RP`, while keeping the last time instance at the upper level. It also copies `Log.*.sdb`, `.log` and `.out` files into a `logs` subdirectory. The project name is hard-coded in the script and has to be adapted there, the directory that is to be sorted is passed as an argument.-->
-
-<!--#### HPC tools-->
-
-<!--The `getload.py` script is specific to runs on HPC systems. It calculates a suitable number of nodes and cores to achieve-->
-
-<!--* a specific number of degrees of freedom per core which is close to a target-->
-<!--* an average number of elements per core which is just below a close integer, such that parallel efficiency is not impaired by a few cores with higher load that the others have to wait for.-->
-
-<!--No arguments are passed to this script, all input values are hard-coded and have to be adjusted in the script.-->
-
-
-<!--[>...........................................................................................................................<]-->
-
-<!--### Testcase scripts-->
-
-<!--#### Fast Fourier Transform-->
-
-<!--The python script **plotChannelFFT.py** creates plots of the mean velocity and the Reynolds stress profiles as well as the turbulent energy spectra based on the posti_channel_fft HDF5 output files. Basic usage is:-->
-<!--```bash-->
-<!--python3 plotChannelFFT.py -p projectname -t time-->
-<!--```-->
-<!--Further options can be shown with the `-h` argument.-->
+(subsec:time_averaging)=
+### Time Averaging
+
+The following tools allow to handle either time-averaged high-frequency data averaged during the simulation or averages the states files written by **FLEXI** over time.
+
+#### POSTI_MERGETIMEAVERAGES
+
+The POSTI_MERGETIMEAVERAGES tool averages several **FLEXI** *State* or *TimeAverage* files. If *TimeAverage* files are the input, each file is weighted with its time averaging period. *State* files are all weighted equally. All HDF5 data sets are averaged and no additional parameter file is required.
+
+The basic usage of this tool is as follows, with the three optional flags detailed in the table below.
+
+```bash
+posti_mergetimeaverages --start=[starttime] --end=[endtime] --coarsen=[factor] [inputfile1.h5 inputfile2.h5 ...]
+```
+
+```{list-table} Optional flags of POSTI_MERGETIMEAVERAGES.
+:header-rows: 1
+:name: tab:postimergetimeavg_flags
+:align: center
+:width: 100%
+:widths: 25 25 50
+* - Flag
+  - Default Value
+  - Description
+* - start
+  - $-\infty$
+  - Start time for time averaging. Input files with a timestamp prior to the start time are skipped.
+* - end
+  - $+\infty$
+  - End time for time averaging. Input files with a timestamp after the end time are skipped.
+* - coarsen
+  -
+  - Number of successive input files to consider for one time average. Default is to consider all input files.
+```
+
+
+#### POSTI_CALCFLUCTUATIONS
+The POSTI_CALCFLUCTUATIONS tool calculates fluctuations from the `Mean` and `MeanSquare` given in the (merged) *TimeAverage* files. Fluctuations are then written into an additional data set in the same HDF5 file. All applicable fluctuations are calculated and no additional parameter file is required. This results in the following basic usage of the tool:
+
+```bash
+posti_calcfluctuations [timeavgfile1.h5 timeavgfile2.h5 ...]
+```
+<!--NOTE: Due to a rendering bug in Firefox with overline/underline, we use the angle brackets <> to denote the average operator -->
+<!--see:  https://bugzilla.mozilla.org/show_bug.cgi?id=1741887 -->
+
+In general, the total value of a variable $U$ can be split into the temporal mean $u$ and the fluctuating part $u'$, that is $U = u+u'$ with $u=<U>$ and $<u'>=0$. During a simulation with `CalcTimeAverage=T`, **FLEXI** will write two data sets: the mean of a variable, $<U>$, and the mean of the squared variable, $<UU>$. To compute the fluctuations, i.e. the mean of the squared fluctuations $<u'u'>$, based on these two quantities, we make use of the following relation:
+\begin{gather}
+<UU> = <(u+u')(u+u')> = <uu> + <2uu'> + <u'u'> = uu + <u'u'> \\
+\Rightarrow \quad <u'u'> = <UU> - uu
+\end{gather}
+
+
+#### POSTI_CHANNEL_FFT
+
+The POSTI_CHANNEL_FFT tool calculates the mean velocity and Reynolds stress profiles of the turbulent channel flow test case by averaging both in the direction parallel to the wall and by averaging the upper and lower half of the channel. Furthermore, kinetic energy spectra dependent on the distance to the wall are computed.
+
+The tool relies on a separate parameter file and comes with the basic usage
+```bash
+posti_channel_fft [parameter_channelfft.ini] [statefile1.h5 statefile2.h5 ...]
+```
+
+The available parameters can be displayed by passing the `--help` flag and are listed in the table below.
+```{list-table} POSTI_CHANNEL_FFT parameters.
+:header-rows: 1
+:name: tab:postichannelfft_parameters
+:align: center
+:width: 100%
+:widths: 25 25 50
+* - Parameter
+  - Possible Values
+  - Description
+* - N
+  -
+  - Polynomial degree of computation to represent to solution.
+* - GroupSize
+  - 0 / 2 / 4 / ... (no. procs per node)
+  - Defines the size of MPI subgroups, used to e.g. perform grouped IO, where group master collects and outputs data.
+* - gatheredWrite
+  - T / F
+  - Set true to activate gathered HDF5 IO for parallel computations. Only local group masters will write data after gathering from local slaves.
+* - MeshFile
+  - MeshFileName.h5
+  - (relative) path to meshfile (mandatory).
+* - useCurveds
+  - T / F
+  - Controls usage of high-order information in mesh. Turn off to discard high-order data and treat curved meshes as linear meshes.
+* - interpolateFromTree
+  - T / F
+  - For non-conforming meshes, built by refinement from a tree structure, the metrics can be built from the tree geometry if it is contained in the mesh. Can improve free-stream preservation.
+* - meshScale
+  -
+  - Scale the mesh by this factor (shrink for <1.0 / enlarge for >1.0).
+* - meshdeform
+  - T / F
+  - Apply simple sine-shaped deformation on cartesion mesh (for testing).
+* - crossProductMetrics
+  - T / F
+  - Compute mesh metrics using cross product form. Caution: in this case free-stream preservation is only guaranteed for N=3*NGeo.
+* - debugmesh
+  - 0 / 3
+  - Output file with visualization and debug information for the mesh: 0 = no  visualization, 3 = Paraview binary
+* - BoundaryName
+  -
+  - Names of boundary conditions to be set (must be present in the mesh!). For each BoundaryName a BoundaryType needs to be specified.
+* - BoundaryType
+  - (BC_TYPE,BC_STATE)
+  - Type of boundary conditions to be set.
+* - writePartitionInfo
+  - T / F
+  - Write information about MPI partitions into a file.
+* - NGeoOverride
+  - -1 / 1 / 2 / ...
+  - Override switch for NGeo. Interpolate mesh to different NGeo: <1 = off, >0 = interpolate
+* - OutputFormat
+  - 0 / 2
+  - Choose the main format for output: 0 = Tecplot, 2 = HDF5
+* - NCalc
+  -
+  - Polynomial degree to perform DFFT on.
+* - Re_tau
+  -
+  - Reynolds number based on friction velocity and channel half height.
+```
+
+An exemplary application of the POSTI_CHANNEL_FFT tool, along with a sample parameter file, can be found in the tutorial [](PTCF).
+
+
+## Tools Folder
+
+The scripts provided in the `tools` folder are generally not part of the tutorials.
+They are briefly described below, where the path to the files (of the form `$FLEXIROOT/tools/SUBDIR/`) is omitted.
+For most Python tools, possible arguments and syntax can be shown with the `-h` argument:
+```bash
+python3 [toolname.py] -h
+```
+
+
+(subsec:animate_tool)=
+### Animate Tool
+
+The Python script **animate_paraview.py** creates movies from a series of state files using `pvbatch`, a GUI-less interface to ParaView.
+It requires ParaView to be installed on the system and the directory containing the `pvbatch` executable to be a part of the `$PATH` variable.
+
+Before running this script, you need to visualize one of the considered **FLEXI** state files in ParaView and save the current view via `Save State...`, e.g. under the name `pvstate.pvsm`. The basic command to run the script is
+```bash
+python3 animate_paraview.py -l [pvstate.pvsm] -r [path_to_posti_paraview_plugin] [statefile1.h5 statefile2.h5 ...]
+```
+This will output a `.png`-file for each HDF5 file given as input and concatenate them into a video. The video generation relies on the `MEncoder` tool and can be turned off via the `-n` flag. In order to visualize a set of `.vtu`-files, e.g., from the `posti_visu` output, omit the `-r` argument and pass `.vtu`-files instead of `.h5`-files. Further options can  shown with the `-h` argument.
+
+There are further tools for image handling in this folder, which all can be called with the `-h` flag to show the complete list of possible arguments:
+
+* **concatenatepics.py** stitches several pairs of images, e.g. to create a time series of stitched images from two time series of images
+```bash
+python3 concatenatepics.py -d e -p left*.png  -a right*.png
+```
+* **crop.py** crops several images to the same size, simply pass all images as arguments:
+```bash
+python3 crop.py [image*.png]
+```
+* **pics2movie.py** creates a movie from several images using the `mencoder` tool (which is also done as part of the `animate_paraview.py` script)
+```bash
+python3 pics2movie.py [image*.png]
+```
+
+
+### Convergence Tests
+
+The Python scripts `convergence.py` and `convergence_grid.py` provide automated convergence tests for $p$- and $h$-convergence, respectively. They call **FLEXI** repeatedly on a given parameter file while modifying the polynomial degree $N$ or the mesh file, and compute the _Experimental Order of Convergence_ (EOC) automatically.
+The basic command for $p$-convergence is
+```bash
+convergence [path/to/flexi] [parameter.ini]
+```
+where `convergence` can be replaced by `convergence_grid` for $h$-convergence. Further options can again be shown with the `-h` option.
+
+Note that for $h$-convergence, the mesh names are hard-coded to the form `CART_HEX_PERIODIC_MORTAR_XXX_2D_mesh.h5`, where `XXX` denotes the number of elements in each direction, and `MORTAR` and `2D` are optional.
+
+
+### Userblock Tool
+
+The `userblock` contains complete information about a **FLEXI** run (git branch of the repository, differences to that branch, `cmake` configuration and parameter file) and is prepended to every `.h5` state file. The parameter file is prepended in ASCII format, the rest is binary and is generated automatically during the build process with the `generate_userblock.sh` script. It can be extracted and printed using the `extract_userblock.py` script. Its basic usage is
+```bash
+python3 extract_userblock.py -XXX [statefile.h5]
+```
+where `-XXX` can be replaced by
+* `-s` to show all available parts of the userblock (such as `CMAKE` or `GIT BRANCH`)
+* `-a` to print the complete userblock
+* `-p [part]` to print one of the parts listed with the `-s` command.
+
+The second python tool in this folder is `rebuild.py`. It extracts the userblock from a state file and builds a **FLEXI** repository and binary identical to the one that state file was created with. In order to do so, it clones a **FLEXI** git repository, checks out the given branch, applies the stored changes to the git `HEAD` and builds **FLEXI** with the stored `cmake` options. If run with the parameter file given in the `INIFILE` part of the userblock, this binary should reproduce the same results/behavior (possible remaining sources of different output are, for example, differences in restart files, compilers, linked libraries or machines). The basic usage is
+```bash
+python3 rebuild.py [dir] [statefile.h5]
+```
+where `dir` is an empty directory that the repository is cloned into and where the `flexi` executable is built, and `statefile.h5` is the state file whose userblock is used to rebuild the `flexi` executable. Help can be shown via `-h` for both userblock scripts.

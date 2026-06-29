@@ -1,6 +1,6 @@
 !=================================================================================================================================
 ! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
-! Copyright (c) 2022-2024 Prof. Andrea Beck
+! Copyright (c) 2022-2026 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
@@ -18,15 +18,16 @@
 !==================================================================================================================================
 MODULE MOD_PreProc
 ! MODULES
+USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: DP => REAL64
 IMPLICIT NONE
 PUBLIC
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-REAL,PARAMETER        :: PP_RealTolerance = EPSILON(1.0D0) !< machine precision
-REAL,PARAMETER        :: PP_Pi = ACOS(-1.0D0)              !< Pi up to machine accuracy
+REAL,PARAMETER        :: PP_RealTolerance = EPSILON(REAL(1.0,KIND=DP)) !< machine precision
+REAL,PARAMETER        :: PP_Pi = ACOS(REAL(-1.0,KIND=DP))              !< Pi up to machine accuracy
 #if PP_N == N
-INTEGER               :: PP_N                              !< polynomial degree
+INTEGER               :: PP_N                                          !< polynomial degree
 #endif
 
 !==================================================================================================================================

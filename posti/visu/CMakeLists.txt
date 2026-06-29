@@ -118,7 +118,7 @@ IF (POSTI_VISU_PARAVIEW AND ParaView_FOUND)
      SET(BUILD_SHARED_LIBS ON)
    ENDIF()
 
-   SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+   SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
    INCLUDE_DIRECTORIES(${TOOL_DIR}/paraviewReader/Reader/)
 
    # Changed beginning form Paraview 5.7

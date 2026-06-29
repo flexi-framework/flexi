@@ -1,5 +1,3 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
 #************************************************************************************
 #
 # Description:  This script will rebuild a specific code configuration from
@@ -9,13 +7,15 @@
 #
 #************************************************************************************
 
-import os
 import argparse
+import os
 import subprocess
-from extract_userblock import get_userblock, get_part
+import sys
 from distutils import spawn
 
-parser = argparse.ArgumentParser(description='Rebuild code revision from userblock data' +
+from extract_userblock import get_part, get_userblock
+
+parser = argparse.ArgumentParser(description='Rebuild code revision from userblock data ' +
                                              'contained in HDF5 state file.')
 parser.add_argument('dir'  , help='Name of empty directory where the rebuild will take place')
 parser.add_argument('state', help='HDF5 state file containing userblock')
@@ -28,7 +28,7 @@ else :
     if os.listdir(args.dir) != []:  # is dir empty?
         print(os.listdir(args.dir))
         print("Rebuild directory is not empty => exit!")
-        exit(1)
+        sys.exit(1)
 
 # get svn
 try:
@@ -36,7 +36,7 @@ try:
     userblock = get_userblock(args.state, userblock)
 except Exception:
     print('Error while extracting userblock.')
-    exit(1)
+    sys.exit(1)
 git_url = get_part(userblock, "GIT URL")
 git_url = git_url.strip()
 
@@ -73,47 +73,44 @@ subprocess.call(cmd, shell=True)
 # apply simple diff
 git_diff = get_part(userblock, "GIT DIFF")
 if git_diff :
-    f = open("diff_patch", 'w')
-    f.write(git_diff)
-    f.close()
+    with open("diff_patch", 'w') as f:
+        f.write(git_diff)
     try:
         subprocess.call("patch -p1 < diff_patch", shell=True)
     except Exception:
         print('Error while patching source code.')
-        exit(1)
+        sys.exit(1)
 
 # write ini file
 if not os.path.exists("ini"):
     os.mkdir("ini")
 ini = get_part(userblock, "INIFILE")
-f = open(os.path.join("ini", "parameter.ini"), 'w')
-f.write(ini)
-f.close()
+with open(os.path.join("ini", "parameter.ini"), 'w') as f:
+    f.write(ini)
 
 # configure
 builddir = "build"
 if not os.path.exists(builddir):
     os.mkdir(builddir)
 cmake = get_part(userblock, "CMAKE")
-f = open(os.path.join(builddir, "config.cmake"), 'w')
-f.write(cmake)
-f.close()
+with open(os.path.join(builddir, "config.cmake"), 'w') as f:
+    f.write(cmake)
 
 cmakepath = spawn.find_executable("cmake")
 if not cmakepath:
     print('CMake not found, configuring not possible.')
-    exit(1)
+    sys.exit(1)
 
 os.chdir(builddir)
 try:
     p = subprocess.call(["cmake", "-C", "config.cmake" , "../"])
 except Exception:
     print('Error while configuring the build.')
-    exit(1)
+    sys.exit(1)
 
 # make
 try:
     p = subprocess.call(["make", "-j"])
 except Exception:
     print('Error while compiling the code.')
-    exit(1)
+    sys.exit(1)

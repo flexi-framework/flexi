@@ -1,6 +1,6 @@
 !=================================================================================================================================
 ! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
-! Copyright (c) 2022-2024 Prof. Andrea Beck
+! Copyright (c) 2022-2026 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
@@ -425,17 +425,18 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL :: Time,SimulationTime,mins,secs,hours,days
+REAL    :: Time,SimulationTime,mins,secs,hours,days
+INTEGER :: postiunit
 !===================================================================================================================================
 
 IF(MPIRoot)THEN
   IF(FILEEXISTS('.posti.ini'))THEN
-    OPEN(UNIT=31, FILE='.posti.ini', STATUS='old')
-    CLOSE(31, STATUS='delete')
+    OPEN(NEWUNIT=postiunit, FILE='.posti.ini', STATUS='old',ACTION='WRITE')
+    CLOSE(postiunit, STATUS='delete')
   END IF
   IF(FILEEXISTS('.flexi.ini'))THEN
-    OPEN(UNIT=31, FILE='.flexi.ini', STATUS='old')
-    CLOSE(31, STATUS='delete')
+    OPEN(NEWUNIT=postiunit, FILE='.flexi.ini', STATUS='old',ACTION='WRITE')
+    CLOSE(postiunit, STATUS='delete')
   END IF
 END IF
 

@@ -1,6 +1,6 @@
 !=================================================================================================================================
 ! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
-! Copyright (c) 2022-2024 Prof. Andrea Beck
+! Copyright (c) 2022-2026 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
@@ -79,9 +79,9 @@ LOGICAL           :: doSADebug          !< Turn debug output on or off (default:
 
 
 
-CHARACTER(LEN=255),DIMENSION(6),PARAMETER :: StrVarNames =&
+CHARACTER(LEN=255),DIMENSION(PP_nVar),PARAMETER :: StrVarNames =&
   (/ CHARACTER(LEN=255) :: 'Density','MomentumX','MomentumY','MomentumZ','EnergyStagnationDensity','muTilde'/) !< conservative variable names
-CHARACTER(LEN=255),DIMENSION(7),PARAMETER :: StrVarNamesPrim=&
+CHARACTER(LEN=255),DIMENSION(PP_nVarPrim),PARAMETER :: StrVarNamesPrim=&
   (/ CHARACTER(LEN=255) :: 'Density','VelocityX','VelocityY','VelocityZ','Pressure','Temperature','nuTilde'/) !< primitive variable names
 
 LOGICAL           :: EquationInitIsDone=.FALSE.

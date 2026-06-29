@@ -1,6 +1,6 @@
 !=================================================================================================================================
 ! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
-! Copyright (c) 2022-2024 Prof. Andrea Beck
+! Copyright (c) 2022-2026 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
@@ -366,7 +366,7 @@ SELECT CASE(OutputFormat)
     END IF
     FileName_EK=TIMESTAMP(TRIM(ProjectName)//'_MS',time)
     FileName_EK=TRIM(Filename_EK)//'.dat'
-    OPEN(FileUnit_Ek,FILE=Filename_EK,STATUS="REPLACE")
+    OPEN(FileUnit_Ek,FILE=Filename_EK,STATUS="REPLACE",ACTION="WRITE")
     WRITE(FileUnit_EK,*)'TITLE     = "MeanSquares "'
     WRITE(FileUnit_EK,'(a)')'VARIABLES ="yPlus"'
     WRITE(FileUnit_EK,'(a)')'"uu"'
@@ -392,7 +392,7 @@ SELECT CASE(OutputFormat)
     !write energy spectra in x-direction
     FileName_EK=TIMESTAMP(TRIM(ProjectName)//'_EnergySpectra_x',time)
     FileName_EK=TRIM(Filename_EK)//'.dat'
-    OPEN(FileUnit_Ek,FILE=Filename_EK,STATUS="REPLACE")
+    OPEN(FileUnit_Ek,FILE=Filename_EK,STATUS="REPLACE",ACTION="WRITE")
     WRITE(FileUnit_EK,*)'TITLE     = "Energy Spectra_x "'
     WRITE(FileUnit_EK,'(a)')'VARIABLES ="k"'
     WRITE(FileUnit_EK,'(a)')'"E_uu_x"'
@@ -414,7 +414,7 @@ SELECT CASE(OutputFormat)
     !write energy spectra in z-direction
     FileName_EK=TIMESTAMP(TRIM(ProjectName)//'_EnergySpectra_z',time)
     FileName_EK=TRIM(Filename_EK)//'.dat'
-    OPEN(FileUnit_Ek,FILE=Filename_EK,STATUS="REPLACE")
+    OPEN(FileUnit_Ek,FILE=Filename_EK,STATUS="REPLACE",ACTION="WRITE")
     WRITE(FileUnit_EK,*)'TITLE     = "Energy Spectra_z "'
     WRITE(FileUnit_EK,'(a)')'VARIABLES ="k"'
     WRITE(FileUnit_EK,'(a)')'"E_uu_z"'

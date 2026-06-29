@@ -1,6 +1,6 @@
 !=================================================================================================================================
 ! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
-! Copyright (c) 2022-2024 Prof. Andrea Beck
+! Copyright (c) 2022-2026 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
@@ -577,7 +577,7 @@ CALL MPI_GATHER(NBinfo,6*nNBmax,MPI_INTEGER,NBinfo_glob,6*nNBmax,MPI_INTEGER,0,M
 DEALLOCATE(NBinfo)
 IF(MPIRoot)THEN
   WRITE(PartitionInfoFileName,'(A21,I6.6,A4)')'partitionInfo_nRanks_',nProcessors,'.out'
-  OPEN(NEWUNIT=ioUnit,FILE=TRIM(PartitionInfoFileName),STATUS='REPLACE')
+  OPEN(NEWUNIT=ioUnit,FILE=TRIM(PartitionInfoFileName),STATUS='REPLACE',ACTION='WRITE')
   WRITE(ioUnit,*)'Partition Information:'
   WRITE(ioUnit,*)'total number of Procs,',nProcessors
   WRITE(ioUnit,*)'total number of Elems,',SUM(Procinfo_glob(1,:))
@@ -872,7 +872,7 @@ DO iNbProc=1,nNbProcs
     nSendVal    =nMPISides_MINE_Proc(iNbProc)
     SideID_start=OffsetMPISides_MINE(iNbProc-1)+1
     SideID_end  =OffsetMPISides_MINE(iNbProc)
-    CALL MPI_ISEND(Flip_MINE(SideID_start:SideID_end),nSendVal,MPI_INTEGER,  &
+    CALL MPI_ISEND(Flip_MINE(SideID_start),nSendVal,MPI_INTEGER,  &
                     nbProc(iNbProc),0,MPI_COMM_FLEXI,SendRequest(iNbProc),iError)
     IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_ISEND',iError)
   END IF
@@ -881,7 +881,7 @@ DO iNbProc=1,nNbProcs
     nRecVal     =nMPISides_YOUR_Proc(iNbProc)
     SideID_start=OffsetMPISides_YOUR(iNbProc-1)+1
     SideID_end  =OffsetMPISides_YOUR(iNbProc)
-    CALL MPI_IRECV(Flip_YOUR(SideID_start:SideID_end),nRecVal,MPI_INTEGER,  &
+    CALL MPI_IRECV(Flip_YOUR(SideID_start),nRecVal,MPI_INTEGER,  &
                     nbProc(iNbProc),0,MPI_COMM_FLEXI,RecRequest(iNbProc),iError)
     IF(iError.NE.MPI_SUCCESS) CALL Abort(__STAMP__,'Error in MPI_IRECV',iError)
   END IF

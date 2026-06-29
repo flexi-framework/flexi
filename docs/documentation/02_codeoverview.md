@@ -84,7 +84,7 @@ Some options are dependent on others being enabled (or disabled), such that the 
   - on / off
   - set to *on* to run two-dimensional simulations, in this case you have to provide a mesh that consists of only one layer of elements in the third dimension
 * - `FLEXI_EQNSYSNAME`
-  - linearscalaradvection / navierstokes / rans_sa
+  - linearscalaradvection / burgers / navierstokes / rans_sa
   - linear scalar advection-diffusion equation / Navier--Stokes equations / Reynolds-averaged Navier--Stokes equations using Spalart--Allmaras turbulence model
 * - `FLEXI_FV`
   - off / switch / blend
@@ -133,5 +133,5 @@ Some options are dependent on others being enabled (or disabled), such that the 
   - enable to lift only the gradients of the variables in the flux function of the selected equation system<br/> improves the performance for `FLEXI_PARABOLIC=ON`, but cannot be used if posti tool-set is built (`POSTI=ON`)
 * - `FLEXI_PERFORMANCE_PGO`
   - on / off
-  - enables profile-guided optimization (PGO) for compilation, currently only supported with GNU compiler<br/> the required two-step compilation process is detailed in section {ref}`sec:tut_ptcf_performance`
+  - enables profile-guided optimization (PGO) for compilation, currently only supported with GNU compiler<br/> the required two-step compilation process is detailed in section [](PTCF_performance)
 ```

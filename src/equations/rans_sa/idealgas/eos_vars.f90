@@ -30,6 +30,10 @@ REAL              :: KappaM1           !< = \f$\kappa - 1\f$
 REAL              :: sKappaM1          !< = \f$1/(\kappa -1)\f$
 REAL              :: KappaP1           !< = \f$\kappa + 1\f$
 REAL              :: sKappaP1          !< = \f$1/(\kappa +1)\f$
+#if PP_EntropyVars == 1
+REAL              :: kappaM1_sKappaM1  !< = \f$(kappa-1)^(1/(kappa-1))$
+REAL              :: kappa_kappaM1     !< = \f$kappa/(kappa-1)$
+#endif
 REAL              :: R                 !< specific gas constant
 
 LOGICAL           :: EosInitIsDone=.FALSE.

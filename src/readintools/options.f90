@@ -1,6 +1,6 @@
 !=================================================================================================================================
 ! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
-! Copyright (c) 2022-2024 Prof. Andrea Beck
+! Copyright (c) 2022-2026 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
@@ -27,7 +27,7 @@ PRIVATE
 !> General, abstract OPTION
 !================================================
 TYPE,PUBLIC  :: OPTION
-  CLASS(OPTION),POINTER :: next         !< pointer to next option, used for a linked list of options
+  CLASS(OPTION),POINTER :: next => NULL() !< pointer to next option, used for a linked list of options
   CHARACTER(LEN=255)    :: name         !< name of the option, case-insensitive (part before '=' in parameter file)
   CHARACTER(LEN=1000)   :: description  !< comment in parameter file, after '!' character
   CHARACTER(LEN=255)    :: section      !< section to which the option belongs. Not mandatory.
@@ -264,7 +264,7 @@ ELSE IF (digits.LE.-1) THEN ! scientific (exponential) representation
   WRITE(fmtDigits,*) -digits
   WRITE(tmp,'(E24.'//fmtDigits//')') value
 ELSE ! digits not given
-  WRITE(tmp,'(E24.19)') value
+  WRITE(tmp,'(E24.17)') value
 END IF
 GETSTRLENREAL = LEN(TRIM(ADJUSTL(tmp)))
 
