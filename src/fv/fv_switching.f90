@@ -46,14 +46,9 @@ SUBROUTINE FV_Switch(U,U2,U3,AllowToDG)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Analyze
-USE MOD_EOS             ,ONLY: ConsToPrim
 USE MOD_FV_Vars
 USE MOD_Indicator_Vars  ,ONLY: IndValue
-USE MOD_Indicator       ,ONLY: IndPersson
 USE MOD_Mesh_Vars       ,ONLY: nElems, sJ
-#if PP_NodeType == 1
-USE MOD_ProlongToFace   ,ONLY: EvalElemFace
-#endif /*PP_NodeType == 1*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -65,23 +60,12 @@ LOGICAL,INTENT(IN)          :: AllowToDG                                  !< if 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL    :: U_DG(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
-REAL    :: ind
 INTEGER :: iElem
-! A posterio checking
-LOGICAL :: FV_Valid
-INTEGER :: i,j,k
-REAL    :: U_Cons(CONS)
-REAL    :: U_Prim(PRIM)
-#if PP_NodeType == 1
-INTEGER :: locSide
-REAL    :: UFace_Cons(CONS,0:PP_N,0:PP_NZ)
-REAL    :: UFace_Prim(PRIM,0:PP_N,0:PP_NZ)
-#endif /*PP_NodeType == 1*/
 !==================================================================================================================================
 DO iElem=1,nElems
   IF (FV_Elems(iElem).EQ.0) THEN ! DG Element
     ! Switch DG to FV Element, if Indicator is higher then IndMin
-    IF (IndValue(iElem).GT.FV_IndUpperThreshold) THEN
+    IF (IndValue(iElem).GT.FV_IndUpperThreshold.OR..NOT.SANITY(U(:,:,:,:,iElem))) THEN
       ! switch Element to FV
       FV_Elems(iElem) = 1
       CALL FV_InterpolateDG2FV(U(:,:,:,:,iElem),sJ(:,:,:,iElem,0:FV_SIZE))
@@ -94,31 +78,7 @@ DO iElem=1,nElems
       U_DG = U(:,:,:,:,iElem)
       CALL FV_InterpolateFV2DG(U_DG(:,:,:,:),sJ(:,:,:,iElem,0:FV_SIZE))
       ! Check validity of solution
-      IF (FV_toDG_check) THEN
-        FV_Valid = .TRUE.
-        DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-          U_Cons = U_DG(:,i,j,k)
-          CALL ConsToPrim(U_Prim,U_Cons)
-          IF (.NOT. EOS_VALID(U_Prim)) FV_Valid = .FALSE.
-        END DO; END DO; END DO
-#if PP_NodeType == 1
-        DO locSide = 1,6
-          CALL EvalElemFace(PP_nVar,PP_N,U_DG,UFace_Cons,locSide)
-          CALL ConsToPrim(PP_N,UFace_Prim,UFace_Cons)
-          DO j=0,PP_NZ; DO i=0,PP_N
-            ASSOCIATE (U_Prim => UFace_Prim(:,i,j))
-              IF (.NOT. EOS_VALID(U_Prim)) FV_Valid = .FALSE.
-            END ASSOCIATE
-          END DO; END DO
-        END DO ! locSide = 1,6
-#endif /*PP_NodeType == 1*/
-        IF (.NOT.FV_Valid) CYCLE
-      END IF
-      ! Check additional indicator
-      IF (FV_toDG_indicator) THEN
-        ind = IndPersson(U_DG(:,:,:,:))
-        IF (ind.GT.FV_toDG_limit) CYCLE
-      END IF
+      IF (.NOT.SANITY(U_DG)) CYCLE
       ! switch Element to DG
       FV_Elems(iElem)  = 0
       U(:,:,:,:,iElem) = U_DG
@@ -275,31 +235,19 @@ END SUBROUTINE FV_Info
 !==================================================================================================================================
 SUBROUTINE FV_FillIni()
 ! MODULES
-USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Basis             ,ONLY: InitializeVandermonde
-USE MOD_ChangeBasis       ,ONLY: ChangeBasis2D_XYZ, ChangeBasis3D_XYZ
 USE MOD_ChangeBasisByDim  ,ONLY: ChangeBasisVolume
 USE MOD_DG_Vars           ,ONLY: U
 USE MOD_Equation_Vars     ,ONLY: IniExactFunc
 USE MOD_Exactfunc         ,ONLY: ExactFunc
-USE MOD_FV_Vars           ,ONLY: FV_Elems,FV_Vdm,FV_CellType,FV_IniSharp,FV_IniSupersample
-USE MOD_FV_Basis          ,ONLY: FV_Build_X_w_BdryX
-USE MOD_Interpolation     ,ONLY: GetNodesAndWeights
-USE MOD_Interpolation_Vars,ONLY: NodeType,NodeTypeVISUInner
+USE MOD_FV_Vars           ,ONLY: FV_Elems,FV_Vdm
 USE MOD_Mesh_Vars         ,ONLY: nElems
 USE MOD_Mesh_Vars         ,ONLY: Elem_xGP
-USE MOD_ReadInTools       ,ONLY: GETLOGICAL
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                :: i,iElem, j,k,ii,jj,kk,iVar
-REAL                   :: FV_w(0:PP_N),FV_BdryX(0:PP_N+1)
-REAL,DIMENSION(0:PP_N) :: FV_X,xGP,wGP,wBary,SubxGP
-REAL                   :: VDM(0:PP_N,0:PP_N,0:PP_N)
-REAL,ALLOCATABLE       :: xx(:,:,:,:)
-REAL                   :: tmp(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
+INTEGER                :: i,j,k,iElem
 REAL                   :: Elem_xFV(1:3,0:PP_N,0:PP_N,0:PP_NZ)
 !===================================================================================================================================
 ! initial call of indicator
@@ -307,67 +255,64 @@ FV_Elems = 0
 ! Switch DG elements to FV if necessary (converts initial DG solution to FV solution)
 CALL FV_Switch(U,AllowToDG=.FALSE.)
 
-IF (.NOT.FV_IniSharp) THEN
-  ! Super sample initial solution of all FV elements. Necessary if already initial DG solution contains oscillations, which
-  ! may lead to non valid solutions inside a sub-cell.!
-  !!! THIS IS EXPENSIVE !!!
-  IF (FV_IniSupersample) THEN
-
-    CALL GetNodesAndWeights(PP_N,NodeType,xGP,wGP,wBary)
-    CALL FV_Build_X_w_BdryX(PP_N,FV_X,FV_w,FV_BdryX,FV_CellType)
-    DO i=0,PP_N
-      ! compute equidistant supersampling points inside FV sub-cell
-      DO j=0,PP_N
-        SubxGP(j) = FV_BdryX(i) + (j+0.5)/(PP_N+1)*FV_w(i)
-      END DO
-      ! build Vandermonde for mapping the whole interval [-1,1] to the i-th FV subcell
-      CALL InitializeVandermonde(PP_N,PP_N,wBary,xGP,SubxGP,VDM(:,:,i))
-    END DO
-
-
-    ALLOCATE(xx(1:3,0:PP_N,0:PP_N,0:PP_NZ)) ! coordinates supersampled to FV subcell
-    DO iElem=1,nElems
-      IF (FV_Elems(iElem).EQ.0) CYCLE ! DG element
-      DO k=0,PP_NZ
-        DO j=0,PP_N
-          DO i=0,PP_N
-            ! supersample coordinates to i,j,k-th subcells
-#if PP_dim == 3
-            CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm(:,:,i),Vdm(:,:,j),Vdm(:,:,k),Elem_xGP(1:3,:,:,:,iElem),xx)
-#else
-            CALL ChangeBasis2D_XYZ(3,PP_N,PP_N,Vdm(:,:,i),Vdm(:,:,j),Elem_xGP(1:3,:,:,0,iElem),xx(:,:,:,0))
-#endif
-            ! evaluate ExactFunc for all supersampled points of subcell (i,j,k)
-            DO kk=0,PP_NZ; DO jj=0,PP_N; DO ii=0,PP_N
-              CALL ExactFunc(IniExactFunc,0.,xx(1:3,ii,jj,kk),tmp(:,ii,jj,kk))
-            END DO; END DO; END DO
-            ! mean value
-            DO iVar=1,PP_nVar
-              U(iVar,i,j,k,iElem) = SUM(tmp(iVar,:,:,:)) / ((PP_N+1)**2*(PP_NZ+1))
-            END DO
-          END DO ! i
-        END DO ! j
-      END DO !k
-    END DO ! iElem=1,nElems
-    DEALLOCATE(xx)
-  END IF
-ELSE
-  ! maintain a sharp interface in the FV region
-  DO iElem=1,nElems
-    IF (FV_Elems(iElem).EQ.0) CYCLE ! DG element
-    ! get coordinates of the FV elements
-    CALL ChangeBasisVolume(3,PP_N,PP_N,FV_Vdm,Elem_xGP(1:3,:,:,:,iElem),Elem_xFV(1:3,:,:,:))
-    DO k=0,PP_NZ
-      DO j=0,PP_N
-        DO i=0,PP_N
-          CALL ExactFunc(IniExactFunc,0.,Elem_xFV(:,i,j,k),U(1:PP_nVar,i,j,k,iElem))
-        END DO ! i
-      END DO ! j
-    END DO !k
-  END DO ! iElem=1,nElems
-END IF
+! maintain a sharp interface in the FV region
+DO iElem=1,nElems
+  IF (FV_Elems(iElem).EQ.0) CYCLE ! DG element
+  ! get coordinates of the FV elements
+  CALL ChangeBasisVolume(3,PP_N,PP_N,FV_Vdm,Elem_xGP(1:3,:,:,:,iElem),Elem_xFV(1:3,:,:,:))
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+    CALL ExactFunc(IniExactFunc,0.,Elem_xFV(:,i,j,k),U(1:PP_nVar,i,j,k,iElem))
+  END DO; END DO; END DO ! i,j,k
+END DO ! iElem=1,nElems
 
 END SUBROUTINE FV_FillIni
+
+
+!==================================================================================================================================
+!> Perform sanity check
+!==================================================================================================================================
+FUNCTION SANITY(U_DG)
+! MODULES
+USE MOD_PreProc
+USE MOD_EOS                ,ONLY: ConsToPrim
+USE MOD_FV_Vars
+#if PP_NodeType == 1
+USE MOD_Interpolation_Vars ,ONLY: L_Plus,L_Minus
+USE MOD_ProlongToFace      ,ONLY: EvalElemFace
+#endif /*PP_NodeType == 1*/
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+REAL,INTENT(IN)          :: U_DG(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) !< state vector to be switched
+LOGICAL                  :: Sanity
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER :: i,j,k
+REAL    :: U_Prim(PRIM)
+#if PP_NodeType == 1
+INTEGER :: locSide
+REAL    :: UFace_Cons(CONS,0:PP_N,0:PP_NZ)
+REAL    :: UFace_Prim(PRIM,0:PP_N,0:PP_NZ)
+#endif /*PP_NodeType == 1*/
+!==================================================================================================================================
+Sanity = .TRUE.
+DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+  CALL ConsToPrim(U_Prim,U_DG(:,i,j,k))
+  IF (.NOT. EOS_VALID(U_Prim)) Sanity = .FALSE.
+END DO; END DO; END DO
+#if PP_NodeType == 1
+DO locSide = 1,6
+  CALL EvalElemFace(PP_nVar,PP_N,U_DG,UFace_Cons,L_Minus,L_Plus,locSide)
+  CALL ConsToPrim(PP_N,UFace_Prim,UFace_Cons)
+  DO j=0,PP_NZ; DO i=0,PP_N
+    ASSOCIATE (U_Prim => UFace_Prim(:,i,j))
+      IF (.NOT. EOS_VALID(U_Prim)) Sanity = .FALSE.
+    END ASSOCIATE
+  END DO; END DO
+END DO ! locSide = 1,6
+#endif /*PP_NodeType == 1*/
+END FUNCTION SANITY
 
 #endif /*FV_ENABLED == 1*/
 END MODULE MOD_FV_Switching

@@ -34,15 +34,8 @@ REAL                   :: FV_IndLowerThreshold   !< Lower threshold: Element is 
                                                  !< falls below this value
 
 #if FV_ENABLED == 1
-LOGICAL                :: FV_toDG_indicator      !< additional Persson indicator applied to DG solution after switch from FV to DG
-                                                 !< to check if DG solution is valid
-LOGICAL                :: FV_toDG_check          !< additional check against equation of state after switch from FV to DG
-                                                 !< to check if DG solution is valid
-REAL                   :: FV_toDG_limit          !< limit for ^ this indicator: If FV_toDG_indicator is above limit, keep FV
 LOGICAL                :: FV_toDGinRK            !< Flag that allows switching of FV elements to DG during Runge Kutta stages.
                                                  !< This may violated the DG timestep restriction of the element.
-LOGICAL                :: FV_IniSharp            !< Maintain a sharp interface in the initial solution in the FV region
-LOGICAL                :: FV_IniSupersample      !< Supersample initial solution inside each sub-cell
 #endif /*FV_ENABLED*/
 LOGICAL                :: switchConservative     !< Perform DG/FV switch in reference element
 
