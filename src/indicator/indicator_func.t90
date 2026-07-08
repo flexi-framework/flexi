@@ -241,9 +241,9 @@ DO iVar = 1, nIndVars
     DO iElem=1,nElems
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         UE(EXT_CONS) = U(:,i,j,k,iElem)
-        UE(EXT_SRHO) = ABS(1./UE(EXT_DENS))
+        UE(EXT_SRHO) = 1./UE(EXT_DENS)
         UE(EXT_VELV) = VELOCITY_HE(UE)
-        UE(EXT_PRES) = ABS(PRESSURE_HE(UE))
+        UE(EXT_PRES) = PRESSURE_HE(UE)
         UE(EXT_TEMP) = TEMPERATURE_HE(UE)
         UJameson(1,i,j,k,iElem) = SIGN(1.,MIN(UE(EXT_SRHO),UE(EXT_PRES))) * ENTROPY_HE(UE)
       END DO; END DO; END DO! i,j,k=0,PP_N
