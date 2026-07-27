@@ -42,6 +42,7 @@ LOGICAL                :: switchConservative     !< Perform DG/FV switch in refe
 ! Limiting
 INTEGER                :: LimiterType            !< Readin variable for type of used fv limiter
 REAL                   :: FV_sweby_beta          !< parameter for Sweby limiter
+LOGICAL                :: FV_doSanityCheck
 
 ! FV/DG Switching
 ! TODO: The following variables are only need for Switch-Type FV. Could be hidden behind correct preprocessor flags in the future

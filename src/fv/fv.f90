@@ -77,6 +77,7 @@ CALL prms%CreateRealOption(   'FV_alpha_ExtScale'     ,"Scaling factor for elpha
 CALL prms%CreateIntOption(    'FV_nExtendAlpha'       ,"Number of times alpha should be passed to neighbor elements per timestep",&
                                                        '1' )
 CALL prms%CreateLogicalOption('FV_doExtendAlpha'      ,"Blending factor is prolongated into neighboring elements", '.FALSE.')
+CALL prms%CreateLogicalOption('FV_doSanityCheck'      ,"Enable sanity indicator", '.FALSE.')
 
 #if FV_RECONSTRUCT
 CALL DefineParametersFV_Limiter()
@@ -124,6 +125,9 @@ doIndicatorBaseFlow = GETLOGICAL('doIndicatorBaseFlow')
 
 ! Read flag, which allows to perform the switching from FV to DG in the reference element
 switchConservative = GETLOGICAL("FV_SwitchConservative")
+
+! Perform sanity indicator
+FV_doSanityCheck = GETLOGICAL("FV_doSanityCheck")
 
 #if FV_ENABLED == 1
 ! Read minimal and maximal threshold for the indicator

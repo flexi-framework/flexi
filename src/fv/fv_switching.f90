@@ -297,6 +297,8 @@ REAL    :: UFace_Prim(PRIM,0:PP_N,0:PP_NZ)
 #endif /*PP_NodeType == 1*/
 !==================================================================================================================================
 Sanity = .TRUE.
+IF(.NOT.FV_doSanityCheck) RETURN
+
 DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
   CALL ConsToPrim(U_Prim,U_DG(:,i,j,k))
   IF (.NOT. EOS_VALID(U_Prim)) Sanity = .FALSE.
