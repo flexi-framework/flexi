@@ -89,6 +89,9 @@ USE MOD_Output,             ONLY: InitOutputToFile
 USE MOD_Output_Vars,        ONLY: ProjectName
 USE MOD_Benchmarking,       ONLY: InitBenchmarking
 USE MOD_Timedisc_Vars,      ONLY: TEnd
+#if FV_ENABLED
+USE MOD_FV_Vars,            ONLY: FV_w
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -133,6 +136,10 @@ WriteData_dt = analyze_dt*nWriteData
 
 ! precompute integration weights
 ALLOCATE(wGPSurf(0:PP_N,0:PP_NZ),wGPVol(0:PP_N,0:PP_N,0:PP_NZ))
+#if FV_ENABLED
+ALLOCATE(wFVSurf(0:PP_N,0:PP_NZ),wFVvol(0:PP_N,0:PP_N,0:PP_NZ))
+#endif
+
 #if PP_dim == 3
 DO j=0,PP_N; DO i=0,PP_N
   wGPSurf(i,j)  = wGP(i)*wGP(j)
@@ -140,14 +147,30 @@ END DO; END DO
 DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
   wGPVol(i,j,k) = wGP(i)*wGP(j)*wGP(k)
 END DO; END DO; END DO
-#else
+#if FV_ENABLED
+DO j=0,PP_N; DO i=0,PP_N
+  wFVSurf(i,j)  = FV_w(i)*FV_w(j)
+END DO; END DO
+DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+  wFVVol(i,j,k) = FV_w(i)*FV_w(j)*FV_w(k)
+END DO; END DO; END DO
+#endif /*FV_ENABLED */
+#else /* PP_dim == 2 */
 DO i=0,PP_N
   wGPSurf(i,0)  = wGP(i)
 END DO
 DO j=0,PP_N; DO i=0,PP_N
   wGPVol(i,j,0) = wGP(i)*wGP(j)
 END DO; END DO
-#endif
+#if FV_ENABLED
+DO i=0,PP_N
+  wFVSurf(i,0)  = FV_w(i)
+END DO
+DO j=0,PP_N; DO i=0,PP_N
+  wFVVol(i,j,0) = FV_w(i)*FV_w(j)
+END DO; END DO
+#endif /* FV_ENABLED */
+#endif /* PP_dim */
 
 ! precompute volume of the domain
 ALLOCATE(ElemVol(nElems))
@@ -399,6 +422,7 @@ USE MOD_Analyze_Vars,       ONLY: NAnalyze,NAnalyzeZ,Vdm_GaussN_NAnalyze
 USE MOD_Analyze_Vars,       ONLY: wGPVolAnalyze,Vol,AnalyzeExactFunc,AnalyzeRefState
 #if FV_ENABLED
 USE MOD_FV_Vars,            ONLY: FV_Elems,FV_Vdm,FV_w
+USE MOD_Analyze_Vars,       ONLY: wFVVol
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -439,7 +463,7 @@ DO iElem=1,nElems
     ! Calculate the FV errors on the FV subcells
     DO m=0,PP_NZ; DO l=0,PP_N; DO k=0,PP_N
       L_Inf_Error = MAX(L_Inf_Error,ABS(U(:,k,l,m,iElem) - U_FV(:,k,l,m)))
-      IntegrationWeight = FV_w(k)*FV_w(l)*FV_w(m)/sJ(k,l,m,iElem,1)
+      IntegrationWeight = wFVVol(k,l,m)/sJ(k,l,m,iElem,1)
       ! To sum over the elements, we compute here the square of the L_2 error
       L_2_Error = L_2_Error+(U(:,k,l,m,iElem) - U_FV(:,k,l,m))*(U(:,k,l,m,iElem) - U_FV(:,k,l,m))*IntegrationWeight
     END DO; END DO; END DO ! k, l, m
@@ -494,6 +518,9 @@ USE MOD_Analyze_Vars,       ONLY: AnalyzeInitIsDone,wGPSurf,wGPVol,Surf,wGPVolAn
 #if FV_ENABLED == 1
 USE MOD_Analyze_Vars,       ONLY: FV_Vdm_NAnalyze
 #endif
+#if FV_ENABLED
+USE MOD_Analyze_Vars,       ONLY: wFVSurf,wFVVol
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -505,6 +532,10 @@ SDEALLOCATE(wGPVolAnalyze)
 SDEALLOCATE(Surf)
 SDEALLOCATE(wGPVol)
 SDEALLOCATE(wGPSurf)
+#if FV_ENABLED
+SDEALLOCATE(wFVSurf)
+SDEALLOCATE(wFVVol)
+#endif
 SDEALLOCATE(ElemVol)
 #if FV_ENABLED == 1
 SDEALLOCATE(FV_Vdm_NAnalyze)
