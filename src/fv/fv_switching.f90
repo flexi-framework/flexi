@@ -299,12 +299,18 @@ REAL    :: UFace_Prim(PRIM,0:PP_N,0:PP_NZ)
 Sanity = .TRUE.
 IF(.NOT.FV_doSanityCheck) RETURN
 
+#if EQNSYSNR == 2 /* NAVIER-STOKES */
 DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
   CALL ConsToPrim(U_Prim,U_DG(:,i,j,k))
   IF (.NOT. EOS_VALID(U_Prim)) Sanity = .FALSE.
 END DO; END DO; END DO
+
 #if PP_NodeType == 1
-DO locSide = 1,6
+#if PP_dim == 3
+DO locSide=1,6
+#else
+DO locSide=2,5
+#endif /*PP_dim == 3*/
   CALL EvalElemFace(PP_nVar,PP_N,U_DG,UFace_Cons,L_Minus,L_Plus,locSide)
   CALL ConsToPrim(PP_N,UFace_Prim,UFace_Cons)
   DO j=0,PP_NZ; DO i=0,PP_N
@@ -314,6 +320,8 @@ DO locSide = 1,6
   END DO; END DO
 END DO ! locSide = 1,6
 #endif /*PP_NodeType == 1*/
+
+#endif /* NAVIER-STOKES */
 END FUNCTION SANITY
 
 #endif /*FV_ENABLED == 1*/
