@@ -350,7 +350,7 @@ DO iSide=1,nSides
 END DO
 
 #if USE_MPI
-! Send surface geomtry informations from mpi master to mpi slave
+! Send surface geometry information from mpi master to mpi slave
 ALLOCATE(Geo(10,0:PP_N,0:PP_NZ,firstMPISide_MINE:nSides))
 Geo=0.
 Geo(1,:,:,:)   =SurfElem(  :,0:PP_NZ,1,firstMPISide_MINE:nSides)
@@ -872,7 +872,7 @@ END DO
 
 #if FV_RECONSTRUCT
 #if VOLINT_VISC
-! Caluclate transformation matrix from xi/eta/zeta  to normal system of master side
+! Calculate transformation matrix from xi/eta/zeta  to normal system of master side
 DO iSide = 1, nSides
   ! master
   ElemID=SideToElem(S2E_ELEM_ID    ,iSide)

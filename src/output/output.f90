@@ -705,7 +705,7 @@ IF(file_exists)THEN ! File exists and append data
        STATUS   = 'OLD'              , &
        POSITION = 'APPEND'           , &
        RECL     = 50000              , &
-       ACTION   = 'READ'             , &
+       ACTION   = 'WRITE'            , &
        IOSTAT = stat                 )
   IF(stat.NE.0)THEN
     WRITE(UNIT_stdOut,'(A)') ' File '//TRIM(FileName_loc)// ' is invalid. Rewriting file...'

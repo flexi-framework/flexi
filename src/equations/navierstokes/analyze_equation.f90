@@ -271,6 +271,7 @@ USE MOD_Mesh_Vars,          ONLY: sJ,nElems
 USE MOD_DG_Vars,            ONLY: U,UPrim
 #if FV_ENABLED
 USE MOD_FV_Vars,            ONLY: FV_Elems,FV_w
+USE MOD_Analyze_Vars,       ONLY: wFVVol
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -292,7 +293,7 @@ DO iElem=1,nElems
 #if FV_ENABLED
   IF (FV_Elems(iElem).GT.0) THEN ! FV Element
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      IntegrationWeight=FV_w(i)*FV_w(j)*FV_w(k)/sJ(i,j,k,iElem,1)
+      IntegrationWeight=wFVVol(i,j,k)/sJ(i,j,k,iElem,1)
       BulkCons         =BulkCons+U(:,i,j,k,iElem)*IntegrationWeight
       BulkPrim         =BulkPrim+UPrim(:,i,j,k,iElem)*IntegrationWeight
     END DO; END DO; END DO !i,j,k
@@ -337,7 +338,8 @@ USE MOD_Mesh_Vars,         ONLY: nBCSides,BC,BoundaryType,nBCs
 USE MOD_Analyze_Vars,      ONLY: wGPSurf,Surf
 USE MOD_EOS_Vars,          ONLY: Kappa,R,sKappaM1,KappaM1
 #if FV_ENABLED
-USE MOD_FV_Vars,           ONLY: FV_Elems_master,FV_w
+USE MOD_FV_Vars,           ONLY: FV_Elems_master
+USE MOD_Analyze_Vars,      ONLY: wFVSurf
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -395,7 +397,7 @@ DO SideID=1,nBCSides
  !   minV(iBC)=MIN(minV(iBC),locV)
 #if FV_ENABLED
     IF (FV_Elems_master(SideID).EQ.1) THEN ! FV element
-      dA=FV_w(i)*FV_w(j)*SurfElem(i,j,1,SideID)
+      dA=wFVSurf(i,j)*SurfElem(i,j,1,SideID)
     ELSE
 #endif
       dA=wGPSurf(i,j)*SurfElem(i,j,0,SideID)
@@ -439,7 +441,8 @@ USE MOD_Mesh_Vars,            ONLY: nBCSides,BC,nBCs
 USE MOD_Analyze_Vars,         ONLY: wGPSurf,Surf
 USE MOD_AnalyzeEquation_Vars, ONLY: isWall
 #if FV_ENABLED
-USE MOD_FV_Vars,              ONLY: FV_Elems_master,FV_w
+USE MOD_FV_Vars,              ONLY: FV_Elems_master
+USE MOD_Analyze_Vars,         ONLY: wFVSurf
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -467,7 +470,7 @@ DO iSide=1,nBCSides
     minV(iBC)=MIN(minV(iBC),locV)
 #if FV_ENABLED
     IF (FV_Elems_master(iSide).EQ.1) THEN ! FV element
-      dA=FV_w(i)*FV_w(j)*SurfElem(i,j,1,iSide)
+      dA=wFVSurf(i,j)*SurfElem(i,j,1,iSide)
     ELSE
 #endif
       dA=wGPSurf(i,j)*SurfElem(i,j,0,iSide)
@@ -508,7 +511,8 @@ USE MOD_DG_Vars,           ONLY: Flux_master
 USE MOD_Analyze_Vars,      ONLY: wGPSurf,Surf
 USE MOD_Mesh_Vars,         ONLY: nSides,nMPISides_YOUR,AnalyzeSide,nBCs,BoundaryType
 #if FV_ENABLED
-USE MOD_FV_Vars,           ONLY: FV_Elems_master,FV_w
+USE MOD_FV_Vars,           ONLY: FV_Elems_master
+USE MOD_Analyze_Vars,      ONLY: wFVSurf
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -527,7 +531,7 @@ DO iSide=1,nSides-nMPISides_YOUR
   IF (FV_Elems_master(iSide).EQ.1) THEN ! FV element
     DO j=0,PP_NZ; DO i=0,PP_N
       ! Don't multiply with Surfelem, its already contained in the fluxes
-      MeanFlux(:,iSurf)=MeanFlux(:,iSurf)+Flux_master(:,i,j,iSide)*FV_w(i)*FV_w(j)
+      MeanFlux(:,iSurf)=MeanFlux(:,iSurf)+Flux_master(:,i,j,iSide)*wFVSurf(i,j)
     END DO; END DO
   ELSE ! DG element
 #endif

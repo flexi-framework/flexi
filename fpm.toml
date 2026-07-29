@@ -93,6 +93,7 @@ ignore            = ["C003",    # C003: implicit-external-procedures
 "src/areas/areas.f90"                               = ["S252",           # Unnecessary else after `return` statement   > disabled for readability
                                                        "S253"]           # Unnecessary else-if after `cycle` statement > disabled for readability
 "src/mesh/mesh_readin.f90"                          = ["S254"]           # Unnecessary else-if after `exit` statement  > disabled for readability
+"src/fv/fv_switching.f90"                           = ["C061"]           # Argument missing intent attribute > disabled because of false positives with PreProcessor
 "src/mesh/prepare_mesh.f90"                         = ["S254"]           # Unnecessary else-if after `exit` statement  > disabled for readability
 "src/indicator/indicator.f90"                       = ["S061"]           # END statement should be named > disabled because of false positives with PreProcessor
 "src/precond/jac_ex/jac_ex_reconstruction.f90"      = ["S061"]           # END statement should be named > disabled because of false positives with PreProcessor

@@ -91,7 +91,7 @@ REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: Ut_FV_zeta
 !==================================================================================================================================
 
 ! This routine works as follows:
-! The tensor product stucture is used to evaluate the fluxes first for all interfaces/slices in xi-direction, then in eta- and
+! The tensor product structure is used to evaluate the fluxes first for all interfaces/slices in xi-direction, then in eta- and
 ! at last in zeta-direction.
 !   0. The viscous fluxes in all sub-cells are calculated.
 ! For each direction the following steps are performed.
@@ -159,7 +159,7 @@ DO iElem=1,nElems
       UPrim_R(:,p,q) = UPrim(:,i  ,p,q,iElem)
 #endif
     END DO; END DO ! p,q=0,PP_N
-    ! 3. convert primitve solution to conservative
+    ! 3. convert primitive solution to conservative
     CALL PrimToCons(PP_N,UPrim_L, UCons_L)
     CALL PrimToCons(PP_N,UPrim_R, UCons_R)
 
@@ -223,7 +223,7 @@ END DO ! i
       UPrim_R(:,p,q) = UPrim(:,p,j  ,q,iElem)
 #endif
     END DO; END DO ! p,q=0,PP_N
-    ! 3. convert primitve solution to conservative
+    ! 3. convert primitive solution to conservative
     CALL PrimToCons(PP_N,UPrim_L, UCons_L)
     CALL PrimToCons(PP_N,UPrim_R, UCons_R)
 
@@ -277,7 +277,7 @@ END DO ! j
       UPrim_R(:,p,q) = UPrim(:,p,q,k  ,iElem)
 #endif
     END DO; END DO ! p,q=0,PP_N
-    ! 3. convert primitve solution to conservative
+    ! 3. convert primitive solution to conservative
     CALL PrimToCons(PP_N,UPrim_L, UCons_L)
     CALL PrimToCons(PP_N,UPrim_R, UCons_R)
 

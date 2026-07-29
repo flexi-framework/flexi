@@ -41,6 +41,10 @@ INTEGER(KIND=DP)     :: totalPP_nElems=0                  !< number of elements 
 #endif
 REAL,ALLOCATABLE     :: wGPSurf(:,:)                      !< wGPSurf(i,j)=wGP(i)*wGP(j)
 REAL,ALLOCATABLE     :: wGPVol(:,:,:)                     !< wGPVol(i,j,k)=wGP(i)*wGP(j)*wGP(k)
+#if FV_ENABLED
+REAL,ALLOCATABLE     :: wFVSurf(:,:)                      !< wFVSurf(i,j)=FV_w(i)*FV_w(j)
+REAL,ALLOCATABLE     :: wFVVol(:,:,:)                     !< wFVVol(i,j,k)=FV_w(i)*FV_w(j)*FV_w(k)
+#endif
 REAL,ALLOCATABLE     :: Surf(:)                           !< surface of each analyze set (e.g. of each boundary condition)
 REAL,ALLOCATABLE     :: ElemVol(:)                        !< volume of each element
 REAL                 :: Vol                               !< volume of the domain

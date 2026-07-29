@@ -59,21 +59,12 @@ CALL prms%CreateLogicalOption('doIndicatorBaseFlow'  ,"Switch on to evaluate the
 ! FV Switching
 CALL prms%CreateLogicalOption('FV_SwitchConservative',"Perform FV/DG switch in reference element"                                 &
                                                      ,'.TRUE.')
-CALL prms%CreateLogicalOption('FV_IniSupersample'    ,"Supersample initial solution inside each sub-cell and take mean value \n"//&
-                                                      " as average sub-cell value."                                               &
-                                                     ,'.TRUE.')
-CALL prms%CreateLogicalOption('FV_IniSharp'          ,"Maintain a sharp interface in the initial solution in the FV region"       &
-                                                     ,'.FALSE.')
 CALL prms%CreateRealOption(   'FV_IndUpperThreshold' ,"Upper threshold: Element is switched from DG to FV if indicator \n"      //&
                                                       "rises above this value"                                                    &
                                                      ,'99.')
 CALL prms%CreateRealOption(   'FV_IndLowerThreshold' ,"Lower threshold: Element is switched from FV to DG if indicator \n"      //&
                                                       "falls below this value"                                                    &
                                                      ,'-99.')
-CALL prms%CreateLogicalOption('FV_toDG_indicator'    ,"Apply additional Persson indicator to check if DG solution after \n"     //&
-                                                      " switch from FV to DG is valid."                                           &
-                                                     ,'.FALSE.')
-CALL prms%CreateRealOption   ('FV_toDG_limit'        ,"Threshold for FV_toDG_indicator")
 CALL prms%CreateLogicalOption('FV_toDGinRK'          ,"Allow switching of FV elements to DG during Runge Kutta stages. \n"      //&
                                                       "This may violated the DG timestep restriction of the element."             &
                                                      ,'.FALSE.')
@@ -86,6 +77,7 @@ CALL prms%CreateRealOption(   'FV_alpha_ExtScale'     ,"Scaling factor for elpha
 CALL prms%CreateIntOption(    'FV_nExtendAlpha'       ,"Number of times alpha should be passed to neighbor elements per timestep",&
                                                        '1' )
 CALL prms%CreateLogicalOption('FV_doExtendAlpha'      ,"Blending factor is prolongated into neighboring elements", '.FALSE.')
+CALL prms%CreateLogicalOption('FV_doSanityCheck'      ,"Enable sanity indicator", '.FALSE.')
 
 #if FV_RECONSTRUCT
 CALL DefineParametersFV_Limiter()
@@ -96,21 +88,15 @@ END SUBROUTINE DefineParametersFV
 
 !==================================================================================================================================
 !> Read in parameters needed for FV sub-cells (indicator min/max and type of limiter) and allocate several arrays.
-!> Build metrics for FV sub-cells and performe initial switch from DG to FV sub-cells for all troubled cells.
+!> Build metrics for FV sub-cells and perform initial switch from DG to FV sub-cells for all troubled cells.
 !==================================================================================================================================
 SUBROUTINE InitFV()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Basis               ,ONLY: InitializeVandermonde
 USE MOD_FV_Vars
 USE MOD_FV_Basis
 USE MOD_Indicator           ,ONLY: doIndicatorBaseFlow
-#if FV_ENABLED == 1
-USE MOD_Filter_Vars         ,ONLY: NFilter
-USE MOD_Indicator_Vars      ,ONLY: nModes,IndicatorType
-USE MOD_Overintegration_Vars,ONLY: NUnder
-#endif /*FV_ENABLED == 1*/
 #if FV_ENABLED == 3
 USE MOD_IO_HDF5             ,ONLY: AddToFieldData,FieldOut
 #endif /*FV_ENABLED == 3*/
@@ -126,7 +112,6 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: nModes_In
 !==================================================================================================================================
 IF(.NOT.FVInitBasisIsDone)THEN
    CALL CollectiveStop(__STAMP__,&
@@ -141,37 +126,17 @@ doIndicatorBaseFlow = GETLOGICAL('doIndicatorBaseFlow')
 ! Read flag, which allows to perform the switching from FV to DG in the reference element
 switchConservative = GETLOGICAL("FV_SwitchConservative")
 
+! Perform sanity indicator
+FV_doSanityCheck = GETLOGICAL("FV_doSanityCheck")
+
 #if FV_ENABLED == 1
 ! Read minimal and maximal threshold for the indicator
 FV_IndLowerThreshold = GETREAL('FV_IndLowerThreshold')
 FV_IndUpperThreshold = GETREAL('FV_IndUpperThreshold')
 
-! Read flag indicating, if an additional Persson indicator should check if a FV sub-cells element really contains no oscillations
-! anymore.
-FV_toDG_indicator = GETLOGICAL('FV_toDG_indicator')
-IF (FV_toDG_indicator) THEN
-  FV_toDG_limit = GETREAL('FV_toDG_limit')
-  ! If the main indicator is not already the Persson indicator, then we need to read in the parameters
-  IF (IndicatorType .NE. 2) THEN
-    ! number of modes to be checked by Persson indicator
-    nModes_In = GETINT('nModes')
-    ! For overintegration, the last PP_N-Nunder modes are empty. Add them to nModes, so we check non-empty ones
-    nModes_In = nModes_In+PP_N-MIN(NUnder,NFilter)
-    ! Safety checks: At least one mode must be left and only values >0 make sense
-    nModes = MAX(1,MIN(PP_N-1,nModes_In))
-    IF (nModes.NE.nModes_In) THEN
-      SWRITE(UNIT_stdOut,'(A,I0)') 'WARNING: nModes set by user not within range [1,PP_N-1]. Was instead set to nModes=', nModes
-    END IF
-  END IF
-END IF
-
 ! Read flag, which allows switching from FV to DG between the stages of a Runge-Kutta time step
 ! (this might lead to instabilities, since the time step for a DG element is smaller)
 FV_toDGinRK = GETLOGICAL("FV_toDGinRK")
-
-! Options for initial solution
-FV_IniSharp       = GETLOGICAL("FV_IniSharp")
-IF (.NOT.FV_IniSharp) FV_IniSupersample = GETLOGICAL("FV_IniSupersample")
 
 #elif FV_ENABLED == 2
 ! Initialize parameters for FV Blending
@@ -353,7 +318,7 @@ END SUBROUTINE InitFV
 
 !==================================================================================================================================
 !> Interpolate face solution from DG representation to FV subcells.
-!> Interpolation is done either conservatively in reference space or non-conservatively in phyiscal space.
+!> Interpolation is done either conservatively in reference space or non-conservatively in physical space.
 !==================================================================================================================================
 PPURE SUBROUTINE FV_InterpolateDG2FV_Face(nVar,U_In,sJ_In)
 ! MODULES
