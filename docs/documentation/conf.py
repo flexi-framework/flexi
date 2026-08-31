@@ -101,10 +101,11 @@ latex_elements = {
 master_doc = 'index'
 # replace strings to obtain correct line breaks
 latex_documents = [
-    (master_doc, 'foo.tex', project,
+    (master_doc, 'flexi.tex', project,
      author.replace(', ', '\\and ').replace(' and ', '\\and and '),
      'manual'),
 ]
+latex_engine = 'lualatex'
 
 # -- Bibliography ------------------------------------------------------------
 bibtex_bibfiles = ['references.bib']
