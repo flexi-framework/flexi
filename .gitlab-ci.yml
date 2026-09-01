@@ -381,7 +381,8 @@ documentation:
 userguide:
   extends: .default_build_param
   stage: documentation
-  image: sphinxdoc/sphinx-latexpdf:latest
+  image:
+    name: sphinxdoc/sphinx-latexpdf:latest
   rules:
     - if: '"$[[ inputs.deploy ]]" == "true"'
     - if: '"$[[ inputs.weekly ]]" == "true"'
@@ -396,12 +397,19 @@ userguide:
     - latexmk -r latexmkrc -pdf -f -dvi- -ps- -jobname=flexi -interaction=nonstopmode || true
     - ls -l
     - ls -l flexi.pdf
+    - cd ../../../..
+    - chown -R 987:987 docs/documentation
+    - chmod -R 777 docs/documentation
+    - ls -l docs/documentation
+    - id
   artifacts:
+    # TODO should be sufficient to keep _build directory
     paths:
       - docs/documentation
   cache:
     key: "${CI_COMMIT_REF_SLUG}-USERGUIDE"
-    paths: [docs/documentation]
+    paths:
+      - docs/documentation
     policy: push
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -410,15 +418,21 @@ userguide:
 homepage:
   extends: .default_deploy_param
   stage: deploy
+  dependencies:
+    - userguide
   rules:
     - if: '"$[[ inputs.deploy ]]" == "true" && $CI_SERVER_URL =~ /.*\.iag\.uni-stuttgart\.de$/'
   cache:
     - key: "${CI_COMMIT_REF_SLUG}-USERGUIDE"
-      paths: [docs/documentation]
+      paths:
+        - docs/documentation
       policy: pull
   variables:
     FF_ENABLE_JOB_CLEANUP: 1
   script:
+    - id
+    - pwd
+    - ls -l docs/documentation
     - rsync --recursive --delete docs/documentation/_build/latex/flexi.pdf webserver:nrg.git/nrg_website/NRG/userguide/pdf/userguide.pdf
     - rsync --recursive --delete docs/documentation/_build/html/*          webserver:nrg.git/nrg_website/NRG/userguide/html/.
 
@@ -432,5 +446,5 @@ github:
   script:
     - git clone --single-branch git@gitlab.iag.uni-stuttgart.de:flexi/flexi.git flexi_github
     - cd flexi_github
-    - git push --mirror git@github.com:flexi-framework/flexi.git
+    #- git push --mirror git@github.com:flexi-framework/flexi.git
     # - git push --mirror git@github.com:flexi-framework/flexi-extensions.git
