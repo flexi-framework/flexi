@@ -382,7 +382,7 @@ userguide:
   extends: .default_build_param
   stage: documentation
   image:
-    name: sphinxdoc/sphinx-latexpdf:latest
+    name: registry.iag.uni-stuttgart.de/flexi/flexi/sphinxdoc/sphinx-latexpdf:latest
   rules:
     - if: '"$[[ inputs.deploy ]]" == "true"'
     - if: '"$[[ inputs.weekly ]]" == "true"'
@@ -398,8 +398,7 @@ userguide:
     - ls -l
     - ls -l flexi.pdf
     - cd ../../../..
-    - chown -R 987:987 docs/documentation
-    - chmod -R 777 docs/documentation
+    # - chown -R 987:987 docs/documentation
     - ls -l docs/documentation
     - id
   artifacts:
@@ -416,8 +415,11 @@ userguide:
 # Stage "deploy": Copies the doxygen documentation and userguide *.pdf to the homepage server & copies the repository to github
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 homepage:
-  extends: .default_deploy_param
+  #extends: .default_deploy_param
+  extends: .default_build_param
   stage: deploy
+  image:
+    name: registry.iag.uni-stuttgart.de/flexi/flexi/sphinxdoc/sphinx-latexpdf:latest
   dependencies:
     - userguide
   rules:
@@ -432,7 +434,13 @@ homepage:
   script:
     - id
     - pwd
-    - ls -l docs/documentation
+    - echo $SSH_AUTH_SOCK
+    - ls -l /* || true
+    - ls -la /home/gitlab-runner/.ssh || true
+    - ls -l docs/documentation/_build || true
+    # Check forwarding of ssh-agent by listing all identities currently represented by the agent
+    - ssh-add -l
+    # Copy documentation to webserver using ssh
     - rsync --recursive --delete docs/documentation/_build/latex/flexi.pdf webserver:nrg.git/nrg_website/NRG/userguide/pdf/userguide.pdf
     - rsync --recursive --delete docs/documentation/_build/html/*          webserver:nrg.git/nrg_website/NRG/userguide/html/.
 
