@@ -264,8 +264,7 @@ build:
   stage: build
   # artifacts:
   #   paths:
-  #     - build/
-  #     - build_intel/
+  #     - build_${CI_COMPILER}
   #   when: on_success
   #   expire_in: 1 day
   cache:
@@ -402,13 +401,10 @@ userguide:
     - ls -l docs/documentation
     - id
   artifacts:
-    # TODO should be sufficient to keep _build directory
-    paths:
-      - docs/documentation
+    paths: [docs/documentation/_build]
   cache:
     key: "${CI_COMMIT_REF_SLUG}-USERGUIDE"
-    paths:
-      - docs/documentation
+    paths: [docs/documentation/_build]
     policy: push
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -426,8 +422,7 @@ homepage:
     - if: '"$[[ inputs.deploy ]]" == "true" && $CI_SERVER_URL =~ /.*\.iag\.uni-stuttgart\.de$/'
   cache:
     - key: "${CI_COMMIT_REF_SLUG}-USERGUIDE"
-      paths:
-        - docs/documentation
+      paths: [docs/documentation/_build]
       policy: pull
   variables:
     FF_ENABLE_JOB_CLEANUP: 1
