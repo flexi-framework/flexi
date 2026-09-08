@@ -256,6 +256,9 @@ IF(NOT LIBS_BUILD_HDF5)
     ENDIF()
   ENDIF()
 
+  # HDF5 might reference szip, nowadays provided by libaec, in its imported targets without looking it up itself
+  FIND_PACKAGE(libaec QUIET)
+
   # Set build status to system
   SET(HDF5_BUILD_STATUS "system")
 ELSE()
