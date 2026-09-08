@@ -43,9 +43,12 @@ ELSE()
       MARK_AS_ADVANCED(FORCE CMAKE_GCC_NM)
       MARK_AS_ADVANCED(FORCE CMAKE_GCC_RANLIB)
       # Determine version of LD linker, since LTO linker plugins prior to version 2.35.2 as well as standard IPO cause segfaults
-      EXECUTE_PROCESS(COMMAND ld --version COMMAND grep "^GNU ld" COMMAND sed "s/^.* //g" OUTPUT_VARIABLE GNU_LD_VERSION)
+      EXECUTE_PROCESS(COMMAND ld --version COMMAND grep "^GNU ld" COMMAND sed "s/^.* //g" OUTPUT_VARIABLE GNU_LD_VERSION ERROR_QUIET)
       STRING(STRIP "${GNU_LD_VERSION}" GNU_LD_VERSION)
-      IF( ${GNU_LD_VERSION} VERSION_GREATER "2.35.2" )
+      # Linkers other than GNU ld (Apple ld, LLD, mold) report no version here, so the plugin-based path does not apply
+      IF( NOT GNU_LD_VERSION )
+        SET(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)  # Fall back to standard IPO
+      ELSEIF( GNU_LD_VERSION VERSION_GREATER "2.35.2" )
         IF( CMAKE_GCC_AR AND CMAKE_GCC_NM AND CMAKE_GCC_RANLIB )
           MESSAGE(STATUS "Found GCC binutils wrappers for LTO. Enabling LTO linker plugin.")
           # Do not use the standard CMake LTO option for GNU (-flto -fno-fat-lto-objects), as it does not allow speed-up during linking
