@@ -1,18 +1,17 @@
 FROM sphinxdoc/sphinx-latexpdf:latest
 
-ARG NB_USER=gitlab-runner
-ARG NB_UID=987
-ARG NB_GID=987
+# User gitlab-runner must have same UID as on host machine to avoid permission issues
+ARG USER=gitlab-runner
+ARG UID=987
+ARG GID=987
 
 RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
     ssh rsync
-RUN mkdir /mymount
 
-RUN groupadd --gid ${NB_GID} ${NB_USER} && \
-    useradd  --gid ${NB_GID} --uid ${NB_UID} -m -s /bin/bash ${NB_USER}
+RUN groupadd --gid ${GID} ${USER} && \
+    useradd  --gid ${GID} --uid ${UID} -m -s /bin/bash ${USER}
 
-USER ${NB_USER}
-RUN mkdir /home/${NB_USER}/.ssh
-#ENV SSH_AUTH_SOCK=/ssh-agent
+USER ${USER}
+RUN mkdir /home/${USER}/.ssh
