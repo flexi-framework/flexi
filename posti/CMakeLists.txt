@@ -41,28 +41,43 @@ ADD_DEPENDENCIES(libposti target_libposti)
 # FFTW library
 # =========================================================================
 IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT OR POSTI_HIT_INIT OR POSTI_HIT_FILTER OR POSTI_HIT_ANALYZE)
-  SET (FFTWDOWNLOAD ${LIBS_DLPATH}libs/FFTW.git )
   SET(POSTI_FFTWTAG "fftw-3.3.9" CACHE STRING "FFTW version tag")
-  IF (LIBS_USE_OPENMP)
-    SET(POSTI_FFTWDIR ${LIBS_EXTERNAL_LIB_DIR}/fftw_omp)
-  ELSE()
-    SET(POSTI_FFTWDIR ${LIBS_EXTERNAL_LIB_DIR}/fftw)
-  ENDIF()
+
   # Try to find the library in the share directory or in a global, user-defined $FFTW_DIR
   FIND_PATH(FFTW_INCLUDES fftw3.h       HINTS $ENV{FFTW_DIR}/include                  ${LIBS_EXTERNAL_LIB_DIR}/fftw/build/include)
   FIND_LIBRARY(FFTW_LIBRARY NAMES fftw3 HINTS $ENV{FFTW_DIR}/${CMAKE_INSTALL_LIBDIR}  ${LIBS_EXTERNAL_LIB_DIR}/fftw/build/${CMAKE_INSTALL_LIBDIR})
   IF (LIBS_USE_OPENMP)
     FIND_LIBRARY(FFTW_OMP_LIBRARY NAMES fftw3_omp HINTS $ENV{FFTW_DIR}/lib ${LIBS_EXTERNAL_LIB_DIR}/fftw/build/${CMAKE_INSTALL_LIBDIR})
   ENDIF()
+
   IF(FFTW_INCLUDES STREQUAL "FFTW_INCLUDES-NOTFOUND" OR  FFTW_LIBRARY     STREQUAL "FFTW_LIBRARY-NOTFOUND"
                                                      OR (FFTW_OMP_LIBRARY STREQUAL "FFTW_OMP_LIBRARY-NOTFOUND" AND LIBS_USE_OPENMP))
-    SET(FFTW_FLAGS tar xzf ${POSTI_FFTWTAG}.tar.gz && FC=${CMAKE_Fortran_COMPILER} CC=${CMAKE_C_COMPILER} F77=${CMAKE_F77_COMPILER} ${POSTI_FFTWDIR}/src/fftw/${POSTI_FFTWTAG}/configure --prefix=${POSTI_FFTWDIR}/build --libdir=${POSTI_FFTWDIR}/build/${CMAKE_INSTALL_LIBDIR})
     IF (LIBS_USE_OPENMP)
-      LIST(APPEND FFTW_FLAGS --enable-openmp)
+      SET(POSTI_FFTWDIR ${LIBS_EXTERNAL_LIB_DIR}/fftw_omp)
+      SET(FFTW_FLAGS "--enable-openmp")
+    ELSE()
+      SET(POSTI_FFTWDIR ${LIBS_EXTERNAL_LIB_DIR}/fftw)
+      SET(FFTW_FLAGS "")
     ENDIF()
+    SET(FFTW_BYPRODUCTS ${POSTI_FFTWDIR}/build/${CMAKE_INSTALL_LIBDIR}/libfftw3.a ${POSTI_FFTWDIR}/build/${CMAKE_INSTALL_LIBDIR}/libfftw3_omp.a)
     MESSAGE(STATUS "FFTW not found, building library")
+
+    # Origin pointing to GitHub -> download tarball directly from FFTW and have CMake extract it automatically
+    IF("${GIT_ORIGIN}" MATCHES ".github.com")
+      LIST(PREPEND FFTW_FLAGS FC=${CMAKE_Fortran_COMPILER} CC=${CMAKE_C_COMPILER} ${POSTI_FFTWDIR}/src/fftw/configure --prefix=${POSTI_FFTWDIR}/build --libdir=${POSTI_FFTWDIR}/build/${CMAKE_INSTALL_LIBDIR})
       EXTERNALPROJECT_ADD(fftw
-        GIT_REPOSITORY    ${FFTWDOWNLOAD}
+        URL               https://fftw.org/${POSTI_FFTWTAG}.tar.gz
+        PREFIX            ${POSTI_FFTWDIR}
+        UPDATE_COMMAND    ""
+        CONFIGURE_COMMAND ${FFTW_FLAGS}
+        BUILD_IN_SOURCE   1
+        BUILD_BYPRODUCTS  ${FFTW_BYPRODUCTS}
+      )
+    # Origin pointing to GitLab -> clone tarball from internal IAG libs repository and extract it manually
+    ELSE()
+      LIST(PREPEND FFTW_FLAGS tar xzf ${POSTI_FFTWTAG}.tar.gz && FC=${CMAKE_Fortran_COMPILER} CC=${CMAKE_C_COMPILER} ${POSTI_FFTWDIR}/src/fftw/${POSTI_FFTWTAG}/configure --prefix=${POSTI_FFTWDIR}/build --libdir=${POSTI_FFTWDIR}/build/${CMAKE_INSTALL_LIBDIR})
+      EXTERNALPROJECT_ADD(fftw
+        GIT_REPOSITORY    ${LIBS_DLPATH}libs/FFTW.git
         GIT_TAG           ${POSTI_FFTWTAG}
         GIT_PROGRESS      TRUE
         ${${GITSHALLOW}}
@@ -70,8 +85,10 @@ IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT OR POSTI_HIT_INIT OR POSTI_HIT_FILTER
         UPDATE_COMMAND    ""
         CONFIGURE_COMMAND ${FFTW_FLAGS}
         BUILD_IN_SOURCE   1
-        BUILD_BYPRODUCTS  ${POSTI_FFTWDIR}/build/${CMAKE_INSTALL_LIBDIR}/libfftw3.a ${POSTI_FFTWDIR}/build/${CMAKE_INSTALL_LIBDIR}/libfftw3_omp.a
+        BUILD_BYPRODUCTS  ${FFTW_BYPRODUCTS}
       )
+    ENDIF()
+
     SET(FFTW_INCLUDE_DIR ${POSTI_FFTWDIR}/build/include)
     SET(FFTW_LIBRARY     ${POSTI_FFTWDIR}/build/${CMAKE_INSTALL_LIBDIR}/libfftw3.a)
     SET(FFTW_OMP_LIBRARY ${POSTI_FFTWDIR}/build/${CMAKE_INSTALL_LIBDIR}/libfftw3_omp.a)
