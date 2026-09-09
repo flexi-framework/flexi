@@ -41,7 +41,7 @@ ADD_DEPENDENCIES(libposti target_libposti)
 # FFTW library
 # =========================================================================
 IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT OR POSTI_HIT_INIT OR POSTI_HIT_FILTER OR POSTI_HIT_ANALYZE)
-  SET(POSTI_FFTWTAG "fftw-3.3.9" CACHE STRING "FFTW version tag")
+  SET(POSTI_FFTWTAG "fftw-3.3.11" CACHE STRING "FFTW version tag")
 
   # Try to find the library in the share directory or in a global, user-defined $FFTW_DIR
   FIND_PATH(FFTW_INCLUDES fftw3.h       HINTS $ENV{FFTW_DIR}/include                  ${LIBS_EXTERNAL_LIB_DIR}/fftw/build/include)
@@ -63,15 +63,16 @@ IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT OR POSTI_HIT_INIT OR POSTI_HIT_FILTER
     MESSAGE(STATUS "FFTW not found, building library")
 
     # Origin pointing to GitHub -> download tarball directly from FFTW and have CMake extract it automatically
-    IF("${GIT_ORIGIN}" MATCHES ".github.com")
+    IF(TRUE) #"${GIT_ORIGIN}" MATCHES ".github.com")
       LIST(PREPEND FFTW_FLAGS FC=${CMAKE_Fortran_COMPILER} CC=${CMAKE_C_COMPILER} ${POSTI_FFTWDIR}/src/fftw/configure --prefix=${POSTI_FFTWDIR}/build --libdir=${POSTI_FFTWDIR}/build/${CMAKE_INSTALL_LIBDIR})
       EXTERNALPROJECT_ADD(fftw
-        URL               https://fftw.org/${POSTI_FFTWTAG}.tar.gz
-        PREFIX            ${POSTI_FFTWDIR}
-        UPDATE_COMMAND    ""
-        CONFIGURE_COMMAND ${FFTW_FLAGS}
-        BUILD_IN_SOURCE   1
-        BUILD_BYPRODUCTS  ${FFTW_BYPRODUCTS}
+        URL                         https://fftw.org/${POSTI_FFTWTAG}.tar.gz
+        DOWNLOAD_EXTRACT_TIMESTAMP  FALSE
+        PREFIX                      ${POSTI_FFTWDIR}
+        UPDATE_COMMAND              ""
+        CONFIGURE_COMMAND           ${FFTW_FLAGS}
+        BUILD_IN_SOURCE             TRUE
+        BUILD_BYPRODUCTS            ${FFTW_BYPRODUCTS}
       )
     # Origin pointing to GitLab -> clone tarball from internal IAG libs repository and extract it manually
     ELSE()
@@ -84,7 +85,7 @@ IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT OR POSTI_HIT_INIT OR POSTI_HIT_FILTER
         PREFIX            ${POSTI_FFTWDIR}
         UPDATE_COMMAND    ""
         CONFIGURE_COMMAND ${FFTW_FLAGS}
-        BUILD_IN_SOURCE   1
+        BUILD_IN_SOURCE   TRUE
         BUILD_BYPRODUCTS  ${FFTW_BYPRODUCTS}
       )
     ENDIF()
