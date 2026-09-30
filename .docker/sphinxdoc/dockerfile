@@ -1,0 +1,17 @@
+FROM sphinxdoc/sphinx-latexpdf:latest
+
+# User gitlab-runner must have same UID as on host machine to avoid permission issues
+ARG USER=gitlab-runner
+ARG UID=987
+ARG GID=987
+
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
+    ssh rsync
+
+RUN groupadd --gid ${GID} ${USER} && \
+    useradd  --gid ${GID} --uid ${UID} -m -s /bin/bash ${USER}
+
+USER ${USER}
+RUN mkdir /home/${USER}/.ssh
