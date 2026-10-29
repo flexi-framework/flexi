@@ -63,7 +63,7 @@ IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT OR POSTI_HIT_INIT OR POSTI_HIT_FILTER
     MESSAGE(STATUS "FFTW not found, building library")
 
     # Origin pointing to GitHub -> download tarball directly from FFTW and have CMake extract it automatically
-    IF(TRUE) #"${GIT_ORIGIN}" MATCHES ".github.com")
+    IF("${GIT_ORIGIN}" MATCHES ".github.com")
       LIST(PREPEND FFTW_FLAGS FC=${CMAKE_Fortran_COMPILER} CC=${CMAKE_C_COMPILER} ${POSTI_FFTWDIR}/src/fftw/configure --prefix=${POSTI_FFTWDIR}/build --libdir=${POSTI_FFTWDIR}/build/${CMAKE_INSTALL_LIBDIR})
       EXTERNALPROJECT_ADD(fftw
         URL                         https://fftw.org/${POSTI_FFTWTAG}.tar.gz
